@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Pages 배포 시 404 에러 해결 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .references li a { color: var(--primary); text-decoration: none; }
+        .references li a:hover { text-decoration: underline; }
+
+        /* 문제/원인/해결 3단 구조 */
+        .debug-section {
+            border-radius: 12px; padding: 20px 24px; margin: 16px 0;
+        }
+        .debug-section.problem {
+            background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626;
+        }
+        .debug-section.cause {
+            background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #d97706;
+        }
+        .debug-section.solution {
+            background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #059669;
+        }
+        .debug-section .debug-label {
+            font-size: 0.82rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .debug-section.problem .debug-label { color: #dc2626; }
+        .debug-section.cause .debug-label { color: #d97706; }
+        .debug-section.solution .debug-label { color: #059669; }
+
+        /* 에러 메시지 블록 */
+        .error-msg {
+            background: #1e1e1e; color: #f87171; border-radius: 8px;
+            padding: 12px 16px; margin: 12px 0; font-family: 'Consolas', monospace;
+            font-size: 0.85rem; line-height: 1.6; border-left: 3px solid #dc2626;
+        }
+
+        /* 해결 타임라인 */
+        .timeline { margin: 20px 0; padding-left: 24px; border-left: 2px solid var(--border); }
+        .timeline-item { position: relative; padding: 0 0 24px 20px; }
+        .timeline-item:last-child { padding-bottom: 0; }
+        .timeline-item::before {
+            content: ''; position: absolute; left: -29px; top: 4px;
+            width: 12px; height: 12px; border-radius: 50%;
+            background: var(--primary); border: 2px solid white;
+        }
+        .timeline-item.fail::before { background: #dc2626; }
+        .timeline-item.success::before { background: #059669; }
+        .timeline-item h4 { font-size: 0.92rem; font-weight: 700; margin-bottom: 4px; }
+        .timeline-item p { font-size: 0.88rem; color: var(--text-muted); margin: 0; }
+
+        /* 요약 결과 */
+        .result-box {
+            background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+            border: 2px solid #a7f3d0; border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .result-box .result-icon { font-size: 2rem; color: #059669; margin-bottom: 8px; }
+        .result-box h3 { font-size: 1.1rem; color: #065f46; margin-bottom: 4px; }
+        .result-box p { font-size: 0.9rem; color: #047857; margin: 0; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">트러블슈팅</span>
+                </div>
+                <h1>GitHub Pages 배포 시 404 에러 해결</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-24</span>
+                    <span><i class="fa-regular fa-clock"></i> 3 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 한줄 요약</div>
+                    <ul>
+                        <li>GitHub 무료 플랜에서 private repo의 Pages는 지원되지 않아 404가 발생한다.</li>
+                        <li>repo를 public으로 되돌리고, 비공개 콘텐츠는 AES-GCM 클라이언트 암호화로 보호하면 된다.</li>
+                    </ul>
+                </div>
+
+                <!-- 문제 상황 -->
+                <h2><i class="fa-solid fa-bug"></i> 문제 상황</h2>
+
+                <div class="debug-section problem">
+                    <div class="debug-label"><i class="fa-solid fa-circle-xmark"></i> 문제</div>
+                    <p>GitHub Pages로 운영 중이던 블로그의 repository 가시성을 <strong>public에서 private으로 변경</strong>했더니, 사이트 전체에서 404 에러가 발생했다. 모든 페이지가 접근 불가 상태가 되었다.</p>
+                    <div class="error-msg">404<br>There isn't a GitHub Pages site here.</div>
+                </div>
+
+                <!-- 원인 분석 -->
+                <h2><i class="fa-solid fa-magnifying-glass"></i> 원인 분석</h2>
+
+                <div class="debug-section cause">
+                    <div class="debug-label"><i class="fa-solid fa-magnifying-glass"></i> 원인</div>
+                    <p>GitHub 무료 플랜(Free)에서는 <strong>private repository의 GitHub Pages를 지원하지 않는다.</strong></p>
+                    <p>GitHub Pages를 private repo에서 사용하려면 <strong>GitHub Pro, Team, 또는 Enterprise</strong> 플랜이 필요하다. 무료 플랜 사용자가 repo를 private으로 전환하면 Pages 배포가 자동으로 비활성화되어 404 에러가 발생한다.</p>
+                </div>
+
+                <!-- 해결 방법 -->
+                <h2><i class="fa-solid fa-circle-check"></i> 해결 방법</h2>
+
+                <div class="debug-section solution">
+                    <div class="debug-label"><i class="fa-solid fa-circle-check"></i> 해결</div>
+                    <p>repository를 다시 <strong>public으로 되돌리고</strong>, 비공개가 필요한 콘텐츠는 <strong>AES-GCM 암호화</strong>를 적용하여 클라이언트 측에서 보호하는 방식으로 전환했다.</p>
+                    <p>소스코드는 공개되지만, 암호화된 콘텐츠는 비밀번호 없이는 복호화할 수 없으므로 실질적인 비공개 효과를 얻을 수 있다.</p>
+                </div>
+
+                <!-- 시도 과정 타임라인 -->
+                <h2><i class="fa-solid fa-timeline"></i> 시도 과정</h2>
+
+                <div class="timeline">
+                    <div class="timeline-item fail">
+                        <h4>1단계: Repository를 private으로 변경</h4>
+                        <p>블로그 소스코드를 비공개하기 위해 Settings에서 repository 가시성을 private으로 변경했다.</p>
+                    </div>
+                    <div class="timeline-item fail">
+                        <h4>2단계: 사이트 전체 404 발생</h4>
+                        <p>변경 직후 블로그의 모든 페이지에서 404 에러가 발생. GitHub Pages가 완전히 비활성화되었다.</p>
+                    </div>
+                    <div class="timeline-item fail">
+                        <h4>3단계: Pages 재활성화 시도 — 실패</h4>
+                        <p>Settings > Pages에서 다시 활성화를 시도했지만, 무료 플랜에서는 private repo의 Pages를 켤 수 없었다.</p>
+                    </div>
+                    <div class="timeline-item success">
+                        <h4>4단계: public 복구 + AES-GCM 암호화 적용</h4>
+                        <p>repo를 public으로 되돌리고, 비공개 콘텐츠는 AES-256-GCM 클라이언트 암호화로 보호. 사이트 정상 복구 완료.</p>
+                    </div>
+                </div>
+
+                <!-- 결과 -->
+                <div class="result-box">
+                    <div class="result-icon"><i class="fa-solid fa-circle-check"></i></div>
+                    <h3>해결 완료</h3>
+                    <p>public repo + AES-GCM 암호화로 보안과 배포를 동시에 해결</p>
+                </div>
+
+                <!-- 교훈 -->
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>교훈: GitHub Pages 무료 플랜의 제약을 기억하자</strong>
+                        GitHub Pages는 무료 플랜에서 public repo만 지원한다. 비공개가 필요한 콘텐츠는 repo 가시성이 아닌 <strong>클라이언트 측 암호화</strong>(AES-GCM 등)로 보호하는 것이 올바른 접근이다. 서버 없이 정적 사이트에서도 강력한 암호화를 적용할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li><a href="https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages" target="_blank">GitHub Docs — About GitHub Pages</a> : 플랜별 Pages 지원 범위</li>
+                        <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt" target="_blank">MDN — SubtleCrypto.encrypt()</a> : Web Crypto API AES-GCM 암호화</li>
+                        <li><a href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility" target="_blank">GitHub Docs — Setting repository visibility</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script>
+    renderSidebar('debug');
+</script>
+</body>
+</html>

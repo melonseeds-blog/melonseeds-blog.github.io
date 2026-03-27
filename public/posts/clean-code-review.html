@@ -1,0 +1,474 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>클린 코드 (Clean Code) 리뷰 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 책/강의 정보 카드 */
+        .book-info {
+            display: flex; gap: 24px; padding: 24px;
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            margin: 20px 0;
+        }
+        .book-cover {
+            width: 140px; height: 200px; border-radius: 8px; flex-shrink: 0;
+            background: var(--border-light); display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; color: var(--text-light); overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .book-detail { flex: 1; }
+        .book-detail h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; border-bottom: none; }
+        .book-detail table { font-size: 0.88rem; }
+        .book-detail td { padding: 3px 0; }
+        .book-detail td:first-child { color: var(--text-muted); width: 60px; }
+
+        /* 별점 */
+        .rating { margin: 12px 0; display: flex; align-items: center; gap: 8px; }
+        .rating .stars { color: #f59e0b; font-size: 1.1rem; }
+        .rating .score { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+
+        /* 핵심 포인트 */
+        .key-points { margin: 20px 0; }
+        .key-point {
+            display: flex; gap: 12px; padding: 12px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .key-point:last-child { border-bottom: none; }
+        .key-point .kp-num {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--primary-light); color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+        }
+        .key-point .kp-text { font-size: 0.92rem; color: var(--text-sub); }
+
+        /* 인상적인 구절 */
+        .quote-highlight {
+            background: var(--seed-light); border-left: 4px solid var(--flesh);
+            border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 16px 0;
+            font-style: italic; color: var(--text-sub);
+        }
+        .quote-highlight .quote-source { font-style: normal; font-size: 0.82rem; color: var(--text-light); margin-top: 8px; }
+
+        /* 한줄 감상 */
+        .review-summary {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .review-summary .review-icon { font-size: 1.5rem; margin-bottom: 8px; }
+        .review-summary p { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
+
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .book-info { flex-direction: column; align-items: center; text-align: center; }
+            .book-cover { width: 120px; height: 170px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#book-intro" data-section="book-intro">책 소개</a>
+        <a href="#key-content" data-section="key-content">핵심 내용</a>
+        <a href="#impressive-quotes" data-section="impressive-quotes">인상적인 구절</a>
+        <a href="#practical-tips" data-section="practical-tips">실무 적용 포인트</a>
+        <a href="#overall-review" data-section="overall-review">총평</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">책/강의 후기</span>
+                </div>
+                <h1>클린 코드 (Clean Code) 리뷰</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-24</span>
+                    <span><i class="fa-regular fa-clock"></i> 5 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>로버트 C. 마틴의 클린 코드 핵심 원칙 정리</li>
+                        <li>의미 있는 이름, 작은 함수, 주석 최소화 등 실천 포인트</li>
+                        <li>인상적인 구절과 실무 적용 경험</li>
+                        <li>개발자라면 반드시 읽어야 할 이유</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#book-intro">책 소개</a></li>
+                        <li><a href="#key-content">핵심 내용</a></li>
+                        <li><a href="#impressive-quotes">인상적인 구절</a></li>
+                        <li><a href="#practical-tips">실무 적용 포인트</a></li>
+                        <li><a href="#overall-review">총평</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 책 소개 -->
+                <h2 id="book-intro"><i class="fa-solid fa-book-open"></i> 책 소개</h2>
+
+                <div class="book-info">
+                    <div class="book-cover">
+                        <i class="fa-solid fa-book"></i>
+                    </div>
+                    <div class="book-detail">
+                        <h3>Clean Code: A Handbook of Agile Software Craftsmanship</h3>
+                        <table>
+                            <tr><td>저자</td><td>Robert C. Martin</td></tr>
+                            <tr><td>출판</td><td>Prentice Hall</td></tr>
+                            <tr><td>읽은 날</td><td>2026-03-24</td></tr>
+                        </table>
+                        <div class="rating">
+                            <span class="stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star-half-stroke"></i></span>
+                            <span class="score">4.5 / 5.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p>"클린 코드"는 소프트웨어 장인 정신의 바이블이라 불리는 책이다. 저자 로버트 C. 마틴(일명 Uncle Bob)은 수십 년간의 개발 경험을 바탕으로, <strong>읽기 좋고 유지보수하기 쉬운 코드</strong>를 작성하는 원칙과 패턴을 체계적으로 정리했다.</p>
+                <p>단순히 "동작하는 코드"를 넘어 "깨끗한 코드"가 왜 중요한지, 그리고 어떻게 달성할 수 있는지를 구체적인 예제와 함께 설명한다. Java 코드 위주이지만, 언어를 불문하고 적용 가능한 보편적인 원칙을 담고 있다.</p>
+
+                <!-- 2. 핵심 내용 -->
+                <h2 id="key-content"><i class="fa-solid fa-lightbulb"></i> 핵심 내용</h2>
+
+                <div class="key-points">
+                    <div class="key-point">
+                        <span class="kp-num">1</span>
+                        <span class="kp-text"><strong>의미 있는 이름 (Meaningful Names)</strong> — 변수, 함수, 클래스의 이름만 보고도 역할을 알 수 있어야 한다. <code>d</code> 대신 <code>elapsedTimeInDays</code>, <code>process()</code> 대신 <code>validateUserInput()</code>처럼 의도를 드러내는 이름을 사용하라.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">2</span>
+                        <span class="kp-text"><strong>함수는 작게 (Small Functions)</strong> — 함수는 한 가지 일만 해야 한다. 20줄을 넘기지 않는 것이 이상적이며, 추상화 수준을 일관되게 유지해야 한다. 함수가 길어지면 더 작은 함수로 분리하라.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">3</span>
+                        <span class="kp-text"><strong>주석보다 코드 (Code over Comments)</strong> — 주석은 코드로 표현하지 못하는 것을 보충할 때만 사용한다. 코드 자체가 명확하면 주석이 필요 없다. 나쁜 주석은 없는 것보다 해롭다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">4</span>
+                        <span class="kp-text"><strong>에러 처리 (Error Handling)</strong> — 오류 코드보다 예외를 사용하라. null을 반환하거나 전달하지 마라. Try-Catch 블록을 별도 함수로 분리하여 정상 흐름과 오류 처리를 분명히 나눠라.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">5</span>
+                        <span class="kp-text"><strong>테스트 코드 (Unit Tests)</strong> — 테스트 코드는 실제 코드만큼 중요하다. TDD(테스트 주도 개발)의 세 가지 법칙을 따르고, 테스트당 assert 하나, 테스트당 개념 하나를 유지하라. 깨끗한 테스트가 깨끗한 코드를 가능하게 한다.</span>
+                    </div>
+                </div>
+
+                <h3 id="naming-details"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 좋은 이름의 조건</h3>
+                <p>저자는 이름 짓기에 대해 여러 규칙을 제시한다. 특히 다음 네 가지가 핵심이다.</p>
+                <ul>
+                    <li><strong>의도를 분명히 밝혀라</strong> — 이름이 존재 이유, 수행 기능, 사용 방법을 설명해야 한다</li>
+                    <li><strong>그릇된 정보를 피하라</strong> — 널리 쓰이는 약어나 다른 의미가 있는 단어를 피해라</li>
+                    <li><strong>검색하기 쉬운 이름을 사용하라</strong> — 한 글자 변수나 상수는 검색이 어렵다</li>
+                    <li><strong>클래스는 명사, 메서드는 동사</strong> — 역할에 맞는 품사를 사용하라</li>
+                </ul>
+
+                <h3 id="function-rules"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함수 작성의 규칙</h3>
+                <p>클린 코드에서 함수는 프로그램의 기본 단위다. 저자가 강조하는 규칙은 다음과 같다.</p>
+                <ul>
+                    <li><strong>작게 만들어라</strong> — if/else/while 블록 안은 한 줄이 이상적이다</li>
+                    <li><strong>한 가지만 해라</strong> — 함수 이름으로 설명되는 한 가지 작업만 수행해야 한다</li>
+                    <li><strong>인수를 줄여라</strong> — 이상적인 인수 개수는 0개, 최대 3개까지</li>
+                    <li><strong>부수 효과를 일으키지 마라</strong> — 함수가 약속한 것 외의 변경을 하지 마라</li>
+                </ul>
+
+                <!-- 3. 인상적인 구절 -->
+                <h2 id="impressive-quotes"><i class="fa-solid fa-quote-left"></i> 인상적인 구절</h2>
+
+                <div class="quote-highlight">
+                    "깨끗한 코드는 잘 쓴 문장처럼 읽힌다. 좋은 소설처럼 깨끗한 코드는 해결할 문제의 긴장을 명확히 드러낸다."
+                    <div class="quote-source">— Robert C. Martin, Clean Code, Chapter 1</div>
+                </div>
+
+                <p>이 구절은 코드가 단순히 기계를 위한 명령어가 아니라, <strong>사람이 읽는 글</strong>이라는 점을 일깨워준다. 코드 리뷰를 할 때마다 이 문장이 떠오른다.</p>
+
+                <div class="quote-highlight">
+                    "나쁜 코드에 주석을 달지 마라. 새로 짜라."
+                    <div class="quote-source">— Brian W. Kernighan &amp; P. J. Plaugher (Clean Code에서 인용)</div>
+                </div>
+
+                <p>주석으로 복잡한 코드를 설명하려는 유혹에 빠질 때, 이 말이 브레이크 역할을 한다. 코드를 리팩토링하는 것이 주석을 다는 것보다 근본적인 해결이다.</p>
+
+                <!-- 4. 실무 적용 포인트 -->
+                <h2 id="practical-tips"><i class="fa-solid fa-screwdriver-wrench"></i> 실무 적용 포인트</h2>
+
+                <h3 id="tip-naming"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 변수명 개선</h3>
+                <p>책을 읽기 전에는 <code>ret</code>, <code>tmp</code>, <code>data</code> 같은 이름을 습관적으로 사용했다. 이제는 해당 변수가 무엇을 담고 있는지를 이름에 반영하려 노력한다. 예를 들어 <code>ret</code> 대신 <code>validationResult</code>, <code>tmp</code> 대신 <code>swapBuffer</code>처럼 역할을 명확히 한다.</p>
+
+                <h3 id="tip-refactor"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함수 분리</h3>
+                <p>200줄짜리 함수를 작성하던 습관을 고치기 시작했다. 하나의 큰 함수를 여러 개의 작은 함수로 나누면, 각 함수의 역할이 명확해지고 디버깅이 훨씬 쉬워진다.</p>
+
+                <h3 id="tip-review"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 코드 리뷰 기준</h3>
+                <p>팀 내 코드 리뷰에서 "이 함수 이름만으로 무슨 일을 하는지 알 수 있나요?"라는 질문을 자주 하게 되었다. 클린 코드의 원칙이 자연스럽게 리뷰 기준이 된다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>보이스카우트 규칙을 실천하자</strong>
+                        "캠프장은 처음 왔을 때보다 더 깨끗하게 해놓고 떠나라." 코드를 수정할 때마다 주변 코드를 조금씩 개선하면, 시간이 지날수록 코드베이스 전체가 깨끗해진다.
+                    </div>
+                </div>
+
+                <!-- 5. 총평 -->
+                <h2 id="overall-review"><i class="fa-solid fa-star"></i> 총평</h2>
+
+                <p>클린 코드는 단순한 코딩 스타일 가이드가 아니다. <strong>소프트웨어 개발자로서의 태도와 책임</strong>에 대한 책이다. "동작하면 됐지"라는 마인드에서 벗어나, 코드를 읽는 다른 개발자(미래의 나 포함)를 배려하는 습관을 기르게 해준다.</p>
+                <p>다만, 모든 원칙을 교조적으로 따를 필요는 없다. 실무에서는 상황에 따라 타협이 필요하다. 중요한 것은 <strong>"왜 이렇게 작성하는가"를 항상 의식하는 것</strong>이다. 0.5점을 깎은 이유는 Java 중심의 예제가 다른 언어 사용자에게는 다소 거리감이 있기 때문이다.</p>
+
+                <div class="review-summary">
+                    <div class="review-icon"><span class="melon-icon lg"></span></div>
+                    <p>코드를 "작성"하는 시간보다 "읽는" 시간이 압도적으로 많다는 사실을 깨닫게 해주는 필독서</p>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Robert C. Martin, "Clean Code: A Handbook of Agile Software Craftsmanship", Prentice Hall, 2008</li>
+                        <li>Robert C. Martin, "The Clean Coder", Prentice Hall, 2011</li>
+                        <li>Martin Fowler, "Refactoring: Improving the Design of Existing Code", Addison-Wesley, 2018</li>
+                        <li>클린 코드 요약 — <a href="https://github.com/Yooii-Studios/Clean-Code" target="_blank">github.com/Yooii-Studios/Clean-Code</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script>
+    renderSidebar('book');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

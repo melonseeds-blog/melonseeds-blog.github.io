@@ -1,19 +1,38 @@
 /* Melon Seeds - Sidebar Component (Font Awesome) */
+/* 서브 카테고리 지원 */
 
 function renderSidebar(currentCat) {
     const publicCats = [
-        { id: 'dev',    icon: 'fa-solid fa-code',            label: '개발 공부',      color: 'dev',    desc: '알고리즘, OS, 언어' },
-        { id: 'tech',   icon: 'fa-solid fa-microscope',      label: '기술 공부',      color: 'tech',   desc: '카메라, 비전, 스마트공장' },
-        { id: 'trend',  icon: 'fa-solid fa-satellite-dish',   label: '기술 트렌드',    color: 'trend',  desc: '기술 뉴스, 새로운 기술' },
-        { id: 'tool',   icon: 'fa-solid fa-screwdriver-wrench', label: '도구/환경 설정', color: 'tool',  desc: 'Git, IDE, Claude' },
-        { id: 'debug',  icon: 'fa-solid fa-bug',             label: '트러블슈팅',     color: 'debug',  desc: '문제 해결 기록' },
-        { id: 'growth', icon: 'fa-solid fa-seedling',        label: '자기계발',       color: 'growth', desc: '영어, 자격증' },
-        { id: 'book',   icon: 'fa-solid fa-book-open',       label: '책/강의 후기',   color: 'book',   desc: '읽은 책, 세미나' },
+        { id: 'dev', icon: 'fa-solid fa-code', label: '개발 공부', color: 'dev', desc: '알고리즘, OS, 언어',
+          subs: [
+              { id: 'dev-lang',   label: '언어 (C++, Python 등)' },
+              { id: 'dev-cv',     label: 'CV (Computer Vision)' },
+              { id: 'dev-theory', label: '프로그래밍 이론' },
+          ]
+        },
+        { id: 'tech', icon: 'fa-solid fa-microscope', label: '기술 공부', color: 'tech', desc: '카메라, 비전, 스마트공장',
+          subs: [
+              { id: 'tech-sensor',  label: '센서 / ISP' },
+              { id: 'tech-stereo',  label: '3D 스테레오 비전' },
+              { id: 'tech-ai',      label: 'AI / OpenAI' },
+              { id: 'tech-factory', label: '스마트 공장' },
+          ]
+        },
+        { id: 'trend',  icon: 'fa-solid fa-satellite-dish',    label: '기술 트렌드',    color: 'trend',  desc: '기술 뉴스, 새로운 기술' },
+        { id: 'tool',   icon: 'fa-solid fa-screwdriver-wrench', label: '도구/환경 설정', color: 'tool',   desc: 'Git, IDE, Claude' },
+        { id: 'debug',  icon: 'fa-solid fa-bug',              label: '트러블슈팅',     color: 'debug',  desc: '문제 해결 기록' },
+        { id: 'growth', icon: 'fa-solid fa-seedling',         label: '자기계발',       color: 'growth', desc: '영어, 자격증',
+          subs: [
+              { id: 'growth-lang', label: '어학' },
+              { id: 'growth-cert', label: '자격증' },
+          ]
+        },
+        { id: 'book',   icon: 'fa-solid fa-book-open',        label: '책/강의 후기',   color: 'book',   desc: '읽은 책, 세미나' },
     ];
 
     const privateCats = [
-        { id: 'project', icon: 'fa-solid fa-lock',          label: '프로젝트',  color: 'project', desc: '회사 프로젝트' },
-        { id: 'memo',    icon: 'fa-solid fa-pen-to-square',  label: '개인 메모',  color: 'memo',   desc: '비공개 메모' },
+        { id: 'project', icon: 'fa-solid fa-lock',         label: '프로젝트',  color: 'project', desc: '회사 프로젝트' },
+        { id: 'memo',    icon: 'fa-solid fa-pen-to-square', label: '개인 메모', color: 'memo',    desc: '비공개 메모' },
     ];
 
     // basePath
@@ -37,11 +56,23 @@ function renderSidebar(currentCat) {
     html += '<div class="sidebar-section">';
     html += '<div class="sidebar-title"><i class="fa-solid fa-circle"></i> Public</div>';
     publicCats.forEach(c => {
-        const active = currentCat === c.id ? ' active' : '';
+        const isParentActive = currentCat === c.id || (c.subs && c.subs.some(s => s.id === currentCat));
+        const active = isParentActive ? ' active' : '';
+
         html += `<a href="${base}public/index.html?cat=${c.id}" class="cat-item${active}" title="${c.desc}">
             <span class="cat-icon ${c.color}"><i class="${c.icon}"></i></span>
             <span class="cat-label">${c.label}</span>
         </a>`;
+
+        // 서브 카테고리
+        if (c.subs && isParentActive) {
+            c.subs.forEach(s => {
+                const subActive = currentCat === s.id ? ' active' : '';
+                html += `<a href="${base}public/index.html?cat=${s.id}" class="cat-item cat-sub${subActive}">
+                    <span class="cat-label">${s.label}</span>
+                </a>`;
+            });
+        }
     });
     html += '</div>';
 
