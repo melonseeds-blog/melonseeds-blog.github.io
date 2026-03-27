@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSNU / PRNU 보정 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 수식 블록 */
+        .formula-block {
+            background: var(--card-bg); border: 2px solid var(--melon-light);
+            border-radius: 12px; padding: 24px 28px; margin: 20px 0;
+            text-align: center;
+        }
+        .formula-block .formula-label {
+            font-family: 'Pretendard', sans-serif; font-size: 0.85rem; font-weight: 600;
+            color: var(--text-muted); margin-bottom: 12px;
+        }
+        .formula-block .formula {
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 1.15rem;
+            color: var(--primary-dark); font-weight: 700; letter-spacing: 0.5px;
+        }
+        .formula-block .formula-desc {
+            font-size: 0.85rem; color: var(--text-sub); margin-top: 12px; text-align: left;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#nonuniformity" data-section="nonuniformity">센서 불균일성</a>
+        <a href="#dsnu" data-section="dsnu">DSNU</a>
+        <a href="#prnu" data-section="prnu">PRNU</a>
+        <a href="#ffc" data-section="ffc">FFC 보정</a>
+        <a href="#calibration" data-section="calibration">캘리브레이션</a>
+        <a href="#hw-vs-sw" data-section="hw-vs-sw">내장 vs 소프트웨어</a>
+        <a href="#caution" data-section="caution">주의사항</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">센서/ISP</span>
+                </div>
+                <h1>DSNU / PRNU 보정</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 7 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>이미지 센서의 픽셀 간 응답 불균일성(DSNU, PRNU)의 원인</li>
+                        <li>다크 신호 불균일성(DSNU)과 광응답 불균일성(PRNU)의 차이</li>
+                        <li>FFC(Flat Field Correction) 보정 공식과 캘리브레이션 절차</li>
+                        <li>센서 내장 보정과 소프트웨어 보정의 비교, 실무 주의사항</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#nonuniformity">센서 불균일성이란</a></li>
+                        <li><a href="#dsnu">DSNU (Dark Signal Non-Uniformity)</a></li>
+                        <li><a href="#prnu">PRNU (Photo Response Non-Uniformity)</a></li>
+                        <li><a href="#ffc">FFC (Flat Field Correction)</a></li>
+                        <li><a href="#calibration">실무 캘리브레이션 방법</a></li>
+                        <li><a href="#hw-vs-sw">센서 내장 보정 vs 소프트웨어 보정</a></li>
+                        <li><a href="#caution">주의사항</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 센서 불균일성이란 -->
+                <h2 id="nonuniformity"><i class="fa-solid fa-grid-2"></i> 센서 불균일성이란</h2>
+
+                <p>이미지 센서는 수백만 개의 픽셀로 구성되어 있지만, 제조 공정상 모든 픽셀이 완벽히 동일하게 만들어지지는 않는다. 동일한 빛을 받더라도 픽셀마다 출력 값이 미세하게 다르며, 이를 <strong>센서 불균일성(Sensor Non-Uniformity)</strong>이라 한다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 불균일성이 발생하는가?</div>
+                    <p>반도체 제조 과정에서 실리콘 웨이퍼의 도핑 농도, 포토다이오드 면적, 마이크로렌즈 형상 등이 픽셀마다 미세하게 달라진다. 이 차이는 두 가지 형태로 나타난다: 빛이 없을 때의 출력 차이(<strong>DSNU</strong>)와, 빛에 대한 감도 차이(<strong>PRNU</strong>).</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 300" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">센서 불균일성의 두 가지 요소</text>
+
+                        <!-- 이상적 센서 -->
+                        <rect x="30" y="45" width="200" height="230" rx="12" fill="#f5f5f5" stroke="#bdbdbd" stroke-width="1.5"/>
+                        <text x="130" y="70" text-anchor="middle" font-size="12" fill="#616161" font-weight="700">이상적인 센서</text>
+                        <!-- 균일한 바 차트 -->
+                        <rect x="55" y="90" width="20" height="80" rx="2" fill="#81c784"/>
+                        <rect x="80" y="90" width="20" height="80" rx="2" fill="#81c784"/>
+                        <rect x="105" y="90" width="20" height="80" rx="2" fill="#81c784"/>
+                        <rect x="130" y="90" width="20" height="80" rx="2" fill="#81c784"/>
+                        <rect x="155" y="90" width="20" height="80" rx="2" fill="#81c784"/>
+                        <rect x="180" y="90" width="20" height="80" rx="2" fill="#81c784"/>
+                        <text x="130" y="195" text-anchor="middle" font-size="10" fill="#9e9e9e">모든 픽셀 동일 출력</text>
+                        <text x="130" y="215" text-anchor="middle" font-size="10" fill="#9e9e9e">(현실에서는 불가능)</text>
+
+                        <!-- DSNU 영향 -->
+                        <rect x="255" y="45" width="200" height="230" rx="12" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="355" y="70" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">DSNU 영향</text>
+                        <!-- 바닥이 불균일한 바 차트 -->
+                        <rect x="280" y="145" width="20" height="25" rx="2" fill="#ffb74d"/>
+                        <rect x="305" y="155" width="20" height="15" rx="2" fill="#ffb74d"/>
+                        <rect x="330" y="140" width="20" height="30" rx="2" fill="#ffb74d"/>
+                        <rect x="355" y="150" width="20" height="20" rx="2" fill="#ffb74d"/>
+                        <rect x="380" y="120" width="20" height="50" rx="2" fill="#ef6c00"/>
+                        <rect x="405" y="148" width="20" height="22" rx="2" fill="#ffb74d"/>
+                        <text x="355" y="195" text-anchor="middle" font-size="10" fill="#e65100">빛 없이도 출력 차이</text>
+                        <text x="355" y="215" text-anchor="middle" font-size="10" fill="#e65100">(다크 전류 편차)</text>
+                        <line x1="280" y1="170" x2="425" y2="170" stroke="#ef6c00" stroke-width="1" stroke-dasharray="4,3"/>
+                        <text x="440" y="174" font-size="8" fill="#ef6c00">기준선</text>
+
+                        <!-- PRNU 영향 -->
+                        <rect x="480" y="45" width="200" height="230" rx="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="580" y="70" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">PRNU 영향</text>
+                        <!-- 높이가 다른 바 차트 -->
+                        <rect x="505" y="100" width="20" height="70" rx="2" fill="#64b5f6"/>
+                        <rect x="530" y="90" width="20" height="80" rx="2" fill="#64b5f6"/>
+                        <rect x="555" y="110" width="20" height="60" rx="2" fill="#64b5f6"/>
+                        <rect x="580" y="85" width="20" height="85" rx="2" fill="#64b5f6"/>
+                        <rect x="605" y="105" width="20" height="65" rx="2" fill="#64b5f6"/>
+                        <rect x="630" y="95" width="20" height="75" rx="2" fill="#64b5f6"/>
+                        <text x="580" y="195" text-anchor="middle" font-size="10" fill="#1565c0">같은 빛인데 감도 차이</text>
+                        <text x="580" y="215" text-anchor="middle" font-size="10" fill="#1565c0">(광응답 편차)</text>
+
+                        <!-- 하단 결론 -->
+                        <text x="350" y="260" text-anchor="middle" font-size="11" fill="#424242" font-weight="600">실제 센서 = DSNU(오프셋 편차) + PRNU(게인 편차)</text>
+                    </svg>
+                    <div class="caption">그림 1. 센서 불균일성의 두 가지 구성 요소 - DSNU와 PRNU</div>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">FPN</span>
+                        <span class="term-desc"><strong>Fixed Pattern Noise</strong> — DSNU + PRNU를 합쳐 고정 패턴 노이즈라 부른다. 프레임마다 동일한 위치에 나타나므로 "고정" 패턴이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Temporal Noise</span>
+                        <span class="term-desc">시간에 따라 랜덤하게 변하는 노이즈(읽기 노이즈, 샷 노이즈 등). FPN과 달리 프레임마다 다르다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">EMVA 1288</span>
+                        <span class="term-desc">유럽 머신비전 협회의 센서 성능 측정 표준. DSNU/PRNU를 정량적으로 측정하는 공인 방법을 정의한다.</span>
+                    </div>
+                </div>
+
+                <!-- 2. DSNU -->
+                <h2 id="dsnu"><i class="fa-solid fa-moon"></i> DSNU (Dark Signal Non-Uniformity)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> DSNU란?</div>
+                    <p><strong>Dark Signal Non-Uniformity(다크 신호 불균일성)</strong>는 빛이 전혀 없는 상태에서도 픽셀마다 출력하는 신호가 다른 현상이다. 각 픽셀의 다크 전류(dark current)가 다르기 때문에 발생하며, 센서 온도가 올라갈수록 심해진다.</p>
+                </div>
+
+                <h3 id="dsnu-cause"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 발생 원인</h3>
+
+                <p>다크 전류는 빛 없이도 열에 의해 전자가 생성되는 현상이다. 실리콘 결정 격자의 결함(defect)이나 불순물 농도가 픽셀마다 미세하게 다르기 때문에 다크 전류의 크기도 픽셀마다 달라진다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>특성</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">원인</td>
+                            <td>픽셀 간 다크 전류(dark current) 편차</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">광량 의존성</td>
+                            <td>없음 — 빛이 없어도 나타남 (오프셋 성분)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">온도 의존성</td>
+                            <td>매우 높음 — 온도 8~10도 상승 시 다크 전류 약 2배 증가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">노출 시간 의존성</td>
+                            <td>비례 — 노출 시간이 길수록 다크 전류 축적량 증가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">측정 단위</td>
+                            <td>DN (Digital Number) 또는 e- (전자 수)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">EMVA 1288 기준</td>
+                            <td>다크 이미지 픽셀값의 표준편차로 정의</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="dsnu-hotdead"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 핫 픽셀과 데드 픽셀</h3>
+
+                <p>DSNU가 극단적으로 큰 픽셀은 <strong>결함 픽셀(defect pixel)</strong>로 분류된다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> 핫 픽셀 (Hot Pixel)</h4>
+                        <p>다크 전류가 비정상적으로 높은 픽셀. 빛이 없어도 밝게 나타난다. 센서 온도가 높거나 노출 시간이 길면 더 잘 보인다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#424242; font-size:0.5rem;"></i> 데드 픽셀 (Dead Pixel)</h4>
+                        <p>응답이 전혀 없거나 극도로 낮은 픽셀. 빛의 양과 무관하게 항상 어둡다. 회로 단선이나 심각한 결함이 원인이다.</p>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 200" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">DSNU: 온도에 따른 다크 신호 변화</text>
+
+                        <!-- 축 -->
+                        <line x1="80" y1="160" x2="600" y2="160" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <line x1="80" y1="40" x2="80" y2="160" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <text x="340" y="185" text-anchor="middle" font-size="10" fill="#616161">픽셀 위치</text>
+                        <text x="40" y="100" text-anchor="middle" font-size="10" fill="#616161" transform="rotate(-90,40,100)">다크 신호 (DN)</text>
+
+                        <!-- 25도 라인 (낮은 DSNU) -->
+                        <polyline points="100,140 130,142 160,138 190,141 220,139 250,143 280,137 310,140 340,142 370,138 400,141 430,139 460,140 490,143 520,138 550,141 580,140" fill="none" stroke="#4caf50" stroke-width="2"/>
+                        <rect x="440" y="40" width="10" height="3" rx="1" fill="#4caf50"/>
+                        <text x="458" y="46" font-size="9" fill="#4caf50">25 C (낮은 DSNU)</text>
+
+                        <!-- 50도 라인 (높은 DSNU) -->
+                        <polyline points="100,115 130,125 160,108 190,120 220,112 250,130 280,105 310,118 340,128 370,107 400,122 430,110 460,115 490,132 520,106 550,120 580,114" fill="none" stroke="#ff9800" stroke-width="2"/>
+                        <rect x="440" y="55" width="10" height="3" rx="1" fill="#ff9800"/>
+                        <text x="458" y="61" font-size="9" fill="#ff9800">50 C (높은 DSNU)</text>
+
+                        <!-- 핫 픽셀 표시 -->
+                        <circle cx="280" cy="65" r="4" fill="#ef4444"/>
+                        <line x1="280" y1="69" x2="280" y2="105" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>
+                        <text x="280" y="58" text-anchor="middle" font-size="8" fill="#ef4444" font-weight="600">Hot Pixel</text>
+                    </svg>
+                    <div class="caption">그림 2. 온도 상승에 따른 DSNU 증가와 핫 픽셀</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>CCD vs CMOS의 DSNU</strong>
+                        CCD 센서는 출력 앰프가 하나이므로 DSNU가 상대적으로 낮다. CMOS 센서는 픽셀마다 앰프가 있어 앰프 오프셋 차이도 DSNU에 포함된다. 다만 최신 CMOS 센서는 CDS(Correlated Double Sampling) 기술로 이를 크게 억제한다.
+                    </div>
+                </div>
+
+                <!-- 3. PRNU -->
+                <h2 id="prnu"><i class="fa-solid fa-sun"></i> PRNU (Photo Response Non-Uniformity)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> PRNU란?</div>
+                    <p><strong>Photo Response Non-Uniformity(광응답 불균일성)</strong>는 동일한 빛을 받았을 때 픽셀마다 출력하는 신호의 크기가 다른 현상이다. 각 픽셀의 양자 효율(QE)과 감도가 미세하게 다르기 때문에 발생하며, 입사 광량에 비례하여 커진다.</p>
+                </div>
+
+                <h3 id="prnu-cause"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 발생 원인과 특성</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>특성</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">원인</td>
+                            <td>픽셀 간 양자 효율(QE), 포토다이오드 면적, 마이크로렌즈 차이</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">광량 의존성</td>
+                            <td>비례 — 빛이 밝을수록 편차의 절대량이 커짐 (게인 성분)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">온도 의존성</td>
+                            <td>낮음 — 온도보다는 제조 공정에 의해 결정됨</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">시간 안정성</td>
+                            <td>매우 안정적 — 한번 보정하면 오래 유효 (온도 변화 제외)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">측정 단위</td>
+                            <td>% (편차의 상대값) 또는 DN</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">일반적인 값</td>
+                            <td>0.5% ~ 2% (고급 센서), 2% ~ 5% (일반 센서)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="prnu-fpn"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> DSNU와 PRNU의 관계</h3>
+
+                <p>실제 센서 출력은 DSNU와 PRNU가 합쳐진 결과다. 수식으로 표현하면:</p>
+
+                <div class="formula-block">
+                    <div class="formula-label">센서 출력 모델</div>
+                    <div class="formula">Output(i,j) = Gain(i,j) &times; Photon_Signal + Dark(i,j) + Noise</div>
+                    <div class="formula-desc">
+                        <ul style="margin:0; padding-left:18px;">
+                            <li><code>Gain(i,j)</code> — 픽셀 (i,j)의 감도 (PRNU 성분, 이상적이면 모두 1.0)</li>
+                            <li><code>Photon_Signal</code> — 입사 광량에 의한 신호</li>
+                            <li><code>Dark(i,j)</code> — 픽셀 (i,j)의 다크 신호 (DSNU 성분, 이상적이면 모두 0)</li>
+                            <li><code>Noise</code> — 랜덤 노이즈 (temporal noise, 보정 불가)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 250" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">DSNU vs PRNU: 광량에 따른 영향</text>
+
+                        <!-- 축 -->
+                        <line x1="80" y1="210" x2="600" y2="210" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <line x1="80" y1="40" x2="80" y2="210" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <text x="340" y="238" text-anchor="middle" font-size="10" fill="#616161">입사 광량 (Photons)</text>
+                        <text x="35" y="125" text-anchor="middle" font-size="10" fill="#616161" transform="rotate(-90,35,125)">불균일성 크기 (DN)</text>
+
+                        <!-- DSNU: 수평 -->
+                        <line x1="100" y1="185" x2="580" y2="185" stroke="#ff9800" stroke-width="2.5"/>
+                        <text x="590" y="188" font-size="9" fill="#ff9800" font-weight="600">DSNU</text>
+                        <text x="340" y="200" text-anchor="middle" font-size="8" fill="#ff9800">(광량과 무관, 일정)</text>
+
+                        <!-- PRNU: 우상향 -->
+                        <line x1="100" y1="190" x2="580" y2="60" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="590" y="63" font-size="9" fill="#1565c0" font-weight="600">PRNU</text>
+                        <text x="460" y="95" text-anchor="middle" font-size="8" fill="#1565c0">(광량에 비례하여 증가)</text>
+
+                        <!-- 교차점 설명 -->
+                        <circle cx="220" cy="163" r="5" fill="none" stroke="#ef4444" stroke-width="2"/>
+                        <text x="220" y="153" text-anchor="middle" font-size="8" fill="#ef4444" font-weight="600">교차점</text>
+                        <text x="185" y="142" font-size="7" fill="#ef4444">저광량: DSNU 지배적</text>
+                        <text x="400" y="142" font-size="7" fill="#1565c0">고광량: PRNU 지배적</text>
+
+                        <!-- 범례 -->
+                        <rect x="100" y="45" width="130" height="42" rx="6" fill="white" stroke="#e0e0e0" stroke-width="1"/>
+                        <line x1="110" y1="58" x2="130" y2="58" stroke="#ff9800" stroke-width="2"/>
+                        <text x="138" y="62" font-size="9" fill="#616161">DSNU (오프셋)</text>
+                        <line x1="110" y1="76" x2="130" y2="76" stroke="#1565c0" stroke-width="2"/>
+                        <text x="138" y="80" font-size="9" fill="#616161">PRNU (게인)</text>
+                    </svg>
+                    <div class="caption">그림 3. 광량에 따른 DSNU와 PRNU의 상대적 영향</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>저광량 vs 고광량에서의 노이즈 지배 요인</strong>
+                        저광량(어두운 장면)에서는 DSNU가 이미지 품질을 좌우하고, 고광량(밝은 장면)에서는 PRNU가 지배적이다. 머신비전에서 적절한 조명 설계가 중요한 이유 중 하나이기도 하다.
+                    </div>
+                </div>
+
+                <!-- 4. FFC -->
+                <h2 id="ffc"><i class="fa-solid fa-sliders"></i> FFC (Flat Field Correction)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> FFC란?</div>
+                    <p><strong>Flat Field Correction(균일장 보정)</strong>은 DSNU와 PRNU를 동시에 보정하는 표준 기법이다. 다크 이미지와 균일 조명(flat field) 이미지를 기준 데이터로 사용하여, 모든 픽셀의 응답을 균일하게 정규화한다.</p>
+                </div>
+
+                <h3 id="ffc-formula"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 보정 공식</h3>
+
+                <div class="formula-block">
+                    <div class="formula-label">FFC 보정 공식</div>
+                    <div class="formula">Corrected(i,j) = (Raw(i,j) - Dark(i,j)) &times; Gain(i,j)</div>
+                    <div class="formula-desc">
+                        <ul style="margin:0; padding-left:18px;">
+                            <li><code>Raw(i,j)</code> — 원본 이미지의 픽셀값</li>
+                            <li><code>Dark(i,j)</code> — 다크 이미지의 픽셀값 (DSNU 보정용, 렌즈 캡을 닫고 촬영)</li>
+                            <li><code>Gain(i,j)</code> — 보정 게인 맵 (PRNU 보정용)</li>
+                            <li><code>Gain(i,j) = Mean(Flat - Dark) / (Flat(i,j) - Dark(i,j))</code></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 320" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-ffc" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#3a9a3e"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">FFC 보정 프로세스</text>
+
+                        <!-- Step 1: Raw Image -->
+                        <rect x="20" y="50" width="130" height="80" rx="10" fill="#ffebee" stroke="#ef5350" stroke-width="1.5"/>
+                        <text x="85" y="78" text-anchor="middle" font-size="11" fill="#c62828" font-weight="700">Raw Image</text>
+                        <text x="85" y="95" text-anchor="middle" font-size="9" fill="#e57373">DSNU+PRNU 포함</text>
+                        <text x="85" y="110" text-anchor="middle" font-size="9" fill="#e57373">불균일한 원본</text>
+
+                        <!-- Step 2: Dark 빼기 -->
+                        <rect x="190" y="50" width="130" height="80" rx="10" fill="#424242" stroke="#616161" stroke-width="1.5"/>
+                        <text x="255" y="78" text-anchor="middle" font-size="11" fill="#fff" font-weight="700">Dark Image</text>
+                        <text x="255" y="95" text-anchor="middle" font-size="9" fill="#bdbdbd">렌즈캡 닫고 촬영</text>
+                        <text x="255" y="110" text-anchor="middle" font-size="9" fill="#bdbdbd">DSNU 기준 데이터</text>
+
+                        <!-- 빼기 화살표 -->
+                        <line x1="150" y1="90" x2="185" y2="90" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-ffc)"/>
+                        <text x="167" y="82" text-anchor="middle" font-size="16" fill="#ef4444" font-weight="700">-</text>
+
+                        <!-- Step 3: 결과 -->
+                        <rect x="360" y="50" width="130" height="80" rx="10" fill="#fff8e1" stroke="#ffa726" stroke-width="1.5"/>
+                        <text x="425" y="75" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">Raw - Dark</text>
+                        <text x="425" y="95" text-anchor="middle" font-size="9" fill="#ff9800">DSNU 제거됨</text>
+                        <text x="425" y="110" text-anchor="middle" font-size="9" fill="#ff9800">PRNU만 남음</text>
+
+                        <!-- 화살표 -->
+                        <line x1="320" y1="90" x2="355" y2="90" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-ffc)"/>
+                        <text x="337" y="82" text-anchor="middle" font-size="12" fill="#3a9a3e" font-weight="700">=</text>
+
+                        <!-- Step 4: Gain 곱하기 -->
+                        <rect x="360" y="170" width="130" height="80" rx="10" fill="#e8f5e9" stroke="#66bb6a" stroke-width="1.5"/>
+                        <text x="425" y="198" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">Gain Map</text>
+                        <text x="425" y="215" text-anchor="middle" font-size="9" fill="#66bb6a">균일 조명으로 계산</text>
+                        <text x="425" y="230" text-anchor="middle" font-size="9" fill="#66bb6a">PRNU 보정 계수</text>
+
+                        <!-- 곱하기 화살표 -->
+                        <line x1="490" y1="90" x2="530" y2="90" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-ffc)"/>
+                        <text x="510" y="82" text-anchor="middle" font-size="16" fill="#1565c0" font-weight="700">&times;</text>
+                        <line x1="490" y1="210" x2="530" y2="140" stroke="#3a9a3e" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+                        <!-- Step 5: 최종 결과 -->
+                        <rect x="540" y="50" width="140" height="80" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="610" y="78" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">Corrected Image</text>
+                        <text x="610" y="95" text-anchor="middle" font-size="9" fill="#64b5f6">DSNU+PRNU 보정 완료</text>
+                        <text x="610" y="110" text-anchor="middle" font-size="9" fill="#64b5f6">균일한 최종 이미지</text>
+
+                        <!-- 하단 수식 -->
+                        <rect x="120" y="275" width="460" height="30" rx="8" fill="var(--primary-50, #f0f7f0)" stroke="var(--border, #e0e0e0)" stroke-width="1"/>
+                        <text x="350" y="295" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="600" font-family="Consolas, monospace">Corrected = (Raw - Dark) x Gain</text>
+                    </svg>
+                    <div class="caption">그림 4. FFC 보정 처리 흐름</div>
+                </div>
+
+                <h3 id="ffc-gain"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 게인 맵 계산</h3>
+
+                <p>게인 맵은 균일 조명(flat field) 이미지에서 다크 이미지를 뺀 결과를 기반으로 계산한다. 각 픽셀의 게인은 전체 평균 대비 해당 픽셀의 감도 비율이다.</p>
+
+                <div class="formula-block">
+                    <div class="formula-label">게인 맵 계산</div>
+                    <div class="formula">Gain(i,j) = Mean(Flat - Dark) / (Flat(i,j) - Dark(i,j))</div>
+                    <div class="formula-desc">
+                        <ul style="margin:0; padding-left:18px;">
+                            <li>감도가 낮은 픽셀 → <code>Gain > 1.0</code> (증폭)</li>
+                            <li>감도가 높은 픽셀 → <code>Gain < 1.0</code> (감쇠)</li>
+                            <li>평균 감도 픽셀 → <code>Gain = 1.0</code> (변화 없음)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>0으로 나누기 방지</strong>
+                        <code>Flat(i,j) - Dark(i,j)</code>가 0이 되는 데드 픽셀이 있을 수 있다. 게인 맵 계산 시 반드시 최소값 클램핑을 적용하거나, 해당 픽셀을 결함 픽셀로 별도 처리해야 한다.
+                    </div>
+                </div>
+
+                <!-- 5. 실무 캘리브레이션 -->
+                <h2 id="calibration"><i class="fa-solid fa-camera"></i> 실무 캘리브레이션 방법</h2>
+
+                <h3 id="cal-dark"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 다크 이미지 촬영</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">준비</span>
+                        <span class="term-desc">렌즈 캡을 닫거나 완전히 차광된 환경에서 촬영. 센서에 빛이 전혀 도달하지 않아야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">촬영 조건</span>
+                        <span class="term-desc">실제 검사 환경과 동일한 노출 시간, 게인, 온도에서 촬영해야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">평균화</span>
+                        <span class="term-desc">단일 프레임이 아닌 <strong>16~64장을 평균</strong>하여 사용. 랜덤 노이즈를 줄이고 순수한 DSNU 패턴만 추출한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">저장</span>
+                        <span class="term-desc">16비트 이상의 정밀도로 저장. 8비트로 줄이면 보정 정확도가 떨어진다.</span>
+                    </div>
+                </div>
+
+                <h3 id="cal-flat"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 균일 광원(Flat Field) 촬영</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">적분구</span>
+                        <span class="term-desc"><strong>Integrating Sphere</strong> — 내부가 확산 반사 코팅된 구체. 가장 균일한 광원을 제공한다. EMVA 1288 캘리브레이션의 표준 장비.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">균일 확산판</span>
+                        <span class="term-desc">적분구가 없을 경우 백색 LED 패널 + 확산판으로 대체 가능. 센서 전면에 걸쳐 &plusmn;2% 이내 균일도 필요.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">촬영 밝기</span>
+                        <span class="term-desc">센서 포화의 <strong>50~70%</strong> 수준으로 설정. 너무 어두우면 PRNU 측정 정밀도가 떨어지고, 너무 밝으면 포화로 왜곡된다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">평균화</span>
+                        <span class="term-desc">다크 이미지와 마찬가지로 <strong>16~64장 평균</strong>하여 랜덤 노이즈를 제거한다.</span>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 260" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-cal" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#3a9a3e"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">캘리브레이션 절차</text>
+
+                        <!-- Step 1 -->
+                        <rect x="20" y="50" width="140" height="70" rx="10" fill="#424242" stroke="#616161" stroke-width="1.5"/>
+                        <text x="90" y="75" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">1. 차광 촬영</text>
+                        <text x="90" y="92" text-anchor="middle" font-size="8" fill="#bdbdbd">렌즈캡 닫고 N장 촬영</text>
+                        <text x="90" y="105" text-anchor="middle" font-size="8" fill="#bdbdbd">→ 평균 = Dark Map</text>
+
+                        <line x1="160" y1="85" x2="195" y2="85" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-cal)"/>
+
+                        <!-- Step 2 -->
+                        <rect x="200" y="50" width="140" height="70" rx="10" fill="#fff8e1" stroke="#ffa726" stroke-width="1.5"/>
+                        <text x="270" y="75" text-anchor="middle" font-size="10" fill="#e65100" font-weight="700">2. 균일 조명 촬영</text>
+                        <text x="270" y="92" text-anchor="middle" font-size="8" fill="#ff9800">적분구/확산판 N장 촬영</text>
+                        <text x="270" y="105" text-anchor="middle" font-size="8" fill="#ff9800">→ 평균 = Flat Map</text>
+
+                        <line x1="340" y1="85" x2="375" y2="85" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-cal)"/>
+
+                        <!-- Step 3 -->
+                        <rect x="380" y="50" width="140" height="70" rx="10" fill="#e8f5e9" stroke="#66bb6a" stroke-width="1.5"/>
+                        <text x="450" y="75" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="700">3. 보정 맵 생성</text>
+                        <text x="450" y="92" text-anchor="middle" font-size="8" fill="#66bb6a">Gain = Mean / (Flat-Dark)</text>
+                        <text x="450" y="105" text-anchor="middle" font-size="8" fill="#66bb6a">→ 파일로 저장</text>
+
+                        <line x1="520" y1="85" x2="555" y2="85" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-cal)"/>
+
+                        <!-- Step 4 -->
+                        <rect x="560" y="50" width="120" height="70" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="620" y="75" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="700">4. 실시간 적용</text>
+                        <text x="620" y="92" text-anchor="middle" font-size="8" fill="#64b5f6">매 프레임마다</text>
+                        <text x="620" y="105" text-anchor="middle" font-size="8" fill="#64b5f6">FFC 공식 적용</text>
+
+                        <!-- 하단 주의사항 -->
+                        <rect x="60" y="160" width="580" height="80" rx="10" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+                        <text x="90" y="185" font-size="11" fill="#78350f" font-weight="700"><tspan font-size="14">&#9888;</tspan> 캘리브레이션 핵심 포인트</text>
+                        <text x="90" y="205" font-size="9" fill="#92400e">1. 다크 촬영과 플랫 촬영 시 노출 시간/게인/온도를 실제 운용 조건과 동일하게 맞춘다.</text>
+                        <text x="90" y="220" font-size="9" fill="#92400e">2. 충분한 프레임(16장 이상)을 평균하여 temporal noise를 제거한다.</text>
+                        <text x="90" y="235" font-size="9" fill="#92400e">3. 보정 맵은 16비트 이상으로 저장하고, 온도 변화 시 재캘리브레이션한다.</text>
+                    </svg>
+                    <div class="caption">그림 5. 실무 캘리브레이션 4단계 절차</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 Tip: 온도 안정화 대기</strong>
+                        센서 전원을 켠 직후에는 온도가 계속 올라가면서 다크 전류가 변한다. 캘리브레이션 전에 최소 <strong>15~30분</strong> 워밍업하여 온도가 안정된 후 촬영하는 것이 좋다.
+                    </div>
+                </div>
+
+                <!-- 6. 센서 내장 vs 소프트웨어 보정 -->
+                <h2 id="hw-vs-sw"><i class="fa-solid fa-microchip"></i> 센서 내장 보정 vs 소프트웨어 보정</h2>
+
+                <p>FFC는 카메라 내부(하드웨어/펌웨어)에서 수행할 수도 있고, PC의 SDK/애플리케이션 레벨에서 수행할 수도 있다. 각각의 장단점을 이해하고 상황에 맞게 선택해야 한다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>센서/카메라 내장 보정</th>
+                            <th>소프트웨어(SDK/앱) 보정</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">처리 위치</td>
+                            <td>카메라 FPGA / ISP 내부</td>
+                            <td>PC CPU / GPU</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">속도</td>
+                            <td>실시간 (지연 없음)</td>
+                            <td>프레임 속도에 따라 부하 증가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">유연성</td>
+                            <td>낮음 — 공장 출하 시 캘리브레이션 데이터 고정</td>
+                            <td>높음 — 사용자가 언제든 재캘리브레이션 가능</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">보정 정밀도</td>
+                            <td>센서 제조사의 캘리브레이션 품질에 의존</td>
+                            <td>사용자가 실제 환경에서 측정하므로 더 정확할 수 있음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">온도 적응</td>
+                            <td>일부 카메라는 내부 온도 센서로 자동 보상</td>
+                            <td>온도 변화 시 수동 재캘리브레이션 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">결함 픽셀 보정</td>
+                            <td>보통 포함 (DPC: Defect Pixel Correction)</td>
+                            <td>별도 구현 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">대표 기능명</td>
+                            <td>FFC, FPN Correction, DPC (카메라 메뉴)</td>
+                            <td>사용자 구현 또는 SDK 라이브러리 활용</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-microchip" style="color:#1565c0;"></i> 내장 보정이 적합한 경우</h4>
+                        <ul>
+                            <li>카메라 교체가 잦고 빠른 셋업이 필요할 때</li>
+                            <li>PC 부하를 최소화해야 할 때</li>
+                            <li>카메라 제조사의 캘리브레이션 품질이 충분할 때</li>
+                            <li>온도 변화가 크지 않은 환경</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-laptop-code" style="color:#7b1fa2;"></i> SW 보정이 적합한 경우</h4>
+                        <ul>
+                            <li>극한 정밀도가 요구되는 계측/검사</li>
+                            <li>온도 변화가 큰 환경 (수시 재캘리브레이션)</li>
+                            <li>렌즈 비네팅까지 통합 보정하고 싶을 때</li>
+                            <li>카메라가 FFC 기능을 제공하지 않을 때</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>GenICam을 통한 카메라 내장 FFC 제어</strong>
+                        대부분의 산업용 카메라는 GenICam 레지스터를 통해 내장 FFC 기능을 On/Off할 수 있다. SDK에서 <code>FlatFieldCorrectionMode</code>, <code>DefectPixelCorrectionMode</code> 같은 노드를 찾아 설정할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 7. 주의사항 -->
+                <h2 id="caution"><i class="fa-solid fa-triangle-exclamation"></i> 주의사항</h2>
+
+                <h3 id="caution-temp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 온도 변화 시 재캘리브레이션</h3>
+
+                <p>DSNU는 온도에 매우 민감하다. 공장 환경에서 계절에 따라 온도가 10도 이상 변하면 다크 전류 패턴이 크게 달라지므로, <strong>주기적인 재캘리브레이션</strong>이 필수다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">온도 모니터링</span>
+                        <span class="term-desc">카메라 내부 온도 센서 값을 주기적으로 확인. 캘리브레이션 시점 대비 5도 이상 변화하면 재수행 권장.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">다중 온도 맵</span>
+                        <span class="term-desc">운용 온도 범위에서 여러 온도별 Dark/Gain 맵을 저장해두고, 현재 온도에 맞는 맵을 자동 선택하는 방법도 있다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">노출 시간 변경</span>
+                        <span class="term-desc">노출 시간이 바뀌면 다크 전류 축적량도 달라지므로, 노출 시간별 Dark 맵이 필요할 수 있다.</span>
+                    </div>
+                </div>
+
+                <h3 id="caution-vignetting"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 렌즈 비네팅과의 구분</h3>
+
+                <p><strong>비네팅(Vignetting)</strong>은 렌즈 특성으로 인해 이미지 주변부가 중앙보다 어두워지는 현상이다. 센서 PRNU와 겉보기에 비슷하지만, 원인과 보정 방법이 다르다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 200" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">PRNU vs 렌즈 비네팅</text>
+
+                        <!-- PRNU 패턴 -->
+                        <rect x="40" y="45" width="250" height="130" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="165" y="68" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">PRNU (센서 기인)</text>
+                        <!-- 랜덤 패턴 -->
+                        <rect x="65" y="80" width="15" height="15" rx="2" fill="#bbdefb"/>
+                        <rect x="85" y="80" width="15" height="15" rx="2" fill="#90caf9"/>
+                        <rect x="105" y="80" width="15" height="15" rx="2" fill="#64b5f6"/>
+                        <rect x="125" y="80" width="15" height="15" rx="2" fill="#bbdefb"/>
+                        <rect x="145" y="80" width="15" height="15" rx="2" fill="#42a5f5"/>
+                        <rect x="165" y="80" width="15" height="15" rx="2" fill="#bbdefb"/>
+                        <rect x="185" y="80" width="15" height="15" rx="2" fill="#90caf9"/>
+                        <rect x="205" y="80" width="15" height="15" rx="2" fill="#64b5f6"/>
+                        <rect x="225" y="80" width="15" height="15" rx="2" fill="#bbdefb"/>
+                        <rect x="245" y="80" width="15" height="15" rx="2" fill="#90caf9"/>
+                        <rect x="65" y="100" width="15" height="15" rx="2" fill="#42a5f5"/>
+                        <rect x="85" y="100" width="15" height="15" rx="2" fill="#bbdefb"/>
+                        <rect x="105" y="100" width="15" height="15" rx="2" fill="#90caf9"/>
+                        <rect x="125" y="100" width="15" height="15" rx="2" fill="#64b5f6"/>
+                        <rect x="145" y="100" width="15" height="15" rx="2" fill="#bbdefb"/>
+                        <rect x="165" y="100" width="15" height="15" rx="2" fill="#42a5f5"/>
+                        <rect x="185" y="100" width="15" height="15" rx="2" fill="#bbdefb"/>
+                        <rect x="205" y="100" width="15" height="15" rx="2" fill="#42a5f5"/>
+                        <rect x="225" y="100" width="15" height="15" rx="2" fill="#90caf9"/>
+                        <rect x="245" y="100" width="15" height="15" rx="2" fill="#64b5f6"/>
+                        <text x="165" y="140" text-anchor="middle" font-size="9" fill="#1565c0">랜덤 분포 (픽셀 단위)</text>
+                        <text x="165" y="155" text-anchor="middle" font-size="9" fill="#1565c0">렌즈 교체해도 동일</text>
+
+                        <!-- 비네팅 패턴 -->
+                        <rect x="360" y="45" width="250" height="130" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="485" y="68" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">비네팅 (렌즈 기인)</text>
+                        <!-- 동심원 패턴 -->
+                        <ellipse cx="485" cy="118" rx="100" ry="40" fill="#fff3e0" stroke="#ffe0b2" stroke-width="1"/>
+                        <ellipse cx="485" cy="118" rx="75" ry="30" fill="#ffe0b2" stroke="#ffcc80" stroke-width="1"/>
+                        <ellipse cx="485" cy="118" rx="50" ry="20" fill="#ffcc80" stroke="#ffb74d" stroke-width="1"/>
+                        <ellipse cx="485" cy="118" rx="25" ry="10" fill="#ffb74d" stroke="#ffa726" stroke-width="1"/>
+                        <text x="485" y="155" text-anchor="middle" font-size="9" fill="#e65100">중심→주변 점진적 감소</text>
+                        <text x="485" y="168" text-anchor="middle" font-size="9" fill="#e65100">렌즈 교체하면 달라짐</text>
+                    </svg>
+                    <div class="caption">그림 6. PRNU(픽셀 단위 랜덤)와 비네팅(중심-주변 점진적)의 패턴 차이</div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>FFC와 비네팅 보정의 관계</strong>
+                        균일 광원으로 Flat Field 촬영 시 렌즈를 장착한 채 촬영하면 비네팅까지 포함된 보정 맵이 만들어진다. 이 경우 렌즈를 교체하면 반드시 재캘리브레이션해야 한다. 순수 센서 PRNU만 보정하려면 렌즈를 빼고 적분구에 직접 마운트하여 촬영해야 한다.
+                    </div>
+                </div>
+
+                <h3 id="caution-other"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기타 주의사항</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">비트 심도</span>
+                        <span class="term-desc">보정 맵과 연산은 원본 비트 심도 이상으로 처리해야 한다. 8비트 이미지라도 내부 연산은 16비트 또는 float로 수행.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">게인 변경</span>
+                        <span class="term-desc">아날로그/디지털 게인을 변경하면 DSNU 패턴도 달라질 수 있다. 게인별 Dark 맵이 필요할 수 있음.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">ROI 변경</span>
+                        <span class="term-desc">보정 맵은 전체 센서 영역 기준. ROI를 변경하면 맵의 해당 영역을 잘라서 적용해야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">과보정</span>
+                        <span class="term-desc">노이즈가 큰 영역에서 과도한 게인 적용은 노이즈를 증폭시킨다. 게인 맵의 최대/최소 클램핑이 필요하다.</span>
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>EMVA Standard 1288 — Standard for Characterization of Image Sensors and Cameras</li>
+                        <li>Janesick, J.R. — Scientific Charge-Coupled Devices (SPIE Press)</li>
+                        <li>Holst, G.C. & Lomheim, T.S. — CMOS/CCD Sensors and Camera Systems (JCD Publishing)</li>
+                        <li>AIA — GenICam Standard (SFNC Feature Naming Convention)</li>
+                        <li>European Machine Vision Association — EMVA 1288 Application Notes</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-sensor"><i class="fa-solid fa-arrow-left"></i> 센서/ISP 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-sensor');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-sensor');
+</script>
+
+</body>
+</html>

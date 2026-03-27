@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenTL과 Transport Layer 구조 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.6;
+        }
+        pre code { background: none; color: inherit; padding: 0; }
+        .code-comment { color: #94a3b8; }
+        .code-keyword { color: #7dd3fc; }
+        .code-func { color: #fbbf24; }
+        .code-string { color: #86efac; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-gentl" data-section="what-is-gentl">GenTL이란?</a>
+        <a href="#layer-structure" data-section="layer-structure">계층 구조</a>
+        <a href="#producer-consumer" data-section="producer-consumer">Producer와 Consumer</a>
+        <a href="#connection-flow" data-section="connection-flow">카메라 연결 흐름</a>
+        <a href="#key-functions" data-section="key-functions">주요 GenTL 함수</a>
+        <a href="#why-gentl" data-section="why-gentl">실무에서의 필요성</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">통신/인터페이스</span>
+                </div>
+                <h1>GenTL과 Transport Layer 구조</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 7 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>GenTL(GenICam Transport Layer)의 개념과 역할</li>
+                        <li>System - Interface - Device - DataStream - Buffer 5단계 계층 구조</li>
+                        <li>Producer(CTI 파일)와 Consumer(SDK/앱)의 관계</li>
+                        <li>카메라 열거부터 스트리밍 해제까지의 전체 연결 흐름</li>
+                        <li>주요 GenTL API 함수와 실무 활용 이유</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-gentl">GenTL이란?</a></li>
+                        <li><a href="#layer-structure">GenTL 계층 구조</a></li>
+                        <li><a href="#producer-consumer">Producer와 Consumer</a></li>
+                        <li><a href="#connection-flow">카메라 연결 흐름</a></li>
+                        <li><a href="#key-functions">주요 GenTL 함수</a></li>
+                        <li><a href="#why-gentl">실무에서 GenTL 이해가 필요한 이유</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. GenTL이란? -->
+                <h2 id="what-is-gentl"><i class="fa-solid fa-layer-group"></i> GenTL이란?</h2>
+
+                <p>GenTL(GenICam Transport Layer)은 <strong>GenICam 표준의 하부 구조</strong>로, 카메라와 호스트 PC 간의 데이터 전송을 추상화하는 표준 인터페이스이다. GigE Vision, USB3 Vision, Camera Link 등 물리적 전송 방식이 달라도, GenTL 인터페이스를 통해 <strong>동일한 API</strong>로 카메라를 제어하고 이미지를 수신할 수 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> GenTL의 핵심 목표</div>
+                    <p>카메라 SDK 개발자나 사용자가 전송 계층(Transport Layer)의 세부 구현을 몰라도, 표준화된 함수 집합만으로 카메라 열거, 연결, 이미지 스트리밍, 해제를 수행할 수 있도록 하는 것이다. 마치 OS의 파일 시스템이 HDD/SSD/USB 드라이브의 차이를 숨기듯, GenTL은 GigE/USB3/CameraLink의 차이를 숨긴다.</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>GenICam과 GenTL의 관계</strong>
+                        GenICam은 카메라 제어(레지스터 접근, 노드맵)를 표준화하고, GenTL은 데이터 전송(카메라 발견, 연결, 이미지 수신)을 표준화한다. 둘은 서로 보완적이며, 대부분의 머신비전 SDK는 GenICam + GenTL 조합으로 동작한다.
+                    </div>
+                </div>
+
+                <!-- 2. GenTL 계층 구조 -->
+                <h2 id="layer-structure"><i class="fa-solid fa-sitemap"></i> GenTL 계층 구조</h2>
+
+                <p>GenTL은 5단계 계층으로 구성된다. 각 계층은 상위 계층의 핸들(Handle)을 통해 접근하며, 트리 형태로 확장된다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 480" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#3a9a3e"/></marker>
+                            <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e8f5e9"/><stop offset="100%" stop-color="#c8e6c9"/></linearGradient>
+                            <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e3f2fd"/><stop offset="100%" stop-color="#bbdefb"/></linearGradient>
+                            <linearGradient id="g3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff3e0"/><stop offset="100%" stop-color="#ffe0b2"/></linearGradient>
+                            <linearGradient id="g4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f3e5f5"/><stop offset="100%" stop-color="#e1bee7"/></linearGradient>
+                            <linearGradient id="g5" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fce4ec"/><stop offset="100%" stop-color="#f8bbd0"/></linearGradient>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">GenTL 5단계 계층 구조</text>
+
+                        <!-- Level 1: System -->
+                        <rect x="225" y="40" width="250" height="55" rx="10" fill="url(#g1)" stroke="#4caf50" stroke-width="2"/>
+                        <text x="350" y="62" text-anchor="middle" font-size="13" fill="#2e7d32" font-weight="700">System (TL)</text>
+                        <text x="350" y="80" text-anchor="middle" font-size="10" fill="#388e3c">GenTL 라이브러리 전체 진입점</text>
+
+                        <!-- Arrow -->
+                        <line x1="350" y1="95" x2="350" y2="115" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <!-- Level 2: Interface -->
+                        <rect x="150" y="120" width="180" height="55" rx="10" fill="url(#g2)" stroke="#1565c0" stroke-width="2"/>
+                        <text x="240" y="142" text-anchor="middle" font-size="13" fill="#1565c0" font-weight="700">Interface</text>
+                        <text x="240" y="160" text-anchor="middle" font-size="10" fill="#1976d2">NIC, USB 호스트 등</text>
+
+                        <rect x="370" y="120" width="180" height="55" rx="10" fill="url(#g2)" stroke="#1565c0" stroke-width="2"/>
+                        <text x="460" y="142" text-anchor="middle" font-size="13" fill="#1565c0" font-weight="700">Interface</text>
+                        <text x="460" y="160" text-anchor="middle" font-size="10" fill="#1976d2">GigE NIC #2 등</text>
+
+                        <!-- Arrows -->
+                        <line x1="310" y1="95" x2="240" y2="118" stroke="#1565c0" stroke-width="1.5" marker-end="url(#arr1)"/>
+                        <line x1="390" y1="95" x2="460" y2="118" stroke="#1565c0" stroke-width="1.5" marker-end="url(#arr1)"/>
+
+                        <!-- Level 3: Device -->
+                        <rect x="60" y="210" width="160" height="55" rx="10" fill="url(#g3)" stroke="#ff9800" stroke-width="2"/>
+                        <text x="140" y="232" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">Device</text>
+                        <text x="140" y="250" text-anchor="middle" font-size="10" fill="#f57c00">Camera A</text>
+
+                        <rect x="250" y="210" width="160" height="55" rx="10" fill="url(#g3)" stroke="#ff9800" stroke-width="2"/>
+                        <text x="330" y="232" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">Device</text>
+                        <text x="330" y="250" text-anchor="middle" font-size="10" fill="#f57c00">Camera B</text>
+
+                        <rect x="480" y="210" width="160" height="55" rx="10" fill="url(#g3)" stroke="#ff9800" stroke-width="2"/>
+                        <text x="560" y="232" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">Device</text>
+                        <text x="560" y="250" text-anchor="middle" font-size="10" fill="#f57c00">Camera C</text>
+
+                        <!-- Arrows -->
+                        <line x1="200" y1="175" x2="140" y2="208" stroke="#ff9800" stroke-width="1.5" marker-end="url(#arr1)"/>
+                        <line x1="280" y1="175" x2="330" y2="208" stroke="#ff9800" stroke-width="1.5" marker-end="url(#arr1)"/>
+                        <line x1="460" y1="175" x2="560" y2="208" stroke="#ff9800" stroke-width="1.5" marker-end="url(#arr1)"/>
+
+                        <!-- Level 4: DataStream -->
+                        <rect x="60" y="300" width="160" height="55" rx="10" fill="url(#g4)" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="140" y="322" text-anchor="middle" font-size="13" fill="#7b1fa2" font-weight="700">DataStream</text>
+                        <text x="140" y="340" text-anchor="middle" font-size="10" fill="#8e24aa">이미지 수신 채널</text>
+
+                        <rect x="250" y="300" width="160" height="55" rx="10" fill="url(#g4)" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="330" y="322" text-anchor="middle" font-size="13" fill="#7b1fa2" font-weight="700">DataStream</text>
+                        <text x="330" y="340" text-anchor="middle" font-size="10" fill="#8e24aa">이미지 수신 채널</text>
+
+                        <!-- Arrows -->
+                        <line x1="140" y1="265" x2="140" y2="298" stroke="#9c27b0" stroke-width="1.5" marker-end="url(#arr1)"/>
+                        <line x1="330" y1="265" x2="330" y2="298" stroke="#9c27b0" stroke-width="1.5" marker-end="url(#arr1)"/>
+
+                        <!-- Level 5: Buffer -->
+                        <rect x="30" y="390" width="100" height="50" rx="8" fill="url(#g5)" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="80" y="412" text-anchor="middle" font-size="11" fill="#c2185b" font-weight="600">Buffer 0</text>
+                        <text x="80" y="428" text-anchor="middle" font-size="9" fill="#e91e63">이미지 메모리</text>
+
+                        <rect x="145" y="390" width="100" height="50" rx="8" fill="url(#g5)" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="195" y="412" text-anchor="middle" font-size="11" fill="#c2185b" font-weight="600">Buffer 1</text>
+                        <text x="195" y="428" text-anchor="middle" font-size="9" fill="#e91e63">이미지 메모리</text>
+
+                        <rect x="275" y="390" width="100" height="50" rx="8" fill="url(#g5)" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="325" y="412" text-anchor="middle" font-size="11" fill="#c2185b" font-weight="600">Buffer 0</text>
+                        <text x="325" y="428" text-anchor="middle" font-size="9" fill="#e91e63">이미지 메모리</text>
+
+                        <rect x="390" y="390" width="100" height="50" rx="8" fill="url(#g5)" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="440" y="412" text-anchor="middle" font-size="11" fill="#c2185b" font-weight="600">Buffer 1</text>
+                        <text x="440" y="428" text-anchor="middle" font-size="9" fill="#e91e63">이미지 메모리</text>
+
+                        <!-- Arrows -->
+                        <line x1="110" y1="355" x2="80" y2="388" stroke="#e91e63" stroke-width="1.5" marker-end="url(#arr1)"/>
+                        <line x1="170" y1="355" x2="195" y2="388" stroke="#e91e63" stroke-width="1.5" marker-end="url(#arr1)"/>
+                        <line x1="305" y1="355" x2="325" y2="388" stroke="#e91e63" stroke-width="1.5" marker-end="url(#arr1)"/>
+                        <line x1="355" y1="355" x2="440" y2="388" stroke="#e91e63" stroke-width="1.5" marker-end="url(#arr1)"/>
+
+                        <!-- 우측 레이블 -->
+                        <text x="620" y="68" font-size="10" fill="#616161" font-weight="600">Level 1</text>
+                        <text x="620" y="148" font-size="10" fill="#616161" font-weight="600">Level 2</text>
+                        <text x="620" y="238" font-size="10" fill="#616161" font-weight="600">Level 3</text>
+                        <text x="620" y="328" font-size="10" fill="#616161" font-weight="600">Level 4</text>
+                        <text x="620" y="418" font-size="10" fill="#616161" font-weight="600">Level 5</text>
+
+                        <!-- 설명 -->
+                        <text x="350" y="468" text-anchor="middle" font-size="10" fill="#616161">각 계층은 상위 핸들을 통해 접근하며, 트리 형태로 확장된다</text>
+                    </svg>
+                    <div class="caption">그림 1. GenTL 5단계 계층 구조 — System, Interface, Device, DataStream, Buffer</div>
+                </div>
+
+                <h3 id="layer-detail"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 각 계층의 역할</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">System (TL)</span>
+                        <span class="term-desc">GenTL 라이브러리의 최상위 진입점. <code>TLOpen()</code>으로 시작하며, 하위 Interface 목록을 제공한다. 하나의 CTI 파일 = 하나의 System.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Interface</span>
+                        <span class="term-desc">물리적 통신 포트를 추상화한다. GigE Vision의 경우 NIC(네트워크 카드), USB3 Vision의 경우 USB 호스트 컨트롤러에 해당한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Device</span>
+                        <span class="term-desc">개별 카메라를 나타낸다. Interface를 통해 발견(Enumerate)되며, 카메라에 연결하면 Device 핸들을 얻는다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">DataStream</span>
+                        <span class="term-desc">이미지 데이터를 수신하는 논리적 채널. 대부분의 카메라는 하나의 DataStream을 가지지만, 멀티 스트림 카메라는 여러 개를 가질 수 있다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Buffer</span>
+                        <span class="term-desc">실제 이미지가 저장되는 메모리 블록. 애플리케이션이 할당(Announce)하고 큐(Queue)에 등록하면, GenTL이 이미지를 채워준다.</span>
+                    </div>
+                </div>
+
+                <!-- 3. Producer와 Consumer -->
+                <h2 id="producer-consumer"><i class="fa-solid fa-puzzle-piece"></i> Producer와 Consumer</h2>
+
+                <p>GenTL의 핵심 아키텍처는 <strong>Producer-Consumer 모델</strong>이다. 전송 계층의 구현과 사용을 분리하여, 서로 다른 제조사의 카메라와 SDK가 호환될 수 있게 한다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#1565c0; font-size:0.5rem;"></i> GenTL Producer (CTI 파일)</h4>
+                        <ul>
+                            <li><strong>제공자</strong> — 카메라 제조사 또는 SDK 벤더</li>
+                            <li><strong>형태</strong> — <code>.cti</code> 확장자의 DLL 파일</li>
+                            <li><strong>역할</strong> — 실제 전송 프로토콜 구현</li>
+                            <li><strong>예시</strong> — mvGenTLProducer.cti (MVTec), VwGigETL.cti (Vieworks)</li>
+                            <li><strong>위치</strong> — 환경변수 <code>GENICAM_GENTL64_PATH</code>로 지정</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> GenTL Consumer (SDK/앱)</h4>
+                        <ul>
+                            <li><strong>제공자</strong> — SDK 또는 최종 애플리케이션</li>
+                            <li><strong>형태</strong> — SDK 라이브러리 또는 사용자 앱</li>
+                            <li><strong>역할</strong> — GenTL 표준 API를 호출하여 카메라 제어</li>
+                            <li><strong>예시</strong> — HALCON, VieworksSDK, Pylon 등</li>
+                            <li><strong>특징</strong> — Producer가 바뀌어도 코드 변경 불필요</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">Producer-Consumer 구조</text>
+
+                        <!-- Application -->
+                        <rect x="40" y="40" width="160" height="60" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="120" y="67" text-anchor="middle" font-size="12" fill="#2e7d32" font-weight="700">Application</text>
+                        <text x="120" y="85" text-anchor="middle" font-size="9" fill="#388e3c">(Consumer)</text>
+
+                        <!-- GenTL API -->
+                        <rect x="250" y="40" width="200" height="60" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="350" y="67" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">GenTL Standard API</text>
+                        <text x="350" y="85" text-anchor="middle" font-size="9" fill="#1976d2">TLOpen, DevOpen, DSAlloc...</text>
+
+                        <!-- CTI Producer -->
+                        <rect x="500" y="40" width="160" height="60" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="580" y="67" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">.cti Producer</text>
+                        <text x="580" y="85" text-anchor="middle" font-size="9" fill="#f57c00">(DLL, 전송 구현)</text>
+
+                        <!-- Camera -->
+                        <rect x="500" y="130" width="160" height="50" rx="10" fill="#fce4ec" stroke="#e91e63" stroke-width="2"/>
+                        <text x="580" y="160" text-anchor="middle" font-size="12" fill="#c2185b" font-weight="700">Camera Hardware</text>
+
+                        <!-- Arrows -->
+                        <line x1="200" y1="70" x2="248" y2="70" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+                        <line x1="450" y1="70" x2="498" y2="70" stroke="#1565c0" stroke-width="2" marker-end="url(#arr1)"/>
+                        <line x1="580" y1="100" x2="580" y2="128" stroke="#ff9800" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <text x="220" y="60" text-anchor="middle" font-size="9" fill="#616161">호출</text>
+                        <text x="475" y="60" text-anchor="middle" font-size="9" fill="#616161">로드</text>
+                        <text x="610" y="118" font-size="9" fill="#616161">전송</text>
+                    </svg>
+                    <div class="caption">그림 2. GenTL Producer-Consumer 아키텍처</div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>CTI 파일 경로 설정 주의</strong>
+                        GenTL Consumer(SDK)는 환경변수 <code>GENICAM_GENTL64_PATH</code> (64비트) 또는 <code>GENICAM_GENTL32_PATH</code> (32비트)에 등록된 경로에서 CTI 파일을 검색한다. 여러 SDK를 동시에 설치하면 경로가 꼬여 카메라를 못 찾는 문제가 발생할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 4. 카메라 연결 흐름 -->
+                <h2 id="connection-flow"><i class="fa-solid fa-arrows-spin"></i> 카메라 연결 흐름</h2>
+
+                <p>GenTL을 통한 카메라 사용은 <strong>열거(Discovery) - 연결 - 스트리밍 - 해제</strong> 4단계를 따른다. 각 단계에서 호출되는 GenTL 함수와 흐름을 정리한다.</p>
+
+                <h3 id="flow-discovery"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1단계: 열거 (Discovery)</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 카메라 열거 과정</div>
+                    <p>CTI 파일을 로드하여 System을 열고, Interface 목록을 가져온 뒤, 각 Interface에서 연결된 Device(카메라)를 검색한다. GigE Vision의 경우 네트워크 브로드캐스트, USB3 Vision의 경우 USB 디바이스 열거를 수행한다.</p>
+                </div>
+
+                <pre><code><span class="code-comment">// 1. GenTL 초기화 및 카메라 열거 의사 코드</span>
+<span class="code-func">GCInitLib</span>();                           <span class="code-comment">// GenTL 라이브러리 초기화</span>
+hTL = <span class="code-func">TLOpen</span>();                        <span class="code-comment">// System 핸들 획득</span>
+
+<span class="code-func">TLUpdateInterfaceList</span>(hTL);            <span class="code-comment">// Interface 목록 갱신</span>
+n = <span class="code-func">TLGetNumInterfaces</span>(hTL);            <span class="code-comment">// Interface 개수 조회</span>
+
+<span class="code-keyword">for</span> (i = 0; i < n; i++) {
+    id = <span class="code-func">TLGetInterfaceID</span>(hTL, i);      <span class="code-comment">// Interface ID 획득</span>
+    hIF = <span class="code-func">TLOpenInterface</span>(hTL, id);    <span class="code-comment">// Interface 열기</span>
+
+    <span class="code-func">IFUpdateDeviceList</span>(hIF);            <span class="code-comment">// Device(카메라) 검색</span>
+    m = <span class="code-func">IFGetNumDevices</span>(hIF);           <span class="code-comment">// 발견된 카메라 수</span>
+    <span class="code-comment">// 카메라 목록 표시...</span>
+}</code></pre>
+
+                <h3 id="flow-connect"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2단계: 연결 (Connect)</h3>
+
+                <p>발견된 Device ID로 카메라에 연결하고, DataStream을 열어 이미지 수신을 준비한다.</p>
+
+                <pre><code><span class="code-comment">// 2. 카메라 연결 및 DataStream 준비</span>
+devID = <span class="code-func">IFGetDeviceID</span>(hIF, 0);        <span class="code-comment">// 첫 번째 카메라 ID</span>
+hDev = <span class="code-func">IFOpenDevice</span>(hIF, devID);      <span class="code-comment">// Device 열기 (카메라 연결)</span>
+
+nDS = <span class="code-func">DevGetNumDataStreams</span>(hDev);       <span class="code-comment">// DataStream 개수 조회</span>
+hDS = <span class="code-func">DevOpenDataStream</span>(hDev, 0);      <span class="code-comment">// DataStream 열기</span></code></pre>
+
+                <h3 id="flow-streaming"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3단계: 스트리밍 (Streaming)</h3>
+
+                <p>Buffer를 할당하여 큐에 등록한 뒤, Acquisition을 시작하면 카메라가 이미지를 전송하기 시작한다.</p>
+
+                <pre><code><span class="code-comment">// 3. 버퍼 할당 및 스트리밍 시작</span>
+<span class="code-keyword">for</span> (i = 0; i < NUM_BUFFERS; i++) {
+    pBuf = <span class="code-func">malloc</span>(bufSize);             <span class="code-comment">// 버퍼 메모리 할당</span>
+    hBuf = <span class="code-func">DSAnnounceBuffer</span>(hDS, pBuf); <span class="code-comment">// GenTL에 버퍼 등록</span>
+    <span class="code-func">DSQueueBuffer</span>(hDS, hBuf);           <span class="code-comment">// 수신 대기 큐에 추가</span>
+}
+
+<span class="code-func">DSStartAcquisition</span>(hDS);               <span class="code-comment">// 스트리밍 시작</span>
+<span class="code-comment">// + GenICam으로 AcquisitionStart 명령 전송</span>
+
+<span class="code-comment">// 이미지 수신 루프</span>
+<span class="code-keyword">while</span> (running) {
+    hBuf = <span class="code-func">DSGetBufferID</span>(hDS, timeout); <span class="code-comment">// 채워진 버퍼 대기</span>
+    <span class="code-comment">// 이미지 처리...</span>
+    <span class="code-func">DSQueueBuffer</span>(hDS, hBuf);           <span class="code-comment">// 처리 완료 후 재등록</span>
+}</code></pre>
+
+                <h3 id="flow-release"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4단계: 해제 (Release)</h3>
+
+                <p>역순으로 자원을 해제한다. 순서를 지키지 않으면 핸들 누수나 크래시가 발생할 수 있다.</p>
+
+                <pre><code><span class="code-comment">// 4. 역순 해제 (반드시 순서 준수)</span>
+<span class="code-func">DSStopAcquisition</span>(hDS);                <span class="code-comment">// 스트리밍 중지</span>
+<span class="code-func">DSFlushQueue</span>(hDS);                      <span class="code-comment">// 큐 비우기</span>
+
+<span class="code-keyword">for</span> (i = 0; i < NUM_BUFFERS; i++) {
+    <span class="code-func">DSRevokeBuffer</span>(hDS, hBuf[i]);       <span class="code-comment">// 버퍼 등록 해제</span>
+    <span class="code-func">free</span>(pBuf[i]);                       <span class="code-comment">// 메모리 해제</span>
+}
+
+<span class="code-func">DSClose</span>(hDS);                            <span class="code-comment">// DataStream 닫기</span>
+<span class="code-func">DevClose</span>(hDev);                          <span class="code-comment">// Device 닫기</span>
+<span class="code-func">IFClose</span>(hIF);                            <span class="code-comment">// Interface 닫기</span>
+<span class="code-func">TLClose</span>(hTL);                            <span class="code-comment">// System 닫기</span>
+<span class="code-func">GCCloseLib</span>();                             <span class="code-comment">// 라이브러리 종료</span></code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>해제 순서가 중요한 이유</strong>
+                        GenTL의 각 핸들은 상위-하위 관계를 가진다. Buffer를 해제하지 않고 DataStream을 닫거나, Device를 닫지 않고 Interface를 닫으면 내부적으로 핸들 누수가 발생한다. 실제로 DeviceReset 같은 예외 상황에서 이 순서가 깨지면 대량의 핸들/메모리 누수로 이어진다.
+                    </div>
+                </div>
+
+                <!-- 5. 주요 GenTL 함수 -->
+                <h2 id="key-functions"><i class="fa-solid fa-code"></i> 주요 GenTL 함수</h2>
+
+                <p>GenTL 표준은 약 50개의 함수를 정의한다. 아래는 실무에서 가장 자주 사용되는 핵심 함수들이다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>계층</th>
+                            <th>함수</th>
+                            <th>역할</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">공통</td>
+                            <td><code>GCInitLib</code> / <code>GCCloseLib</code></td>
+                            <td>GenTL 라이브러리 초기화 / 종료</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">System</td>
+                            <td><code>TLOpen</code> / <code>TLClose</code></td>
+                            <td>System 핸들 열기 / 닫기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">System</td>
+                            <td><code>TLUpdateInterfaceList</code></td>
+                            <td>Interface 목록 갱신</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">System</td>
+                            <td><code>TLGetInterfaceID</code></td>
+                            <td>인덱스로 Interface ID 조회</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Interface</td>
+                            <td><code>IFUpdateDeviceList</code></td>
+                            <td>연결된 카메라 검색 (Discovery)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Interface</td>
+                            <td><code>IFGetDeviceID</code></td>
+                            <td>인덱스로 Device ID 조회</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Device</td>
+                            <td><code>DevOpenDataStream</code></td>
+                            <td>DataStream 열기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Device</td>
+                            <td><code>DevGetPort</code></td>
+                            <td>GenICam 레지스터 접근용 포트 획득</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DataStream</td>
+                            <td><code>DSAnnounceBuffer</code></td>
+                            <td>이미지 버퍼 등록</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DataStream</td>
+                            <td><code>DSQueueBuffer</code></td>
+                            <td>버퍼를 수신 대기 큐에 추가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DataStream</td>
+                            <td><code>DSStartAcquisition</code></td>
+                            <td>이미지 수신 시작</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DataStream</td>
+                            <td><code>DSRevokeBuffer</code></td>
+                            <td>등록된 버퍼 해제</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Buffer</td>
+                            <td><code>DSGetBufferInfo</code></td>
+                            <td>버퍼 상태/정보 조회 (크기, 타임스탬프 등)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>GenTL 함수 네이밍 규칙</strong>
+                        함수 이름의 접두사가 계층을 나타낸다. <code>TL</code> = System, <code>IF</code> = Interface, <code>Dev</code> = Device, <code>DS</code> = DataStream, <code>GC</code> = Global (공통). 이 규칙만 알면 처음 보는 함수도 어떤 계층에서 사용되는지 바로 파악할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 6. 실무에서 GenTL 이해가 필요한 이유 -->
+                <h2 id="why-gentl"><i class="fa-solid fa-wrench"></i> 실무에서 GenTL 이해가 필요한 이유</h2>
+
+                <p>대부분의 머신비전 SDK가 GenTL을 내부적으로 감싸고 있어 직접 GenTL 함수를 호출할 일은 드물다. 그러나 다음과 같은 상황에서 GenTL 구조를 이해하고 있으면 문제 해결이 훨씬 빨라진다.</p>
+
+                <h3 id="why-debug"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 디버깅과 핸들 누수 추적</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 핸들 누수의 근본 원인</div>
+                    <p>GenTL의 5단계 계층은 각각 핸들을 생성한다. DeviceReset이나 비정상 종료 시 해제 순서가 깨지면, 하위 핸들(DataStream, Buffer)이 해제되지 않아 누수가 발생한다. 계층 구조를 이해해야 "어디서 누수가 시작되는지" 추적할 수 있다.</p>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">핸들 누수</span>
+                        <span class="term-desc">Device를 닫지 않으면 DataStream/Buffer 핸들이 남아 프로세스 핸들 수가 계속 증가한다. 장시간 운용 시 시스템 불안정의 원인.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">메모리 누수</span>
+                        <span class="term-desc">Buffer를 Revoke하지 않으면 이미지 메모리(수 MB~수십 MB)가 회수되지 않는다. 고해상도 카메라일수록 심각.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">이벤트 누수</span>
+                        <span class="term-desc">등록된 이벤트 핸들러를 해제하지 않으면 콜백이 계속 호출되거나, 닫힌 핸들에 접근하여 크래시 발생.</span>
+                    </div>
+                </div>
+
+                <h3 id="why-multi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 멀티 Producer 충돌</h3>
+
+                <p>여러 SDK(예: HALCON + Pylon + 자체 SDK)를 동시에 설치하면, 각 SDK가 자체 CTI Producer를 등록한다. 이때 <code>GENICAM_GENTL64_PATH</code>에 여러 경로가 등록되어 다음과 같은 문제가 발생할 수 있다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> 흔한 증상</h4>
+                        <ul>
+                            <li>카메라가 두 번 표시됨 (중복 열거)</li>
+                            <li>다른 SDK의 Producer가 카메라를 점유</li>
+                            <li>연결 시 "Device already opened" 에러</li>
+                            <li>SDK 업데이트 후 카메라 인식 불가</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> 해결 방법</h4>
+                        <ul>
+                            <li>환경변수에서 사용하지 않는 CTI 경로 제거</li>
+                            <li>SDK 초기화 시 특정 CTI 파일만 로드</li>
+                            <li>Producer 목록을 로그로 출력하여 확인</li>
+                            <li>필요 시 GenTL Producer 경로를 코드에서 직접 지정</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 id="why-buffer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 버퍼 관리 최적화</h3>
+
+                <p>GenTL의 Buffer 관리 방식을 이해하면 이미지 수신 성능을 크게 개선할 수 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>버퍼 수 결정 기준</strong>
+                        버퍼 수가 너무 적으면 처리 지연 시 프레임 드롭이 발생하고, 너무 많으면 메모리를 낭비한다. 일반적으로 <strong>3~10개</strong>를 권장하며, 이미지 처리 시간과 카메라 프레임레이트를 고려하여 결정한다. 고속 촬영(100fps 이상)에서는 큐에 항상 여유 버퍼가 있도록 넉넉하게 할당해야 한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Announce vs Allocate</strong>
+                        <code>DSAnnounceBuffer</code>는 사용자가 미리 할당한 메모리를 GenTL에 등록하는 방식이고, <code>DSAllocAndAnnounceBuffer</code>는 GenTL이 직접 할당하는 방식이다. 전자는 메모리 정렬(Alignment)을 직접 제어할 수 있어 DMA 전송 최적화에 유리하다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>EMVA — GenICam GenTL Standard Specification v1.6</li>
+                        <li>EMVA — GenICam Standard Overview</li>
+                        <li>AIA — GigE Vision / USB3 Vision Standard (GenTL 기반)</li>
+                        <li>Basler — GenTL Consumer/Producer Architecture Guide</li>
+                        <li>MVTec — HALCON GenTL Integration Documentation</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-comm"><i class="fa-solid fa-arrow-left"></i> 통신/인터페이스 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-comm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-comm');
+</script>
+
+</body>
+</html>

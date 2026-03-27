@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modbus RTU/TCP 프로토콜 정리 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-modbus" data-section="what-is-modbus">Modbus란?</a>
+        <a href="#data-model" data-section="data-model">데이터 모델</a>
+        <a href="#rtu-ascii-tcp" data-section="rtu-ascii-tcp">RTU vs ASCII vs TCP</a>
+        <a href="#function-codes" data-section="function-codes">주요 Function Code</a>
+        <a href="#modbus-tcp" data-section="modbus-tcp">Modbus TCP 구조</a>
+        <a href="#practical" data-section="practical">실무 예시</a>
+        <a href="#debug-tools" data-section="debug-tools">디버깅 도구</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">통신/인터페이스</span>
+                </div>
+                <h1>Modbus RTU/TCP 프로토콜 정리</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 8 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Modbus 프로토콜의 역사와 산업 자동화에서의 위치</li>
+                        <li>4가지 데이터 모델 — Coil, Discrete Input, Holding Register, Input Register</li>
+                        <li>RTU, ASCII, TCP 모드의 프레임 구조 차이</li>
+                        <li>주요 Function Code와 요청/응답 구조</li>
+                        <li>Modbus TCP의 MBAP 헤더와 게이트웨이 활용</li>
+                        <li>PLC 레지스터 읽기/쓰기, 조명 컨트롤러 제어 등 실무 예시</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-modbus">Modbus란?</a></li>
+                        <li><a href="#data-model">Modbus 데이터 모델</a></li>
+                        <li><a href="#rtu-ascii-tcp">Modbus RTU vs ASCII vs TCP</a></li>
+                        <li><a href="#function-codes">주요 Function Code</a></li>
+                        <li><a href="#modbus-tcp">Modbus TCP 구조</a></li>
+                        <li><a href="#practical">실무 예시</a></li>
+                        <li><a href="#debug-tools">디버깅 도구</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. Modbus란? -->
+                <h2 id="what-is-modbus"><i class="fa-solid fa-industry"></i> Modbus란?</h2>
+
+                <p><strong>Modbus</strong>는 1979년 Modicon(현 Schneider Electric)이 PLC 간 통신을 위해 개발한 시리얼 통신 프로토콜이다. 공개된 표준으로 라이선스 비용 없이 누구나 구현할 수 있어, 40년이 넘은 지금까지도 <strong>산업 자동화의 사실상(de facto) 표준</strong>으로 널리 사용되고 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 Modbus가 아직도 쓰이나?</div>
+                    <p>단순한 구조, 무료 사양 공개, 거의 모든 산업용 장비(PLC, 인버터, 센서, 미터 등)가 지원하기 때문이다. 새로운 프로토콜(EtherCAT, PROFINET 등)이 등장했지만, 복잡한 실시간 제어가 필요하지 않은 모니터링/설정 용도에서는 Modbus가 가장 간단하고 확실한 선택이다.</p>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-diagram-project"></i> Master-Slave 구조</div>
+                    <p>Modbus는 <strong>Master-Slave(Client-Server)</strong> 구조로 동작한다. Master(주로 PC나 HMI)가 요청(Request)을 보내면, Slave(PLC, 센서 등)가 응답(Response)을 돌려준다. Slave는 스스로 데이터를 전송하지 않으며, 반드시 Master의 요청이 있어야만 응답한다. 하나의 버스에 최대 <strong>247대</strong>의 Slave를 연결할 수 있다(주소 1~247).</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Modbus Organization</strong>
+                        현재 Modbus 사양은 Modbus Organization(modbus.org)에서 관리하며, 누구나 무료로 사양서를 다운로드할 수 있다. 최신 사양에서는 Master/Slave 대신 Client/Server 용어를 사용하지만, 현장에서는 여전히 Master/Slave가 더 많이 쓰인다.
+                    </div>
+                </div>
+
+                <!-- 2. 데이터 모델 -->
+                <h2 id="data-model"><i class="fa-solid fa-database"></i> Modbus 데이터 모델</h2>
+
+                <p>Modbus는 4가지 데이터 영역을 정의한다. 각 영역은 0번부터 시작하는 주소 공간을 가지며, 장비마다 어떤 주소에 어떤 값이 매핑되는지는 제조사 매뉴얼을 참고해야 한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 320" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">Modbus 데이터 모델 (4가지 영역)</text>
+
+                        <!-- Coil -->
+                        <rect x="30" y="50" width="300" height="55" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="50" y="72" font-size="12" fill="#e65100" font-weight="700">Coil (0xxxx)</text>
+                        <text x="50" y="92" font-size="10" fill="#bf360c">1-bit, 읽기/쓰기 | 디지털 출력 (릴레이, 밸브 ON/OFF)</text>
+
+                        <!-- Discrete Input -->
+                        <rect x="30" y="115" width="300" height="55" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="50" y="137" font-size="12" fill="#1565c0" font-weight="700">Discrete Input (1xxxx)</text>
+                        <text x="50" y="157" font-size="10" fill="#0d47a1">1-bit, 읽기 전용 | 디지털 입력 (센서, 스위치 상태)</text>
+
+                        <!-- Input Register -->
+                        <rect x="30" y="180" width="300" height="55" rx="8" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="50" y="202" font-size="12" fill="#7b1fa2" font-weight="700">Input Register (3xxxx)</text>
+                        <text x="50" y="222" font-size="10" fill="#4a148c">16-bit, 읽기 전용 | 아날로그 입력 (온도, 전류 측정값)</text>
+
+                        <!-- Holding Register -->
+                        <rect x="30" y="245" width="300" height="55" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="50" y="267" font-size="12" fill="#2e7d32" font-weight="700">Holding Register (4xxxx)</text>
+                        <text x="50" y="287" font-size="10" fill="#1b5e20">16-bit, 읽기/쓰기 | 설정값, 제어 파라미터</text>
+
+                        <!-- 오른쪽 요약 -->
+                        <rect x="370" y="50" width="300" height="120" rx="10" fill="#fafafa" stroke="#bdbdbd" stroke-width="1.5"/>
+                        <text x="390" y="75" font-size="11" fill="#424242" font-weight="700">비트(1-bit) 영역</text>
+                        <text x="390" y="95" font-size="10" fill="#757575">Coil: 출력 제어 (쓰기 가능)</text>
+                        <text x="390" y="112" font-size="10" fill="#757575">Discrete Input: 입력 상태 (읽기만)</text>
+                        <line x1="390" y1="125" x2="650" y2="125" stroke="#e0e0e0" stroke-width="1"/>
+                        <text x="390" y="143" font-size="11" fill="#424242" font-weight="700">레지스터(16-bit) 영역</text>
+                        <text x="390" y="160" font-size="10" fill="#757575">Holding Reg: 설정/제어 (쓰기 가능)</text>
+
+                        <rect x="370" y="180" width="300" height="120" rx="10" fill="#fafafa" stroke="#bdbdbd" stroke-width="1.5"/>
+                        <text x="390" y="205" font-size="10" fill="#757575">Input Reg: 측정값 (읽기만)</text>
+                        <line x1="390" y1="220" x2="650" y2="220" stroke="#e0e0e0" stroke-width="1"/>
+                        <text x="390" y="240" font-size="11" fill="#424242" font-weight="700">주소 표기 관례</text>
+                        <text x="390" y="258" font-size="10" fill="#757575">4xxxx = Holding Register 40001~</text>
+                        <text x="390" y="275" font-size="10" fill="#757575">3xxxx = Input Register 30001~</text>
+                        <text x="390" y="292" font-size="10" fill="#757575">주의: 0-based vs 1-based 혼용</text>
+                    </svg>
+                    <div class="caption">그림 1. Modbus의 4가지 데이터 영역과 특성</div>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>영역</th>
+                            <th>주소 범위</th>
+                            <th>크기</th>
+                            <th>접근</th>
+                            <th>용도 예시</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Coil</td>
+                            <td>00001 ~ 09999</td>
+                            <td>1 bit</td>
+                            <td>읽기/쓰기</td>
+                            <td>릴레이 ON/OFF, 모터 기동/정지</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Discrete Input</td>
+                            <td>10001 ~ 19999</td>
+                            <td>1 bit</td>
+                            <td>읽기 전용</td>
+                            <td>리밋 스위치, 센서 감지 상태</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Input Register</td>
+                            <td>30001 ~ 39999</td>
+                            <td>16 bit</td>
+                            <td>읽기 전용</td>
+                            <td>온도, 압력, 전류 측정값</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Holding Register</td>
+                            <td>40001 ~ 49999</td>
+                            <td>16 bit</td>
+                            <td>읽기/쓰기</td>
+                            <td>설정 온도, PID 파라미터, 속도 설정</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>주소 표기 주의: 0-based vs 1-based</strong>
+                        Modbus 사양서에서 주소는 0부터 시작(0-based)하지만, 많은 장비 매뉴얼과 소프트웨어는 1부터 표기(1-based)한다. 예를 들어, Holding Register 0번은 "40001"로 표기된다. 장비마다 다를 수 있으므로 반드시 매뉴얼을 확인해야 한다.
+                    </div>
+                </div>
+
+                <!-- 3. RTU vs ASCII vs TCP -->
+                <h2 id="rtu-ascii-tcp"><i class="fa-solid fa-code-compare"></i> Modbus RTU vs ASCII vs TCP</h2>
+
+                <p>Modbus 프로토콜은 전송 방식에 따라 3가지 모드로 나뉜다. 각 모드는 동일한 데이터 모델과 Function Code를 사용하지만, <strong>프레임 구조와 물리 계층</strong>이 다르다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>Modbus RTU</th>
+                            <th>Modbus ASCII</th>
+                            <th>Modbus TCP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">물리 계층</td>
+                            <td>RS-232/422/485</td>
+                            <td>RS-232/422/485</td>
+                            <td>Ethernet (TCP/IP)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">데이터 인코딩</td>
+                            <td>바이너리 (8-bit)</td>
+                            <td>ASCII 문자 (HEX)</td>
+                            <td>바이너리 (8-bit)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">오류 검출</td>
+                            <td>CRC-16</td>
+                            <td>LRC</td>
+                            <td>TCP 체크섬</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">프레임 구분</td>
+                            <td>3.5 문자 시간 간격</td>
+                            <td>시작(:) / 끝(CR LF)</td>
+                            <td>MBAP 헤더 길이 필드</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">전송 효율</td>
+                            <td>높음 (바이너리)</td>
+                            <td>낮음 (2배 용량)</td>
+                            <td>높음 (바이너리)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">속도</td>
+                            <td>9600~115200 bps</td>
+                            <td>9600~19200 bps</td>
+                            <td>10/100 Mbps+</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">최대 거리</td>
+                            <td>1,200m (RS-485)</td>
+                            <td>1,200m (RS-485)</td>
+                            <td>100m (스위치로 확장)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">주요 용도</td>
+                            <td>현장 계기, PLC 연동</td>
+                            <td>느린 장비, 디버깅</td>
+                            <td>SCADA, HMI, 원격 모니터링</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="rtu-frame"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Modbus RTU 프레임 구조</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 130" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="18" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="700">Modbus RTU 프레임</text>
+                        <!-- Silence -->
+                        <rect x="20" y="35" width="70" height="45" rx="4" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <text x="55" y="55" text-anchor="middle" font-size="9" fill="#616161" font-weight="600">Silence</text>
+                        <text x="55" y="68" text-anchor="middle" font-size="8" fill="#9e9e9e">3.5 char</text>
+                        <!-- Slave Address -->
+                        <rect x="100" y="35" width="90" height="45" rx="4" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="145" y="55" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Slave Addr</text>
+                        <text x="145" y="68" text-anchor="middle" font-size="8" fill="#fb8c00">1 byte</text>
+                        <!-- Function Code -->
+                        <rect x="200" y="35" width="100" height="45" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="250" y="55" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Function Code</text>
+                        <text x="250" y="68" text-anchor="middle" font-size="8" fill="#64b5f6">1 byte</text>
+                        <!-- Data -->
+                        <rect x="310" y="35" width="180" height="45" rx="4" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="400" y="55" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">DATA</text>
+                        <text x="400" y="68" text-anchor="middle" font-size="8" fill="#66bb6a">N bytes (가변)</text>
+                        <!-- CRC -->
+                        <rect x="500" y="35" width="80" height="45" rx="4" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="540" y="55" text-anchor="middle" font-size="9" fill="#7b1fa2" font-weight="600">CRC-16</text>
+                        <text x="540" y="68" text-anchor="middle" font-size="8" fill="#ba68c8">2 bytes</text>
+                        <!-- Silence -->
+                        <rect x="590" y="35" width="70" height="45" rx="4" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <text x="625" y="55" text-anchor="middle" font-size="9" fill="#616161" font-weight="600">Silence</text>
+                        <text x="625" y="68" text-anchor="middle" font-size="8" fill="#9e9e9e">3.5 char</text>
+                        <!-- 설명 -->
+                        <text x="350" y="110" text-anchor="middle" font-size="10" fill="#616161">바이너리 인코딩 | CRC-16 오류 검출 | 3.5 문자 시간 간격으로 프레임 구분</text>
+                    </svg>
+                    <div class="caption">그림 2. Modbus RTU 프레임 구조</div>
+                </div>
+
+                <h3 id="ascii-frame"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Modbus ASCII 프레임 구조</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 130" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="18" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="700">Modbus ASCII 프레임</text>
+                        <!-- Start -->
+                        <rect x="30" y="35" width="60" height="45" rx="4" fill="#ffcdd2" stroke="#e53935" stroke-width="1.5"/>
+                        <text x="60" y="55" text-anchor="middle" font-size="9" fill="#b71c1c" font-weight="600">Start</text>
+                        <text x="60" y="68" text-anchor="middle" font-size="8" fill="#e53935">':'</text>
+                        <!-- Slave Address -->
+                        <rect x="100" y="35" width="90" height="45" rx="4" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="145" y="55" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Slave Addr</text>
+                        <text x="145" y="68" text-anchor="middle" font-size="8" fill="#fb8c00">2 chars</text>
+                        <!-- Function Code -->
+                        <rect x="200" y="35" width="100" height="45" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="250" y="55" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Function Code</text>
+                        <text x="250" y="68" text-anchor="middle" font-size="8" fill="#64b5f6">2 chars</text>
+                        <!-- Data -->
+                        <rect x="310" y="35" width="160" height="45" rx="4" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="390" y="55" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">DATA</text>
+                        <text x="390" y="68" text-anchor="middle" font-size="8" fill="#66bb6a">N chars (HEX 문자)</text>
+                        <!-- LRC -->
+                        <rect x="480" y="35" width="70" height="45" rx="4" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="515" y="55" text-anchor="middle" font-size="9" fill="#7b1fa2" font-weight="600">LRC</text>
+                        <text x="515" y="68" text-anchor="middle" font-size="8" fill="#ba68c8">2 chars</text>
+                        <!-- End -->
+                        <rect x="560" y="35" width="80" height="45" rx="4" fill="#ffcdd2" stroke="#e53935" stroke-width="1.5"/>
+                        <text x="600" y="55" text-anchor="middle" font-size="9" fill="#b71c1c" font-weight="600">End</text>
+                        <text x="600" y="68" text-anchor="middle" font-size="8" fill="#e53935">CR LF</text>
+                        <!-- 설명 -->
+                        <text x="350" y="110" text-anchor="middle" font-size="10" fill="#616161">ASCII HEX 인코딩 | LRC 오류 검출 | ':' 시작, CR+LF 종료로 프레임 구분</text>
+                    </svg>
+                    <div class="caption">그림 3. Modbus ASCII 프레임 구조</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>RTU vs ASCII 선택 기준</strong>
+                        실무에서는 거의 대부분 <strong>RTU 모드</strong>를 사용한다. ASCII 모드는 데이터를 HEX 문자로 변환하므로 전송량이 2배가 되어 비효율적이다. ASCII가 쓰이는 경우는 텍스트 터미널로 수동 디버깅할 때 정도로, 현대 장비에서는 RTU가 표준이다.
+                    </div>
+                </div>
+
+                <!-- 4. 주요 Function Code -->
+                <h2 id="function-codes"><i class="fa-solid fa-terminal"></i> 주요 Function Code</h2>
+
+                <p>Function Code는 Master가 Slave에게 어떤 동작을 요청하는지 나타내는 1바이트 값이다. 가장 많이 사용되는 코드는 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>코드</th>
+                            <th>이름</th>
+                            <th>대상 영역</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">01 (0x01)</td>
+                            <td>Read Coils</td>
+                            <td>Coil</td>
+                            <td>1~2000개 Coil 상태 읽기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">02 (0x02)</td>
+                            <td>Read Discrete Inputs</td>
+                            <td>Discrete Input</td>
+                            <td>1~2000개 입력 상태 읽기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">03 (0x03)</td>
+                            <td>Read Holding Registers</td>
+                            <td>Holding Register</td>
+                            <td>1~125개 레지스터 읽기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">04 (0x04)</td>
+                            <td>Read Input Registers</td>
+                            <td>Input Register</td>
+                            <td>1~125개 레지스터 읽기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">05 (0x05)</td>
+                            <td>Write Single Coil</td>
+                            <td>Coil</td>
+                            <td>Coil 1개 ON/OFF 쓰기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">06 (0x06)</td>
+                            <td>Write Single Register</td>
+                            <td>Holding Register</td>
+                            <td>레지스터 1개 값 쓰기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">15 (0x0F)</td>
+                            <td>Write Multiple Coils</td>
+                            <td>Coil</td>
+                            <td>여러 개 Coil 동시 쓰기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">16 (0x10)</td>
+                            <td>Write Multiple Registers</td>
+                            <td>Holding Register</td>
+                            <td>여러 개 레지스터 동시 쓰기</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="fc03-example"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> FC 03 요청/응답 예시</h3>
+
+                <p>Slave #1의 Holding Register 주소 0x0000부터 2개를 읽는 예시(RTU 모드):</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-arrow-right"></i> 요청 (Master -> Slave)</div>
+                    <p><code>01 03 00 00 00 02 C4 0B</code></p>
+                    <div class="term-list">
+                        <div class="term-item">
+                            <span class="term-name"><code>01</code></span>
+                            <span class="term-desc">Slave 주소 (1번)</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name"><code>03</code></span>
+                            <span class="term-desc">Function Code (Read Holding Registers)</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name"><code>00 00</code></span>
+                            <span class="term-desc">시작 주소 (0x0000 = 40001)</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name"><code>00 02</code></span>
+                            <span class="term-desc">읽을 레지스터 수 (2개)</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name"><code>C4 0B</code></span>
+                            <span class="term-desc">CRC-16 체크섬</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-arrow-left"></i> 응답 (Slave -> Master)</div>
+                    <p><code>01 03 04 00 64 00 C8 FA 33</code></p>
+                    <div class="term-list">
+                        <div class="term-item">
+                            <span class="term-name"><code>01</code></span>
+                            <span class="term-desc">Slave 주소 (1번)</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name"><code>03</code></span>
+                            <span class="term-desc">Function Code (echo)</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name"><code>04</code></span>
+                            <span class="term-desc">바이트 수 (4 bytes = 2 registers x 2)</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name"><code>00 64</code></span>
+                            <span class="term-desc">Register #0 값 = 100 (0x0064)</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name"><code>00 C8</code></span>
+                            <span class="term-desc">Register #1 값 = 200 (0x00C8)</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name"><code>FA 33</code></span>
+                            <span class="term-desc">CRC-16 체크섬</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 id="exception"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 예외 응답 (Exception Response)</h3>
+
+                <p>Slave가 요청을 처리할 수 없을 때, Function Code의 최상위 비트를 1로 설정(+0x80)하여 예외 응답을 보낸다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>예외 코드</th>
+                            <th>이름</th>
+                            <th>의미</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">01</td>
+                            <td>Illegal Function</td>
+                            <td>지원하지 않는 Function Code</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">02</td>
+                            <td>Illegal Data Address</td>
+                            <td>유효하지 않은 레지스터 주소</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">03</td>
+                            <td>Illegal Data Value</td>
+                            <td>요청 데이터 값이 범위를 벗어남</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">04</td>
+                            <td>Slave Device Failure</td>
+                            <td>Slave 내부 오류</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 5. Modbus TCP 구조 -->
+                <h2 id="modbus-tcp"><i class="fa-solid fa-network-wired"></i> Modbus TCP 구조</h2>
+
+                <p>Modbus TCP는 기존 RTU 프레임을 이더넷(TCP/IP)으로 감싼 것이다. Slave 주소와 CRC가 빠지고, 대신 <strong>MBAP(Modbus Application Protocol) 헤더</strong>가 추가된다. 기본 포트는 <strong>502</strong>번이다.</p>
+
+                <h3 id="mbap-header"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> MBAP 헤더 구조</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 160" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="18" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="700">Modbus TCP 프레임 (MBAP 헤더 + PDU)</text>
+
+                        <!-- MBAP Header 영역 표시 -->
+                        <rect x="20" y="28" width="440" height="75" rx="6" fill="none" stroke="#1565c0" stroke-width="1" stroke-dasharray="4,3"/>
+                        <text x="240" y="42" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">MBAP Header (7 bytes)</text>
+
+                        <!-- Transaction ID -->
+                        <rect x="30" y="50" width="100" height="45" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="80" y="68" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Transaction ID</text>
+                        <text x="80" y="82" text-anchor="middle" font-size="8" fill="#64b5f6">2 bytes</text>
+                        <!-- Protocol ID -->
+                        <rect x="140" y="50" width="90" height="45" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="185" y="68" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Protocol ID</text>
+                        <text x="185" y="82" text-anchor="middle" font-size="8" fill="#64b5f6">2 bytes (0x0000)</text>
+                        <!-- Length -->
+                        <rect x="240" y="50" width="80" height="45" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="280" y="68" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Length</text>
+                        <text x="280" y="82" text-anchor="middle" font-size="8" fill="#64b5f6">2 bytes</text>
+                        <!-- Unit ID -->
+                        <rect x="330" y="50" width="80" height="45" rx="4" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="370" y="68" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Unit ID</text>
+                        <text x="370" y="82" text-anchor="middle" font-size="8" fill="#fb8c00">1 byte</text>
+
+                        <!-- PDU 영역 표시 -->
+                        <rect x="420" y="28" width="260" height="75" rx="6" fill="none" stroke="#4caf50" stroke-width="1" stroke-dasharray="4,3"/>
+                        <text x="550" y="42" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">PDU (Protocol Data Unit)</text>
+
+                        <!-- Function Code -->
+                        <rect x="430" y="50" width="100" height="45" rx="4" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="480" y="68" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">Function Code</text>
+                        <text x="480" y="82" text-anchor="middle" font-size="8" fill="#66bb6a">1 byte</text>
+                        <!-- Data -->
+                        <rect x="540" y="50" width="130" height="45" rx="4" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="605" y="68" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">DATA</text>
+                        <text x="605" y="82" text-anchor="middle" font-size="8" fill="#66bb6a">N bytes</text>
+
+                        <!-- 설명 -->
+                        <text x="350" y="130" text-anchor="middle" font-size="10" fill="#616161">CRC 없음 (TCP가 무결성 보장) | 기본 포트 502 | Unit ID = RTU의 Slave Address</text>
+                        <text x="350" y="148" text-anchor="middle" font-size="10" fill="#616161">Transaction ID로 비동기 요청/응답 매칭 가능</text>
+                    </svg>
+                    <div class="caption">그림 4. Modbus TCP 프레임 구조 (MBAP 헤더 + PDU)</div>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">Transaction ID</span>
+                        <span class="term-desc">요청/응답을 매칭하는 식별자. Master가 지정하며, Slave는 동일한 값을 응답에 포함.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Protocol ID</span>
+                        <span class="term-desc">항상 0x0000 (Modbus 프로토콜). 다른 값이면 Modbus가 아님.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Length</span>
+                        <span class="term-desc">Unit ID + PDU의 바이트 수. 수신 측에서 메시지 경계를 파악하는 데 사용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Unit ID</span>
+                        <span class="term-desc">RTU의 Slave Address에 해당. TCP 직접 연결 시 보통 0x01 또는 0xFF.</span>
+                    </div>
+                </div>
+
+                <h3 id="gateway"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Modbus 게이트웨이</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-bridge"></i> TCP-RTU 게이트웨이</div>
+                    <p>기존 RS-485 Modbus RTU 장비를 이더넷 네트워크에 연결할 때 사용한다. PC(Modbus TCP Master)가 게이트웨이에 TCP 요청을 보내면, 게이트웨이가 RTU 프레임으로 변환하여 시리얼 버스의 Slave에 전달한다. Unit ID가 RTU Slave의 주소로 매핑된다.</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>동시 연결과 타임아웃</strong>
+                        Modbus TCP는 여러 Client가 동시에 하나의 Server에 접속할 수 있다. 하지만 게이트웨이 뒤의 RTU 버스는 한 번에 하나의 요청만 처리하므로, 게이트웨이가 요청을 큐잉(Queuing)한다. 타임아웃 설정이 너무 짧으면 큐 대기 중 오류가 발생할 수 있으므로 주의해야 한다.
+                    </div>
+                </div>
+
+                <!-- 6. 실무 예시 -->
+                <h2 id="practical"><i class="fa-solid fa-wrench"></i> 실무 예시</h2>
+
+                <h3 id="plc-example"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PLC 레지스터 읽기/쓰기</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-microchip"></i> 시나리오: 온도 설정값 읽기 및 변경</div>
+                    <p>PLC의 Holding Register 40100에 현재 설정 온도(단위: 0.1도)가 저장되어 있다. 현재 값을 읽고, 25.0도로 변경하는 과정:</p>
+                    <div class="term-list">
+                        <div class="term-item">
+                            <span class="term-name">1. 읽기 (FC03)</span>
+                            <span class="term-desc"><code>01 03 00 63 00 01 74 12</code> — Slave#1, 주소 99(=40100-40001), 1개 읽기</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name">2. 응답</span>
+                            <span class="term-desc"><code>01 03 02 00 C8 ...</code> — 값 200 = 20.0도</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name">3. 쓰기 (FC06)</span>
+                            <span class="term-desc"><code>01 06 00 63 00 FA 78 1A</code> — 주소 99에 250(=25.0도) 쓰기</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name">4. 응답</span>
+                            <span class="term-desc"><code>01 06 00 63 00 FA 78 1A</code> — 쓰기 성공 (요청과 동일한 echo)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 id="light-example"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 조명 컨트롤러 제어</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 시나리오: 4채널 조명 밝기 일괄 설정</div>
+                    <p>조명 컨트롤러의 Holding Register 40001~40004에 채널 1~4의 밝기(0~255)가 매핑되어 있다. FC16(Write Multiple Registers)으로 4개 채널 밝기를 한 번에 설정:</p>
+                    <div class="term-list">
+                        <div class="term-item">
+                            <span class="term-name">요청 (FC16)</span>
+                            <span class="term-desc"><code>02 10 00 00 00 04 08 00 80 00 C0 00 FF 00 40 ...</code></span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name">해석</span>
+                            <span class="term-desc">Slave#2, 시작주소 0, 4개 레지스터, 8바이트 데이터: CH1=128, CH2=192, CH3=255, CH4=64</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 팁: 폴링 주기 설계</strong>
+                        Modbus는 Master가 주기적으로 Slave를 폴링(Polling)하는 구조다. 폴링 주기가 너무 짧으면 버스가 포화되고, 너무 길면 모니터링 지연이 생긴다. RS-485에서 다수 Slave를 연결할 때는 <strong>각 Slave 응답 시간 + 턴어라운드 딜레이</strong>를 고려하여 전체 스캔 타임을 계산해야 한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>바이트 순서(Byte Order) 주의</strong>
+                        Modbus 표준은 16-bit 레지스터를 Big-Endian(MSB first)으로 전송한다. 하지만 32-bit 실수(Float)나 32-bit 정수를 2개 레지스터에 나눠 저장할 때, 레지스터 순서(Word Order)는 장비마다 다를 수 있다. AB CD / CD AB / BA DC / DC BA 등 4가지 조합이 가능하므로, 반드시 장비 매뉴얼을 확인해야 한다.
+                    </div>
+                </div>
+
+                <!-- 7. 디버깅 도구 -->
+                <h2 id="debug-tools"><i class="fa-solid fa-bug"></i> 디버깅 도구</h2>
+
+                <p>Modbus 통신 개발 및 트러블슈팅에 유용한 도구들을 소개한다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-desktop" style="color:#1565c0;"></i> Modbus Poll</h4>
+                        <ul>
+                            <li>Modbus <strong>Master 시뮬레이터</strong></li>
+                            <li>RTU/TCP 모두 지원</li>
+                            <li>여러 Slave 동시 폴링</li>
+                            <li>데이터 로깅, 스크립팅 기능</li>
+                            <li>유료 (30일 평가판)</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-server" style="color:#4caf50;"></i> Modbus Slave</h4>
+                        <ul>
+                            <li>Modbus <strong>Slave 시뮬레이터</strong></li>
+                            <li>가상 레지스터 맵 설정</li>
+                            <li>실제 장비 없이 Master 코드 테스트</li>
+                            <li>자동 값 변경(스크립트) 지원</li>
+                            <li>Modbus Poll과 같은 개발사</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-shark" style="color:#1976d2;"></i> Wireshark</h4>
+                        <ul>
+                            <li>네트워크 패킷 캡처/분석</li>
+                            <li><strong>Modbus TCP 디코딩</strong> 내장</li>
+                            <li>필터: <code>modbus</code> 또는 <code>tcp.port==502</code></li>
+                            <li>요청/응답 시간 분석 가능</li>
+                            <li>무료 오픈소스</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-plug" style="color:#ff9800;"></i> 기타 도구</h4>
+                        <ul>
+                            <li><strong>QModMaster</strong> — 무료 Modbus Master (오픈소스)</li>
+                            <li><strong>pymodbus</strong> — Python 라이브러리</li>
+                            <li><strong>libmodbus</strong> — C 라이브러리</li>
+                            <li><strong>Simply Modbus</strong> — 간단한 RTU/TCP 테스트</li>
+                            <li><strong>COM 포트 모니터</strong> — 시리얼 데이터 스니핑</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>디버깅 순서 권장</strong>
+                        통신이 안 될 때: (1) 물리 연결 확인(케이블, 포트, 종단 저항) -> (2) 통신 파라미터 일치 확인(Baud rate, Parity, Stop bit) -> (3) Slave 주소 확인 -> (4) Modbus Poll/Slave로 단독 테스트 -> (5) Wireshark/시리얼 모니터로 실제 프레임 분석
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Modbus Organization — Modbus Application Protocol Specification V1.1b3</li>
+                        <li>Modbus Organization — Modbus over Serial Line Specification V1.02</li>
+                        <li>Modbus Organization — Modbus Messaging on TCP/IP Implementation Guide V1.0b</li>
+                        <li>Simply Modbus — Modbus TCP/RTU Tutorial</li>
+                        <li>Wireshark Wiki — Modbus/TCP Protocol Dissector</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-comm"><i class="fa-solid fa-arrow-left"></i> 통신/인터페이스 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-comm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-comm');
+</script>
+
+</body>
+</html>

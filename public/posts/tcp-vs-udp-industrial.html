@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCP vs UDP 산업용 통신에서의 차이 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#basics" data-section="basics">TCP와 UDP 기본 개념</a>
+        <a href="#comparison" data-section="comparison">TCP vs UDP 비교</a>
+        <a href="#why-gige-udp" data-section="why-gige-udp">GigE Vision과 UDP</a>
+        <a href="#tcp-cases" data-section="tcp-cases">TCP가 적합한 경우</a>
+        <a href="#udp-cases" data-section="udp-cases">UDP가 적합한 경우</a>
+        <a href="#real-world" data-section="real-world">산업 현장 사례</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">통신/인터페이스</span>
+                </div>
+                <h1>TCP vs UDP 산업용 통신에서의 차이</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 7 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>TCP와 UDP의 기본 개념과 동작 원리</li>
+                        <li>신뢰성, 순서 보장, 속도, 오버헤드 관점의 비교</li>
+                        <li>GigE Vision이 UDP를 선택한 이유와 GVSP 재전송 메커니즘</li>
+                        <li>산업 현장에서 TCP와 UDP를 혼용하는 실제 구성 사례</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#basics">TCP와 UDP 기본 개념</a></li>
+                        <li><a href="#comparison">TCP vs UDP 비교</a></li>
+                        <li><a href="#why-gige-udp">왜 GigE Vision은 UDP를 쓰는가</a></li>
+                        <li><a href="#tcp-cases">TCP가 적합한 경우</a></li>
+                        <li><a href="#udp-cases">UDP가 적합한 경우</a></li>
+                        <li><a href="#real-world">산업 현장 사례</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. TCP와 UDP 기본 개념 -->
+                <h2 id="basics"><i class="fa-solid fa-layer-group"></i> TCP와 UDP 기본 개념</h2>
+
+                <p>네트워크 통신에서 데이터를 전송하는 방법은 크게 <strong>연결형(Connection-oriented)</strong>과 <strong>비연결형(Connectionless)</strong>으로 나뉜다. TCP(Transmission Control Protocol)는 연결형, UDP(User Datagram Protocol)는 비연결형 프로토콜의 대표이며, 둘 다 OSI 모델의 전송 계층(Layer 4)에서 동작한다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> TCP (Transmission Control Protocol)</div>
+                    <p>데이터를 보내기 전에 먼저 <strong>3-Way Handshake</strong>로 연결을 수립한다. 모든 패킷에 순서 번호(Sequence Number)를 부여하고, 수신 측이 ACK(확인 응답)를 보내야 다음 데이터를 전송한다. 패킷 손실 시 자동으로 재전송하므로 데이터의 신뢰성과 순서가 완벽히 보장된다.</p>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> UDP (User Datagram Protocol)</div>
+                    <p>연결 수립 없이 데이터그램을 즉시 전송한다. ACK도 없고, 순서 보장도 없으며, 손실된 패킷을 재전송하지 않는다. 그 대신 헤더가 작고(8바이트) 처리가 빠르다. 속도가 중요하고 약간의 데이터 손실이 허용되는 환경에 적합하다.</p>
+                </div>
+
+                <h3 id="basics-handshake"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> TCP 3-Way Handshake</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 320" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-tcp" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                            <marker id="arr-udp" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#e65100"/></marker>
+                        </defs>
+                        <text x="325" y="22" text-anchor="middle" font-size="14" fill="#1565c0" font-weight="700">TCP 3-Way Handshake vs UDP 전송</text>
+
+                        <!-- TCP 측 -->
+                        <rect x="20" y="40" width="280" height="260" rx="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="160" y="62" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">TCP (연결형)</text>
+
+                        <!-- Client/Server 라인 -->
+                        <text x="70" y="82" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">Client</text>
+                        <text x="250" y="82" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">Server</text>
+                        <line x1="70" y1="90" x2="70" y2="280" stroke="#1565c0" stroke-width="2" stroke-dasharray="4"/>
+                        <line x1="250" y1="90" x2="250" y2="280" stroke="#1565c0" stroke-width="2" stroke-dasharray="4"/>
+
+                        <!-- SYN -->
+                        <line x1="75" y1="110" x2="245" y2="130" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-tcp)"/>
+                        <text x="160" y="106" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">1. SYN</text>
+
+                        <!-- SYN+ACK -->
+                        <line x1="245" y1="155" x2="75" y2="175" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-tcp)"/>
+                        <text x="160" y="151" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">2. SYN + ACK</text>
+
+                        <!-- ACK -->
+                        <line x1="75" y1="200" x2="245" y2="220" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-tcp)"/>
+                        <text x="160" y="196" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">3. ACK</text>
+
+                        <text x="160" y="250" text-anchor="middle" font-size="10" fill="#0d47a1" font-weight="700">연결 수립 완료</text>
+                        <text x="160" y="268" text-anchor="middle" font-size="9" fill="#42a5f5">이후 데이터 전송 시작</text>
+
+                        <!-- UDP 측 -->
+                        <rect x="340" y="40" width="280" height="260" rx="12" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+                        <text x="480" y="62" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">UDP (비연결형)</text>
+
+                        <text x="390" y="82" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">Sender</text>
+                        <text x="570" y="82" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">Receiver</text>
+                        <line x1="390" y1="90" x2="390" y2="280" stroke="#e65100" stroke-width="2" stroke-dasharray="4"/>
+                        <line x1="570" y1="90" x2="570" y2="280" stroke="#e65100" stroke-width="2" stroke-dasharray="4"/>
+
+                        <!-- Data 1 -->
+                        <line x1="395" y1="110" x2="565" y2="125" stroke="#e65100" stroke-width="2" marker-end="url(#arr-udp)"/>
+                        <text x="480" y="106" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Data 1</text>
+
+                        <!-- Data 2 -->
+                        <line x1="395" y1="145" x2="565" y2="160" stroke="#e65100" stroke-width="2" marker-end="url(#arr-udp)"/>
+                        <text x="480" y="141" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Data 2</text>
+
+                        <!-- Data 3 (lost) -->
+                        <line x1="395" y1="180" x2="500" y2="190" stroke="#ef4444" stroke-width="2" stroke-dasharray="5"/>
+                        <text x="520" y="188" font-size="9" fill="#ef4444" font-weight="600">X (손실)</text>
+                        <text x="480" y="176" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Data 3</text>
+
+                        <!-- Data 4 -->
+                        <line x1="395" y1="215" x2="565" y2="230" stroke="#e65100" stroke-width="2" marker-end="url(#arr-udp)"/>
+                        <text x="480" y="211" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Data 4</text>
+
+                        <text x="480" y="260" text-anchor="middle" font-size="10" fill="#bf360c" font-weight="700">연결 없이 즉시 전송</text>
+                        <text x="480" y="278" text-anchor="middle" font-size="9" fill="#fb8c00">손실 감지/재전송 없음</text>
+                    </svg>
+                    <div class="caption">그림 1. TCP 3-Way Handshake와 UDP 비연결형 전송 비교</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>TCP 헤더 vs UDP 헤더</strong>
+                        TCP 헤더는 20~60바이트(옵션 포함)로, 순서 번호, ACK 번호, 윈도우 크기, 체크섬 등 다양한 필드를 포함한다. 반면 UDP 헤더는 8바이트(출발지 포트, 목적지 포트, 길이, 체크섬)로 매우 간결하다. 이 차이가 곧 오버헤드 차이로 이어진다.
+                    </div>
+                </div>
+
+                <!-- 2. TCP vs UDP 비교 -->
+                <h2 id="comparison"><i class="fa-solid fa-scale-balanced"></i> TCP vs UDP 비교</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>TCP</th>
+                            <th>UDP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">연결 방식</td>
+                            <td>연결형 (3-Way Handshake)</td>
+                            <td>비연결형 (즉시 전송)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">신뢰성</td>
+                            <td>높음 (ACK + 재전송)</td>
+                            <td>낮음 (보장 없음)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">순서 보장</td>
+                            <td>보장 (Sequence Number)</td>
+                            <td>보장 없음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">속도</td>
+                            <td>상대적으로 느림</td>
+                            <td>빠름</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">헤더 크기</td>
+                            <td>20~60 바이트</td>
+                            <td>8 바이트</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">흐름 제어</td>
+                            <td>있음 (Window Size)</td>
+                            <td>없음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">혼잡 제어</td>
+                            <td>있음 (Slow Start 등)</td>
+                            <td>없음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">브로드캐스트/멀티캐스트</td>
+                            <td>불가</td>
+                            <td>가능</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">CPU 오버헤드</td>
+                            <td>높음</td>
+                            <td>낮음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">대표 프로토콜</td>
+                            <td>HTTP, FTP, Modbus TCP</td>
+                            <td>DNS, GVSP, RTP</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="comparison-packet"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 패킷 구조 비교</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 340" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">TCP vs UDP 패킷 헤더 구조</text>
+
+                        <!-- TCP Header -->
+                        <text x="170" y="52" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">TCP Header (20 bytes min)</text>
+                        <rect x="20" y="62" width="140" height="36" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="90" y="78" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Source Port</text>
+                        <text x="90" y="90" text-anchor="middle" font-size="8" fill="#64b5f6">16 bits</text>
+                        <rect x="170" y="62" width="140" height="36" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="240" y="78" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Destination Port</text>
+                        <text x="240" y="90" text-anchor="middle" font-size="8" fill="#64b5f6">16 bits</text>
+
+                        <rect x="20" y="104" width="290" height="36" rx="4" fill="#bbdefb" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="165" y="120" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Sequence Number</text>
+                        <text x="165" y="132" text-anchor="middle" font-size="8" fill="#64b5f6">32 bits</text>
+
+                        <rect x="20" y="146" width="290" height="36" rx="4" fill="#bbdefb" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="165" y="162" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Acknowledgment Number</text>
+                        <text x="165" y="174" text-anchor="middle" font-size="8" fill="#64b5f6">32 bits</text>
+
+                        <rect x="20" y="188" width="100" height="36" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="70" y="204" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Flags</text>
+                        <text x="70" y="216" text-anchor="middle" font-size="8" fill="#64b5f6">SYN/ACK/FIN</text>
+
+                        <rect x="130" y="188" width="90" height="36" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="175" y="204" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Window</text>
+                        <text x="175" y="216" text-anchor="middle" font-size="8" fill="#64b5f6">16 bits</text>
+
+                        <rect x="230" y="188" width="80" height="36" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="270" y="204" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">Checksum</text>
+                        <text x="270" y="216" text-anchor="middle" font-size="8" fill="#64b5f6">16 bits</text>
+
+                        <rect x="20" y="230" width="290" height="30" rx="4" fill="#90caf9" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="165" y="250" text-anchor="middle" font-size="9" fill="#0d47a1" font-weight="600">Options (0~40 bytes) + Data</text>
+
+                        <!-- UDP Header -->
+                        <text x="535" y="52" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">UDP Header (8 bytes)</text>
+                        <rect x="390" y="62" width="140" height="40" rx="4" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+                        <text x="460" y="80" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Source Port</text>
+                        <text x="460" y="94" text-anchor="middle" font-size="8" fill="#fb8c00">16 bits</text>
+                        <rect x="540" y="62" width="140" height="40" rx="4" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+                        <text x="610" y="80" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Destination Port</text>
+                        <text x="610" y="94" text-anchor="middle" font-size="8" fill="#fb8c00">16 bits</text>
+
+                        <rect x="390" y="108" width="140" height="40" rx="4" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+                        <text x="460" y="126" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Length</text>
+                        <text x="460" y="140" text-anchor="middle" font-size="8" fill="#fb8c00">16 bits</text>
+                        <rect x="540" y="108" width="140" height="40" rx="4" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+                        <text x="610" y="126" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">Checksum</text>
+                        <text x="610" y="140" text-anchor="middle" font-size="8" fill="#fb8c00">16 bits</text>
+
+                        <rect x="390" y="154" width="290" height="40" rx="4" fill="#ffe0b2" stroke="#e65100" stroke-width="1.5"/>
+                        <text x="535" y="178" text-anchor="middle" font-size="9" fill="#bf360c" font-weight="600">Data</text>
+
+                        <!-- 비교 화살표 -->
+                        <text x="535" y="220" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">단 4개 필드, 8바이트</text>
+                        <text x="535" y="238" text-anchor="middle" font-size="10" fill="#fb8c00">오버헤드 최소화</text>
+
+                        <!-- 하단 비교 -->
+                        <rect x="20" y="280" width="290" height="40" rx="8" fill="#1565c0"/>
+                        <text x="165" y="305" text-anchor="middle" font-size="11" fill="white" font-weight="700">20~60 bytes 오버헤드</text>
+
+                        <rect x="390" y="280" width="290" height="40" rx="8" fill="#e65100"/>
+                        <text x="535" y="305" text-anchor="middle" font-size="11" fill="white" font-weight="700">8 bytes 오버헤드</text>
+                    </svg>
+                    <div class="caption">그림 2. TCP와 UDP 헤더 구조 비교 — TCP는 신뢰성을 위한 필드가 많고, UDP는 최소한의 필드만 포함</div>
+                </div>
+
+                <!-- 3. 왜 GigE Vision은 UDP를 쓰는가 -->
+                <h2 id="why-gige-udp"><i class="fa-solid fa-video"></i> 왜 GigE Vision은 UDP를 쓰는가</h2>
+
+                <p>머신비전 카메라에서 PC로 영상을 전송할 때, GigE Vision은 TCP가 아닌 <strong>UDP</strong>를 사용한다. 초당 수십~수백 프레임의 이미지를 실시간으로 전송해야 하는 환경에서 TCP의 재전송 메커니즘은 오히려 성능을 저하시키기 때문이다.</p>
+
+                <h3 id="why-gige-reason"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> UDP를 선택한 이유</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> TCP를 쓰면 생기는 문제</h4>
+                        <ul>
+                            <li><strong>재전송 지연</strong> — 패킷 하나가 손실되면 후속 패킷 전체가 대기(Head-of-Line Blocking)</li>
+                            <li><strong>혼잡 제어</strong> — 네트워크 혼잡 시 전송률을 자동으로 낮춤</li>
+                            <li><strong>프레임 지연</strong> — 실시간 영상에서 1프레임 지연은 검사 타이밍 오류로 이어짐</li>
+                            <li><strong>CPU 부하</strong> — ACK 처리, 윈도우 관리 등 추가 연산</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> UDP로 얻는 이점</h4>
+                        <ul>
+                            <li><strong>최소 지연</strong> — 연결 설정 없이 즉시 전송</li>
+                            <li><strong>일정한 전송률</strong> — 혼잡 제어 없이 카메라가 원하는 속도로 전송</li>
+                            <li><strong>멀티캐스트</strong> — 하나의 카메라 영상을 여러 PC에 동시 전송 가능</li>
+                            <li><strong>낮은 CPU 부하</strong> — 단순한 프로토콜 처리</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 id="why-gige-gvsp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> GVSP 자체 재전송 메커니즘</h3>
+
+                <p>UDP는 패킷 손실을 보장하지 않지만, GigE Vision은 이 문제를 <strong>애플리케이션 레벨</strong>에서 해결한다. GigE Vision Streaming Protocol(GVSP)은 각 패킷에 <code>block_id</code>와 <code>packet_id</code>를 부여하여 수신 측에서 손실을 감지하고, 필요한 패킷만 선택적으로 재전송을 요청한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 280" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-gv" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#2e7d32"/></marker>
+                            <marker id="arr-re" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#d32f2f"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">GVSP 패킷 재전송 메커니즘</text>
+
+                        <text x="100" y="50" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">Camera (Sender)</text>
+                        <text x="550" y="50" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">PC (Receiver)</text>
+                        <line x1="100" y1="58" x2="100" y2="260" stroke="#2e7d32" stroke-width="2" stroke-dasharray="4"/>
+                        <line x1="550" y1="58" x2="550" y2="260" stroke="#2e7d32" stroke-width="2" stroke-dasharray="4"/>
+
+                        <!-- Packet 1 -->
+                        <line x1="105" y1="75" x2="545" y2="90" stroke="#2e7d32" stroke-width="2" marker-end="url(#arr-gv)"/>
+                        <text x="325" y="72" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">Packet #1 (block_id=1, packet_id=0)</text>
+
+                        <!-- Packet 2 -->
+                        <line x1="105" y1="105" x2="545" y2="120" stroke="#2e7d32" stroke-width="2" marker-end="url(#arr-gv)"/>
+                        <text x="325" y="102" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">Packet #2 (block_id=1, packet_id=1)</text>
+
+                        <!-- Packet 3 (lost) -->
+                        <line x1="105" y1="135" x2="350" y2="148" stroke="#ef4444" stroke-width="2" stroke-dasharray="5"/>
+                        <text x="325" y="132" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="600">Packet #3 (block_id=1, packet_id=2) -- LOST</text>
+                        <text x="400" y="152" font-size="14" fill="#ef4444" font-weight="700">X</text>
+
+                        <!-- Packet 4 -->
+                        <line x1="105" y1="165" x2="545" y2="180" stroke="#2e7d32" stroke-width="2" marker-end="url(#arr-gv)"/>
+                        <text x="325" y="162" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">Packet #4 (block_id=1, packet_id=3)</text>
+
+                        <!-- PC detects gap -->
+                        <rect x="555" y="185" width="130" height="24" rx="4" fill="#ffebee" stroke="#ef4444" stroke-width="1"/>
+                        <text x="620" y="201" text-anchor="middle" font-size="8" fill="#d32f2f" font-weight="600">packet_id=2 누락 감지</text>
+
+                        <!-- Resend request -->
+                        <line x1="545" y1="220" x2="105" y2="235" stroke="#d32f2f" stroke-width="2" marker-end="url(#arr-re)"/>
+                        <text x="325" y="217" text-anchor="middle" font-size="9" fill="#d32f2f" font-weight="600">GVCP Packet Resend (packet_id=2 요청)</text>
+
+                        <!-- Resend -->
+                        <line x1="105" y1="248" x2="545" y2="258" stroke="#4caf50" stroke-width="2.5" marker-end="url(#arr-gv)"/>
+                        <text x="325" y="245" text-anchor="middle" font-size="9" fill="#4caf50" font-weight="700">Packet #3 재전송 (packet_id=2)</text>
+                    </svg>
+                    <div class="caption">그림 3. GVSP의 선택적 패킷 재전송 — TCP와 달리 손실된 패킷만 요청하여 효율적으로 복구</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>TCP의 재전송 vs GVSP의 재전송</strong>
+                        TCP는 손실 패킷 이후의 모든 패킷을 중복 전송할 수 있고(Go-Back-N), 혼잡 윈도우를 줄여 전송률이 급락한다. 반면 GVSP는 정확히 손실된 패킷만 재전송하고, 나머지 전송은 영향을 받지 않는다. 이것이 영상 스트리밍에서 UDP + 애플리케이션 레벨 재전송이 더 효율적인 이유다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Jumbo Frame과 패킷 손실 관계</strong>
+                        GigE Vision에서 Jumbo Frame(9000 bytes)을 설정하면 하나의 이미지를 전송하는 데 필요한 패킷 수가 줄어들어 패킷 손실 확률이 낮아진다. 예를 들어 5MP 이미지의 경우 일반 패킷(1500 bytes)으로는 약 3,334개가 필요하지만, Jumbo Frame으로는 약 556개면 충분하다.
+                    </div>
+                </div>
+
+                <!-- 4. TCP가 적합한 경우 -->
+                <h2 id="tcp-cases"><i class="fa-solid fa-shield-halved"></i> TCP가 적합한 경우</h2>
+
+                <p>모든 데이터가 <strong>정확하게, 빠짐없이</strong> 전달되어야 하는 상황에서는 TCP가 필수다. 데이터 한 바이트라도 손실되면 시스템 오류로 이어질 수 있는 경우에 해당한다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">Modbus TCP</span>
+                        <span class="term-desc">PLC와 PC 간 제어 명령 교환. 레지스터 읽기/쓰기 명령이 손실되면 장비가 오동작할 수 있으므로 신뢰성이 필수. 포트 502 사용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">파일 전송 (FTP/SFTP)</span>
+                        <span class="term-desc">검사 이미지 원본, 로그 파일, 레시피 파일 등을 서버에 저장. 파일이 깨지면 재검사나 이력 추적이 불가능.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">검사 결과 전달</span>
+                        <span class="term-desc">OK/NG 판정 결과를 MES(Manufacturing Execution System)에 전송. 결과가 유실되면 불량품이 후공정으로 넘어갈 수 있음.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">데이터베이스 연동</span>
+                        <span class="term-desc">검사 데이터를 DB에 INSERT할 때 트랜잭션 무결성이 필요. TCP 기반 DB 프로토콜(MySQL, MSSQL) 사용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">원격 장비 제어</span>
+                        <span class="term-desc">카메라 파라미터 변경, 펌웨어 업데이트 등 제어 채널. GigE Vision도 제어(GVCP)에는 UDP를 쓰지만 ACK 메커니즘을 자체 구현.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Modbus TCP vs Modbus RTU</strong>
+                        Modbus RTU는 시리얼(RS-485) 기반으로 CRC 에러 체크만 하지만, Modbus TCP는 이더넷 위에서 TCP의 신뢰성을 활용한다. 같은 Modbus 프로토콜이지만 전송 계층이 다르며, TCP 버전이 더 빠르고 네트워크 확장이 용이하다.
+                    </div>
+                </div>
+
+                <!-- 5. UDP가 적합한 경우 -->
+                <h2 id="udp-cases"><i class="fa-solid fa-bolt"></i> UDP가 적합한 경우</h2>
+
+                <p><strong>실시간성</strong>이 데이터 완전성보다 중요하거나, 약간의 손실이 전체 시스템에 치명적이지 않은 경우 UDP가 적합하다. 특히 대용량 데이터를 고속으로 스트리밍해야 하는 상황에서 UDP의 낮은 오버헤드가 결정적 이점이 된다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">영상 스트리밍</span>
+                        <span class="term-desc">GigE Vision(GVSP), IP 카메라(RTP/RTSP). 1프레임 손실보다 전체 스트림의 실시간성이 더 중요.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">실시간 센서 데이터</span>
+                        <span class="term-desc">진동 센서, 온도 모니터링 등 주기적 데이터. 이전 값보다 최신 값이 항상 더 중요.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">멀티캐스트 전송</span>
+                        <span class="term-desc">하나의 소스에서 여러 수신자에게 동시 전송. TCP는 각 수신자와 개별 연결이 필요하지만 UDP는 한 번에 가능.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">장비 디스커버리</span>
+                        <span class="term-desc">GigE Vision의 GVCP Discovery. 네트워크에 브로드캐스트로 카메라 탐색 패킷을 보내고, 카메라가 응답.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">NTP 시간 동기화</span>
+                        <span class="term-desc">다수 장비의 시간을 동기화할 때 UDP 포트 123 사용. 빠른 응답이 정확한 동기화의 핵심.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>UDP 사용 시 반드시 고려할 점</strong>
+                        UDP를 사용하면 애플리케이션에서 직접 패킷 손실 감지, 순서 재정렬, 필요 시 재전송 로직을 구현해야 한다. GigE Vision의 GVSP처럼 프로토콜 자체에 이 기능이 내장되어 있지 않다면, 데이터 무결성은 개발자의 몫이다.
+                    </div>
+                </div>
+
+                <!-- 6. 산업 현장 사례 -->
+                <h2 id="real-world"><i class="fa-solid fa-industry"></i> 산업 현장 사례</h2>
+
+                <p>실제 머신비전 검사 시스템에서는 TCP와 UDP를 <strong>동시에</strong> 사용하는 것이 일반적이다. 각 통신 채널의 특성에 맞게 적절한 프로토콜을 선택하는 것이 핵심이다.</p>
+
+                <h3 id="real-world-system"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 검사 시스템 TCP/UDP 혼용 구성</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 400" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-sys" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#37474f"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">머신비전 검사 시스템의 TCP/UDP 혼용 구성</text>
+
+                        <!-- 검사 PC -->
+                        <rect x="240" y="140" width="200" height="80" rx="12" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2.5"/>
+                        <text x="340" y="170" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">검사 PC</text>
+                        <text x="340" y="190" text-anchor="middle" font-size="10" fill="#4caf50">(비전 소프트웨어)</text>
+
+                        <!-- GigE Camera -->
+                        <rect x="20" y="40" width="150" height="55" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="95" y="63" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">GigE Camera</text>
+                        <text x="95" y="80" text-anchor="middle" font-size="9" fill="#64b5f6">영상 스트리밍</text>
+
+                        <!-- Camera to PC -->
+                        <line x1="170" y1="68" x2="240" y2="155" stroke="#e65100" stroke-width="2.5" marker-end="url(#arr-sys)"/>
+                        <rect x="155" y="95" width="68" height="22" rx="4" fill="#fff3e0" stroke="#e65100" stroke-width="1"/>
+                        <text x="189" y="110" text-anchor="middle" font-size="9" fill="#e65100" font-weight="700">UDP</text>
+
+                        <!-- GVCP -->
+                        <line x1="240" y1="160" x2="170" y2="75" stroke="#1565c0" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#arr-sys)"/>
+                        <text x="175" y="130" font-size="8" fill="#1565c0">GVCP 제어</text>
+
+                        <!-- PLC -->
+                        <rect x="530" y="40" width="150" height="55" rx="8" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+                        <text x="605" y="63" text-anchor="middle" font-size="11" fill="#7b1fa2" font-weight="700">PLC</text>
+                        <text x="605" y="80" text-anchor="middle" font-size="9" fill="#ba68c8">제어/트리거</text>
+
+                        <!-- PC to PLC -->
+                        <line x1="440" y1="155" x2="530" y2="68" stroke="#1565c0" stroke-width="2.5" marker-end="url(#arr-sys)"/>
+                        <rect x="462" y="95" width="85" height="22" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+                        <text x="504" y="110" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="700">TCP</text>
+                        <text x="504" y="87" text-anchor="middle" font-size="8" fill="#1565c0">Modbus TCP</text>
+
+                        <!-- MES Server -->
+                        <rect x="530" y="260" width="150" height="55" rx="8" fill="#fce4ec" stroke="#c62828" stroke-width="2"/>
+                        <text x="605" y="283" text-anchor="middle" font-size="11" fill="#c62828" font-weight="700">MES Server</text>
+                        <text x="605" y="300" text-anchor="middle" font-size="9" fill="#ef5350">결과/이력 관리</text>
+
+                        <!-- PC to MES -->
+                        <line x1="440" y1="210" x2="530" y2="280" stroke="#1565c0" stroke-width="2.5" marker-end="url(#arr-sys)"/>
+                        <rect x="462" y="235" width="68" height="22" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+                        <text x="496" y="250" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="700">TCP</text>
+                        <text x="496" y="265" text-anchor="middle" font-size="8" fill="#1565c0">HTTP/DB</text>
+
+                        <!-- File Server -->
+                        <rect x="20" y="260" width="150" height="55" rx="8" fill="#fff8e1" stroke="#f9a825" stroke-width="2"/>
+                        <text x="95" y="283" text-anchor="middle" font-size="11" fill="#f57f17" font-weight="700">File Server</text>
+                        <text x="95" y="300" text-anchor="middle" font-size="9" fill="#fbc02d">이미지 저장</text>
+
+                        <!-- PC to File Server -->
+                        <line x1="240" y1="210" x2="170" y2="280" stroke="#1565c0" stroke-width="2.5" marker-end="url(#arr-sys)"/>
+                        <rect x="155" y="235" width="68" height="22" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+                        <text x="189" y="250" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="700">TCP</text>
+                        <text x="189" y="265" text-anchor="middle" font-size="8" fill="#1565c0">SMB/FTP</text>
+
+                        <!-- 모니터링 PC -->
+                        <rect x="250" y="340" width="180" height="50" rx="8" fill="#eceff1" stroke="#546e7a" stroke-width="2"/>
+                        <text x="340" y="363" text-anchor="middle" font-size="11" fill="#37474f" font-weight="700">모니터링 PC</text>
+                        <text x="340" y="380" text-anchor="middle" font-size="9" fill="#78909c">실시간 영상 확인</text>
+
+                        <!-- Camera to Monitor (multicast) -->
+                        <line x1="95" y1="95" x2="260" y2="350" stroke="#e65100" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#arr-sys)"/>
+                        <text x="140" y="230" font-size="8" fill="#e65100" font-weight="600">UDP 멀티캐스트</text>
+                    </svg>
+                    <div class="caption">그림 4. 검사 시스템에서 TCP/UDP 혼용 — 영상은 UDP, 제어/결과/저장은 TCP</div>
+                </div>
+
+                <h3 id="real-world-summary"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 프로토콜 선택 요약</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>통신 채널</th>
+                            <th>프로토콜</th>
+                            <th>선택 이유</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">카메라 → PC (영상)</td>
+                            <td>UDP (GVSP)</td>
+                            <td>고속 스트리밍, 낮은 지연, 자체 재전송</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PC → 카메라 (제어)</td>
+                            <td>UDP (GVCP)</td>
+                            <td>빠른 응답, 자체 ACK 메커니즘</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PC ↔ PLC</td>
+                            <td>TCP (Modbus TCP)</td>
+                            <td>제어 명령의 신뢰성 필수</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PC → MES</td>
+                            <td>TCP (HTTP/DB)</td>
+                            <td>검사 결과 데이터 무결성</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PC → File Server</td>
+                            <td>TCP (SMB/FTP)</td>
+                            <td>이미지 파일 완전성 보장</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">카메라 → 모니터링</td>
+                            <td>UDP (멀티캐스트)</td>
+                            <td>하나의 스트림으로 다수 수신</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 핵심 원칙</strong>
+                        "영상은 UDP, 제어와 결과는 TCP" — 이것이 산업용 통신에서 가장 기본적인 프로토콜 선택 원칙이다. 각각의 통신 채널이 요구하는 특성(실시간성 vs 신뢰성)에 맞는 프로토콜을 선택하고, 필요 시 애플리케이션 레벨에서 부족한 기능을 보완하는 것이 최선의 설계다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>AIA — GigE Vision Standard Specification v2.0</li>
+                        <li>RFC 793 — Transmission Control Protocol (TCP)</li>
+                        <li>RFC 768 — User Datagram Protocol (UDP)</li>
+                        <li>Modbus Organization — Modbus/TCP Implementation Guide</li>
+                        <li>IEEE 802.3 — Ethernet Standard</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-comm"><i class="fa-solid fa-arrow-left"></i> 통신/인터페이스 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-comm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-comm');
+</script>
+
+</body>
+</html>

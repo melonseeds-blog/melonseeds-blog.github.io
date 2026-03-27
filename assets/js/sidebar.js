@@ -16,6 +16,7 @@ function renderSidebar(currentCat) {
               { id: 'tech-stereo',  label: '3D 스테레오 비전' },
               { id: 'tech-ai',      label: 'AI / OpenAI' },
               { id: 'tech-factory', label: '스마트 공장' },
+              { id: 'tech-comm',    label: '통신/인터페이스' },
           ]
         },
         { id: 'trend',  icon: 'fa-solid fa-satellite-dish',    label: '기술 트렌드',    color: 'trend',  desc: '기술 뉴스, 새로운 기술' },

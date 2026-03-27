@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>글로벌 셔터 vs 롤링 셔터 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#shutter-intro" data-section="shutter-intro">셔터 방식이란</a>
+        <a href="#global-shutter" data-section="global-shutter">글로벌 셔터</a>
+        <a href="#rolling-shutter" data-section="rolling-shutter">롤링 셔터</a>
+        <a href="#rolling-artifacts" data-section="rolling-artifacts">롤링 셔터 왜곡</a>
+        <a href="#comparison" data-section="comparison">비교 테이블</a>
+        <a href="#selection" data-section="selection">용도별 선택</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">센서/ISP</span>
+                </div>
+                <h1>글로벌 셔터 vs 롤링 셔터</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 7 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>이미지 센서의 셔터 방식 — 노출과 읽기 타이밍 제어 원리</li>
+                        <li>글로벌 셔터와 롤링 셔터의 동작 원리 및 타이밍 비교</li>
+                        <li>롤링 셔터 왜곡 현상 — 스큐, 워블, 밴딩</li>
+                        <li>Fill Factor, 노이즈, 가격 등 핵심 특성 비교</li>
+                        <li>머신비전 용도별 셔터 방식 선택 가이드</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#shutter-intro">셔터 방식이란</a></li>
+                        <li><a href="#global-shutter">글로벌 셔터</a></li>
+                        <li><a href="#rolling-shutter">롤링 셔터</a></li>
+                        <li><a href="#rolling-artifacts">롤링 셔터 왜곡 현상</a></li>
+                        <li><a href="#comparison">비교 테이블</a></li>
+                        <li><a href="#selection">용도별 선택</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 셔터 방식이란 -->
+                <h2 id="shutter-intro"><i class="fa-solid fa-camera"></i> 셔터 방식이란</h2>
+
+                <p>이미지 센서에서 <strong>셔터(Shutter)</strong>란 각 픽셀이 빛에 노출되는 시작과 끝 타이밍을 제어하는 메커니즘이다. 기계식 셔터와 달리 디지털 이미지 센서는 전자적으로 노출을 제어하며, 이를 <strong>전자 셔터(Electronic Shutter)</strong>라고 한다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 셔터 방식이 중요한가?</div>
+                    <p>셔터 방식에 따라 움직이는 물체를 촬영했을 때 이미지가 왜곡되는지 여부가 결정된다. 머신비전에서 이동하는 부품을 검사하거나, 고속 컨베이어 위의 제품을 촬영할 때 셔터 방식 선택이 검사 품질에 직접적인 영향을 미친다.</p>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">노출(Exposure)</span>
+                        <span class="term-desc">픽셀이 빛을 받아 전하를 축적하는 시간. 노출 시간이 길수록 밝아지고, 짧을수록 어두워진다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">읽기(Readout)</span>
+                        <span class="term-desc">축적된 전하를 디지털 신호로 변환하여 외부로 전송하는 과정. 읽기 중에는 해당 픽셀의 노출이 중단된다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">프레임 시간</span>
+                        <span class="term-desc">한 장의 이미지를 촬영하는 데 걸리는 전체 시간. 노출 시간 + 읽기 시간으로 구성된다.</span>
+                    </div>
+                </div>
+
+                <!-- 2. 글로벌 셔터 -->
+                <h2 id="global-shutter"><i class="fa-solid fa-border-all"></i> 글로벌 셔터</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 글로벌 셔터 (Global Shutter)</div>
+                    <p>센서의 <strong>모든 픽셀이 동시에 노출을 시작하고 동시에 종료</strong>하는 방식이다. 모든 픽셀이 정확히 같은 순간의 장면을 캡처하므로, 빠르게 움직이는 물체도 왜곡 없이 촬영할 수 있다.</p>
+                </div>
+
+                <h3 id="global-how"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 동작 원리</h3>
+
+                <p>글로벌 셔터 센서는 각 픽셀에 <strong>저장 노드(Storage Node)</strong>를 가지고 있다. 노출이 끝나면 모든 픽셀의 전하가 동시에 저장 노드로 이동하고, 그 후 행 단위로 순차적으로 읽어낸다. 저장 노드가 빛으로부터 차폐되어 있어 읽기 중에도 데이터가 변하지 않는다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 300" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">글로벌 셔터 타이밍 다이어그램</text>
+
+                        <!-- 축 -->
+                        <line x1="100" y1="50" x2="100" y2="260" stroke="#999" stroke-width="1.5"/>
+                        <line x1="100" y1="260" x2="660" y2="260" stroke="#999" stroke-width="1.5"/>
+                        <text x="380" y="285" text-anchor="middle" font-size="11" fill="#666">시간 (Time)</text>
+                        <text x="60" y="155" text-anchor="middle" font-size="11" fill="#666" transform="rotate(-90,60,155)">행 (Row)</text>
+
+                        <!-- 행 레이블 -->
+                        <text x="90" y="88" text-anchor="end" font-size="10" fill="#555">Row 0</text>
+                        <text x="90" y="118" text-anchor="end" font-size="10" fill="#555">Row 1</text>
+                        <text x="90" y="148" text-anchor="end" font-size="10" fill="#555">Row 2</text>
+                        <text x="90" y="178" text-anchor="end" font-size="10" fill="#555">Row 3</text>
+                        <text x="90" y="218" text-anchor="end" font-size="10" fill="#555">Row N</text>
+                        <text x="90" y="198" text-anchor="end" font-size="10" fill="#aaa">...</text>
+
+                        <!-- 노출 (모든 행 동시) -->
+                        <rect x="130" y="72" width="200" height="20" rx="3" fill="#4caf50" opacity="0.8"/>
+                        <rect x="130" y="102" width="200" height="20" rx="3" fill="#4caf50" opacity="0.8"/>
+                        <rect x="130" y="132" width="200" height="20" rx="3" fill="#4caf50" opacity="0.8"/>
+                        <rect x="130" y="162" width="200" height="20" rx="3" fill="#4caf50" opacity="0.8"/>
+                        <rect x="130" y="202" width="200" height="20" rx="3" fill="#4caf50" opacity="0.8"/>
+
+                        <!-- 동시 노출 끝 표시 -->
+                        <line x1="330" y1="65" x2="330" y2="230" stroke="#2e7d32" stroke-width="2" stroke-dasharray="5,3"/>
+                        <text x="335" y="245" font-size="9" fill="#2e7d32" font-weight="600">동시 노출 종료</text>
+
+                        <!-- 읽기 (순차) -->
+                        <rect x="340" y="72" width="60" height="20" rx="3" fill="#1565c0" opacity="0.7"/>
+                        <rect x="340" y="102" width="60" height="20" rx="3" fill="#1565c0" opacity="0.5"/>
+                        <rect x="360" y="102" width="60" height="20" rx="3" fill="#1565c0" opacity="0.7"/>
+                        <rect x="380" y="132" width="60" height="20" rx="3" fill="#1565c0" opacity="0.7"/>
+                        <rect x="400" y="162" width="60" height="20" rx="3" fill="#1565c0" opacity="0.7"/>
+                        <rect x="460" y="202" width="60" height="20" rx="3" fill="#1565c0" opacity="0.7"/>
+
+                        <!-- 범례 -->
+                        <rect x="540" y="70" width="16" height="12" rx="2" fill="#4caf50" opacity="0.8"/>
+                        <text x="562" y="80" font-size="10" fill="#555">노출 (Exposure)</text>
+                        <rect x="540" y="90" width="16" height="12" rx="2" fill="#1565c0" opacity="0.7"/>
+                        <text x="562" y="100" font-size="10" fill="#555">읽기 (Readout)</text>
+                    </svg>
+                    <div class="caption">그림 1. 글로벌 셔터 타이밍 — 모든 행이 동시에 노출되고, 읽기는 순차적으로 수행</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>저장 노드(Storage Node)의 역할</strong>
+                        글로벌 셔터 센서의 각 픽셀에는 포토다이오드(빛 감지) 외에 별도의 전하 저장 영역이 있다. 노출이 끝나면 전하가 이 저장 영역으로 동시에 전송되고, 읽기는 저장 영역에서 수행된다. 이 구조 덕분에 모든 픽셀이 같은 순간의 이미지를 보존할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 3. 롤링 셔터 -->
+                <h2 id="rolling-shutter"><i class="fa-solid fa-bars-staggered"></i> 롤링 셔터</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 롤링 셔터 (Rolling Shutter)</div>
+                    <p>센서의 픽셀을 <strong>행(Row) 단위로 순차적으로 노출</strong>하는 방식이다. 첫 번째 행이 노출을 시작한 후, 약간의 시간 지연을 두고 다음 행이 노출을 시작한다. 각 행이 서로 다른 시점의 장면을 캡처하므로, 빠르게 움직이는 물체는 기울어지거나 왜곡되어 보인다.</p>
+                </div>
+
+                <h3 id="rolling-how"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 동작 원리</h3>
+
+                <p>롤링 셔터 센서는 저장 노드가 필요 없다. 각 행의 노출이 끝나면 즉시 해당 행을 읽어내고, 다음 행으로 이동한다. 구조가 단순하여 픽셀 면적을 더 효율적으로 사용할 수 있고, 제조 비용도 낮다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 300" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#c62828" font-weight="700">롤링 셔터 타이밍 다이어그램</text>
+
+                        <!-- 축 -->
+                        <line x1="100" y1="50" x2="100" y2="260" stroke="#999" stroke-width="1.5"/>
+                        <line x1="100" y1="260" x2="660" y2="260" stroke="#999" stroke-width="1.5"/>
+                        <text x="380" y="285" text-anchor="middle" font-size="11" fill="#666">시간 (Time)</text>
+                        <text x="60" y="155" text-anchor="middle" font-size="11" fill="#666" transform="rotate(-90,60,155)">행 (Row)</text>
+
+                        <!-- 행 레이블 -->
+                        <text x="90" y="88" text-anchor="end" font-size="10" fill="#555">Row 0</text>
+                        <text x="90" y="118" text-anchor="end" font-size="10" fill="#555">Row 1</text>
+                        <text x="90" y="148" text-anchor="end" font-size="10" fill="#555">Row 2</text>
+                        <text x="90" y="178" text-anchor="end" font-size="10" fill="#555">Row 3</text>
+                        <text x="90" y="218" text-anchor="end" font-size="10" fill="#555">Row N</text>
+                        <text x="90" y="198" text-anchor="end" font-size="10" fill="#aaa">...</text>
+
+                        <!-- 노출 (순차 시작) -->
+                        <rect x="130" y="72" width="200" height="20" rx="3" fill="#ef5350" opacity="0.7"/>
+                        <rect x="155" y="102" width="200" height="20" rx="3" fill="#ef5350" opacity="0.7"/>
+                        <rect x="180" y="132" width="200" height="20" rx="3" fill="#ef5350" opacity="0.7"/>
+                        <rect x="205" y="162" width="200" height="20" rx="3" fill="#ef5350" opacity="0.7"/>
+                        <rect x="280" y="202" width="200" height="20" rx="3" fill="#ef5350" opacity="0.7"/>
+
+                        <!-- 읽기 (노출 직후) -->
+                        <rect x="330" y="72" width="40" height="20" rx="3" fill="#1565c0" opacity="0.7"/>
+                        <rect x="355" y="102" width="40" height="20" rx="3" fill="#1565c0" opacity="0.7"/>
+                        <rect x="380" y="132" width="40" height="20" rx="3" fill="#1565c0" opacity="0.7"/>
+                        <rect x="405" y="162" width="40" height="20" rx="3" fill="#1565c0" opacity="0.7"/>
+                        <rect x="480" y="202" width="40" height="20" rx="3" fill="#1565c0" opacity="0.7"/>
+
+                        <!-- 노출 시작 지연 표시 -->
+                        <line x1="130" y1="65" x2="280" y2="230" stroke="#c62828" stroke-width="1.5" stroke-dasharray="5,3"/>
+                        <text x="140" y="245" font-size="9" fill="#c62828" font-weight="600">노출 시작 시점이 행마다 다름</text>
+
+                        <!-- 범례 -->
+                        <rect x="540" y="70" width="16" height="12" rx="2" fill="#ef5350" opacity="0.7"/>
+                        <text x="562" y="80" font-size="10" fill="#555">노출 (Exposure)</text>
+                        <rect x="540" y="90" width="16" height="12" rx="2" fill="#1565c0" opacity="0.7"/>
+                        <text x="562" y="100" font-size="10" fill="#555">읽기 (Readout)</text>
+                    </svg>
+                    <div class="caption">그림 2. 롤링 셔터 타이밍 — 각 행이 순차적으로 노출 시작, 행마다 캡처 시점이 다름</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>롤링 셔터의 장점</strong>
+                        저장 노드가 없으므로 픽셀 내 포토다이오드 면적을 더 크게 확보할 수 있다. 이는 곧 높은 <strong>Fill Factor</strong>(광 감응 면적 비율)와 더 나은 감도(Sensitivity), 낮은 노이즈로 이어진다.
+                    </div>
+                </div>
+
+                <!-- 4. 롤링 셔터 왜곡 현상 -->
+                <h2 id="rolling-artifacts"><i class="fa-solid fa-triangle-exclamation"></i> 롤링 셔터 왜곡 현상</h2>
+
+                <p>롤링 셔터는 각 행이 서로 다른 시점에 노출되므로, 물체가 센서 읽기 시간 동안 이동하면 다양한 왜곡(Artifact)이 발생한다.</p>
+
+                <h3 id="artifact-skew"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스큐 (Skew / Shear)</h3>
+
+                <p>물체가 수평으로 이동할 때, 위쪽 행과 아래쪽 행의 캡처 시점이 다르므로 직선 물체가 기울어져 보이는 현상이다. 머신비전에서 이동하는 부품의 치수 측정이 부정확해지는 원인이 된다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 600 200" style="width:100%; max-width:600px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="300" y="20" text-anchor="middle" font-size="13" fill="#333" font-weight="700">스큐 (Skew) 현상</text>
+
+                        <!-- 원본 -->
+                        <text x="150" y="45" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="600">실제 물체</text>
+                        <rect x="110" y="55" width="80" height="120" rx="4" fill="none" stroke="#4caf50" stroke-width="2.5"/>
+                        <line x1="150" y1="55" x2="150" y2="175" stroke="#4caf50" stroke-width="1" stroke-dasharray="4,3"/>
+
+                        <!-- 화살표 -->
+                        <text x="300" y="120" text-anchor="middle" font-size="20" fill="#999">&#8594;</text>
+                        <text x="300" y="140" text-anchor="middle" font-size="9" fill="#999">물체 이동 방향</text>
+
+                        <!-- 왜곡된 결과 -->
+                        <text x="460" y="45" text-anchor="middle" font-size="11" fill="#c62828" font-weight="600">롤링 셔터 촬영 결과</text>
+                        <polygon points="430,55 510,55 540,175 460,175" fill="none" stroke="#ef5350" stroke-width="2.5"/>
+                        <line x1="470" y1="55" x2="500" y2="175" stroke="#ef5350" stroke-width="1" stroke-dasharray="4,3"/>
+                        <text x="460" y="195" text-anchor="middle" font-size="9" fill="#c62828">아래 행일수록 물체가 더 이동</text>
+                    </svg>
+                    <div class="caption">그림 3. 스큐 현상 — 수평 이동하는 직사각형 물체가 평행사변형으로 왜곡</div>
+                </div>
+
+                <h3 id="artifact-wobble"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 워블 (Wobble / Jello)</h3>
+
+                <p>카메라가 진동하거나 물체가 불규칙하게 움직일 때, 이미지가 젤리처럼 물결 치는 현상이다. 행마다 카메라와 물체의 상대 위치가 미세하게 달라져 발생한다.</p>
+
+                <h3 id="artifact-banding"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 밴딩 (Banding)</h3>
+
+                <p>LED 조명이나 형광등처럼 주파수를 가진 광원 아래에서 촬영할 때, 행마다 노출 시점이 달라 밝기가 줄무늬 형태로 나타나는 현상이다. 조명의 점멸 주기와 행 읽기 속도의 관계에 따라 밴드 폭이 달라진다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 600 180" style="width:100%; max-width:600px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="300" y="20" text-anchor="middle" font-size="13" fill="#333" font-weight="700">밴딩 (Banding) 현상</text>
+
+                        <!-- 이미지 프레임 -->
+                        <rect x="150" y="35" width="300" height="130" rx="6" fill="#f5f5f5" stroke="#ccc" stroke-width="1.5"/>
+
+                        <!-- 밴드 -->
+                        <rect x="150" y="35" width="300" height="22" rx="0" fill="#e8e8e8"/>
+                        <rect x="150" y="57" width="300" height="22" rx="0" fill="#f5f5f5"/>
+                        <rect x="150" y="79" width="300" height="22" rx="0" fill="#e0e0e0"/>
+                        <rect x="150" y="101" width="300" height="22" rx="0" fill="#f5f5f5"/>
+                        <rect x="150" y="123" width="300" height="22" rx="0" fill="#e8e8e8"/>
+                        <rect x="150" y="145" width="300" height="20" rx="0" fill="#f5f5f5"/>
+
+                        <!-- 레이블 -->
+                        <text x="465" y="50" font-size="9" fill="#999">밝음</text>
+                        <text x="465" y="72" font-size="9" fill="#999">어두움</text>
+                        <text x="465" y="94" font-size="9" fill="#999">밝음</text>
+                        <text x="465" y="116" font-size="9" fill="#999">어두움</text>
+                        <text x="465" y="138" font-size="9" fill="#999">밝음</text>
+
+                        <!-- 설명 -->
+                        <text x="300" y="178" text-anchor="middle" font-size="10" fill="#666">LED/형광등 점멸 주기와 행 읽기 속도 불일치로 밝기 줄무늬 발생</text>
+                    </svg>
+                    <div class="caption">그림 4. 밴딩 현상 — 주기적 광원 아래에서 행마다 밝기가 달라 줄무늬 형성</div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>머신비전에서 롤링 셔터 왜곡의 영향</strong>
+                        스큐는 치수 측정 오차를, 밴딩은 밝기 불균일로 인한 검출 실패를 유발한다. 고속 이동 물체 검사에서 롤링 셔터를 사용하면 불량 오검출(False Positive/Negative)이 증가할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 5. 비교 테이블 -->
+                <h2 id="comparison"><i class="fa-solid fa-scale-balanced"></i> 비교 테이블</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>글로벌 셔터</th>
+                            <th>롤링 셔터</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">노출 방식</td>
+                            <td>모든 픽셀 동시 노출</td>
+                            <td>행 단위 순차 노출</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">왜곡 (이동 물체)</td>
+                            <td>없음</td>
+                            <td>스큐, 워블, 밴딩 발생</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Fill Factor</td>
+                            <td>낮음 (저장 노드가 면적 차지)</td>
+                            <td>높음 (포토다이오드 면적 극대화)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">감도 (Sensitivity)</td>
+                            <td>상대적으로 낮음</td>
+                            <td>상대적으로 높음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">노이즈</td>
+                            <td>저장 노드 누설로 약간 높음</td>
+                            <td>단순 구조로 낮음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">해상도</td>
+                            <td>동일 픽셀 피치 대비 제한적</td>
+                            <td>고해상도 구현 용이</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">프레임 레이트</td>
+                            <td>읽기 시간 동안 노출 가능 (Overlap)</td>
+                            <td>파이프라인 방식으로 높은 FPS 가능</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">가격</td>
+                            <td>비쌈 (복잡한 픽셀 구조)</td>
+                            <td>저렴 (단순한 픽셀 구조)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">전력 소모</td>
+                            <td>높음</td>
+                            <td>낮음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">대표 센서</td>
+                            <td>Sony Pregius (IMX), CMOSIS</td>
+                            <td>Sony Starvis, Samsung ISOCELL</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>최근 기술 트렌드: BSI 글로벌 셔터</strong>
+                        Sony Pregius S 시리즈는 <strong>BSI(Back-Side Illumination)</strong> 기술을 글로벌 셔터에 적용하여, Fill Factor와 감도 문제를 크게 개선했다. 기존 FSI(Front-Side) 글로벌 셔터 대비 감도가 약 2배 향상되어, 롤링 셔터와의 화질 격차가 줄어들고 있다.
+                    </div>
+                </div>
+
+                <!-- 6. 용도별 선택 -->
+                <h2 id="selection"><i class="fa-solid fa-compass"></i> 용도별 선택</h2>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> 글로벌 셔터 권장</h4>
+                        <ul>
+                            <li><strong>이동 물체 검사</strong> — 컨베이어 위 부품, 고속 이송 라인</li>
+                            <li><strong>로봇 가이드</strong> — 로봇팔 움직임 중 실시간 촬영</li>
+                            <li><strong>스트로브 불가 환경</strong> — 플래시로 동결 못하는 경우</li>
+                            <li><strong>치수 측정</strong> — 왜곡 없는 정밀 측정 필수</li>
+                            <li><strong>3D 스캔</strong> — 구조광/스테레오 비전에서 동기화 필요</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#2563eb; font-size:0.5rem;"></i> 롤링 셔터 OK</h4>
+                        <ul>
+                            <li><strong>정지 물체 검사</strong> — 정지 상태에서 촬영 (왜곡 없음)</li>
+                            <li><strong>스트로브 사용</strong> — 짧은 플래시로 물체 동결 가능</li>
+                            <li><strong>저조도 환경</strong> — 높은 감도로 어두운 곳에서 유리</li>
+                            <li><strong>고해상도 필요</strong> — 같은 가격에 더 높은 해상도</li>
+                            <li><strong>비용 제약</strong> — 가격 대비 성능이 중요한 경우</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">머신비전 (이동)</span>
+                        <span class="term-desc"><strong>글로벌 셔터 필수</strong> — 고속 이동 부품의 치수 측정, 외관 검사, 정렬 확인 등에서 왜곡이 허용되지 않는다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">머신비전 (정지)</span>
+                        <span class="term-desc"><strong>롤링 셔터 OK</strong> — 정지 상태 촬영이면 두 방식 모두 동일한 결과. 비용 절감을 위해 롤링 선택 가능.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">라인스캔 카메라</span>
+                        <span class="term-desc"><strong>별도 범주</strong> — 라인스캔은 한 줄(1D)씩 촬영하므로 글로벌/롤링 구분이 아닌 라인 레이트(Line Rate)가 핵심 사양이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">스트로브 조합</span>
+                        <span class="term-desc">롤링 셔터 + 짧은 스트로브(수 us)로 사실상 글로벌 셔터 효과를 낼 수 있지만, 스트로브 밝기와 타이밍 제어가 까다롭다.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 선택 기준 요약</strong>
+                        "물체가 움직이는가?"가 첫 번째 판단 기준이다. 움직인다면 글로벌 셔터, 정지 상태라면 롤링 셔터로도 충분하다. 다만 롤링 셔터 + 스트로브 조합도 많은 현장에서 잘 동작하므로, 예산과 감도 요구사항을 함께 고려해야 한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Sony Semiconductor — Pregius / Pregius S Global Shutter CMOS Sensor White Paper</li>
+                        <li>EMVA — European Machine Vision Association, Standard 1288 (Sensor Characterization)</li>
+                        <li>Teledyne DALSA — CCD vs CMOS, Global vs Rolling Shutter Technical Note</li>
+                        <li>Basler — Vision Campus: Global Shutter vs Rolling Shutter</li>
+                        <li>AIA — Machine Vision Handbook, Image Sensor Fundamentals</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-sensor"><i class="fa-solid fa-arrow-left"></i> 센서/ISP 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-sensor');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-sensor');
+</script>
+
+</body>
+</html>

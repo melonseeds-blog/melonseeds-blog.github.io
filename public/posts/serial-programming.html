@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RS-232/485 실전 통신 프로그래밍 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e1e2e; color: #cdd6f4; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7; border: 1px solid #313244;
+        }
+        pre .comment { color: #6c7086; }
+        pre .keyword { color: #cba6f7; }
+        pre .string { color: #a6e3a1; }
+        pre .function { color: #89b4fa; }
+        pre .type { color: #f9e2af; }
+        pre .number { color: #fab387; }
+        pre .macro { color: #f38ba8; }
+        pre .label { color: #89dceb; font-weight: 600; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#overview" data-section="overview">프로그래밍 개요</a>
+        <a href="#port-config" data-section="port-config">포트 설정</a>
+        <a href="#cpp-impl" data-section="cpp-impl">C++ 구현</a>
+        <a href="#python-impl" data-section="python-impl">Python 구현</a>
+        <a href="#rs485-multi" data-section="rs485-multi">RS-485 멀티드롭</a>
+        <a href="#debug-tools" data-section="debug-tools">디버깅 도구</a>
+        <a href="#troubleshoot" data-section="troubleshoot">트러블슈팅</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">통신/인터페이스</span>
+                </div>
+                <h1>RS-232/485 실전 통신 프로그래밍</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 9 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>시리얼 통신을 직접 구현해야 하는 이유와 전체 흐름</li>
+                        <li>Baud Rate, Data Bits, Parity, Stop Bits, Flow Control 설정</li>
+                        <li>Windows C++ (Win32 API)와 Python (pyserial) 코드 예시</li>
+                        <li>RS-485 멀티드롭 통신 구현과 주소 기반 프로토콜 설계</li>
+                        <li>디버깅 도구 활용법과 실무 트러블슈팅 가이드</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#overview">시리얼 통신 프로그래밍 개요</a></li>
+                        <li><a href="#port-config">포트 설정</a></li>
+                        <li><a href="#cpp-impl">C++ 구현 (Windows)</a></li>
+                        <li><a href="#python-impl">Python 구현</a></li>
+                        <li><a href="#rs485-multi">RS-485 멀티드롭 통신</a></li>
+                        <li><a href="#debug-tools">디버깅 도구</a></li>
+                        <li><a href="#troubleshoot">실무 트러블슈팅</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 개요 -->
+                <h2 id="overview"><i class="fa-solid fa-code"></i> 시리얼 통신 프로그래밍 개요</h2>
+
+                <p>산업 현장에서 장비를 제어하려면 시리얼 통신을 직접 구현해야 하는 경우가 많다. 조명 컨트롤러, 모터 드라이버, PLC, 바코드 리더 등 대부분의 산업 장비는 RS-232 또는 RS-485 기반 시리얼 통신을 지원하며, 제조사에서 제공하는 SDK가 없거나 커스텀 프로토콜을 사용하는 경우가 빈번하다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 직접 구현해야 하는가?</div>
+                    <p>장비 제조사가 제공하는 통신 라이브러리가 없거나, 특정 언어만 지원하거나, 다수의 장비를 하나의 프로그램에서 통합 제어해야 할 때 직접 구현이 필요하다. 시리얼 통신의 원리를 이해하면 어떤 장비든 매뉴얼의 프로토콜 문서만으로 연동할 수 있다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#3a9a3e"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">시리얼 통신 프로그래밍 전체 흐름</text>
+
+                        <!-- Step 1: 포트 열기 -->
+                        <rect x="20" y="50" width="110" height="60" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="75" y="75" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">1. 포트 열기</text>
+                        <text x="75" y="93" text-anchor="middle" font-size="9" fill="#64b5f6">CreateFile</text>
+                        <line x1="130" y1="80" x2="155" y2="80" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <!-- Step 2: 파라미터 설정 -->
+                        <rect x="155" y="50" width="110" height="60" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="210" y="75" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">2. 파라미터 설정</text>
+                        <text x="210" y="93" text-anchor="middle" font-size="9" fill="#fb8c00">DCB, Timeout</text>
+                        <line x1="265" y1="80" x2="290" y2="80" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <!-- Step 3: 데이터 송신 -->
+                        <rect x="290" y="50" width="110" height="60" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="345" y="75" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">3. 데이터 송신</text>
+                        <text x="345" y="93" text-anchor="middle" font-size="9" fill="#66bb6a">WriteFile</text>
+                        <line x1="400" y1="80" x2="425" y2="80" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <!-- Step 4: 데이터 수신 -->
+                        <rect x="425" y="50" width="110" height="60" rx="8" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="480" y="75" text-anchor="middle" font-size="11" fill="#7b1fa2" font-weight="700">4. 데이터 수신</text>
+                        <text x="480" y="93" text-anchor="middle" font-size="9" fill="#ba68c8">ReadFile</text>
+                        <line x1="535" y1="80" x2="560" y2="80" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <!-- Step 5: 포트 닫기 -->
+                        <rect x="560" y="50" width="110" height="60" rx="8" fill="#fce4ec" stroke="#e91e63" stroke-width="2"/>
+                        <text x="615" y="75" text-anchor="middle" font-size="11" fill="#c2185b" font-weight="700">5. 포트 닫기</text>
+                        <text x="615" y="93" text-anchor="middle" font-size="9" fill="#f06292">CloseHandle</text>
+
+                        <!-- 하단 설명 -->
+                        <text x="350" y="150" text-anchor="middle" font-size="11" fill="#616161">포트 열기 → 설정 → 송수신 반복 → 포트 닫기</text>
+                        <text x="350" y="170" text-anchor="middle" font-size="10" fill="#9e9e9e">모든 시리얼 통신 프로그램은 이 5단계를 따른다</text>
+                    </svg>
+                    <div class="caption">그림 1. 시리얼 통신 프로그래밍의 기본 흐름</div>
+                </div>
+
+                <!-- 2. 포트 설정 -->
+                <h2 id="port-config"><i class="fa-solid fa-sliders"></i> 포트 설정</h2>
+
+                <p>시리얼 통신에서 가장 중요한 것은 송신 측과 수신 측의 <strong>통신 파라미터가 정확히 일치</strong>해야 한다는 점이다. 하나라도 다르면 데이터가 깨지거나 통신 자체가 불가능하다.</p>
+
+                <h3 id="config-params"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 핵심 파라미터 5가지</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>파라미터</th>
+                            <th>설명</th>
+                            <th>일반적인 값</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Baud Rate</td>
+                            <td>초당 전송되는 심볼(비트) 수. 양측이 반드시 동일해야 함</td>
+                            <td>9600, 19200, 38400, 115200</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Data Bits</td>
+                            <td>한 프레임에 포함되는 실제 데이터 비트 수</td>
+                            <td>8 (가장 보편적)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Parity</td>
+                            <td>오류 검출용 비트. None/Even/Odd 중 선택</td>
+                            <td>None (N)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Stop Bits</td>
+                            <td>프레임 종료를 알리는 비트 수</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Flow Control</td>
+                            <td>데이터 흐름 제어. 수신 버퍼 오버플로우 방지</td>
+                            <td>None (산업용 대부분)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>8N1 표기법</strong>
+                        "9600, 8N1"이라 하면 9600 baud, 8 data bits, No parity, 1 stop bit를 의미한다. 산업 장비 매뉴얼에서 가장 흔히 볼 수 있는 표기법이며, 대부분의 장비가 이 설정을 기본값으로 사용한다.
+                    </div>
+                </div>
+
+                <h3 id="config-flowcontrol"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Flow Control 상세</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#1565c0; font-size:0.5rem;"></i> Hardware (RTS/CTS)</h4>
+                        <ul>
+                            <li>RTS(Request to Send), CTS(Clear to Send) 핀 사용</li>
+                            <li>수신 버퍼가 차면 CTS를 Low로 내려 송신 중단 요청</li>
+                            <li>고속 통신이나 대량 데이터 전송 시 안정적</li>
+                            <li>별도 신호선 필요 (RS-232에서만 사용 가능)</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> Software (XON/XOFF)</h4>
+                        <ul>
+                            <li>데이터 라인으로 제어 문자 전송 (XON=0x11, XOFF=0x13)</li>
+                            <li>별도 핀 불필요, 3선식 연결 가능</li>
+                            <li>바이너리 데이터에 XON/XOFF 값이 포함되면 오동작</li>
+                            <li>산업용에서는 거의 사용하지 않음</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 220" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">시리얼 데이터 프레임 구조 (8N1)</text>
+
+                        <!-- Signal line -->
+                        <line x1="30" y1="100" x2="620" y2="100" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4"/>
+
+                        <!-- Idle High -->
+                        <line x1="30" y1="70" x2="80" y2="70" stroke="#9e9e9e" stroke-width="2.5"/>
+                        <text x="55" y="60" text-anchor="middle" font-size="9" fill="#9e9e9e">IDLE (High)</text>
+
+                        <!-- Start bit - drop to low -->
+                        <line x1="80" y1="70" x2="80" y2="130" stroke="#ff9800" stroke-width="2.5"/>
+                        <line x1="80" y1="130" x2="115" y2="130" stroke="#ff9800" stroke-width="2.5"/>
+                        <text x="97" y="150" text-anchor="middle" font-size="8" fill="#e65100" font-weight="600">Start</text>
+
+                        <!-- Data bits D0-D7 -->
+                        <line x1="115" y1="130" x2="115" y2="70" stroke="#1565c0" stroke-width="2.5"/>
+                        <line x1="115" y1="70" x2="150" y2="70" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="132" y="60" text-anchor="middle" font-size="8" fill="#1565c0">D0</text>
+
+                        <line x1="150" y1="70" x2="150" y2="130" stroke="#1565c0" stroke-width="2.5"/>
+                        <line x1="150" y1="130" x2="185" y2="130" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="167" y="150" text-anchor="middle" font-size="8" fill="#1565c0">D1</text>
+
+                        <line x1="185" y1="130" x2="185" y2="70" stroke="#1565c0" stroke-width="2.5"/>
+                        <line x1="185" y1="70" x2="220" y2="70" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="202" y="60" text-anchor="middle" font-size="8" fill="#1565c0">D2</text>
+
+                        <line x1="220" y1="70" x2="220" y2="70" stroke="#1565c0" stroke-width="2.5"/>
+                        <line x1="220" y1="70" x2="255" y2="70" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="237" y="60" text-anchor="middle" font-size="8" fill="#1565c0">D3</text>
+
+                        <line x1="255" y1="70" x2="255" y2="130" stroke="#1565c0" stroke-width="2.5"/>
+                        <line x1="255" y1="130" x2="290" y2="130" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="272" y="150" text-anchor="middle" font-size="8" fill="#1565c0">D4</text>
+
+                        <line x1="290" y1="130" x2="290" y2="70" stroke="#1565c0" stroke-width="2.5"/>
+                        <line x1="290" y1="70" x2="325" y2="70" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="307" y="60" text-anchor="middle" font-size="8" fill="#1565c0">D5</text>
+
+                        <line x1="325" y1="70" x2="325" y2="130" stroke="#1565c0" stroke-width="2.5"/>
+                        <line x1="325" y1="130" x2="360" y2="130" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="342" y="150" text-anchor="middle" font-size="8" fill="#1565c0">D6</text>
+
+                        <line x1="360" y1="130" x2="360" y2="70" stroke="#1565c0" stroke-width="2.5"/>
+                        <line x1="360" y1="70" x2="395" y2="70" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="377" y="60" text-anchor="middle" font-size="8" fill="#1565c0">D7</text>
+
+                        <!-- No parity -->
+                        <rect x="395" y="85" width="60" height="24" rx="4" fill="#f5f5f5" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="3"/>
+                        <text x="425" y="101" text-anchor="middle" font-size="8" fill="#9e9e9e">No Parity</text>
+
+                        <!-- Stop bit - high -->
+                        <line x1="460" y1="130" x2="460" y2="70" stroke="#4caf50" stroke-width="2.5"/>
+                        <line x1="460" y1="70" x2="530" y2="70" stroke="#4caf50" stroke-width="2.5"/>
+                        <text x="495" y="60" text-anchor="middle" font-size="8" fill="#2e7d32" font-weight="600">Stop (High)</text>
+
+                        <!-- Idle -->
+                        <line x1="530" y1="70" x2="620" y2="70" stroke="#9e9e9e" stroke-width="2.5"/>
+                        <text x="575" y="60" text-anchor="middle" font-size="9" fill="#9e9e9e">IDLE</text>
+
+                        <!-- Labels -->
+                        <text x="30" y="190" font-size="10" fill="#616161">High = Mark (논리 1) &nbsp;&nbsp; Low = Space (논리 0)</text>
+                        <text x="30" y="207" font-size="10" fill="#9e9e9e">총 10비트 전송: Start(1) + Data(8) + Stop(1) = 10 bits per character</text>
+                    </svg>
+                    <div class="caption">그림 2. 8N1 데이터 프레임의 신호 파형</div>
+                </div>
+
+                <!-- 3. C++ 구현 -->
+                <h2 id="cpp-impl"><i class="fa-solid fa-terminal"></i> C++ 구현 (Windows)</h2>
+
+                <p>Windows에서 시리얼 통신은 <strong>Win32 API</strong>를 사용한다. 시리얼 포트를 파일처럼 다루며, <code>CreateFile</code>로 열고 <code>ReadFile</code>/<code>WriteFile</code>로 데이터를 주고받는다.</p>
+
+                <h3 id="cpp-open"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 포트 열기 및 설정</h3>
+
+<pre><span class="comment">// 시리얼 포트 열기 및 설정 (Win32 API)</span>
+<span class="macro">#include</span> <span class="string">&lt;windows.h&gt;</span>
+<span class="macro">#include</span> <span class="string">&lt;stdio.h&gt;</span>
+
+<span class="type">HANDLE</span> <span class="function">OpenSerialPort</span>(<span class="keyword">const</span> <span class="type">char</span>* portName, <span class="type">DWORD</span> baudRate)
+{
+    <span class="comment">// 1. 포트 열기 ("\\\\.\\COM3" 형식 사용 - COM10 이상도 지원)</span>
+    <span class="type">HANDLE</span> hSerial = <span class="function">CreateFileA</span>(
+        portName,
+        GENERIC_READ | GENERIC_WRITE,
+        <span class="number">0</span>,              <span class="comment">// 공유 모드 없음 (독점 열기)</span>
+        NULL,
+        OPEN_EXISTING,
+        <span class="number">0</span>,              <span class="comment">// 동기 모드 (FILE_FLAG_OVERLAPPED 시 비동기)</span>
+        NULL
+    );
+
+    <span class="keyword">if</span> (hSerial == INVALID_HANDLE_VALUE) {
+        <span class="function">printf</span>(<span class="string">"포트 열기 실패: %d\n"</span>, <span class="function">GetLastError</span>());
+        <span class="keyword">return</span> INVALID_HANDLE_VALUE;
+    }
+
+    <span class="comment">// 2. DCB 구조체로 통신 파라미터 설정</span>
+    <span class="type">DCB</span> dcb = { <span class="number">0</span> };
+    dcb.DCBlength = <span class="keyword">sizeof</span>(DCB);
+    <span class="function">GetCommState</span>(hSerial, &amp;dcb);
+
+    dcb.BaudRate = baudRate;       <span class="comment">// 예: CBR_9600, CBR_115200</span>
+    dcb.ByteSize = <span class="number">8</span>;             <span class="comment">// Data Bits</span>
+    dcb.Parity   = NOPARITY;      <span class="comment">// No Parity</span>
+    dcb.StopBits  = ONESTOPBIT;    <span class="comment">// 1 Stop Bit</span>
+    dcb.fDtrControl = DTR_CONTROL_ENABLE;
+    dcb.fRtsControl = RTS_CONTROL_ENABLE;
+
+    <span class="keyword">if</span> (!<span class="function">SetCommState</span>(hSerial, &amp;dcb)) {
+        <span class="function">printf</span>(<span class="string">"DCB 설정 실패: %d\n"</span>, <span class="function">GetLastError</span>());
+        <span class="function">CloseHandle</span>(hSerial);
+        <span class="keyword">return</span> INVALID_HANDLE_VALUE;
+    }
+
+    <span class="comment">// 3. 타임아웃 설정 (밀리초 단위)</span>
+    <span class="type">COMMTIMEOUTS</span> timeouts = { <span class="number">0</span> };
+    timeouts.ReadIntervalTimeout         = <span class="number">50</span>;   <span class="comment">// 바이트 간 최대 간격</span>
+    timeouts.ReadTotalTimeoutMultiplier  = <span class="number">10</span>;   <span class="comment">// 바이트당 추가 시간</span>
+    timeouts.ReadTotalTimeoutConstant    = <span class="number">100</span>;  <span class="comment">// 전체 읽기 최소 대기</span>
+    timeouts.WriteTotalTimeoutMultiplier = <span class="number">10</span>;
+    timeouts.WriteTotalTimeoutConstant   = <span class="number">100</span>;
+    <span class="function">SetCommTimeouts</span>(hSerial, &amp;timeouts);
+
+    <span class="keyword">return</span> hSerial;
+}</pre>
+
+                <h3 id="cpp-rw"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 데이터 송수신</h3>
+
+<pre><span class="comment">// 데이터 송신</span>
+<span class="type">BOOL</span> <span class="function">SendData</span>(<span class="type">HANDLE</span> hSerial, <span class="keyword">const</span> <span class="type">char</span>* data, <span class="type">DWORD</span> length)
+{
+    <span class="type">DWORD</span> bytesWritten = <span class="number">0</span>;
+    <span class="keyword">if</span> (!<span class="function">WriteFile</span>(hSerial, data, length, &amp;bytesWritten, NULL)) {
+        <span class="function">printf</span>(<span class="string">"송신 실패: %d\n"</span>, <span class="function">GetLastError</span>());
+        <span class="keyword">return</span> FALSE;
+    }
+    <span class="function">printf</span>(<span class="string">"송신 완료: %d bytes\n"</span>, bytesWritten);
+    <span class="keyword">return</span> TRUE;
+}
+
+<span class="comment">// 데이터 수신</span>
+<span class="type">int</span> <span class="function">ReceiveData</span>(<span class="type">HANDLE</span> hSerial, <span class="type">char</span>* buffer, <span class="type">DWORD</span> bufSize)
+{
+    <span class="type">DWORD</span> bytesRead = <span class="number">0</span>;
+    <span class="keyword">if</span> (!<span class="function">ReadFile</span>(hSerial, buffer, bufSize, &amp;bytesRead, NULL)) {
+        <span class="function">printf</span>(<span class="string">"수신 실패: %d\n"</span>, <span class="function">GetLastError</span>());
+        <span class="keyword">return</span> <span class="number">-1</span>;
+    }
+    <span class="keyword">return</span> (<span class="type">int</span>)bytesRead;
+}
+
+<span class="comment">// 사용 예시</span>
+<span class="type">int</span> <span class="function">main</span>()
+{
+    <span class="type">HANDLE</span> hPort = <span class="function">OpenSerialPort</span>(<span class="string">"\\\\.\\COM3"</span>, CBR_9600);
+    <span class="keyword">if</span> (hPort == INVALID_HANDLE_VALUE) <span class="keyword">return</span> <span class="number">1</span>;
+
+    <span class="comment">// 명령 송신</span>
+    <span class="function">SendData</span>(hPort, <span class="string">"GET_STATUS\r\n"</span>, <span class="number">12</span>);
+
+    <span class="comment">// 응답 수신</span>
+    <span class="type">char</span> buf[<span class="number">256</span>] = { <span class="number">0</span> };
+    <span class="type">int</span> len = <span class="function">ReceiveData</span>(hPort, buf, <span class="keyword">sizeof</span>(buf));
+    <span class="keyword">if</span> (len > <span class="number">0</span>) <span class="function">printf</span>(<span class="string">"응답: %s\n"</span>, buf);
+
+    <span class="function">CloseHandle</span>(hPort);
+    <span class="keyword">return</span> <span class="number">0</span>;
+}</pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>COM 포트 이름 주의</strong>
+                        COM10 이상의 포트를 열 때는 반드시 <code>"\\\\.\\COM10"</code> 형식을 사용해야 한다. <code>"COM10"</code>만 쓰면 <code>CreateFile</code>이 실패한다. 안전을 위해 항상 <code>"\\\\.\\COMx"</code> 형식을 사용하는 것이 좋다.
+                    </div>
+                </div>
+
+                <!-- 4. Python 구현 -->
+                <h2 id="python-impl"><i class="fa-brands fa-python"></i> Python 구현</h2>
+
+                <p>Python에서는 <code>pyserial</code> 라이브러리를 사용하면 OS에 관계없이 간결하게 시리얼 통신을 구현할 수 있다. 프로토타이핑이나 테스트 도구 제작에 매우 유용하다.</p>
+
+                <h3 id="python-basic"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본 사용법</h3>
+
+<pre><span class="comment"># pip install pyserial</span>
+<span class="keyword">import</span> <span class="type">serial</span>
+<span class="keyword">import</span> <span class="type">time</span>
+
+<span class="comment"># 포트 열기 및 설정</span>
+ser = <span class="type">serial</span>.<span class="function">Serial</span>(
+    port=<span class="string">'COM3'</span>,          <span class="comment"># 포트 이름 (Linux: '/dev/ttyUSB0')</span>
+    baudrate=<span class="number">9600</span>,         <span class="comment"># Baud Rate</span>
+    bytesize=<span class="type">serial</span>.EIGHTBITS,   <span class="comment"># Data Bits = 8</span>
+    parity=<span class="type">serial</span>.PARITY_NONE,    <span class="comment"># Parity = None</span>
+    stopbits=<span class="type">serial</span>.STOPBITS_ONE,  <span class="comment"># Stop Bits = 1</span>
+    timeout=<span class="number">1</span>              <span class="comment"># 읽기 타임아웃 (초)</span>
+)
+
+<span class="comment"># 데이터 송신</span>
+ser.<span class="function">write</span>(<span class="string">b'GET_STATUS\r\n'</span>)
+<span class="function">print</span>(<span class="string">f"송신 완료"</span>)
+
+<span class="comment"># 데이터 수신 (줄 단위)</span>
+response = ser.<span class="function">readline</span>()
+<span class="function">print</span>(<span class="string">f"응답: {response.decode('ascii').strip()}"</span>)
+
+<span class="comment"># 포트 닫기</span>
+ser.<span class="function">close</span>()</pre>
+
+                <h3 id="python-advanced"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 실무 패턴: 명령-응답 루프</h3>
+
+<pre><span class="keyword">import</span> <span class="type">serial</span>
+<span class="keyword">import</span> <span class="type">time</span>
+
+<span class="keyword">class</span> <span class="type">SerialDevice</span>:
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, port, baudrate=<span class="number">9600</span>, timeout=<span class="number">1</span>):
+        self.ser = <span class="type">serial</span>.<span class="function">Serial</span>(port, baudrate, timeout=timeout)
+        <span class="type">time</span>.<span class="function">sleep</span>(<span class="number">0.5</span>)  <span class="comment"># 포트 안정화 대기</span>
+        self.ser.<span class="function">reset_input_buffer</span>()  <span class="comment"># 수신 버퍼 초기화</span>
+
+    <span class="keyword">def</span> <span class="function">send_command</span>(self, cmd):
+        <span class="string">"""명령 송신 후 응답 수신"""</span>
+        self.ser.<span class="function">reset_input_buffer</span>()
+        self.ser.<span class="function">write</span>((cmd + <span class="string">'\r\n'</span>).<span class="function">encode</span>(<span class="string">'ascii'</span>))
+
+        <span class="comment"># 응답 대기 (최대 3초)</span>
+        response = <span class="string">b''</span>
+        start = <span class="type">time</span>.<span class="function">time</span>()
+        <span class="keyword">while</span> <span class="type">time</span>.<span class="function">time</span>() - start &lt; <span class="number">3</span>:
+            <span class="keyword">if</span> self.ser.in_waiting > <span class="number">0</span>:
+                response += self.ser.<span class="function">read</span>(self.ser.in_waiting)
+                <span class="keyword">if</span> <span class="string">b'\r\n'</span> <span class="keyword">in</span> response:
+                    <span class="keyword">break</span>
+            <span class="type">time</span>.<span class="function">sleep</span>(<span class="number">0.01</span>)
+
+        <span class="keyword">return</span> response.<span class="function">decode</span>(<span class="string">'ascii'</span>).<span class="function">strip</span>()
+
+    <span class="keyword">def</span> <span class="function">close</span>(self):
+        self.ser.<span class="function">close</span>()
+
+<span class="comment"># 사용 예시</span>
+dev = <span class="type">SerialDevice</span>(<span class="string">'COM3'</span>, <span class="number">9600</span>)
+status = dev.<span class="function">send_command</span>(<span class="string">'GET_STATUS'</span>)
+<span class="function">print</span>(<span class="string">f"장비 상태: {status}"</span>)
+dev.<span class="function">close</span>()</pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>포트 안정화 대기</strong>
+                        시리얼 포트를 열고 나서 바로 데이터를 보내면 첫 번째 명령이 무시되는 경우가 있다. <code>time.sleep(0.5)</code>로 포트가 안정화될 시간을 주고, <code>reset_input_buffer()</code>로 쓰레기 데이터를 제거하는 것이 좋다.
+                    </div>
+                </div>
+
+                <!-- 5. RS-485 멀티드롭 -->
+                <h2 id="rs485-multi"><i class="fa-solid fa-network-wired"></i> RS-485 멀티드롭 통신</h2>
+
+                <p>RS-485는 하나의 버스에 최대 32개 장비를 연결할 수 있는 <strong>멀티드롭(Multi-drop)</strong> 방식이다. 반이중(Half-Duplex)이므로 한 번에 하나의 장비만 송신할 수 있으며, 일반적으로 <strong>마스터-슬레이브</strong> 구조를 사용한다.</p>
+
+                <h3 id="rs485-dere"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> DE/RE 방향 제어</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> DE/RE 핀이란?</div>
+                    <p>RS-485 트랜시버(예: MAX485)에는 <strong>DE(Driver Enable)</strong>와 <strong>RE(Receiver Enable)</strong> 핀이 있다. DE를 High로 하면 송신 모드, RE를 Low로 하면 수신 모드가 된다. 보통 DE와 RE를 하나의 GPIO에 연결하여 동시에 전환한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 320" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                            <marker id="arr3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#e65100"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">RS-485 멀티드롭 버스 구조</text>
+
+                        <!-- Bus line -->
+                        <line x1="100" y1="100" x2="600" y2="100" stroke="#1565c0" stroke-width="3"/>
+                        <text x="350" y="90" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">RS-485 Bus (A+, B-)</text>
+
+                        <!-- Termination resistors -->
+                        <rect x="60" y="92" width="40" height="16" rx="3" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="80" y="104" text-anchor="middle" font-size="8" fill="#e65100">120R</text>
+                        <rect x="600" y="92" width="40" height="16" rx="3" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="620" y="104" text-anchor="middle" font-size="8" fill="#e65100">120R</text>
+
+                        <!-- Master -->
+                        <line x1="150" y1="100" x2="150" y2="140" stroke="#1565c0" stroke-width="2"/>
+                        <rect x="100" y="140" width="100" height="70" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="150" y="165" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">Master</text>
+                        <text x="150" y="180" text-anchor="middle" font-size="9" fill="#64b5f6">PC / PLC</text>
+                        <text x="150" y="196" text-anchor="middle" font-size="8" fill="#90caf9">ID: 0x00</text>
+
+                        <!-- Slave 1 -->
+                        <line x1="300" y1="100" x2="300" y2="140" stroke="#4caf50" stroke-width="2"/>
+                        <rect x="250" y="140" width="100" height="70" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="300" y="165" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">Slave #1</text>
+                        <text x="300" y="180" text-anchor="middle" font-size="9" fill="#66bb6a">Motor Driver</text>
+                        <text x="300" y="196" text-anchor="middle" font-size="8" fill="#a5d6a7">ID: 0x01</text>
+
+                        <!-- Slave 2 -->
+                        <line x1="450" y1="100" x2="450" y2="140" stroke="#4caf50" stroke-width="2"/>
+                        <rect x="400" y="140" width="100" height="70" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="450" y="165" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">Slave #2</text>
+                        <text x="450" y="180" text-anchor="middle" font-size="9" fill="#66bb6a">Light Controller</text>
+                        <text x="450" y="196" text-anchor="middle" font-size="8" fill="#a5d6a7">ID: 0x02</text>
+
+                        <!-- Communication arrows -->
+                        <path d="M160,140 Q230,120 290,140" fill="none" stroke="#1565c0" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#arr2)"/>
+                        <text x="225" y="122" text-anchor="middle" font-size="8" fill="#1565c0">명령 전송</text>
+                        <path d="M290,145 Q230,128 160,145" fill="none" stroke="#e65100" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#arr3)"/>
+                        <text x="225" y="155" text-anchor="middle" font-size="8" fill="#e65100">응답</text>
+
+                        <!-- Legend -->
+                        <rect x="120" y="240" width="460" height="60" rx="8" fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1"/>
+                        <text x="150" y="260" font-size="10" fill="#616161" font-weight="600">통신 순서:</text>
+                        <text x="150" y="280" font-size="9" fill="#9e9e9e">1. Master가 Slave ID를 포함한 명령 전송 → 2. 해당 Slave만 응답 → 3. 나머지 Slave는 무시</text>
+                    </svg>
+                    <div class="caption">그림 3. RS-485 멀티드롭 버스 구조와 마스터-슬레이브 통신</div>
+                </div>
+
+                <h3 id="rs485-protocol"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 주소 기반 프로토콜 설계</h3>
+
+                <p>RS-485 멀티드롭에서는 각 슬레이브를 구분하기 위한 <strong>주소(Address)</strong>가 필요하다. 자체 프로토콜을 설계할 때 일반적인 프레임 구조는 다음과 같다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 130" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="18" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="700">RS-485 커스텀 프로토콜 프레임</text>
+
+                        <rect x="20" y="35" width="60" height="50" rx="4" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="50" y="57" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">STX</text>
+                        <text x="50" y="72" text-anchor="middle" font-size="8" fill="#fb8c00">0x02</text>
+
+                        <rect x="90" y="35" width="80" height="50" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="130" y="57" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">ADDR</text>
+                        <text x="130" y="72" text-anchor="middle" font-size="8" fill="#64b5f6">1 byte</text>
+
+                        <rect x="180" y="35" width="80" height="50" rx="4" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="220" y="57" text-anchor="middle" font-size="9" fill="#7b1fa2" font-weight="600">CMD</text>
+                        <text x="220" y="72" text-anchor="middle" font-size="8" fill="#ba68c8">1 byte</text>
+
+                        <rect x="270" y="35" width="60" height="50" rx="4" fill="#e0f2f1" stroke="#009688" stroke-width="1.5"/>
+                        <text x="300" y="57" text-anchor="middle" font-size="9" fill="#00695c" font-weight="600">LEN</text>
+                        <text x="300" y="72" text-anchor="middle" font-size="8" fill="#4db6ac">1 byte</text>
+
+                        <rect x="340" y="35" width="130" height="50" rx="4" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="405" y="57" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">DATA</text>
+                        <text x="405" y="72" text-anchor="middle" font-size="8" fill="#66bb6a">0~N bytes</text>
+
+                        <rect x="480" y="35" width="70" height="50" rx="4" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="515" y="57" text-anchor="middle" font-size="9" fill="#c2185b" font-weight="600">CRC</text>
+                        <text x="515" y="72" text-anchor="middle" font-size="8" fill="#f06292">2 bytes</text>
+
+                        <rect x="560" y="35" width="60" height="50" rx="4" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="590" y="57" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">ETX</text>
+                        <text x="590" y="72" text-anchor="middle" font-size="8" fill="#fb8c00">0x03</text>
+
+                        <text x="325" y="110" text-anchor="middle" font-size="10" fill="#616161">STX(시작) + 주소 + 명령 + 길이 + 데이터 + CRC(검증) + ETX(종료)</text>
+                    </svg>
+                    <div class="caption">그림 4. 주소 기반 RS-485 프로토콜 프레임 구조</div>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">STX / ETX</span>
+                        <span class="term-desc">패킷의 시작(0x02)과 끝(0x03)을 표시. 수신 측에서 프레임 경계를 판별하는 데 사용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">ADDR</span>
+                        <span class="term-desc">대상 슬레이브 주소. 0x00은 브로드캐스트, 0x01~0xFF는 개별 장비.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">CMD</span>
+                        <span class="term-desc">명령 코드. 예: 0x01=읽기, 0x02=쓰기, 0x03=상태 요청 등.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">CRC</span>
+                        <span class="term-desc">ADDR~DATA 영역의 CRC-16 체크섬. 전송 중 데이터 손상 감지용.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Modbus RTU</strong>
+                        산업 현장에서 가장 널리 쓰이는 RS-485 프로토콜은 <strong>Modbus RTU</strong>다. 직접 프로토콜을 설계하기보다 Modbus를 채택하면 다양한 장비와의 호환성을 확보할 수 있다. Python에서는 <code>pymodbus</code> 라이브러리를 사용하면 된다.
+                    </div>
+                </div>
+
+                <!-- 6. 디버깅 도구 -->
+                <h2 id="debug-tools"><i class="fa-solid fa-bug"></i> 디버깅 도구</h2>
+
+                <p>시리얼 통신은 눈에 보이지 않기 때문에 디버깅이 까다롭다. 적절한 도구를 활용하면 문제를 빠르게 파악할 수 있다.</p>
+
+                <h3 id="debug-sw"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 소프트웨어 도구</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-desktop" style="color:#1565c0;"></i> 시리얼 터미널</h4>
+                        <ul>
+                            <li><strong>Tera Term</strong> — 무료, 가볍고 빠름. 매크로 지원</li>
+                            <li><strong>PuTTY</strong> — SSH뿐 아니라 시리얼도 지원</li>
+                            <li><strong>RealTerm</strong> — HEX 표시, 바이너리 송수신에 강점</li>
+                            <li><strong>CoolTerm</strong> — macOS/Linux 크로스 플랫폼</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-magnifying-glass" style="color:#4caf50;"></i> 시리얼 모니터 (스니퍼)</h4>
+                        <ul>
+                            <li><strong>Free Serial Port Monitor</strong> — 포트 트래픽 캡처</li>
+                            <li><strong>Serial Port Monitor (Eltima)</strong> — 상용, 강력한 필터</li>
+                            <li><strong>Wireshark + USBPcap</strong> — USB-Serial 트래픽 분석</li>
+                            <li>기존 프로그램을 수정하지 않고 통신 내용 확인 가능</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 id="debug-hw"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 하드웨어 도구</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">루프백 테스트</span>
+                        <span class="term-desc">TX와 RX 핀을 직접 연결하여 보낸 데이터가 그대로 돌아오는지 확인. 가장 기본적인 하드웨어 검증 방법. RS-232에서는 2번(TX)과 3번(RX) 핀을 점퍼로 연결한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">오실로스코프</span>
+                        <span class="term-desc">실제 전기 신호를 확인. Baud Rate 불일치, 노이즈, 신호 레벨 문제를 시각적으로 진단할 수 있다. RS-232는 +/-3~15V, RS-485는 차동 신호를 확인한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">로직 분석기</span>
+                        <span class="term-desc">디지털 신호를 캡처하여 프로토콜 수준에서 분석. 저가형(Saleae Logic 클론)으로도 시리얼 디코딩이 가능하다. 타이밍 문제 파악에 유용하다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">USB-Serial 컨버터</span>
+                        <span class="term-desc">FTDI FT232, CP2102, CH340 칩 기반. 드라이버 호환성과 안정성에서 FTDI가 가장 우수하며, 산업용에서는 FTDI 칩을 권장한다.</span>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 180" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="22" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">RS-232 루프백 테스트 연결</text>
+
+                        <!-- PC -->
+                        <rect x="50" y="50" width="140" height="80" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="120" y="80" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">PC</text>
+                        <text x="120" y="100" text-anchor="middle" font-size="9" fill="#64b5f6">시리얼 터미널</text>
+                        <text x="120" y="116" text-anchor="middle" font-size="9" fill="#64b5f6">(Tera Term 등)</text>
+
+                        <!-- USB-Serial Converter -->
+                        <rect x="250" y="55" width="130" height="70" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="315" y="80" text-anchor="middle" font-size="10" fill="#e65100" font-weight="700">USB-Serial</text>
+                        <text x="315" y="96" text-anchor="middle" font-size="9" fill="#fb8c00">FTDI / CP2102</text>
+
+                        <!-- Loopback -->
+                        <rect x="440" y="50" width="160" height="80" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="520" y="75" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="700">DB9 커넥터</text>
+                        <text x="520" y="95" text-anchor="middle" font-size="9" fill="#66bb6a">Pin 2 (TX) ──┐</text>
+                        <text x="520" y="110" text-anchor="middle" font-size="9" fill="#66bb6a">Pin 3 (RX) ──┘</text>
+                        <text x="520" y="123" text-anchor="middle" font-size="8" fill="#a5d6a7">점퍼 연결</text>
+
+                        <!-- Arrows -->
+                        <line x1="190" y1="90" x2="250" y2="90" stroke="#1565c0" stroke-width="2" marker-end="url(#arr2)"/>
+                        <text x="220" y="83" text-anchor="middle" font-size="8" fill="#1565c0">USB</text>
+                        <line x1="380" y1="90" x2="440" y2="90" stroke="#ff9800" stroke-width="2" marker-end="url(#arr3)"/>
+                        <text x="410" y="83" text-anchor="middle" font-size="8" fill="#e65100">Serial</text>
+
+                        <!-- Description -->
+                        <text x="325" y="160" text-anchor="middle" font-size="10" fill="#616161">TX→RX 점퍼 연결 후 문자 입력 시 에코백 확인 → 하드웨어 정상</text>
+                    </svg>
+                    <div class="caption">그림 5. 루프백 테스트 연결 구성</div>
+                </div>
+
+                <!-- 7. 트러블슈팅 -->
+                <h2 id="troubleshoot"><i class="fa-solid fa-wrench"></i> 실무 트러블슈팅</h2>
+
+                <p>시리얼 통신에서 자주 발생하는 문제와 해결 방법을 정리한다. 대부분의 문제는 <strong>설정 불일치</strong>나 <strong>하드웨어 연결 오류</strong>에서 비롯된다.</p>
+
+                <h3 id="trouble-data"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 깨진 데이터 (문자 깨짐)</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>원인</th>
+                            <th>증상</th>
+                            <th>해결 방법</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Baud Rate 불일치</td>
+                            <td>완전한 쓰레기 문자 출력</td>
+                            <td>양측 Baud Rate를 동일하게 맞춤. 오실로스코프로 실제 속도 확인</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Parity/Stop Bits 불일치</td>
+                            <td>일부 문자만 깨지거나 간헐적 오류</td>
+                            <td>장비 매뉴얼 확인 후 정확한 설정 적용</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">전기 노이즈</td>
+                            <td>간헐적 비트 오류, CRC 에러</td>
+                            <td>차폐 케이블 사용, RS-485 전환, 종단 저항(120ohm) 확인</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">GND 미연결</td>
+                            <td>RS-232에서 불안정한 통신</td>
+                            <td>반드시 GND(Pin 5)를 연결. 기준 전위가 없으면 신호 판별 불가</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="trouble-timeout"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 타임아웃 / 무응답</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">TX/RX 뒤바뀜</span>
+                        <span class="term-desc">가장 흔한 실수. TX→RX, RX→TX로 교차 연결해야 한다. Null Modem 케이블 사용 여부 확인.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">포트 번호 오류</span>
+                        <span class="term-desc">장치 관리자에서 실제 COM 포트 번호 확인. USB-Serial 컨버터는 뽑았다 꽂을 때 번호가 바뀔 수 있다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">포트 이미 사용 중</span>
+                        <span class="term-desc">다른 프로그램이 포트를 점유하고 있으면 열기 실패. 시리얼 터미널이나 이전 프로그램 인스턴스를 종료한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">RS-485 방향 제어</span>
+                        <span class="term-desc">DE/RE 전환 타이밍 오류. 송신 완료 후 충분한 지연 시간을 두고 수신 모드로 전환해야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">종단 문자 누락</span>
+                        <span class="term-desc">많은 장비가 CR(0x0D), LF(0x0A), 또는 CR+LF를 명령 종료 구분자로 사용. 누락 시 장비가 명령을 인식하지 못한다.</span>
+                    </div>
+                </div>
+
+                <h3 id="trouble-conflict"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 포트 충돌 및 기타 문제</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>USB-Serial 드라이버 문제</strong>
+                        CH340 칩 기반 컨버터는 저가형이지만 드라이버 충돌이 잦다. FTDI FT232R 또는 Silicon Labs CP2102가 안정적이다. Windows 업데이트 후 드라이버가 깨지는 경우도 있으므로, 장치 관리자에서 느낌표 표시가 없는지 확인한다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>체계적 디버깅 순서</strong>
+                        1. 루프백 테스트로 하드웨어 정상 확인 → 2. 시리얼 터미널로 수동 명령 테스트 → 3. 시리얼 모니터로 실제 송수신 데이터 캡처 → 4. 코드 레벨 디버깅. 이 순서를 지키면 문제의 위치(하드웨어 vs 소프트웨어)를 빠르게 좁힐 수 있다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>TIA/EIA-232-F — Interface Between Data Terminal Equipment and Data Circuit-Terminating Equipment</li>
+                        <li>TIA/EIA-485-A — Electrical Characteristics of Generators and Receivers for Use in Balanced Digital Multipoint Systems</li>
+                        <li>Microsoft Docs — Serial Communications (Win32 API)</li>
+                        <li>pyserial Documentation — https://pyserial.readthedocs.io/</li>
+                        <li>Modbus Organization — Modbus over Serial Line Specification</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-comm"><i class="fa-solid fa-arrow-left"></i> 통신/인터페이스 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-comm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-comm');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISP 파이프라인 이해하기 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-isp" data-section="what-is-isp">ISP란</a>
+        <a href="#pipeline-flow" data-section="pipeline-flow">파이프라인 전체 흐름</a>
+        <a href="#black-level" data-section="black-level">Black Level 보정</a>
+        <a href="#awb" data-section="awb">화이트밸런스</a>
+        <a href="#ccm" data-section="ccm">색상 보정 매트릭스</a>
+        <a href="#gamma" data-section="gamma">감마 보정</a>
+        <a href="#nr-sharpen" data-section="nr-sharpen">노이즈 제거와 샤프닝</a>
+        <a href="#industrial-vs-consumer" data-section="industrial-vs-consumer">산업용 vs 소비자용</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">센서/ISP</span>
+                </div>
+                <h1>ISP 파이프라인 이해하기</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 8 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>ISP(Image Signal Processor)의 역할과 Raw 데이터 처리 과정</li>
+                        <li>Black Level 보정, 화이트밸런스, CCM, 감마 보정 등 핵심 단계</li>
+                        <li>노이즈 제거(NR)와 샤프닝의 원리</li>
+                        <li>산업용 머신비전에서 ISP를 끄는 이유</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-isp">ISP란</a></li>
+                        <li><a href="#pipeline-flow">ISP 파이프라인 전체 흐름</a></li>
+                        <li><a href="#black-level">Black Level 보정</a></li>
+                        <li><a href="#awb">화이트밸런스 (AWB)</a></li>
+                        <li><a href="#ccm">색상 보정 매트릭스 (CCM)</a></li>
+                        <li><a href="#gamma">감마 보정</a></li>
+                        <li><a href="#nr-sharpen">노이즈 제거와 샤프닝</a></li>
+                        <li><a href="#industrial-vs-consumer">산업용 vs 소비자용 ISP 차이</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. ISP란 -->
+                <h2 id="what-is-isp"><i class="fa-solid fa-microchip"></i> ISP란</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> ISP (Image Signal Processor)</div>
+                    <p>이미지 센서에서 출력된 Raw 데이터를 사람이 보기에 자연스러운 최종 이미지로 변환하는 처리 장치(또는 처리 과정). 센서가 빛을 전기 신호로 변환하면, ISP가 노이즈 제거, 색상 보정, 밝기 조정 등 일련의 처리를 수행하여 최종 RGB 이미지를 만든다.</p>
+                </div>
+
+                <p>이미지 센서의 각 픽셀은 빛의 양(밝기)만 측정할 수 있다. 컬러 이미지를 만들려면 각 픽셀 위에 <strong>컬러 필터(Bayer 패턴)</strong>를 올려서 R, G, B 중 하나의 색상만 통과시킨 뒤, 나머지 두 색상 정보는 주변 픽셀에서 보간(interpolation)한다. 이 과정을 포함한 전체 신호 처리 체계가 바로 <strong>ISP 파이프라인</strong>이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Raw 데이터란?</strong>
+                        센서에서 바로 읽어낸 가공되지 않은 원시 데이터. 각 픽셀에 Bayer 패턴의 한 채널(R/G/B) 값만 담겨 있으며, 보통 10~14bit 깊이를 가진다. 이 상태에서는 화면에 표시해도 어둡고 색이 이상하게 보인다.
+                    </div>
+                </div>
+
+                <!-- 2. ISP 파이프라인 전체 흐름 -->
+                <h2 id="pipeline-flow"><i class="fa-solid fa-diagram-project"></i> ISP 파이프라인 전체 흐름</h2>
+
+                <p>ISP는 여러 단계의 처리 블록이 순서대로 연결된 <strong>파이프라인(Pipeline)</strong> 구조로 동작한다. 각 단계의 출력이 다음 단계의 입력이 되며, 순서가 중요하다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 780 340" style="width:100%; max-width:780px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-isp" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#3a9a3e"/></marker>
+                            <linearGradient id="grad-raw" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#e8f5e9"/><stop offset="100%" style="stop-color:#c8e6c9"/></linearGradient>
+                        </defs>
+                        <text x="390" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">ISP 파이프라인 처리 흐름</text>
+
+                        <!-- Row 1 -->
+                        <rect x="10" y="45" width="110" height="50" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="65" y="67" text-anchor="middle" font-size="10" fill="#e65100" font-weight="700">Raw Data</text>
+                        <text x="65" y="82" text-anchor="middle" font-size="8" fill="#fb8c00">Bayer 패턴</text>
+
+                        <line x1="120" y1="70" x2="145" y2="70" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-isp)"/>
+
+                        <rect x="145" y="45" width="110" height="50" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="200" y="67" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="700">Black Level</text>
+                        <text x="200" y="82" text-anchor="middle" font-size="8" fill="#64b5f6">오프셋 제거</text>
+
+                        <line x1="255" y1="70" x2="280" y2="70" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-isp)"/>
+
+                        <rect x="280" y="45" width="110" height="50" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="335" y="67" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="700">Defect Corr.</text>
+                        <text x="335" y="82" text-anchor="middle" font-size="8" fill="#64b5f6">불량 픽셀 보정</text>
+
+                        <line x1="390" y1="70" x2="415" y2="70" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-isp)"/>
+
+                        <rect x="415" y="45" width="110" height="50" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="470" y="67" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="700">Demosaic</text>
+                        <text x="470" y="82" text-anchor="middle" font-size="8" fill="#66bb6a">Bayer 보간</text>
+
+                        <line x1="525" y1="70" x2="550" y2="70" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-isp)"/>
+
+                        <rect x="550" y="45" width="110" height="50" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="605" y="67" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="700">White Balance</text>
+                        <text x="605" y="82" text-anchor="middle" font-size="8" fill="#66bb6a">채널 게인</text>
+
+                        <!-- Arrow down -->
+                        <line x1="605" y1="95" x2="605" y2="130" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-isp)"/>
+
+                        <!-- Row 2 (right to left) -->
+                        <rect x="550" y="130" width="110" height="50" rx="8" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="605" y="152" text-anchor="middle" font-size="10" fill="#7b1fa2" font-weight="700">CCM</text>
+                        <text x="605" y="167" text-anchor="middle" font-size="8" fill="#ba68c8">3x3 색 보정</text>
+
+                        <line x1="550" y1="155" x2="525" y2="155" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-isp)"/>
+
+                        <rect x="415" y="130" width="110" height="50" rx="8" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="470" y="152" text-anchor="middle" font-size="10" fill="#7b1fa2" font-weight="700">Gamma</text>
+                        <text x="470" y="167" text-anchor="middle" font-size="8" fill="#ba68c8">비선형 변환</text>
+
+                        <line x1="415" y1="155" x2="390" y2="155" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-isp)"/>
+
+                        <rect x="280" y="130" width="110" height="50" rx="8" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="335" y="152" text-anchor="middle" font-size="10" fill="#c2185b" font-weight="700">Noise Reduction</text>
+                        <text x="335" y="167" text-anchor="middle" font-size="8" fill="#f06292">노이즈 제거</text>
+
+                        <line x1="280" y1="155" x2="255" y2="155" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-isp)"/>
+
+                        <rect x="145" y="130" width="110" height="50" rx="8" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="200" y="152" text-anchor="middle" font-size="10" fill="#c2185b" font-weight="700">Sharpening</text>
+                        <text x="200" y="167" text-anchor="middle" font-size="8" fill="#f06292">선명도 강화</text>
+
+                        <line x1="145" y1="155" x2="120" y2="155" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr-isp)"/>
+
+                        <rect x="10" y="130" width="110" height="50" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+                        <text x="65" y="152" text-anchor="middle" font-size="10" fill="#1b5e20" font-weight="700">RGB Output</text>
+                        <text x="65" y="167" text-anchor="middle" font-size="8" fill="#4caf50">최종 이미지</text>
+
+                        <!-- 범례 -->
+                        <rect x="30" y="220" width="14" height="14" rx="3" fill="#fff3e0" stroke="#ff9800" stroke-width="1"/>
+                        <text x="52" y="232" font-size="10" fill="#616161">입력/출력</text>
+                        <rect x="140" y="220" width="14" height="14" rx="3" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+                        <text x="162" y="232" font-size="10" fill="#616161">전처리 (Raw 도메인)</text>
+                        <rect x="310" y="220" width="14" height="14" rx="3" fill="#e8f5e9" stroke="#4caf50" stroke-width="1"/>
+                        <text x="332" y="232" font-size="10" fill="#616161">색상 변환</text>
+                        <rect x="430" y="220" width="14" height="14" rx="3" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1"/>
+                        <text x="452" y="232" font-size="10" fill="#616161">색상/밝기 보정</text>
+                        <rect x="580" y="220" width="14" height="14" rx="3" fill="#fce4ec" stroke="#e91e63" stroke-width="1"/>
+                        <text x="602" y="232" font-size="10" fill="#616161">후처리</text>
+
+                        <!-- 설명 -->
+                        <text x="390" y="270" text-anchor="middle" font-size="10" fill="#616161">각 단계의 순서가 중요하며, 파이프라인 구성은 센서/제조사에 따라 일부 차이가 있을 수 있다</text>
+                    </svg>
+                    <div class="caption">그림 1. ISP 파이프라인의 전체 처리 흐름</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>파이프라인 순서가 중요한 이유</strong>
+                        Black Level은 반드시 Demosaic 이전에 수행해야 한다. 오프셋이 남아있으면 보간 결과가 왜곡되기 때문이다. 마찬가지로 감마 보정은 색 보정(CCM) 이후에 적용해야 색 재현성이 유지된다.
+                    </div>
+                </div>
+
+                <!-- 3. Black Level 보정 -->
+                <h2 id="black-level"><i class="fa-solid fa-adjust"></i> Black Level 보정</h2>
+
+                <p>이미지 센서는 빛이 전혀 없는 상태에서도 0이 아닌 값을 출력한다. 이를 <strong>암전류(Dark Current)</strong>에 의한 오프셋이라 하며, Black Level 보정은 이 오프셋을 제거하는 첫 번째 단계이다.</p>
+
+                <h3 id="bl-ob"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> OB (Optical Black) 영역</h3>
+
+                <p>센서의 가장자리에는 빛이 차단된 <strong>OB(Optical Black) 픽셀</strong>이 배치되어 있다. 이 픽셀들은 항상 어두운 상태이므로, 여기서 측정된 평균값이 곧 현재 온도와 조건에서의 Black Level이 된다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 500 300" style="width:100%; max-width:500px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="250" y="22" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">센서의 OB 영역과 유효 화소 영역</text>
+
+                        <!-- 전체 센서 -->
+                        <rect x="40" y="40" width="420" height="240" rx="6" fill="#e0e0e0" stroke="#757575" stroke-width="2"/>
+                        <text x="250" y="58" text-anchor="middle" font-size="10" fill="#616161" font-weight="600">전체 센서 영역</text>
+
+                        <!-- OB 영역 (좌측) -->
+                        <rect x="50" y="70" width="40" height="200" rx="4" fill="#424242" stroke="#212121" stroke-width="1.5"/>
+                        <text x="70" y="170" text-anchor="middle" font-size="9" fill="#fff" font-weight="600" transform="rotate(-90, 70, 170)">OB 영역</text>
+
+                        <!-- OB 영역 (상단) -->
+                        <rect x="100" y="70" width="350" height="25" rx="4" fill="#424242" stroke="#212121" stroke-width="1.5"/>
+                        <text x="275" y="87" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">OB 영역 (상단)</text>
+
+                        <!-- 유효 화소 영역 -->
+                        <rect x="100" y="105" width="350" height="165" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="275" y="195" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">유효 화소 영역</text>
+                        <text x="275" y="212" text-anchor="middle" font-size="9" fill="#64b5f6">(실제 이미지가 기록되는 영역)</text>
+
+                        <!-- 수식 설명 -->
+                        <text x="250" y="292" text-anchor="middle" font-size="10" fill="#616161">보정된 값 = Raw 값 - OB 평균값</text>
+                    </svg>
+                    <div class="caption">그림 2. 센서 내 OB(Optical Black) 영역의 위치</div>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">암전류 (Dark Current)</span>
+                        <span class="term-desc">열에 의해 전자가 자연 발생하는 현상. 온도가 높을수록 커진다. 노출 시간이 길수록 축적량이 늘어난다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">OB Clamp</span>
+                        <span class="term-desc">OB 영역의 평균값을 실시간으로 계산하여 유효 화소에서 빼는 하드웨어 회로. 프레임마다 자동 보정한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Pedestal</span>
+                        <span class="term-desc">의도적으로 추가하는 작은 오프셋. Black Level 보정 후 값이 음수가 되는 것을 방지하기 위해 사용한다.</span>
+                    </div>
+                </div>
+
+                <!-- 4. 화이트밸런스 (AWB) -->
+                <h2 id="awb"><i class="fa-solid fa-palette"></i> 화이트밸런스 (AWB)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 화이트밸런스 (White Balance)</div>
+                    <p>조명의 색온도에 관계없이 흰색이 흰색으로 보이도록 R/G/B 채널의 게인을 조정하는 과정. 사람의 눈은 자동으로 색 순응(Chromatic Adaptation)을 하지만, 센서는 조명의 색온도가 그대로 반영되어 이미지 전체가 편향된 색을 띤다.</p>
+                </div>
+
+                <h3 id="awb-gray-world"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Gray World 가정</h3>
+
+                <p>가장 간단한 AWB 알고리즘은 <strong>Gray World 가정</strong>이다. "장면 전체의 평균 색상은 회색(Gray)이다"라는 가정 아래, R/G/B 채널의 평균값이 같아지도록 게인을 조정한다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-calculator"></i> Gray World 게인 계산</div>
+                    <p>G 채널을 기준으로 R, B 채널의 게인을 계산한다:</p>
+                    <ul style="margin-top:8px; font-size:0.9rem; color:var(--text-sub);">
+                        <li><code>Gain_R = Avg_G / Avg_R</code></li>
+                        <li><code>Gain_B = Avg_G / Avg_B</code></li>
+                        <li><code>Gain_G = 1.0</code> (기준 채널)</li>
+                    </ul>
+                    <p style="margin-top:8px; font-size:0.88rem; color:var(--text-muted);">예: R 평균이 80, G 평균이 120, B 평균이 100이면 → Gain_R = 1.5, Gain_B = 1.2</p>
+                </div>
+
+                <h3 id="awb-manual"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 수동 화이트밸런스</h3>
+
+                <p>산업용 카메라에서는 조명 환경이 일정하므로 <strong>수동(Manual) 화이트밸런스</strong>를 더 자주 사용한다. 흰색 기준 타겟(White Reference)을 촬영하여 게인 값을 한 번 설정하면, 이후 동일 조건에서 안정적인 색상을 유지할 수 있다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>AWB의 함정</strong>
+                        자동 화이트밸런스(AWB)는 장면의 색 분포가 균일하지 않으면 오동작한다. 예를 들어 빨간 제품만 가득한 장면에서는 AWB가 빨간색을 줄이려 하여 색이 왜곡된다. 산업용에서는 반드시 수동 설정을 권장한다.
+                    </div>
+                </div>
+
+                <!-- 5. 색상 보정 매트릭스 (CCM) -->
+                <h2 id="ccm"><i class="fa-solid fa-table-cells"></i> 색상 보정 매트릭스 (CCM)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> CCM (Color Correction Matrix)</div>
+                    <p>센서의 컬러 필터는 이상적인 R/G/B 응답 특성을 갖지 못한다. 각 필터의 파장 투과율이 겹치기 때문에 채널 간 색상 누설(crosstalk)이 발생한다. CCM은 이를 보정하기 위해 <strong>3x3 행렬</strong>을 적용하여 색 재현성을 높인다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 600 180" style="width:100%; max-width:600px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="300" y="22" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">CCM 행렬 연산</text>
+
+                        <!-- 출력 벡터 -->
+                        <text x="30" y="70" font-size="12" fill="#7b1fa2" font-weight="700">[R']</text>
+                        <text x="30" y="95" font-size="12" fill="#7b1fa2" font-weight="700">[G']</text>
+                        <text x="30" y="120" font-size="12" fill="#7b1fa2" font-weight="700">[B']</text>
+
+                        <text x="70" y="95" font-size="16" fill="#616161" font-weight="700">=</text>
+
+                        <!-- 3x3 매트릭스 -->
+                        <rect x="90" y="50" width="200" height="85" rx="6" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="120" y="75" font-size="11" fill="#7b1fa2" font-weight="600">C11  C12  C13</text>
+                        <text x="120" y="97" font-size="11" fill="#7b1fa2" font-weight="600">C21  C22  C23</text>
+                        <text x="120" y="119" font-size="11" fill="#7b1fa2" font-weight="600">C31  C32  C33</text>
+
+                        <text x="305" y="95" font-size="16" fill="#616161" font-weight="700">x</text>
+
+                        <!-- 입력 벡터 -->
+                        <text x="330" y="70" font-size="12" fill="#1565c0" font-weight="700">[R]</text>
+                        <text x="330" y="95" font-size="12" fill="#1565c0" font-weight="700">[G]</text>
+                        <text x="330" y="120" font-size="12" fill="#1565c0" font-weight="700">[B]</text>
+
+                        <!-- 설명 -->
+                        <text x="300" y="165" text-anchor="middle" font-size="10" fill="#616161">대각 성분(C11, C22, C33)은 해당 채널 강도, 비대각 성분은 채널 간 보정량</text>
+                    </svg>
+                    <div class="caption">그림 3. CCM 3x3 행렬에 의한 색상 보정</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>CCM 캘리브레이션</strong>
+                        CCM 계수는 ColorChecker 같은 표준 색 차트를 촬영한 뒤, 측정값과 기준값의 차이를 최소화하도록 최적화(Least Squares)하여 결정한다. 센서마다, 조명마다 다른 CCM이 필요하다.
+                    </div>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>행렬 성분</th>
+                            <th>역할</th>
+                            <th>일반적인 값 범위</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">대각 성분 (C11, C22, C33)</td>
+                            <td>해당 채널의 게인. 1보다 크면 강화</td>
+                            <td>1.0 ~ 2.0</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">비대각 성분</td>
+                            <td>채널 간 crosstalk 보정. 음수가 일반적</td>
+                            <td>-0.5 ~ 0.0</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">행 합 (Row Sum)</td>
+                            <td>전체 밝기 유지를 위해 각 행의 합이 ~1.0</td>
+                            <td>0.9 ~ 1.1</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 6. 감마 보정 -->
+                <h2 id="gamma"><i class="fa-solid fa-chart-line"></i> 감마 보정</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 감마 보정 (Gamma Correction)</div>
+                    <p>이미지 센서의 출력은 빛의 양에 비례하는 선형(Linear) 값이지만, 사람의 눈은 어두운 영역의 변화에 더 민감하다. 감마 보정은 이 차이를 보상하기 위해 <strong>비선형(Non-linear) 변환</strong>을 적용하여, 제한된 비트 수로도 인간의 시각 특성에 맞는 밝기 분포를 만든다.</p>
+                </div>
+
+                <h3 id="gamma-srgb"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> sRGB 감마</h3>
+
+                <p>가장 널리 쓰이는 표준은 <strong>sRGB 감마</strong>로, 대략 <code>Output = Input^(1/2.2)</code>의 관계를 가진다. 이 변환을 거치면 어두운 영역에 더 많은 코드값이 할당되어 인간의 시각 특성에 맞는 자연스러운 이미지가 된다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 500 320" style="width:100%; max-width:500px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="250" y="22" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">감마 커브 비교</text>
+
+                        <!-- 축 -->
+                        <line x1="80" y1="270" x2="430" y2="270" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <line x1="80" y1="270" x2="80" y2="50" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <text x="250" y="298" text-anchor="middle" font-size="10" fill="#616161">입력 (Linear)</text>
+                        <text x="50" y="160" text-anchor="middle" font-size="10" fill="#616161" transform="rotate(-90, 50, 160)">출력</text>
+                        <text x="80" y="285" font-size="9" fill="#9e9e9e">0</text>
+                        <text x="425" y="285" font-size="9" fill="#9e9e9e">1.0</text>
+                        <text x="65" y="55" font-size="9" fill="#9e9e9e">1.0</text>
+
+                        <!-- Linear (gamma=1) -->
+                        <line x1="80" y1="270" x2="430" y2="50" stroke="#9e9e9e" stroke-width="1.5" stroke-dasharray="6,4"/>
+                        <text x="380" y="110" font-size="10" fill="#9e9e9e" font-weight="600">Linear (y=1)</text>
+
+                        <!-- Gamma 1/2.2 (encoding) -->
+                        <path d="M80,270 Q150,100 250,80 Q350,65 430,50" fill="none" stroke="#2e7d32" stroke-width="2.5"/>
+                        <text x="170" y="95" font-size="10" fill="#2e7d32" font-weight="600">y = 1/2.2</text>
+                        <text x="170" y="108" font-size="9" fill="#4caf50">(감마 인코딩)</text>
+
+                        <!-- Gamma 2.2 (decoding) -->
+                        <path d="M80,270 Q200,260 300,230 Q380,190 430,50" fill="none" stroke="#c2185b" stroke-width="2.5"/>
+                        <text x="350" y="225" font-size="10" fill="#c2185b" font-weight="600">y = 2.2</text>
+                        <text x="350" y="238" font-size="9" fill="#e91e63">(모니터 특성)</text>
+                    </svg>
+                    <div class="caption">그림 4. 감마 인코딩(1/2.2)과 디코딩(2.2) 커브</div>
+                </div>
+
+                <h3 id="gamma-lut"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> LUT (Look-Up Table)</h3>
+
+                <p>감마 변환은 수학적으로 거듭제곱 연산이지만, 실시간 처리를 위해 대부분 <strong>LUT(Look-Up Table)</strong>로 구현한다. 입력값(예: 0~4095)을 인덱스로 사용하여 미리 계산된 출력값을 즉시 읽어오는 방식으로, 하드웨어 ISP에서는 1 클럭 만에 변환이 완료된다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>커스텀 LUT 활용</strong>
+                        감마 LUT를 사용자가 직접 설정할 수 있는 카메라도 많다. 특정 밝기 구간의 대비를 높이거나, 비선형 센서 응답을 선형으로 교정하는 데 활용할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 7. 노이즈 제거와 샤프닝 -->
+                <h2 id="nr-sharpen"><i class="fa-solid fa-wand-magic-sparkles"></i> 노이즈 제거와 샤프닝</h2>
+
+                <h3 id="nr-spatial"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Spatial NR (공간 노이즈 제거)</h3>
+
+                <p>한 프레임 내에서 주변 픽셀들의 값을 참고하여 노이즈를 줄이는 방식이다. 대표적으로 <strong>Bilateral Filter</strong>가 있으며, 밝기 차이가 작은 이웃 픽셀만 평균에 포함시켜 엣지(Edge)는 보존하면서 노이즈를 제거한다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-border-all" style="color:#1565c0;"></i> Spatial NR</h4>
+                        <ul>
+                            <li>한 프레임 내 공간적 필터링</li>
+                            <li>Gaussian, Bilateral, NLM 등</li>
+                            <li>강하게 적용하면 디테일 손실</li>
+                            <li>구현이 비교적 단순</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-layer-group" style="color:#9c27b0;"></i> Temporal NR</h4>
+                        <ul>
+                            <li>여러 프레임을 시간축으로 평균</li>
+                            <li>랜덤 노이즈가 상쇄됨</li>
+                            <li>움직이는 물체에 잔상 발생</li>
+                            <li>프레임 버퍼 메모리 필요</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 id="nr-sharpen-detail"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Unsharp Mask (샤프닝)</h3>
+
+                <p>노이즈 제거 후 약간 흐려진 이미지의 선명도를 회복하기 위해 <strong>Unsharp Mask</strong>를 적용한다. 원리는 간단하다:</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-calculator"></i> Unsharp Mask 공식</div>
+                    <ol style="margin-top:8px; font-size:0.9rem; color:var(--text-sub);">
+                        <li>원본 이미지를 블러(Blur) 처리하여 저주파 성분을 추출</li>
+                        <li>원본에서 블러 이미지를 빼면 고주파 성분(엣지)만 남음</li>
+                        <li>이 고주파 성분을 원본에 다시 더하면 엣지가 강조됨</li>
+                    </ol>
+                    <p style="margin-top:10px; font-size:0.88rem; color:var(--text-muted);"><code>Sharpened = Original + Amount * (Original - Blurred)</code></p>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>NR과 샤프닝은 트레이드오프 관계</strong>
+                        노이즈 제거를 강하게 하면 디테일이 손실되고, 샤프닝을 강하게 하면 노이즈까지 증폭된다. ISP 튜닝에서 가장 어려운 부분이 바로 이 두 파라미터의 균형을 맞추는 것이다.
+                    </div>
+                </div>
+
+                <!-- 8. 산업용 vs 소비자용 ISP 차이 -->
+                <h2 id="industrial-vs-consumer"><i class="fa-solid fa-industry"></i> 산업용 vs 소비자용 ISP 차이</h2>
+
+                <p>스마트폰이나 디지털 카메라는 "보기 좋은 사진"을 목표로 ISP의 모든 기능을 최대한 활용한다. 반면 산업용 머신비전에서는 <strong>"정확한 측정"</strong>이 목표이므로 ISP를 최소화하거나 완전히 비활성화하는 경우가 많다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>소비자용 (스마트폰/카메라)</th>
+                            <th>산업용 (머신비전)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">목표</td>
+                            <td>보기 좋은 이미지</td>
+                            <td>정확한 측정/판정</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">ISP 사용</td>
+                            <td>모든 단계 활성화, 자동 조정</td>
+                            <td>최소화 또는 비활성화</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">출력 형식</td>
+                            <td>JPEG/HEIF (8bit 압축)</td>
+                            <td>Raw / Mono8 / BayerRG8 등</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">화이트밸런스</td>
+                            <td>AWB (자동)</td>
+                            <td>수동 설정 또는 비활성화</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">감마</td>
+                            <td>sRGB 감마 적용</td>
+                            <td>Linear (감마 1.0) 선호</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">노이즈 제거</td>
+                            <td>강하게 적용 (AI 기반 포함)</td>
+                            <td>비활성화 또는 최소</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">샤프닝</td>
+                            <td>적극 적용</td>
+                            <td>비활성화</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="why-raw"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 머신비전에서 Raw를 선호하는 이유</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">선형성 보존</span>
+                        <span class="term-desc">감마가 적용되면 밝기와 픽셀값의 관계가 비선형이 되어, 밝기 기반 측정(예: 결함 검출 임계값)이 부정확해진다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">데이터 무손실</span>
+                        <span class="term-desc">ISP 처리 과정에서 클리핑(Clipping)이나 반올림에 의한 정보 손실이 발생한다. Raw 데이터는 센서가 캡처한 원본 그대로이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">재현성</span>
+                        <span class="term-desc">AWB, NR 등 자동 처리는 장면에 따라 결과가 달라진다. 동일 조건에서 항상 같은 결과를 얻으려면 ISP를 고정하거나 꺼야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">후처리 자유도</span>
+                        <span class="term-desc">PC에서 소프트웨어로 필요한 처리만 선택적으로 적용할 수 있어 검사 알고리즘에 최적화된 이미지를 만들 수 있다.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>ISP를 켜야 할 때도 있다</strong>
+                        컬러 매칭 검사, 인쇄물 색상 검사 등에서는 ISP의 CCM과 화이트밸런스가 필수이다. 중요한 것은 목적에 맞게 ISP의 각 단계를 선택적으로 활성화/비활성화하는 것이다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Ramanath, R. et al. — "Color Image Processing Pipeline" (IEEE Signal Processing Magazine)</li>
+                        <li>EMVA — "GenICam Standard Features Naming Convention" (ISP 관련 파라미터)</li>
+                        <li>IEC 61966-2-1 — sRGB 색 공간 표준</li>
+                        <li>Kasson, J. M. & Plouffe, W. — "An Analysis of Selected Computer Interchange Color Spaces"</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-sensor"><i class="fa-solid fa-arrow-left"></i> 센서/ISP 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-sensor');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-sensor');
+</script>
+
+</body>
+</html>

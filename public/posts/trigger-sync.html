@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>트리거 신호와 동기화 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#trigger-what" data-section="trigger-what">트리거란?</a>
+        <a href="#hw-vs-sw" data-section="hw-vs-sw">HW vs SW 트리거</a>
+        <a href="#signal-types" data-section="signal-types">트리거 신호 종류</a>
+        <a href="#sync-config" data-section="sync-config">동기화 구성</a>
+        <a href="#linescan-encoder" data-section="linescan-encoder">라인스캔 인코더</a>
+        <a href="#multi-camera" data-section="multi-camera">멀티 카메라 동기화</a>
+        <a href="#troubleshooting" data-section="troubleshooting">트러블슈팅</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">통신/인터페이스</span>
+                </div>
+                <h1>트리거 신호와 동기화</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 8 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>트리거의 개념과 하드웨어/소프트웨어 트리거 비교</li>
+                        <li>Rising Edge, Falling Edge, Level, Pulse Width 등 트리거 신호 종류</li>
+                        <li>카메라 + 조명 + 인코더 동기화 타이밍 구성</li>
+                        <li>라인스캔 인코더(A/B/Z) 신호와 Line Rate 계산</li>
+                        <li>PTP, 액션 커맨드를 이용한 멀티 카메라 동기화</li>
+                        <li>노출 타이밍, 조명 깜빡임, 인코더 노이즈 트러블슈팅</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#trigger-what">트리거란?</a></li>
+                        <li><a href="#hw-vs-sw">하드웨어 트리거 vs 소프트웨어 트리거</a></li>
+                        <li><a href="#signal-types">트리거 신호 종류</a></li>
+                        <li><a href="#sync-config">동기화 구성</a></li>
+                        <li><a href="#linescan-encoder">라인스캔 인코더 동기화</a></li>
+                        <li><a href="#multi-camera">멀티 카메라 동기화</a></li>
+                        <li><a href="#troubleshooting">트러블슈팅</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 트리거란? -->
+                <h2 id="trigger-what"><i class="fa-solid fa-bolt"></i> 트리거란?</h2>
+
+                <p>트리거(Trigger)란 <strong>외부 이벤트를 기준으로 카메라의 촬영 타이밍을 제어</strong>하는 메커니즘이다. 자유 실행(Free-run) 모드에서는 카메라가 자체 클럭에 따라 연속 촬영하지만, 트리거 모드에서는 특정 신호가 들어올 때만 이미지를 획득한다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 트리거가 필요한가?</div>
+                    <p>생산라인에서 제품이 일정한 속도로 이동할 때, 정확한 위치에서 촬영해야 검사 정밀도가 보장된다. 트리거 없이 자유 실행하면 제품 위치와 촬영 타이밍이 어긋나 불량 오검출이 발생한다. 센서, PLC, 인코더 등 외부 장치에서 "지금 찍어라"라는 신호를 보내면, 카메라가 정확한 순간에 노출을 시작한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs><marker id="arr1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#3a9a3e"/></marker></defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">Free-run vs Trigger 모드</text>
+
+                        <!-- Free-run -->
+                        <rect x="30" y="45" width="290" height="130" rx="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="175" y="68" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">Free-run 모드</text>
+                        <line x1="50" y1="90" x2="300" y2="90" stroke="#90caf9" stroke-width="1.5"/>
+                        <rect x="55" y="95" width="35" height="20" rx="3" fill="#64b5f6" opacity="0.7"/><text x="72" y="109" text-anchor="middle" font-size="8" fill="white">F1</text>
+                        <rect x="95" y="95" width="35" height="20" rx="3" fill="#64b5f6" opacity="0.7"/><text x="112" y="109" text-anchor="middle" font-size="8" fill="white">F2</text>
+                        <rect x="135" y="95" width="35" height="20" rx="3" fill="#64b5f6" opacity="0.7"/><text x="152" y="109" text-anchor="middle" font-size="8" fill="white">F3</text>
+                        <rect x="175" y="95" width="35" height="20" rx="3" fill="#64b5f6" opacity="0.7"/><text x="192" y="109" text-anchor="middle" font-size="8" fill="white">F4</text>
+                        <rect x="215" y="95" width="35" height="20" rx="3" fill="#64b5f6" opacity="0.7"/><text x="232" y="109" text-anchor="middle" font-size="8" fill="white">F5</text>
+                        <rect x="255" y="95" width="35" height="20" rx="3" fill="#64b5f6" opacity="0.7"/><text x="272" y="109" text-anchor="middle" font-size="8" fill="white">F6</text>
+                        <text x="175" y="145" text-anchor="middle" font-size="10" fill="#1565c0">일정 주기로 연속 촬영</text>
+                        <text x="175" y="162" text-anchor="middle" font-size="9" fill="#64b5f6">제품 위치와 무관</text>
+
+                        <!-- Trigger -->
+                        <rect x="380" y="45" width="290" height="130" rx="12" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="525" y="68" text-anchor="middle" font-size="12" fill="#2e7d32" font-weight="700">Trigger 모드</text>
+                        <line x1="400" y1="90" x2="650" y2="90" stroke="#a5d6a7" stroke-width="1.5"/>
+                        <!-- trigger pulses -->
+                        <line x1="420" y1="90" x2="420" y2="80" stroke="#f44336" stroke-width="2"/>
+                        <text x="420" y="77" text-anchor="middle" font-size="7" fill="#f44336">T</text>
+                        <rect x="417" y="95" width="35" height="20" rx="3" fill="#66bb6a" opacity="0.8"/><text x="434" y="109" text-anchor="middle" font-size="8" fill="white">F1</text>
+                        <line x1="500" y1="90" x2="500" y2="80" stroke="#f44336" stroke-width="2"/>
+                        <text x="500" y="77" text-anchor="middle" font-size="7" fill="#f44336">T</text>
+                        <rect x="497" y="95" width="35" height="20" rx="3" fill="#66bb6a" opacity="0.8"/><text x="514" y="109" text-anchor="middle" font-size="8" fill="white">F2</text>
+                        <line x1="605" y1="90" x2="605" y2="80" stroke="#f44336" stroke-width="2"/>
+                        <text x="605" y="77" text-anchor="middle" font-size="7" fill="#f44336">T</text>
+                        <rect x="602" y="95" width="35" height="20" rx="3" fill="#66bb6a" opacity="0.8"/><text x="619" y="109" text-anchor="middle" font-size="8" fill="white">F3</text>
+                        <text x="525" y="145" text-anchor="middle" font-size="10" fill="#2e7d32">신호(T)가 올 때만 촬영</text>
+                        <text x="525" y="162" text-anchor="middle" font-size="9" fill="#66bb6a">제품 위치와 정확히 동기</text>
+                    </svg>
+                    <div class="caption">그림 1. Free-run 모드와 Trigger 모드의 차이</div>
+                </div>
+
+                <!-- 2. 하드웨어 트리거 vs 소프트웨어 트리거 -->
+                <h2 id="hw-vs-sw"><i class="fa-solid fa-microchip"></i> 하드웨어 트리거 vs 소프트웨어 트리거</h2>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#1565c0; font-size:0.5rem;"></i> 하드웨어 트리거 (HW Trigger)</h4>
+                        <ul>
+                            <li><strong>방식</strong> — 카메라 GPIO 핀에 전기 신호 입력</li>
+                            <li><strong>지연</strong> — 수 us (마이크로초) 이내</li>
+                            <li><strong>정밀도</strong> — 매우 높음 (전기 신호 기반)</li>
+                            <li><strong>소스</strong> — 센서, PLC, 인코더, 타이머</li>
+                            <li><strong>용도</strong> — 고속 라인, 정밀 위치 동기화</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#9c27b0; font-size:0.5rem;"></i> 소프트웨어 트리거 (SW Trigger)</h4>
+                        <ul>
+                            <li><strong>방식</strong> — API 명령으로 촬영 지시</li>
+                            <li><strong>지연</strong> — 수 ms (밀리초) 수준</li>
+                            <li><strong>정밀도</strong> — 낮음 (네트워크/USB 지연 포함)</li>
+                            <li><strong>소스</strong> — PC 소프트웨어, SDK 호출</li>
+                            <li><strong>용도</strong> — 저속 검사, 수동 트리거, 테스트</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>하드웨어 트리거</th>
+                            <th>소프트웨어 트리거</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">지연 시간</td>
+                            <td>1~20 us</td>
+                            <td>1~50 ms</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">지터(Jitter)</td>
+                            <td>< 1 us</td>
+                            <td>수 ms (불확정)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">배선</td>
+                            <td>GPIO 케이블 필요</td>
+                            <td>통신 케이블만 사용</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">동기화 정밀도</td>
+                            <td>매우 높음</td>
+                            <td>낮음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">구현 난이도</td>
+                            <td>배선 설계 필요</td>
+                            <td>API 호출만으로 간단</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">적합한 환경</td>
+                            <td>고속 생산라인</td>
+                            <td>실험실, 저속 검사</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>GenICam의 트리거 관련 레지스터</strong>
+                        GenICam 표준에서는 <code>TriggerMode</code>, <code>TriggerSource</code>, <code>TriggerActivation</code> 등의 레지스터로 트리거를 설정한다. 예를 들어 <code>TriggerSource = Line0</code>이면 GPIO Line0 핀에서 하드웨어 트리거를 받겠다는 의미이다.
+                    </div>
+                </div>
+
+                <!-- 3. 트리거 신호 종류 -->
+                <h2 id="signal-types"><i class="fa-solid fa-wave-square"></i> 트리거 신호 종류</h2>
+
+                <p>하드웨어 트리거 신호는 전압의 변화 패턴에 따라 여러 종류로 나뉜다. <code>TriggerActivation</code> 레지스터에서 설정하며, 센서나 PLC의 출력 특성에 맞게 선택해야 한다.</p>
+
+                <h3 id="signal-edge"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Rising Edge / Falling Edge</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 220" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">Edge 트리거 신호</text>
+
+                        <!-- Rising Edge -->
+                        <text x="175" y="50" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">Rising Edge (상승 에지)</text>
+                        <!-- signal line -->
+                        <polyline points="40,140 100,140 100,80 200,80 200,140 280,140 280,80 340,80" fill="none" stroke="#1565c0" stroke-width="2.5"/>
+                        <!-- trigger arrows -->
+                        <line x1="100" y1="150" x2="100" y2="160" stroke="#f44336" stroke-width="2"/>
+                        <polygon points="96,165 104,165 100,173" fill="#f44336"/>
+                        <text x="100" y="185" text-anchor="middle" font-size="9" fill="#f44336" font-weight="600">Trigger!</text>
+                        <line x1="280" y1="150" x2="280" y2="160" stroke="#f44336" stroke-width="2"/>
+                        <polygon points="276,165 284,165 280,173" fill="#f44336"/>
+                        <text x="280" y="185" text-anchor="middle" font-size="9" fill="#f44336" font-weight="600">Trigger!</text>
+                        <!-- labels -->
+                        <text x="40" y="75" font-size="9" fill="#90caf9">HIGH</text>
+                        <text x="40" y="138" font-size="9" fill="#90caf9">LOW</text>
+                        <text x="175" y="210" text-anchor="middle" font-size="9" fill="#616161">LOW->HIGH 전환 시 트리거 발생</text>
+
+                        <!-- Falling Edge -->
+                        <text x="525" y="50" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">Falling Edge (하강 에지)</text>
+                        <polyline points="390,80 450,80 450,140 550,140 550,80 630,80 630,140 670,140" fill="none" stroke="#2e7d32" stroke-width="2.5"/>
+                        <!-- trigger arrows -->
+                        <line x1="450" y1="150" x2="450" y2="160" stroke="#f44336" stroke-width="2"/>
+                        <polygon points="446,165 454,165 450,173" fill="#f44336"/>
+                        <text x="450" y="185" text-anchor="middle" font-size="9" fill="#f44336" font-weight="600">Trigger!</text>
+                        <line x1="630" y1="150" x2="630" y2="160" stroke="#f44336" stroke-width="2"/>
+                        <polygon points="626,165 634,165 630,173" fill="#f44336"/>
+                        <text x="630" y="185" text-anchor="middle" font-size="9" fill="#f44336" font-weight="600">Trigger!</text>
+                        <text x="390" y="75" font-size="9" fill="#a5d6a7">HIGH</text>
+                        <text x="390" y="138" font-size="9" fill="#a5d6a7">LOW</text>
+                        <text x="525" y="210" text-anchor="middle" font-size="9" fill="#616161">HIGH->LOW 전환 시 트리거 발생</text>
+                    </svg>
+                    <div class="caption">그림 2. Rising Edge와 Falling Edge 트리거</div>
+                </div>
+
+                <h3 id="signal-level"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Level / Pulse Width</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 220" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">Level / Pulse Width 트리거</text>
+
+                        <!-- Level Trigger -->
+                        <text x="175" y="50" text-anchor="middle" font-size="11" fill="#9c27b0" font-weight="700">Level High 트리거</text>
+                        <polyline points="40,140 80,140 80,80 220,80 220,140 300,140" fill="none" stroke="#9c27b0" stroke-width="2.5"/>
+                        <!-- active region -->
+                        <rect x="80" y="75" width="140" height="10" rx="2" fill="#ce93d8" opacity="0.5"/>
+                        <text x="150" y="110" text-anchor="middle" font-size="9" fill="#7b1fa2" font-weight="600">노출 지속</text>
+                        <line x1="80" y1="155" x2="220" y2="155" stroke="#f44336" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <text x="150" y="175" text-anchor="middle" font-size="9" fill="#f44336">HIGH 구간 동안 노출</text>
+                        <text x="175" y="210" text-anchor="middle" font-size="9" fill="#616161">신호가 HIGH인 동안 계속 노출</text>
+
+                        <!-- Pulse Width -->
+                        <text x="525" y="50" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">Pulse Width 필터</text>
+                        <polyline points="390,140 420,140 420,80 450,80 450,140 510,140 510,80 590,80 590,140 650,140" fill="none" stroke="#e65100" stroke-width="2.5"/>
+                        <!-- short pulse X -->
+                        <text x="435" y="110" text-anchor="middle" font-size="16" fill="#f44336" font-weight="700">X</text>
+                        <text x="435" y="175" text-anchor="middle" font-size="8" fill="#f44336">짧은 펄스 무시</text>
+                        <!-- long pulse OK -->
+                        <text x="550" y="110" text-anchor="middle" font-size="14" fill="#4caf50" font-weight="700">OK</text>
+                        <text x="550" y="175" text-anchor="middle" font-size="8" fill="#4caf50">설정값 이상만 인식</text>
+                        <!-- width markers -->
+                        <line x1="510" y1="72" x2="590" y2="72" stroke="#e65100" stroke-width="1"/>
+                        <line x1="510" y1="69" x2="510" y2="75" stroke="#e65100" stroke-width="1"/>
+                        <line x1="590" y1="69" x2="590" y2="75" stroke="#e65100" stroke-width="1"/>
+                        <text x="550" y="68" text-anchor="middle" font-size="8" fill="#e65100">min width</text>
+                        <text x="525" y="210" text-anchor="middle" font-size="9" fill="#616161">최소 펄스 폭 이상만 트리거 인정</text>
+                    </svg>
+                    <div class="caption">그림 3. Level 트리거와 Pulse Width 필터링</div>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">Rising Edge</span>
+                        <span class="term-desc">LOW에서 HIGH로 전환되는 순간 트리거. 가장 많이 사용되는 기본 방식.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Falling Edge</span>
+                        <span class="term-desc">HIGH에서 LOW로 전환되는 순간 트리거. NPN 센서 출력에 적합.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Level High</span>
+                        <span class="term-desc">HIGH 상태가 유지되는 동안 노출. 노출 시간을 외부에서 직접 제어할 때 사용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Pulse Width</span>
+                        <span class="term-desc">설정한 최소 펄스 폭 이상의 신호만 트리거로 인식. 노이즈 필터링 용도.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Any Edge</span>
+                        <span class="term-desc">상승/하강 에지 모두에서 트리거. 인코더 분해능을 2배로 사용할 때 활용.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>NPN vs PNP 센서와 트리거 방향</strong>
+                        NPN(싱크) 센서는 감지 시 출력이 LOW로 떨어지므로 Falling Edge를 사용하고, PNP(소스) 센서는 감지 시 HIGH로 올라가므로 Rising Edge를 사용한다. 센서 출력 타입을 반드시 확인한 후 트리거 방향을 설정해야 한다.
+                    </div>
+                </div>
+
+                <!-- 4. 동기화 구성 -->
+                <h2 id="sync-config"><i class="fa-solid fa-diagram-project"></i> 동기화 구성</h2>
+
+                <p>머신비전 검사에서는 카메라, 조명, 인코더가 동시에 동작해야 한다. 제품이 센서를 지나가면 PLC가 트리거를 발생시키고, 카메라는 노출을 시작하며, 조명 컨트롤러는 스트로브 조명을 점등한다. 이 과정이 <strong>마이크로초 단위</strong>로 정밀하게 맞아야 한다.</p>
+
+                <h3 id="sync-timing"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 타이밍 다이어그램</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 340" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">카메라 + 조명 동기화 타이밍</text>
+
+                        <!-- Time axis -->
+                        <line x1="120" y1="310" x2="670" y2="310" stroke="#bdbdbd" stroke-width="1.5"/>
+                        <text x="670" y="325" text-anchor="end" font-size="10" fill="#9e9e9e">Time</text>
+
+                        <!-- Labels -->
+                        <text x="10" y="65" font-size="11" fill="#616161" font-weight="600">트리거 신호</text>
+                        <text x="10" y="130" font-size="11" fill="#616161" font-weight="600">카메라 노출</text>
+                        <text x="10" y="195" font-size="11" fill="#616161" font-weight="600">스트로브 조명</text>
+                        <text x="10" y="260" font-size="11" fill="#616161" font-weight="600">데이터 전송</text>
+
+                        <!-- Trigger signal -->
+                        <polyline points="120,80 200,80 200,45 205,45 205,80 500,80 500,45 505,45 505,80 660,80" fill="none" stroke="#f44336" stroke-width="2"/>
+
+                        <!-- Exposure -->
+                        <line x1="120" y1="140" x2="210" y2="140" stroke="#1565c0" stroke-width="2"/>
+                        <rect x="210" y="115" width="150" height="25" rx="4" fill="#42a5f5" opacity="0.7"/>
+                        <text x="285" y="132" text-anchor="middle" font-size="9" fill="white" font-weight="600">Exposure Time</text>
+                        <line x1="360" y1="140" x2="510" y2="140" stroke="#1565c0" stroke-width="2"/>
+                        <rect x="510" y="115" width="150" height="25" rx="4" fill="#42a5f5" opacity="0.7"/>
+                        <text x="585" y="132" text-anchor="middle" font-size="9" fill="white" font-weight="600">Exposure Time</text>
+
+                        <!-- Strobe -->
+                        <line x1="120" y1="205" x2="215" y2="205" stroke="#ff9800" stroke-width="2"/>
+                        <rect x="215" y="180" width="140" height="25" rx="4" fill="#ffa726" opacity="0.7"/>
+                        <text x="285" y="197" text-anchor="middle" font-size="9" fill="white" font-weight="600">Strobe ON</text>
+                        <line x1="355" y1="205" x2="515" y2="205" stroke="#ff9800" stroke-width="2"/>
+                        <rect x="515" y="180" width="140" height="25" rx="4" fill="#ffa726" opacity="0.7"/>
+                        <text x="585" y="197" text-anchor="middle" font-size="9" fill="white" font-weight="600">Strobe ON</text>
+
+                        <!-- Data transfer -->
+                        <line x1="120" y1="270" x2="365" y2="270" stroke="#4caf50" stroke-width="2"/>
+                        <rect x="365" y="250" width="130" height="25" rx="4" fill="#66bb6a" opacity="0.7"/>
+                        <text x="430" y="267" text-anchor="middle" font-size="9" fill="white" font-weight="600">Readout</text>
+
+                        <!-- Delay arrows -->
+                        <line x1="205" y1="90" x2="210" y2="110" stroke="#757575" stroke-width="1" stroke-dasharray="3,2"/>
+                        <text x="220" y="102" font-size="8" fill="#757575">Trigger Delay</text>
+                        <line x1="210" y1="142" x2="215" y2="175" stroke="#757575" stroke-width="1" stroke-dasharray="3,2"/>
+                        <text x="230" y="165" font-size="8" fill="#757575">Strobe Delay</text>
+                    </svg>
+                    <div class="caption">그림 4. 트리거 -> 노출 -> 조명 -> 데이터 전송 타이밍 다이어그램</div>
+                </div>
+
+                <h3 id="sync-strobe"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스트로브 조명 동기화</h3>
+
+                <p>카메라의 <code>ExposureActive</code> 출력 신호를 조명 컨트롤러의 트리거 입력에 연결하면, 노출이 시작될 때 자동으로 조명이 켜진다. 이 방식을 <strong>스트로브(Strobe)</strong> 모드라 한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>스트로브 조명의 장점</strong>
+                        상시 점등 대비 2~5배 높은 광량으로 짧은 노출에서도 충분한 밝기를 확보할 수 있다. LED 수명도 크게 늘어나며, 열 발생도 줄어든다. 고속 라인에서는 스트로브가 사실상 필수이다.
+                    </div>
+                </div>
+
+                <h3 id="sync-wiring"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본 배선 구성</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 250" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                            <marker id="arr3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#ff9800"/></marker>
+                            <marker id="arr4" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#4caf50"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">기본 트리거 배선 구성</text>
+
+                        <!-- Sensor -->
+                        <rect x="30" y="90" width="100" height="60" rx="10" fill="#ffebee" stroke="#f44336" stroke-width="2"/>
+                        <text x="80" y="118" text-anchor="middle" font-size="11" fill="#c62828" font-weight="700">센서</text>
+                        <text x="80" y="135" text-anchor="middle" font-size="9" fill="#e57373">근접/광전</text>
+
+                        <!-- PLC -->
+                        <rect x="200" y="90" width="100" height="60" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="250" y="118" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">PLC</text>
+                        <text x="250" y="135" text-anchor="middle" font-size="9" fill="#64b5f6">트리거 분배</text>
+
+                        <!-- Camera -->
+                        <rect x="400" y="50" width="120" height="60" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="460" y="78" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">카메라</text>
+                        <text x="460" y="95" text-anchor="middle" font-size="9" fill="#66bb6a">GPIO IN</text>
+
+                        <!-- Light Controller -->
+                        <rect x="400" y="140" width="120" height="60" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="460" y="168" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">조명 컨트롤러</text>
+                        <text x="460" y="185" text-anchor="middle" font-size="9" fill="#ffa726">스트로브</text>
+
+                        <!-- PC -->
+                        <rect x="590" y="90" width="90" height="60" rx="10" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="635" y="118" text-anchor="middle" font-size="11" fill="#7b1fa2" font-weight="700">PC</text>
+                        <text x="635" y="135" text-anchor="middle" font-size="9" fill="#ba68c8">이미지 수신</text>
+
+                        <!-- Arrows -->
+                        <line x1="130" y1="120" x2="195" y2="120" stroke="#f44336" stroke-width="2" marker-end="url(#arr2)"/>
+                        <text x="163" y="113" text-anchor="middle" font-size="8" fill="#f44336">감지 신호</text>
+
+                        <line x1="300" y1="100" x2="395" y2="80" stroke="#1565c0" stroke-width="2" marker-end="url(#arr2)"/>
+                        <text x="345" y="82" text-anchor="middle" font-size="8" fill="#1565c0">트리거</text>
+
+                        <line x1="300" y1="140" x2="395" y2="165" stroke="#ff9800" stroke-width="2" marker-end="url(#arr3)"/>
+                        <text x="340" y="162" text-anchor="middle" font-size="8" fill="#ff9800">스트로브</text>
+
+                        <line x1="520" y1="80" x2="585" y2="110" stroke="#4caf50" stroke-width="2" marker-end="url(#arr4)"/>
+                        <text x="555" y="88" text-anchor="middle" font-size="8" fill="#4caf50">이미지</text>
+
+                        <!-- ExposureActive -->
+                        <path d="M460,110 L460,135" fill="none" stroke="#9e9e9e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr3)"/>
+                        <text x="490" y="128" font-size="7" fill="#9e9e9e">ExposureActive</text>
+                    </svg>
+                    <div class="caption">그림 5. 센서 -> PLC -> 카메라/조명 -> PC 기본 배선 구성</div>
+                </div>
+
+                <!-- 5. 라인스캔 인코더 동기화 -->
+                <h2 id="linescan-encoder"><i class="fa-solid fa-barcode"></i> 라인스캔 인코더 동기화</h2>
+
+                <p>라인스캔 카메라는 한 줄씩 이미지를 촬영하므로, 제품의 이동 속도에 맞춰 정확한 간격으로 라인을 획득해야 한다. <strong>로터리 인코더</strong>가 컨베이어 벨트의 이동량을 전기 신호로 변환하여 카메라에 전달한다.</p>
+
+                <h3 id="encoder-signal"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 인코더 신호 (A/B/Z)</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 280" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">인코더 A/B/Z 채널 신호</text>
+
+                        <!-- Labels -->
+                        <text x="30" y="75" font-size="11" fill="#1565c0" font-weight="700">A 채널</text>
+                        <text x="30" y="145" font-size="11" fill="#2e7d32" font-weight="700">B 채널</text>
+                        <text x="30" y="215" font-size="11" fill="#f44336" font-weight="700">Z 채널</text>
+
+                        <!-- A channel -->
+                        <polyline points="90,90 130,90 130,55 170,55 170,90 210,90 210,55 250,55 250,90 290,90 290,55 330,55 330,90 370,90 370,55 410,55 410,90 450,90 450,55 490,55 490,90 530,90 530,55 570,55 570,90 610,90 610,55 650,55 650,90 670,90" fill="none" stroke="#1565c0" stroke-width="2"/>
+
+                        <!-- B channel (90 degree phase shift) -->
+                        <polyline points="90,160 150,160 150,125 190,125 190,160 230,160 230,125 270,125 270,160 310,160 310,125 350,125 350,160 390,160 390,125 430,125 430,160 470,160 470,125 510,125 510,160 550,160 550,125 590,125 590,160 630,160 630,125 670,125" fill="none" stroke="#2e7d32" stroke-width="2"/>
+
+                        <!-- Z channel (index) -->
+                        <line x1="90" y1="230" x2="360" y2="230" stroke="#f44336" stroke-width="2"/>
+                        <polyline points="360,230 360,195 370,195 370,230" fill="none" stroke="#f44336" stroke-width="2"/>
+                        <line x1="370" y1="230" x2="670" y2="230" stroke="#f44336" stroke-width="2"/>
+
+                        <!-- Phase difference indicator -->
+                        <line x1="130" y1="100" x2="150" y2="100" stroke="#ff9800" stroke-width="1.5"/>
+                        <line x1="130" y1="97" x2="130" y2="103" stroke="#ff9800" stroke-width="1.5"/>
+                        <line x1="150" y1="97" x2="150" y2="103" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="140" y="112" text-anchor="middle" font-size="8" fill="#ff9800">90 deg</text>
+
+                        <!-- Z label -->
+                        <text x="365" y="190" text-anchor="middle" font-size="8" fill="#f44336">1회전 기준</text>
+
+                        <!-- Description -->
+                        <text x="350" y="260" text-anchor="middle" font-size="10" fill="#616161">A/B 채널의 위상차(90도)로 회전 방향 판별, Z 채널은 원점(1회전) 표시</text>
+                    </svg>
+                    <div class="caption">그림 6. 인코더 A/B/Z 채널 신호 파형</div>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">A 채널</span>
+                        <span class="term-desc">기본 펄스 출력. 이동량에 비례한 펄스 수를 제공한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">B 채널</span>
+                        <span class="term-desc">A 채널 대비 90도 위상차. A보다 B가 앞서면 정방향, 뒤지면 역방향.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Z 채널</span>
+                        <span class="term-desc">1회전당 1펄스 출력. 원점 복귀(Home) 및 라인스캔 이미지 시작점 동기화에 사용.</span>
+                    </div>
+                </div>
+
+                <h3 id="encoder-linerate"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Line Rate 계산</h3>
+
+                <p>라인스캔 카메라의 Line Rate(초당 촬영 라인 수)는 컨베이어 속도와 인코더 분해능으로 결정된다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> Line Rate 계산 공식</div>
+                    <p>
+                        <strong>Line Rate = 컨베이어 속도(mm/s) / 픽셀 크기(mm/pixel)</strong><br><br>
+                        예시: 컨베이어 속도 1000 mm/s, 원하는 분해능 0.05 mm/pixel<br>
+                        Line Rate = 1000 / 0.05 = <strong>20,000 lines/s (20 kHz)</strong><br><br>
+                        인코더 펄스로 환산하면:<br>
+                        인코더 분해능 = 2000 PPR (Pulse Per Revolution), 롤러 둘레 = 200 mm<br>
+                        1 펄스당 이동량 = 200 / 2000 = 0.1 mm/pulse<br>
+                        필요 분주비 = 0.1 / 0.05 = <strong>2</strong> (인코더 2펄스마다 1라인 촬영)
+                    </p>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>인코더 분해능과 이미지 왜곡</strong>
+                        인코더 분해능이 부족하면 이동 방향(Y축) 이미지가 늘어나거나 줄어든다. 반대로 분해능이 과도하면 카메라의 최대 Line Rate를 초과하여 라인 누락이 발생한다. 실제 배치 전에 반드시 계산으로 검증해야 한다.
+                    </div>
+                </div>
+
+                <!-- 6. 멀티 카메라 동기화 -->
+                <h2 id="multi-camera"><i class="fa-solid fa-camera"></i> 멀티 카메라 동기화</h2>
+
+                <p>하나의 검사 스테이션에 여러 대의 카메라를 사용할 때, 모든 카메라가 <strong>동시에</strong> 촬영해야 한다. 동기화가 어긋나면 이동하는 제품의 각 면이 서로 다른 위치에서 찍혀 검사 결과가 부정확해진다.</p>
+
+                <h3 id="multi-hw-trigger"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 외부 트리거 분배</h3>
+
+                <p>가장 간단한 방법은 하나의 트리거 신호를 <strong>분배기(Trigger Distributor)</strong>로 여러 카메라에 동시에 전달하는 것이다. 전기 신호이므로 지연이 거의 없고 구현이 쉽지만, 카메라 수가 많으면 신호 품질이 저하될 수 있다.</p>
+
+                <h3 id="multi-ptp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PTP (IEEE 1588)</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> PTP (Precision Time Protocol)</div>
+                    <p>IEEE 1588 표준으로 정의된 정밀 시각 동기화 프로토콜. 네트워크에 연결된 장치들의 시계를 <strong>서브 마이크로초(sub-us)</strong> 정밀도로 동기화한다. GigE Vision 2.0부터 지원하며, 하드웨어 배선 없이 네트워크만으로 멀티 카메라 동기화가 가능하다.</p>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>동기화 방식</th>
+                            <th>정밀도</th>
+                            <th>카메라 수 제한</th>
+                            <th>배선 복잡도</th>
+                            <th>비용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">외부 트리거 분배</td>
+                            <td>< 1 us</td>
+                            <td>분배기 채널 수</td>
+                            <td>높음 (GPIO 배선)</td>
+                            <td>낮음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PTP (IEEE 1588)</td>
+                            <td>< 1 us</td>
+                            <td>네트워크 제한 없음</td>
+                            <td>낮음 (이더넷만)</td>
+                            <td>중간</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">액션 커맨드</td>
+                            <td>< 1 us (PTP 기반)</td>
+                            <td>네트워크 제한 없음</td>
+                            <td>낮음 (이더넷만)</td>
+                            <td>중간</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">소프트웨어 순차 트리거</td>
+                            <td>수 ms</td>
+                            <td>무제한</td>
+                            <td>없음</td>
+                            <td>없음</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="multi-action"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> GigE Vision 액션 커맨드</h3>
+
+                <p>GigE Vision의 <strong>Action Command</strong>는 하나의 브로드캐스트 패킷으로 여러 카메라에 동시에 트리거를 전달하는 메커니즘이다. PTP로 시각이 동기화된 상태에서 <code>Scheduled Action Command</code>를 사용하면, 지정 시각에 모든 카메라가 정확히 같은 순간에 촬영한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Action Command 설정 흐름</strong>
+                        1. 모든 카메라에 동일한 <code>ActionDeviceKey</code>, <code>ActionGroupKey</code>, <code>ActionGroupMask</code>를 설정한다.<br>
+                        2. PTP로 시각 동기화가 완료될 때까지 기다린다 (<code>PtpStatus = Slave</code>).<br>
+                        3. PC에서 <code>ActionCommand</code>를 브로드캐스트하면, 조건이 일치하는 모든 카메라가 동시에 트리거된다.
+                    </div>
+                </div>
+
+                <!-- 7. 트러블슈팅 -->
+                <h2 id="troubleshooting"><i class="fa-solid fa-wrench"></i> 트러블슈팅</h2>
+
+                <p>트리거와 동기화 시스템에서 자주 발생하는 문제와 해결 방법을 정리한다.</p>
+
+                <h3 id="ts-exposure"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 노출 타이밍이 안 맞는 경우</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">증상</span>
+                        <span class="term-desc">이미지가 너무 밝거나 어둡다. 또는 제품이 잘려서 찍힌다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">원인 1</span>
+                        <span class="term-desc"><strong>트리거 지연(Trigger Delay)</strong> 설정 오류. 센서 감지 시점과 제품이 FOV에 도달하는 시점 사이의 간격이 맞지 않음.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">원인 2</span>
+                        <span class="term-desc"><strong>노출 시간(Exposure Time)</strong> 과다. 고속 라인에서 긴 노출은 모션 블러를 유발.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">해결</span>
+                        <span class="term-desc">오실로스코프로 트리거 신호와 ExposureActive 신호의 타이밍을 측정하여 Trigger Delay를 조정. 노출 시간은 1/(2 x 이동속도/FOV) 이하로 설정.</span>
+                    </div>
+                </div>
+
+                <h3 id="ts-flicker"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 조명 깜빡임 (Flicker)</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">증상</span>
+                        <span class="term-desc">촬영 이미지의 밝기가 프레임마다 달라진다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">원인 1</span>
+                        <span class="term-desc"><strong>AC 전원 조명</strong> 사용 시 50/60Hz 주파수와 노출 타이밍이 동기되지 않음.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">원인 2</span>
+                        <span class="term-desc"><strong>스트로브 조명 응답 시간</strong> 부족. LED 컨트롤러의 ON/OFF 응답이 노출 시간보다 느림.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">해결</span>
+                        <span class="term-desc">DC 전원 조명으로 교체하거나, 노출 시간을 AC 주기의 정수배(예: 50Hz -> 20ms, 10ms)로 설정. 스트로브는 응답 시간이 1us 이하인 LED 컨트롤러를 사용.</span>
+                    </div>
+                </div>
+
+                <h3 id="ts-encoder"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 인코더 노이즈</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">증상</span>
+                        <span class="term-desc">라인스캔 이미지에 불규칙한 줄무늬(라인 불균일)가 나타나거나, 이미지 길이가 일정하지 않다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">원인 1</span>
+                        <span class="term-desc"><strong>전기 노이즈</strong>. 모터, 인버터 근처에 인코더 케이블이 지나가면서 유도 노이즈 발생.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">원인 2</span>
+                        <span class="term-desc"><strong>접지 불량</strong>. 인코더와 카메라의 접지 전위 차이로 인한 신호 왜곡.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">원인 3</span>
+                        <span class="term-desc"><strong>기계적 슬립</strong>. 인코더 롤러와 벨트 사이의 미끄러짐으로 펄스 수 불일치.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">해결</span>
+                        <span class="term-desc">쉴드 케이블 사용 및 노이즈원과 분리 배선. 차동 출력(Line Driver) 인코더 채택. 인코더 롤러에 압력 조정 스프링 장착. 카메라의 Pulse Width Filter 기능으로 짧은 노이즈 펄스 무시.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>디버깅 필수 도구: 오실로스코프</strong>
+                        트리거/동기화 문제의 대부분은 타이밍 문제이다. 오실로스코프로 트리거 입력, ExposureActive 출력, 조명 스트로브 신호를 동시에 관찰하면 문제 원인을 빠르게 파악할 수 있다. 소프트웨어 로그만으로는 us 단위 타이밍 문제를 진단하기 어렵다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>AIA — GigE Vision Standard Specification (Action Command, PTP)</li>
+                        <li>EMVA — GenICam Standard (TriggerMode, TriggerSource, TriggerActivation)</li>
+                        <li>IEEE 1588-2008 — Precision Time Protocol (PTP)</li>
+                        <li>Basler — Triggering and I/O Application Note</li>
+                        <li>SICK — Encoder Selection Guide for Line Scan Cameras</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-comm"><i class="fa-solid fa-arrow-left"></i> 통신/인터페이스 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-comm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-comm');
+</script>
+
+</body>
+</html>

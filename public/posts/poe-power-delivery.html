@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoE / PoCL / PoCXP 전원 공급 방식 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why-power-over-cable" data-section="why-power-over-cable">왜 Power over Cable인가</a>
+        <a href="#poe" data-section="poe">PoE</a>
+        <a href="#pocl" data-section="pocl">PoCL</a>
+        <a href="#pocxp" data-section="pocxp">PoCXP</a>
+        <a href="#usb-bus-power" data-section="usb-bus-power">USB Bus Power</a>
+        <a href="#comparison" data-section="comparison">비교 테이블</a>
+        <a href="#practical" data-section="practical">실무 고려사항</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">통신/인터페이스</span>
+                </div>
+                <h1>PoE / PoCL / PoCXP 전원 공급 방식</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 6 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>케이블 하나로 전원과 데이터를 동시에 전달하는 Power over Cable 개념</li>
+                        <li>PoE (Power over Ethernet) - IEEE 802.3af/at/bt 전력 등급과 PSE/PD 구조</li>
+                        <li>PoCL (Power over Camera Link) / PoCXP (Power over CoaXPress) 전원 공급</li>
+                        <li>USB Bus Power의 전력 제한과 실무에서의 전원 설계 고려사항</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-power-over-cable">케이블 하나로 전원+데이터</a></li>
+                        <li><a href="#poe">PoE (Power over Ethernet)</a></li>
+                        <li><a href="#pocl">PoCL (Power over Camera Link)</a></li>
+                        <li><a href="#pocxp">PoCXP (Power over CoaXPress)</a></li>
+                        <li><a href="#usb-bus-power">USB Bus Power</a></li>
+                        <li><a href="#comparison">비교 테이블</a></li>
+                        <li><a href="#practical">실무 고려사항</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 Power over Cable인가 -->
+                <h2 id="why-power-over-cable"><i class="fa-solid fa-plug-circle-bolt"></i> 케이블 하나로 전원+데이터</h2>
+
+                <p>머신비전 시스템에서 카메라는 데이터 케이블과 별도의 전원 케이블이 필요한 경우가 많다. 그러나 <strong>Power over Cable</strong> 기술을 사용하면 하나의 케이블로 데이터 전송과 전원 공급을 동시에 처리할 수 있어 배선이 크게 단순해진다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> Power over Cable이 중요한 이유</div>
+                    <p>산업 현장에서 케이블 수가 줄어들면 설치 비용이 절감되고, 커넥터 접촉 불량 위험이 줄며, 장비 이동이나 재배치가 훨씬 쉬워진다. 특히 로봇 암 끝단이나 좁은 공간에 카메라를 설치할 때 전원 케이블이 없으면 설계 자유도가 크게 높아진다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 260" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">Power over Cable 개념</text>
+
+                        <!-- 기존 방식 -->
+                        <rect x="20" y="45" width="300" height="190" rx="12" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="170" y="70" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">기존 방식 (별도 전원)</text>
+
+                        <rect x="40" y="85" width="80" height="45" rx="6" fill="white" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="80" y="107" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">PC/NIC</text>
+                        <text x="80" y="120" text-anchor="middle" font-size="8" fill="#ff9800">호스트</text>
+
+                        <rect x="220" y="85" width="80" height="45" rx="6" fill="white" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="260" y="107" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">카메라</text>
+                        <text x="260" y="120" text-anchor="middle" font-size="8" fill="#ff9800">PD</text>
+
+                        <line x1="120" y1="100" x2="220" y2="100" stroke="#1565c0" stroke-width="2" stroke-dasharray="5,3"/>
+                        <text x="170" y="95" text-anchor="middle" font-size="8" fill="#1565c0">데이터 케이블</text>
+
+                        <rect x="220" y="150" width="80" height="35" rx="6" fill="white" stroke="#d32f2f" stroke-width="1.5"/>
+                        <text x="260" y="172" text-anchor="middle" font-size="9" fill="#d32f2f" font-weight="600">외부 전원</text>
+
+                        <line x1="260" y1="150" x2="260" y2="130" stroke="#d32f2f" stroke-width="2"/>
+                        <text x="170" y="215" text-anchor="middle" font-size="10" fill="#bf360c">케이블 2개 필요</text>
+
+                        <!-- PoC 방식 -->
+                        <rect x="380" y="45" width="300" height="190" rx="12" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="530" y="70" text-anchor="middle" font-size="12" fill="#2e7d32" font-weight="700">Power over Cable 방식</text>
+
+                        <rect x="400" y="85" width="80" height="45" rx="6" fill="white" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="440" y="107" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">PSE</text>
+                        <text x="440" y="120" text-anchor="middle" font-size="8" fill="#4caf50">전원 공급</text>
+
+                        <rect x="580" y="85" width="80" height="45" rx="6" fill="white" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="620" y="107" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">카메라</text>
+                        <text x="620" y="120" text-anchor="middle" font-size="8" fill="#4caf50">PD</text>
+
+                        <line x1="480" y1="100" x2="580" y2="100" stroke="#2e7d32" stroke-width="3"/>
+                        <text x="530" y="95" text-anchor="middle" font-size="8" fill="#2e7d32" font-weight="600">데이터 + 전원</text>
+
+                        <text x="530" y="170" text-anchor="middle" font-size="11" fill="#1b5e20" font-weight="600">케이블 1개로 해결!</text>
+                        <text x="530" y="215" text-anchor="middle" font-size="10" fill="#2e7d32">배선 간소화, 비용 절감</text>
+                    </svg>
+                    <div class="caption">그림 1. 기존 별도 전원 방식 vs Power over Cable 방식 비교</div>
+                </div>
+
+                <!-- 2. PoE -->
+                <h2 id="poe"><i class="fa-solid fa-ethernet"></i> PoE (Power over Ethernet)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> PoE (Power over Ethernet)</div>
+                    <p>IEEE 802.3 표준에 정의된 이더넷 케이블(Cat5e/Cat6)을 통해 데이터와 전원을 동시에 전달하는 기술. 전원 공급 장치(PSE)가 이더넷 케이블의 예비 쌍(spare pair) 또는 데이터 쌍(data pair)에 DC 전압을 실어 수전 장치(PD)에 전력을 공급한다.</p>
+                </div>
+
+                <h3 id="poe-standards"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> IEEE 802.3 PoE 표준 비교</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>802.3af (PoE)</th>
+                            <th>802.3at (PoE+)</th>
+                            <th>802.3bt (PoE++)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">제정 연도</td>
+                            <td>2003</td>
+                            <td>2009</td>
+                            <td>2018</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PSE 최대 출력</td>
+                            <td>15.4W</td>
+                            <td>30W</td>
+                            <td>60W / 90W (Type 3/4)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PD 최대 수전</td>
+                            <td>12.95W</td>
+                            <td>25.5W</td>
+                            <td>51W / 71.3W</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">전압 범위</td>
+                            <td>44~57V DC</td>
+                            <td>50~57V DC</td>
+                            <td>50~57V DC</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">사용 쌍 수</td>
+                            <td>2쌍 (4선)</td>
+                            <td>2쌍 (4선)</td>
+                            <td>4쌍 (8선)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">케이블 요구</td>
+                            <td>Cat3 이상</td>
+                            <td>Cat5 이상</td>
+                            <td>Cat5e 이상</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">대표 용도</td>
+                            <td>IP 전화기, 소형 카메라</td>
+                            <td>무선 AP, 중형 카메라</td>
+                            <td>PTZ 카메라, LED 조명</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="poe-pse-pd"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PSE와 PD 역할</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-bolt" style="color:#d97706;"></i> PSE (Power Sourcing Equipment)</h4>
+                        <p>전원을 공급하는 쪽. 두 가지 유형이 있다:</p>
+                        <ul>
+                            <li><strong>Endpoint PSE</strong> — PoE 스위치 자체가 전원 공급 (가장 일반적)</li>
+                            <li><strong>Midspan PSE</strong> — 기존 스위치와 PD 사이에 PoE 인젝터를 삽입</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-camera" style="color:#2563eb;"></i> PD (Powered Device)</h4>
+                        <p>전원을 수전하는 쪽. 머신비전에서는 주로:</p>
+                        <ul>
+                            <li><strong>GigE Vision 카메라</strong> — PoE 대응 모델</li>
+                            <li><strong>IP 카메라</strong> — 보안/감시용</li>
+                            <li><strong>무선 AP, 센서</strong> — 산업용 IoT 장비</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 220" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">PoE 전력 전달 구조</text>
+
+                        <!-- PSE -->
+                        <rect x="30" y="50" width="140" height="140" rx="10" fill="#fff8e1" stroke="#f9a825" stroke-width="2"/>
+                        <text x="100" y="75" text-anchor="middle" font-size="11" fill="#f57f17" font-weight="700">PSE</text>
+                        <text x="100" y="93" text-anchor="middle" font-size="9" fill="#f9a825">PoE 스위치</text>
+                        <rect x="45" y="105" width="110" height="25" rx="4" fill="white" stroke="#f9a825" stroke-width="1"/>
+                        <text x="100" y="122" text-anchor="middle" font-size="8" fill="#f57f17">DC 48~57V 출력</text>
+                        <rect x="45" y="140" width="110" height="25" rx="4" fill="white" stroke="#f9a825" stroke-width="1"/>
+                        <text x="100" y="157" text-anchor="middle" font-size="8" fill="#f57f17">PD 감지 + 분류</text>
+
+                        <!-- Cable -->
+                        <rect x="210" y="90" width="280" height="60" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="350" y="112" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">Cat5e/Cat6 이더넷 케이블</text>
+                        <text x="350" y="128" text-anchor="middle" font-size="9" fill="#64b5f6">데이터 (1Gbps) + DC 전원 (최대 100m)</text>
+                        <line x1="170" y1="120" x2="210" y2="120" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-poe)"/>
+                        <line x1="490" y1="120" x2="530" y2="120" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-poe)"/>
+                        <defs><marker id="arr-poe" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker></defs>
+
+                        <!-- PD -->
+                        <rect x="530" y="50" width="140" height="140" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="600" y="75" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">PD</text>
+                        <text x="600" y="93" text-anchor="middle" font-size="9" fill="#4caf50">GigE 카메라</text>
+                        <rect x="545" y="105" width="110" height="25" rx="4" fill="white" stroke="#4caf50" stroke-width="1"/>
+                        <text x="600" y="122" text-anchor="middle" font-size="8" fill="#2e7d32">DC-DC 변환</text>
+                        <rect x="545" y="140" width="110" height="25" rx="4" fill="white" stroke="#4caf50" stroke-width="1"/>
+                        <text x="600" y="157" text-anchor="middle" font-size="8" fill="#2e7d32">Classification 응답</text>
+
+                        <text x="350" y="200" text-anchor="middle" font-size="10" fill="#616161">PSE가 PD를 감지(Detection)하고 전력 등급을 분류(Classification)한 후 전원 공급 시작</text>
+                    </svg>
+                    <div class="caption">그림 2. PoE의 PSE-PD 전력 전달 구조</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>PoE 전력 손실</strong>
+                        PSE가 15.4W를 출력해도 PD에 도달하는 전력은 12.95W이다. 약 2.5W(16%)가 케이블 저항에 의해 열로 손실된다. 케이블이 길수록, 온도가 높을수록 손실이 커지므로 여유 있는 전력 등급을 선택해야 한다.
+                    </div>
+                </div>
+
+                <!-- 3. PoCL -->
+                <h2 id="pocl"><i class="fa-solid fa-bolt"></i> PoCL (Power over Camera Link)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> PoCL (Power over Camera Link)</div>
+                    <p>Camera Link 케이블의 전용 전원 핀을 통해 프레임 그래버에서 카메라로 전원을 공급하는 기술. Camera Link 규격 자체에 전원 핀(Pin 1: +12V, Pin 8: GND 등)이 정의되어 있으며, 프레임 그래버가 PSE 역할을 한다. 별도의 전원 어댑터 없이 Camera Link 케이블 하나로 영상 전송과 전원 공급이 가능하다.</p>
+                </div>
+
+                <h3 id="pocl-spec"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PoCL 전력 사양</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">공급 전압</span>
+                        <span class="term-desc">+12V DC (Camera Link MDR-26 커넥터의 Pin 1, Pin 15)</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">최대 전류</span>
+                        <span class="term-desc">1A (프레임 그래버 모델에 따라 다름, 일부 2A 지원)</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">최대 전력</span>
+                        <span class="term-desc">약 4~12W (Base 구성 기준, Medium/Full은 케이블 2개로 확장 가능)</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">케이블 길이</span>
+                        <span class="term-desc">최대 10m (길이가 길어지면 전압 강하 발생)</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>PoCL 호환성 주의</strong>
+                        모든 Camera Link 프레임 그래버가 PoCL을 지원하는 것은 아니다. PoCL 미지원 보드에 PoCL 카메라를 연결하면 전원이 공급되지 않으므로, 반드시 프레임 그래버 사양을 확인해야 한다. 또한 PoCL 카메라에 외부 전원과 PoCL을 동시에 연결하면 장비가 손상될 수 있다.
+                    </div>
+                </div>
+
+                <!-- 4. PoCXP -->
+                <h2 id="pocxp"><i class="fa-solid fa-circle-nodes"></i> PoCXP (Power over CoaXPress)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> PoCXP (Power over CoaXPress)</div>
+                    <p>CoaXPress 규격에 정의된 동축 케이블을 통한 전원 공급 기술. 하나의 동축 케이블(75옴 BNC)로 고속 영상 데이터(최대 12.5Gbps/링크), 저속 업링크 명령, 트리거 신호, 그리고 DC 전원까지 모두 전달한다. CoaXPress 표준의 핵심 장점 중 하나이다.</p>
+                </div>
+
+                <h3 id="pocxp-spec"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PoCXP 전력 사양</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">공급 전압</span>
+                        <span class="term-desc">24V DC (동축 케이블의 중심 도체를 통해 전달)</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">최대 전력</span>
+                        <span class="term-desc">13W per link (CoaXPress 2.0 기준)</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">멀티 링크</span>
+                        <span class="term-desc">4링크 사용 시 최대 52W (4 x 13W) 공급 가능</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">케이블 길이</span>
+                        <span class="term-desc">최대 40m (CXP-6 기준, CXP-12에서는 약 25m)</span>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 240" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">PoCXP 동축 케이블 구조</text>
+
+                        <!-- 동축 케이블 단면 -->
+                        <circle cx="180" cy="130" r="70" fill="#e0e0e0" stroke="#757575" stroke-width="2"/>
+                        <circle cx="180" cy="130" r="55" fill="#f5f5f5" stroke="#9e9e9e" stroke-width="1"/>
+                        <circle cx="180" cy="130" r="40" fill="#e0e0e0" stroke="#757575" stroke-width="2"/>
+                        <circle cx="180" cy="130" r="28" fill="#bbdefb" stroke="#1565c0" stroke-width="1"/>
+                        <circle cx="180" cy="130" r="12" fill="#ff8a65" stroke="#e65100" stroke-width="2"/>
+
+                        <text x="180" y="134" text-anchor="middle" font-size="7" fill="white" font-weight="700">DC</text>
+
+                        <!-- 라벨 -->
+                        <line x1="192" y1="130" x2="290" y2="80" stroke="#e65100" stroke-width="1"/>
+                        <text x="295" y="83" font-size="9" fill="#e65100" font-weight="600">중심 도체: DC 24V 전원</text>
+
+                        <line x1="205" y1="110" x2="290" y2="105" stroke="#1565c0" stroke-width="1"/>
+                        <text x="295" y="108" font-size="9" fill="#1565c0" font-weight="600">절연체 + 내부 도체: 고속 데이터</text>
+
+                        <line x1="220" y1="140" x2="290" y2="133" stroke="#757575" stroke-width="1"/>
+                        <text x="295" y="136" font-size="9" fill="#757575" font-weight="600">외부 도체 (실드): GND + 차폐</text>
+
+                        <line x1="240" y1="160" x2="290" y2="160" stroke="#616161" stroke-width="1"/>
+                        <text x="295" y="163" font-size="9" fill="#616161" font-weight="600">외피 (Jacket): 물리적 보호</text>
+
+                        <!-- 하나의 케이블로 전달되는 것 -->
+                        <rect x="290" y="185" width="380" height="40" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="480" y="210" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">1개 동축 = 영상(12.5Gbps) + 업링크 + 트리거 + 전원(13W)</text>
+                    </svg>
+                    <div class="caption">그림 3. PoCXP 동축 케이블 단면 구조 - 하나의 케이블에 모든 신호 전달</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>PoCXP의 장점</strong>
+                        CoaXPress는 동축 케이블 특성상 EMI 차폐가 우수하고, 최대 40m까지 안정적인 전송이 가능하다. 별도 전원 없이 프레임 그래버에서 카메라까지 하나의 BNC 케이블로 모든 것을 해결할 수 있어, 배선이 복잡한 대형 라인스캔 검사 장비에서 큰 장점이 된다.
+                    </div>
+                </div>
+
+                <!-- 5. USB Bus Power -->
+                <h2 id="usb-bus-power"><i class="fa-solid fa-usb"></i> USB Bus Power</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> USB Bus Power</div>
+                    <p>USB 3.0 규격에서 VBUS 핀(5V)을 통해 최대 900mA(4.5W)의 전력을 공급할 수 있다. USB3 Vision 카메라 중 소형/저전력 모델은 이 버스 파워만으로 동작하지만, 고해상도 카메라나 냉각 기능이 있는 카메라는 별도 전원이 필요하다.</p>
+                </div>
+
+                <h3 id="usb-power-spec"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> USB 전력 규격</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>규격</th>
+                            <th>전압</th>
+                            <th>최대 전류</th>
+                            <th>최대 전력</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">USB 2.0</td>
+                            <td>5V</td>
+                            <td>500mA</td>
+                            <td>2.5W</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">USB 3.0/3.1</td>
+                            <td>5V</td>
+                            <td>900mA</td>
+                            <td>4.5W</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">USB 3.1 (Type-C)</td>
+                            <td>5V</td>
+                            <td>1.5A / 3A</td>
+                            <td>7.5W / 15W</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">USB PD (Power Delivery)</td>
+                            <td>5~20V</td>
+                            <td>최대 5A</td>
+                            <td>최대 100W</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>USB3 Vision 전력 제한 주의</strong>
+                        USB3 Vision 표준은 USB 3.0 기반(4.5W)이므로 대부분의 산업용 카메라에는 전력이 부족하다. 일반적인 머신비전 카메라는 3~8W를 소비하며, 냉각 센서 모델은 10W 이상을 필요로 한다. 버스 파워만으로 동작 가능한지 반드시 카메라 데이터시트를 확인해야 한다.
+                    </div>
+                </div>
+
+                <!-- 6. 비교 테이블 -->
+                <h2 id="comparison"><i class="fa-solid fa-scale-balanced"></i> 비교 테이블</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>PoE (802.3at)</th>
+                            <th>PoCL</th>
+                            <th>PoCXP</th>
+                            <th>USB Bus Power</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">인터페이스</td>
+                            <td>GigE Vision</td>
+                            <td>Camera Link</td>
+                            <td>CoaXPress</td>
+                            <td>USB3 Vision</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">최대 전력 (PD)</td>
+                            <td>25.5W</td>
+                            <td>4~12W</td>
+                            <td>13W / link</td>
+                            <td>4.5W</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">공급 전압</td>
+                            <td>48~57V DC</td>
+                            <td>12V DC</td>
+                            <td>24V DC</td>
+                            <td>5V DC</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">케이블 종류</td>
+                            <td>Cat5e/Cat6 (RJ45)</td>
+                            <td>Camera Link (MDR-26)</td>
+                            <td>동축 (BNC 75옴)</td>
+                            <td>USB3 (Micro-B/Type-C)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">최대 케이블 길이</td>
+                            <td>100m</td>
+                            <td>10m</td>
+                            <td>40m</td>
+                            <td>5m</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">데이터 대역폭</td>
+                            <td>1 Gbps</td>
+                            <td>6.8 Gbps</td>
+                            <td>12.5 Gbps</td>
+                            <td>5 Gbps</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">전원 공급원</td>
+                            <td>PoE 스위치 / 인젝터</td>
+                            <td>프레임 그래버</td>
+                            <td>프레임 그래버</td>
+                            <td>USB 호스트 컨트롤러</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">멀티 링크 확장</td>
+                            <td>N/A (스위치 포트별)</td>
+                            <td>Medium/Full 케이블</td>
+                            <td>4링크 = 52W</td>
+                            <td>N/A</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 280" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">전원 공급 방식별 전력 비교</text>
+
+                        <!-- 축 -->
+                        <line x1="80" y1="250" x2="660" y2="250" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <line x1="80" y1="250" x2="80" y2="50" stroke="#9e9e9e" stroke-width="1.5"/>
+
+                        <!-- Y축 라벨 -->
+                        <text x="70" y="250" text-anchor="end" font-size="9" fill="#757575">0W</text>
+                        <text x="70" y="210" text-anchor="end" font-size="9" fill="#757575">10W</text>
+                        <line x1="78" y1="210" x2="660" y2="210" stroke="#e0e0e0" stroke-width="0.5" stroke-dasharray="3,3"/>
+                        <text x="70" y="170" text-anchor="end" font-size="9" fill="#757575">20W</text>
+                        <line x1="78" y1="170" x2="660" y2="170" stroke="#e0e0e0" stroke-width="0.5" stroke-dasharray="3,3"/>
+                        <text x="70" y="130" text-anchor="end" font-size="9" fill="#757575">30W</text>
+                        <line x1="78" y1="130" x2="660" y2="130" stroke="#e0e0e0" stroke-width="0.5" stroke-dasharray="3,3"/>
+                        <text x="70" y="90" text-anchor="end" font-size="9" fill="#757575">40W</text>
+                        <line x1="78" y1="90" x2="660" y2="90" stroke="#e0e0e0" stroke-width="0.5" stroke-dasharray="3,3"/>
+                        <text x="70" y="50" text-anchor="end" font-size="9" fill="#757575">50W</text>
+                        <line x1="78" y1="50" x2="660" y2="50" stroke="#e0e0e0" stroke-width="0.5" stroke-dasharray="3,3"/>
+
+                        <!-- USB Bus Power: 4.5W -->
+                        <rect x="120" y="232" width="90" height="18" rx="4" fill="#e1bee7" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="165" y="245" text-anchor="middle" font-size="9" fill="white" font-weight="600">4.5W</text>
+                        <text x="165" y="268" text-anchor="middle" font-size="10" fill="#7b1fa2" font-weight="600">USB</text>
+
+                        <!-- PoCL: 12W -->
+                        <rect x="260" y="202" width="90" height="48" rx="4" fill="#b3e5fc" stroke="#0288d1" stroke-width="1.5"/>
+                        <text x="305" y="230" text-anchor="middle" font-size="9" fill="#01579b" font-weight="600">12W</text>
+                        <text x="305" y="268" text-anchor="middle" font-size="10" fill="#0277bd" font-weight="600">PoCL</text>
+
+                        <!-- PoCXP: 13W (1링크), 52W (4링크) -->
+                        <rect x="400" y="198" width="90" height="52" rx="4" fill="#c8e6c9" stroke="#388e3c" stroke-width="1.5"/>
+                        <text x="445" y="228" text-anchor="middle" font-size="9" fill="#1b5e20" font-weight="600">13W/link</text>
+                        <rect x="400" y="42" width="90" height="156" rx="4" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5" opacity="0.4"/>
+                        <text x="445" y="125" text-anchor="middle" font-size="9" fill="#1b5e20" font-weight="600">52W (4link)</text>
+                        <text x="445" y="268" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">PoCXP</text>
+
+                        <!-- PoE (802.3at): 25.5W -->
+                        <rect x="540" y="148" width="90" height="102" rx="4" fill="#ffecb3" stroke="#f9a825" stroke-width="1.5"/>
+                        <text x="585" y="203" text-anchor="middle" font-size="9" fill="#f57f17" font-weight="600">25.5W</text>
+                        <text x="585" y="268" text-anchor="middle" font-size="10" fill="#f57f17" font-weight="600">PoE+</text>
+                    </svg>
+                    <div class="caption">그림 4. 전원 공급 방식별 최대 전력 비교 (PD 수전 기준)</div>
+                </div>
+
+                <!-- 7. 실무 고려사항 -->
+                <h2 id="practical"><i class="fa-solid fa-screwdriver-wrench"></i> 실무 고려사항</h2>
+
+                <h3 id="practical-shortage"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 전력 부족 시 증상</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">카메라 미인식</span>
+                        <span class="term-desc">전력이 부족하면 카메라가 아예 부팅되지 않거나, 연결 후 수 초 내에 연결이 끊어진다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">이미지 노이즈</span>
+                        <span class="term-desc">센서에 공급되는 전압이 불안정하면 이미지에 수평 줄무늬(banding) 또는 랜덤 노이즈가 나타난다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">프레임 드롭</span>
+                        <span class="term-desc">촬영은 되지만 특정 프레임이 누락되거나, 고속 연속 촬영 시 프레임 레이트가 떨어진다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">간헐적 리셋</span>
+                        <span class="term-desc">카메라가 동작 중 갑자기 재부팅되는 현상. 전류 피크 시 전압이 순간적으로 떨어지면서 발생.</span>
+                    </div>
+                </div>
+
+                <h3 id="practical-external"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 외부 전원이 필요한 경우</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#d97706; font-size:0.5rem;"></i> 외부 전원 필요</h4>
+                        <ul>
+                            <li>카메라 소비전력 > 케이블 공급 전력</li>
+                            <li>냉각(TEC) 센서 탑재 카메라 (10W+)</li>
+                            <li>고해상도(12MP+) 고속 촬영 카메라</li>
+                            <li>GPIO로 조명 컨트롤러까지 전원 공급</li>
+                            <li>케이블 길이가 길어 전압 강하가 큰 경우</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> 케이블 전원으로 충분</h4>
+                        <ul>
+                            <li>소형 에어리어 카메라 (VGA~2MP급)</li>
+                            <li>저전력 CMOS 센서 모델 (2~4W)</li>
+                            <li>짧은 케이블 거리 (3m 이내)</li>
+                            <li>PoE+ (25.5W) 대응 GigE 카메라</li>
+                            <li>PoCXP 멀티링크로 충분한 전력 확보</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 id="practical-voltage-drop"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 케이블 길이와 전압 강하</h3>
+
+                <p>케이블이 길어지면 도체 저항에 의해 전압 강하(Voltage Drop)가 발생한다. 특히 저전압(5V, 12V)에서는 작은 전압 강하도 큰 비율을 차지하므로 주의가 필요하다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">전압 강하 영향 비교</text>
+
+                        <!-- PoE (48V) -->
+                        <rect x="40" y="45" width="200" height="55" rx="8" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+                        <text x="140" y="65" text-anchor="middle" font-size="10" fill="#f57f17" font-weight="700">PoE (48V, 100m)</text>
+                        <text x="140" y="82" text-anchor="middle" font-size="9" fill="#f9a825">강하 약 4V (8%) - 안정적</text>
+                        <rect x="45" y="52" width="150" height="6" rx="3" fill="#a5d6a7"/>
+                        <rect x="182" y="52" width="12" height="6" rx="3" fill="#ffcdd2"/>
+
+                        <!-- USB (5V) -->
+                        <rect x="40" y="115" width="200" height="55" rx="8" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="140" y="135" text-anchor="middle" font-size="10" fill="#7b1fa2" font-weight="700">USB (5V, 5m)</text>
+                        <text x="140" y="152" text-anchor="middle" font-size="9" fill="#ba68c8">강하 약 0.5V (10%) - 민감</text>
+                        <rect x="45" y="122" width="130" height="6" rx="3" fill="#a5d6a7"/>
+                        <rect x="163" y="122" width="32" height="6" rx="3" fill="#ffcdd2"/>
+
+                        <!-- 설명 -->
+                        <rect x="300" y="50" width="370" height="120" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="485" y="75" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">전압 강하 대응 방법</text>
+                        <text x="320" y="97" font-size="9" fill="#2e7d32">1. 높은 전압으로 전송 (PoE: 48V, PoCXP: 24V)</text>
+                        <text x="320" y="115" font-size="9" fill="#2e7d32">2. 굵은 케이블(AWG 낮은 번호) 사용</text>
+                        <text x="320" y="133" font-size="9" fill="#2e7d32">3. 케이블 길이 최소화</text>
+                        <text x="320" y="151" font-size="9" fill="#2e7d32">4. PD 측 DC-DC 컨버터로 안정화</text>
+                    </svg>
+                    <div class="caption">그림 5. 전압 강하가 저전압 인터페이스에 미치는 영향</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 팁: PoE가 유리한 이유</strong>
+                        PoE는 48V로 전송하기 때문에 같은 전력을 낮은 전류로 보낼 수 있다. 전류가 낮으면 케이블 발열과 전압 강하가 줄어든다. 이것이 PoE가 100m까지 안정적으로 전원을 공급할 수 있는 핵심 원리이다. (P = V x I 에서 V가 높으면 I가 낮아짐)
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>전원 설계 체크리스트</strong>
+                        1) 카메라 데이터시트에서 소비전력(Typical/Max) 확인 → 2) 케이블 전원 공급 가능 전력과 비교 → 3) 케이블 길이에 따른 전압 강하 계산 → 4) 여유 마진(20% 이상) 확보 → 5) 부족하면 외부 전원 어댑터 추가
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>IEEE 802.3af/at/bt — Power over Ethernet Standards</li>
+                        <li>AIA — Camera Link Specification (PoCL 관련 부분)</li>
+                        <li>JIIA — CoaXPress Standard (PoCXP 전원 공급 사양)</li>
+                        <li>AIA — USB3 Vision Standard (USB Bus Power 제한)</li>
+                        <li>USB-IF — USB Power Delivery Specification</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-comm"><i class="fa-solid fa-arrow-left"></i> 통신/인터페이스 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-comm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-comm');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,70 @@
+/* 같은 카테고리 이전/다음 글 네비게이션 */
+const POST_NAV_DATA = {
+    'tech-sensor': [
+        { file: 'ccd-vs-cmos.html', title: 'CCD vs CMOS 이미지 센서 비교' },
+        { file: 'sensor-parameters.html', title: '이미지 센서 핵심 파라미터' },
+        { file: 'global-vs-rolling-shutter.html', title: '글로벌 셔터 vs 롤링 셔터' },
+        { file: 'isp-pipeline.html', title: 'ISP 파이프라인 이해하기' },
+        { file: 'bayer-demosaicing.html', title: 'Bayer 패턴과 디모자이킹' },
+        { file: 'dsnu-prnu-correction.html', title: 'DSNU / PRNU 보정' },
+        { file: 'hdr-imaging.html', title: 'HDR 이미징 기법' },
+        { file: 'nir-swir-sensors.html', title: 'NIR / SWIR 센서와 특수 파장 촬영' },
+        { file: 'linescan-vs-areascan.html', title: '라인스캔 vs 에어리어스캔 센서' },
+        { file: 'sensor-selection-guide.html', title: '센서 선정 가이드' },
+    ],
+    'tech-comm': [
+        { file: 'industrial-comm.html', title: '산업용 통신 인터페이스 비교' },
+        { file: 'genicam-standard.html', title: 'GenICam 표준 이해하기' },
+        { file: 'serial-programming.html', title: 'RS-232/485 실전 통신 프로그래밍' },
+        { file: 'gige-network-setup.html', title: 'GigE Vision 네트워크 설정 가이드' },
+        { file: 'gentl-transport-layer.html', title: 'GenTL과 Transport Layer 구조' },
+        { file: 'modbus-protocol.html', title: 'Modbus RTU/TCP 프로토콜 정리' },
+        { file: 'tcp-vs-udp-industrial.html', title: 'TCP vs UDP 산업용 통신에서의 차이' },
+        { file: 'trigger-sync.html', title: '트리거 신호와 동기화' },
+        { file: 'coaxpress-vs-clhs.html', title: 'CoaXPress vs Camera Link HS' },
+        { file: 'poe-power-delivery.html', title: 'PoE / PoCL / PoCXP 전원 공급 방식' },
+        { file: 'industrial-ethernet.html', title: 'EtherCAT, PROFINET, EtherNet/IP' },
+    ]
+};
+
+const CAT_LABELS = {
+    'tech-sensor': '센서/ISP',
+    'tech-comm': '통신/인터페이스'
+};
+
+function renderPostNav(category) {
+    const posts = POST_NAV_DATA[category];
+    if (!posts) return;
+
+    const currentFile = window.location.pathname.split('/').pop();
+    const idx = posts.findIndex(p => p.file === currentFile);
+    if (idx === -1) return;
+
+    const nav = document.querySelector('.post-nav-bottom');
+    if (!nav) return;
+
+    const prev = idx > 0 ? posts[idx - 1] : null;
+    const next = idx < posts.length - 1 ? posts[idx + 1] : null;
+    const catLabel = CAT_LABELS[category] || category;
+    const listUrl = '../index.html?cat=' + category;
+
+    // 기존 내용 교체
+    nav.innerHTML = '<div class="post-nav-grid">' +
+        // 이전 글 (좌)
+        (prev
+            ? '<a href="' + prev.file + '" class="post-nav-card prev">' +
+              '<span class="post-nav-label"><i class="fa-solid fa-chevron-left"></i> 이전 글</span>' +
+              '<span class="post-nav-title">' + prev.title + '</span></a>'
+            : '<div class="post-nav-card empty"></div>') +
+        // 목록 (중앙)
+        '<a href="' + listUrl + '" class="post-nav-card list">' +
+        '<span class="post-nav-label"><i class="fa-solid fa-th-list"></i> 목록</span>' +
+        '<span class="post-nav-title">' + catLabel + '</span></a>' +
+        // 다음 글 (우)
+        (next
+            ? '<a href="' + next.file + '" class="post-nav-card next">' +
+              '<span class="post-nav-label">다음 글 <i class="fa-solid fa-chevron-right"></i></span>' +
+              '<span class="post-nav-title">' + next.title + '</span></a>'
+            : '<div class="post-nav-card empty"></div>') +
+        '</div>';
+}

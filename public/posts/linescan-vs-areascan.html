@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>라인스캔 vs 에어리어스캔 센서 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#area-scan" data-section="area-scan">에어리어스캔</a>
+        <a href="#line-scan" data-section="line-scan">라인스캔</a>
+        <a href="#principle" data-section="principle">동작 원리 비교</a>
+        <a href="#comparison" data-section="comparison">비교 테이블</a>
+        <a href="#line-advantages" data-section="line-advantages">라인스캔 장점</a>
+        <a href="#area-advantages" data-section="area-advantages">에어리어스캔 장점</a>
+        <a href="#applications" data-section="applications">적용 분야</a>
+        <a href="#tdi" data-section="tdi">TDI</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">센서/ISP</span>
+                </div>
+                <h1>라인스캔 vs 에어리어스캔 센서</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 8 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>에어리어스캔과 라인스캔 카메라의 센서 구조와 촬영 원리</li>
+                        <li>두 방식의 동작 원리 비교 (셔터 vs 연속 스캔+인코더)</li>
+                        <li>해상도, 속도, 조명, 비용 등 주요 항목별 비교</li>
+                        <li>각 방식의 장점과 산업 적용 분야</li>
+                        <li>TDI (Time Delay Integration) 감도 향상 기법</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#area-scan">에어리어스캔 카메라</a></li>
+                        <li><a href="#line-scan">라인스캔 카메라</a></li>
+                        <li><a href="#principle">동작 원리 비교</a></li>
+                        <li><a href="#comparison">비교 테이블</a></li>
+                        <li><a href="#line-advantages">라인스캔의 장점</a></li>
+                        <li><a href="#area-advantages">에어리어스캔의 장점</a></li>
+                        <li><a href="#applications">적용 분야</a></li>
+                        <li><a href="#tdi">TDI (Time Delay Integration)</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 에어리어스캔 카메라 -->
+                <h2 id="area-scan"><i class="fa-solid fa-border-all"></i> 에어리어스캔 카메라</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 에어리어스캔 (Area Scan)</div>
+                    <p>2D 매트릭스 형태의 센서(예: 2048x1536 픽셀)로 한 번의 노출에 전체 프레임을 촬영하는 방식이다. 우리가 일반적으로 사용하는 카메라(스마트폰, DSLR, 웹캠 등)가 모두 에어리어스캔 방식이며, 산업용 머신비전에서도 가장 널리 사용된다.</p>
+                </div>
+
+                <p>에어리어스캔 카메라는 셔터를 한 번 열어 2차원 이미지를 한꺼번에 취득한다. 정지된 물체는 물론, 짧은 노출 시간을 사용하면 이동 중인 물체도 촬영할 수 있다. 센서 해상도가 곧 이미지 해상도이므로, 촬영 영역(FOV)과 필요한 분해능에 따라 적절한 해상도의 카메라를 선택한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 500 300" style="width:100%; max-width:500px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="250" y="22" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">에어리어스캔 센서 구조</text>
+                        <!-- 센서 그리드 -->
+                        <rect x="125" y="45" width="250" height="200" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="250" y="265" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="600">2D 센서 (예: 2048 x 1536)</text>
+                        <!-- 그리드 라인 (가로) -->
+                        <line x1="125" y1="85" x2="375" y2="85" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="125" y1="105" x2="375" y2="105" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="125" y1="125" x2="375" y2="125" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="125" y1="145" x2="375" y2="145" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="125" y1="165" x2="375" y2="165" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="125" y1="185" x2="375" y2="185" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="125" y1="205" x2="375" y2="205" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="125" y1="225" x2="375" y2="225" stroke="#90caf9" stroke-width="0.5"/>
+                        <!-- 그리드 라인 (세로) -->
+                        <line x1="150" y1="45" x2="150" y2="245" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="175" y1="45" x2="175" y2="245" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="200" y1="45" x2="200" y2="245" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="225" y1="45" x2="225" y2="245" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="250" y1="45" x2="250" y2="245" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="275" y1="45" x2="275" y2="245" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="300" y1="45" x2="300" y2="245" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="325" y1="45" x2="325" y2="245" stroke="#90caf9" stroke-width="0.5"/>
+                        <line x1="350" y1="45" x2="350" y2="245" stroke="#90caf9" stroke-width="0.5"/>
+                        <!-- 라벨 -->
+                        <text x="250" y="155" text-anchor="middle" font-size="14" fill="#1565c0" font-weight="700">전체 프레임</text>
+                        <text x="250" y="173" text-anchor="middle" font-size="11" fill="#1565c0">한 번에 촬영</text>
+                        <!-- 화살표 -->
+                        <text x="95" y="150" text-anchor="middle" font-size="10" fill="#666" transform="rotate(-90 95 150)">세로 (Y)</text>
+                        <text x="250" y="290" text-anchor="middle" font-size="10" fill="#666">가로 (X)</text>
+                    </svg>
+                    <div class="caption">그림 1. 에어리어스캔 센서 - 2D 매트릭스 구조로 전체 프레임을 한 번에 촬영</div>
+                </div>
+
+                <h3 id="area-shutter"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 셔터 방식</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">글로벌 셔터</span>
+                        <span class="term-desc">모든 픽셀이 동시에 노출. 이동 물체에도 왜곡 없음. 산업용 검사에 적합.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">롤링 셔터</span>
+                        <span class="term-desc">행 단위로 순차 노출. 이동 물체에서 기울어짐(skew) 발생. 가격이 저렴.</span>
+                    </div>
+                </div>
+
+                <!-- 2. 라인스캔 카메라 -->
+                <h2 id="line-scan"><i class="fa-solid fa-grip-lines"></i> 라인스캔 카메라</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 라인스캔 (Line Scan)</div>
+                    <p>1D 센서(1줄 또는 수줄의 픽셀 라인)로 이동하는 대상을 한 줄씩 촬영하여 2D 이미지를 합성하는 방식이다. 센서가 예를 들어 16384 x 1 픽셀로 구성되어 있으며, 컨베이어 벨트 등으로 이동하는 물체를 연속 스캔하여 원하는 길이의 이미지를 만들어낸다.</p>
+                </div>
+
+                <p>라인스캔 카메라의 핵심은 <strong>물체가 반드시 이동해야 한다</strong>는 것이다. 센서가 한 줄밖에 없으므로, 물체(또는 카메라)가 수직 방향으로 이동하면서 한 줄씩 취득한 데이터를 쌓아서 2D 이미지를 구성한다. 이동 속도와 촬영 주기를 정확히 동기화하기 위해 <strong>인코더(Encoder)</strong>를 사용한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 500 280" style="width:100%; max-width:500px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="250" y="22" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">라인스캔 센서 구조</text>
+                        <!-- 센서 1줄 -->
+                        <rect x="50" y="55" width="400" height="18" rx="4" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+                        <!-- 픽셀 구분선 -->
+                        <line x1="90" y1="55" x2="90" y2="73" stroke="#ffcc80" stroke-width="0.5"/>
+                        <line x1="130" y1="55" x2="130" y2="73" stroke="#ffcc80" stroke-width="0.5"/>
+                        <line x1="170" y1="55" x2="170" y2="73" stroke="#ffcc80" stroke-width="0.5"/>
+                        <line x1="210" y1="55" x2="210" y2="73" stroke="#ffcc80" stroke-width="0.5"/>
+                        <line x1="250" y1="55" x2="250" y2="73" stroke="#ffcc80" stroke-width="0.5"/>
+                        <line x1="290" y1="55" x2="290" y2="73" stroke="#ffcc80" stroke-width="0.5"/>
+                        <line x1="330" y1="55" x2="330" y2="73" stroke="#ffcc80" stroke-width="0.5"/>
+                        <line x1="370" y1="55" x2="370" y2="73" stroke="#ffcc80" stroke-width="0.5"/>
+                        <line x1="410" y1="55" x2="410" y2="73" stroke="#ffcc80" stroke-width="0.5"/>
+                        <text x="250" y="68" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">1D 센서 (예: 16384 x 1)</text>
+                        <text x="250" y="100" text-anchor="middle" font-size="11" fill="#666">한 줄씩 촬영하여 이미지 합성</text>
+
+                        <!-- 합성된 이미지 -->
+                        <rect x="100" y="120" width="300" height="140" rx="6" fill="#fafafa" stroke="#bdbdbd" stroke-width="1"/>
+                        <!-- 스캔 라인들 -->
+                        <rect x="100" y="120" width="300" height="10" rx="0" fill="#fff3e0" stroke="none" opacity="0.8"/>
+                        <rect x="100" y="132" width="300" height="10" rx="0" fill="#ffe0b2" stroke="none" opacity="0.6"/>
+                        <rect x="100" y="144" width="300" height="10" rx="0" fill="#ffcc80" stroke="none" opacity="0.5"/>
+                        <rect x="100" y="156" width="300" height="10" rx="0" fill="#ffb74d" stroke="none" opacity="0.4"/>
+                        <rect x="100" y="168" width="300" height="10" rx="0" fill="#ffa726" stroke="none" opacity="0.35"/>
+                        <rect x="100" y="180" width="300" height="10" rx="0" fill="#ff9800" stroke="none" opacity="0.3"/>
+                        <rect x="100" y="192" width="300" height="10" rx="0" fill="#fb8c00" stroke="none" opacity="0.25"/>
+                        <rect x="100" y="204" width="300" height="10" rx="0" fill="#f57c00" stroke="none" opacity="0.2"/>
+                        <!-- 화살표 (이동 방향) -->
+                        <defs><marker id="arr-down" markerWidth="8" markerHeight="6" refX="4" refY="6" orient="auto"><path d="M0,0 L8,0 L4,6Z" fill="#e65100"/></marker></defs>
+                        <line x1="70" y1="120" x2="70" y2="255" stroke="#e65100" stroke-width="2" marker-end="url(#arr-down)"/>
+                        <text x="62" y="190" text-anchor="middle" font-size="9" fill="#e65100" transform="rotate(-90 62 190)">이동 방향</text>
+                        <text x="250" y="235" text-anchor="middle" font-size="11" fill="#e65100" font-weight="600">합성된 2D 이미지</text>
+                        <text x="250" y="270" text-anchor="middle" font-size="10" fill="#999">가로: 센서 해상도 / 세로: 스캔 횟수 (무한 가능)</text>
+                    </svg>
+                    <div class="caption">그림 2. 라인스캔 센서 - 1D 라인 센서로 이동 물체를 한 줄씩 촬영하여 2D 이미지 합성</div>
+                </div>
+
+                <h3 id="line-encoder"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 인코더와 동기화</h3>
+
+                <p>라인스캔 카메라에서 <strong>인코더(Encoder)</strong>는 필수 장치이다. 컨베이어 벨트나 롤러의 이동량을 펄스 신호로 변환하여 카메라에 전달한다. 인코더 펄스가 들어올 때마다 카메라가 한 줄을 촬영하므로, 물체의 이동 속도가 변해도 이미지 왜곡 없이 정확한 비율의 이미지를 얻을 수 있다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>인코더 해상도 계산</strong>
+                        인코더 1펄스당 이동 거리가 카메라의 수직 방향 픽셀 크기와 일치해야 정사각 픽셀의 이미지를 얻는다. 예를 들어, 렌즈 배율로 환산한 1픽셀의 실제 크기가 10um이면, 인코더도 10um 간격으로 펄스를 발생시켜야 한다.
+                    </div>
+                </div>
+
+                <!-- 3. 동작 원리 비교 -->
+                <h2 id="principle"><i class="fa-solid fa-arrows-left-right"></i> 동작 원리 비교</h2>
+
+                <div class="figure">
+                    <svg viewBox="0 0 750 380" style="width:100%; max-width:750px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="375" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">에어리어스캔 vs 라인스캔 동작 원리</text>
+
+                        <!-- 에어리어스캔 -->
+                        <rect x="20" y="45" width="330" height="320" rx="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="185" y="72" text-anchor="middle" font-size="13" fill="#1565c0" font-weight="700">에어리어스캔</text>
+
+                        <!-- 카메라 -->
+                        <rect x="130" y="88" width="110" height="40" rx="6" fill="#1565c0" stroke="none"/>
+                        <text x="185" y="113" text-anchor="middle" font-size="11" fill="white" font-weight="600">카메라</text>
+                        <!-- 렌즈 -->
+                        <rect x="165" y="128" width="40" height="15" rx="3" fill="#42a5f5"/>
+                        <!-- 셔터 표시 -->
+                        <text x="185" y="165" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">셔터 (한 번)</text>
+                        <!-- 피사체 -->
+                        <rect x="100" y="180" width="170" height="120" rx="8" fill="white" stroke="#90caf9" stroke-width="1.5"/>
+                        <rect x="110" y="190" width="150" height="100" rx="4" fill="#bbdefb" opacity="0.4"/>
+                        <text x="185" y="245" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="600">전체 프레임</text>
+                        <text x="185" y="260" text-anchor="middle" font-size="10" fill="#64b5f6">정지 또는 순간 포착</text>
+                        <!-- 설명 -->
+                        <text x="185" y="330" text-anchor="middle" font-size="10" fill="#1565c0">셔터 한 번 = 전체 이미지</text>
+                        <text x="185" y="348" text-anchor="middle" font-size="10" fill="#64b5f6">인코더 불필요</text>
+
+                        <!-- 라인스캔 -->
+                        <rect x="400" y="45" width="330" height="320" rx="12" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+                        <text x="565" y="72" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">라인스캔</text>
+
+                        <!-- 카메라 -->
+                        <rect x="510" y="88" width="110" height="40" rx="6" fill="#e65100" stroke="none"/>
+                        <text x="565" y="113" text-anchor="middle" font-size="11" fill="white" font-weight="600">카메라</text>
+                        <!-- 렌즈 -->
+                        <rect x="545" y="128" width="40" height="15" rx="3" fill="#ff9800"/>
+                        <!-- 스캔 라인 -->
+                        <line x1="480" y1="155" x2="650" y2="155" stroke="#e65100" stroke-width="2" stroke-dasharray="4,3"/>
+                        <text x="565" y="172" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">연속 스캔 (한 줄씩)</text>
+
+                        <!-- 이동하는 물체 -->
+                        <rect x="480" y="180" width="170" height="120" rx="8" fill="white" stroke="#ffcc80" stroke-width="1.5"/>
+                        <!-- 스캔 라인들 -->
+                        <rect x="490" y="190" width="150" height="6" fill="#fff3e0" stroke="#ffb74d" stroke-width="0.5"/>
+                        <rect x="490" y="200" width="150" height="6" fill="#ffe0b2" stroke="#ffb74d" stroke-width="0.5"/>
+                        <rect x="490" y="210" width="150" height="6" fill="#ffcc80" stroke="#ffb74d" stroke-width="0.5"/>
+                        <rect x="490" y="220" width="150" height="6" fill="#ffb74d" stroke="#ffa726" stroke-width="0.5"/>
+                        <rect x="490" y="230" width="150" height="6" fill="#ffa726" stroke="#ff9800" stroke-width="0.5"/>
+                        <rect x="490" y="240" width="150" height="6" fill="#ff9800" stroke="#fb8c00" stroke-width="0.5"/>
+                        <rect x="490" y="250" width="150" height="6" fill="#fb8c00" stroke="#f57c00" stroke-width="0.5"/>
+                        <rect x="490" y="260" width="150" height="6" fill="#f57c00" stroke="#e65100" stroke-width="0.5"/>
+                        <rect x="490" y="270" width="150" height="6" fill="#e65100" stroke="#bf360c" stroke-width="0.5" opacity="0.7"/>
+                        <rect x="490" y="280" width="150" height="6" fill="#bf360c" stroke="#bf360c" stroke-width="0.5" opacity="0.5"/>
+                        <!-- 이동 방향 화살표 -->
+                        <defs><marker id="arr-up" markerWidth="8" markerHeight="6" refX="4" refY="0" orient="auto"><path d="M0,6 L8,6 L4,0Z" fill="#e65100"/></marker></defs>
+                        <line x1="460" y1="290" x2="460" y2="190" stroke="#e65100" stroke-width="2" marker-end="url(#arr-up)"/>
+                        <text x="445" y="245" text-anchor="middle" font-size="9" fill="#e65100" transform="rotate(-90 445 245)">물체 이동</text>
+
+                        <!-- 인코더 아이콘 -->
+                        <rect x="660" y="220" width="55" height="55" rx="27" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+                        <text x="687" y="244" text-anchor="middle" font-size="8" fill="#e65100" font-weight="700">인코더</text>
+                        <text x="687" y="258" text-anchor="middle" font-size="7" fill="#ff9800">동기화</text>
+
+                        <!-- 설명 -->
+                        <text x="565" y="330" text-anchor="middle" font-size="10" fill="#e65100">연속 스캔 = 무한 길이 이미지</text>
+                        <text x="565" y="348" text-anchor="middle" font-size="10" fill="#ff9800">인코더 필수 (이동 동기화)</text>
+                    </svg>
+                    <div class="caption">그림 3. 에어리어스캔(셔터 한 번 촬영) vs 라인스캔(연속 스캔 + 인코더 동기화)</div>
+                </div>
+
+                <!-- 4. 비교 테이블 -->
+                <h2 id="comparison"><i class="fa-solid fa-scale-balanced"></i> 비교 테이블</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>에어리어스캔</th>
+                            <th>라인스캔</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">센서 구조</td>
+                            <td>2D 매트릭스 (예: 2048x1536)</td>
+                            <td>1D 라인 (예: 16384x1, 수줄 가능)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">해상도</td>
+                            <td>일반적으로 1~29MP</td>
+                            <td>2K~16K+ (가로), 세로는 무한</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">촬영 속도</td>
+                            <td>수십~수백 fps</td>
+                            <td>수만~수십만 라인/초</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">이미지 취득</td>
+                            <td>한 번에 전체 프레임</td>
+                            <td>한 줄씩 스캔하여 합성</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">물체 이동</td>
+                            <td>정지 또는 이동 모두 가능</td>
+                            <td>반드시 이동 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">인코더</td>
+                            <td>불필요</td>
+                            <td>필수 (이동 동기화)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">조명</td>
+                            <td>면 조명 (균일도 확보 어려움)</td>
+                            <td>라인 조명 (좁은 영역, 균일 용이)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">촬영 길이</td>
+                            <td>FOV 내로 제한</td>
+                            <td>무한 길이 가능</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">인터페이스</td>
+                            <td>GigE, USB3, Camera Link</td>
+                            <td>Camera Link, CoaXPress, GigE (고속 필요)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">가격</td>
+                            <td>상대적으로 저렴</td>
+                            <td>고가 (카메라 + 인코더 + 라인 조명)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 5. 라인스캔 장점 -->
+                <h2 id="line-advantages"><i class="fa-solid fa-arrow-trend-up"></i> 라인스캔의 장점</h2>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-infinity" style="color:#e65100; font-size:0.85rem;"></i> 무한 길이 촬영</h4>
+                        <p>물체가 이동하는 한 끊김 없이 연속 촬영이 가능하다. 필름, 직물, 강판 등 길이가 수십~수백 미터인 소재도 한 장의 이미지로 검사할 수 있다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-expand" style="color:#e65100; font-size:0.85rem;"></i> 초고해상도 (16K+)</h4>
+                        <p>가로 방향으로 16384 픽셀(16K) 이상의 센서가 상용화되어 있다. 에어리어스캔으로 동일한 가로 해상도를 확보하려면 여러 대의 카메라를 이어 붙여야 한다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-lightbulb" style="color:#e65100; font-size:0.85rem;"></i> 균일한 조명 용이</h4>
+                        <p>라인 조명은 좁은 한 줄 영역만 밝히면 되므로, 넓은 면적을 균일하게 조명하는 것보다 훨씬 쉽고 조도도 높다. 동일한 전력으로 더 밝은 조명을 구현할 수 있다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-gauge-high" style="color:#e65100; font-size:0.85rem;"></i> 고속 라인 레이트</h4>
+                        <p>1줄만 읽어내면 되므로 라인 레이트(Line Rate)가 매우 높다. 200kHz 이상의 라인 레이트로 고속 이동 물체를 놓치지 않고 촬영한다.</p>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>라인스캔의 핵심 가치</strong>
+                        넓고 긴 피사체를 고해상도로 빠르게 촬영할 때 라인스캔은 유일한 선택지이다. 에어리어스캔 여러 대를 나열하는 것보다 라인스캔 1대가 더 균일하고 효율적인 이미지를 제공한다.
+                    </div>
+                </div>
+
+                <!-- 6. 에어리어스캔 장점 -->
+                <h2 id="area-advantages"><i class="fa-solid fa-thumbs-up"></i> 에어리어스캔의 장점</h2>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-wrench" style="color:#1565c0; font-size:0.85rem;"></i> 설치 간편</h4>
+                        <p>카메라, 렌즈, 조명만 있으면 된다. 인코더나 별도의 동기화 장치가 필요 없으므로 시스템 구성이 단순하고, 셋업 시간이 짧다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-hand" style="color:#1565c0; font-size:0.85rem;"></i> 정지 물체 촬영 가능</h4>
+                        <p>물체가 이동하지 않아도 촬영 가능하다. 로봇 팔이 물체를 카메라 앞에 갖다 대는 방식, 트레이에 놓인 부품 검사 등 다양한 상황에 유연하게 대응한다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-coins" style="color:#1565c0; font-size:0.85rem;"></i> 저비용</h4>
+                        <p>카메라 자체가 라인스캔보다 저렴하고, 면 조명도 라인 조명보다 가격이 낮다. 인코더, 프레임 그래버 등 추가 장비가 불필요하여 전체 시스템 비용이 적다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-code" style="color:#1565c0; font-size:0.85rem;"></i> 개발 용이</h4>
+                        <p>한 번에 완성된 2D 이미지를 얻으므로 이미지 처리가 직관적이다. 라인스캔처럼 라인 합성, 인코더 보정, 속도 동기화 등의 복잡한 과정이 없다.</p>
+                    </div>
+                </div>
+
+                <!-- 7. 적용 분야 -->
+                <h2 id="applications"><i class="fa-solid fa-industry"></i> 적용 분야</h2>
+
+                <h3 id="app-linescan"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 라인스캔 주요 적용 분야</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">디스플레이 검사</span>
+                        <span class="term-desc">LCD/OLED 패널의 미세 결함(Mura, 얼룩, 스크래치)을 16K 해상도로 검사. TDI 센서 활용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">필름/인쇄 검사</span>
+                        <span class="term-desc">연속 생산되는 필름, 포장재, 인쇄물의 표면 결함 및 인쇄 품질을 실시간 검사.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">웹(Web) 검사</span>
+                        <span class="term-desc">종이, 직물, 금속박 등 롤투롤(Roll-to-Roll) 공정에서 연속 이동하는 소재의 결함 검출.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">태양전지 검사</span>
+                        <span class="term-desc">태양전지 셀/모듈의 균열, 오염, 패턴 불량을 고해상도로 전수 검사.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">목재/유리 검사</span>
+                        <span class="term-desc">대형 판재의 표면 결함을 고속으로 스캔. 넓은 FOV와 긴 촬영 길이에 적합.</span>
+                    </div>
+                </div>
+
+                <h3 id="app-areascan"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 에어리어스캔 주요 적용 분야</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">PCB 검사 (AOI)</span>
+                        <span class="term-desc">인쇄회로기판의 솔더, 부품 실장 상태를 2D/3D로 검사. 정지 상태에서 정밀 촬영.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">반도체 다이 검사</span>
+                        <span class="term-desc">웨이퍼 위의 개별 다이 외관, 본딩 와이어, 범프 상태 검사.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">외관 검사</span>
+                        <span class="term-desc">자동차 부품, 전자기기 외관의 스크래치, 찍힘, 이물질 검출. 로봇 연동 가능.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">로봇 비전/가이딩</span>
+                        <span class="term-desc">로봇 팔의 피킹, 정렬, 조립 등에서 물체의 위치와 자세를 인식.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">바코드/OCR</span>
+                        <span class="term-desc">1D/2D 바코드 판독, 문자 인식(OCR). 제품 추적 및 분류 시스템.</span>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 280" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">적용 분야 분류</text>
+
+                        <!-- 라인스캔 -->
+                        <rect x="30" y="45" width="280" height="220" rx="12" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+                        <text x="170" y="72" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">라인스캔</text>
+                        <text x="170" y="92" text-anchor="middle" font-size="10" fill="#ff9800">연속 이동 + 고해상도 + 긴 물체</text>
+
+                        <rect x="50" y="108" width="110" height="40" rx="6" fill="white" stroke="#ffcc80" stroke-width="1.5"/>
+                        <text x="105" y="132" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">디스플레이</text>
+                        <rect x="180" y="108" width="110" height="40" rx="6" fill="white" stroke="#ffcc80" stroke-width="1.5"/>
+                        <text x="235" y="132" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">필름/인쇄</text>
+                        <rect x="50" y="160" width="110" height="40" rx="6" fill="white" stroke="#ffcc80" stroke-width="1.5"/>
+                        <text x="105" y="184" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">웹 검사</text>
+                        <rect x="180" y="160" width="110" height="40" rx="6" fill="white" stroke="#ffcc80" stroke-width="1.5"/>
+                        <text x="235" y="184" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">태양전지</text>
+                        <rect x="115" y="212" width="110" height="40" rx="6" fill="white" stroke="#ffcc80" stroke-width="1.5"/>
+                        <text x="170" y="236" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">목재/유리</text>
+
+                        <!-- 에어리어스캔 -->
+                        <rect x="380" y="45" width="290" height="220" rx="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="525" y="72" text-anchor="middle" font-size="13" fill="#1565c0" font-weight="700">에어리어스캔</text>
+                        <text x="525" y="92" text-anchor="middle" font-size="10" fill="#64b5f6">정지/개별 부품 + 범용 + 유연한 설치</text>
+
+                        <rect x="400" y="108" width="110" height="40" rx="6" fill="white" stroke="#90caf9" stroke-width="1.5"/>
+                        <text x="455" y="132" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">PCB (AOI)</text>
+                        <rect x="540" y="108" width="110" height="40" rx="6" fill="white" stroke="#90caf9" stroke-width="1.5"/>
+                        <text x="595" y="132" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">반도체 다이</text>
+                        <rect x="400" y="160" width="110" height="40" rx="6" fill="white" stroke="#90caf9" stroke-width="1.5"/>
+                        <text x="455" y="184" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">외관 검사</text>
+                        <rect x="540" y="160" width="110" height="40" rx="6" fill="white" stroke="#90caf9" stroke-width="1.5"/>
+                        <text x="595" y="184" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">로봇 비전</text>
+                        <rect x="470" y="212" width="110" height="40" rx="6" fill="white" stroke="#90caf9" stroke-width="1.5"/>
+                        <text x="525" y="236" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">바코드/OCR</text>
+                    </svg>
+                    <div class="caption">그림 4. 라인스캔과 에어리어스캔의 대표 적용 분야</div>
+                </div>
+
+                <!-- 8. TDI -->
+                <h2 id="tdi"><i class="fa-solid fa-layer-group"></i> TDI (Time Delay Integration)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> TDI (Time Delay Integration)</div>
+                    <p>라인스캔 카메라의 감도(Sensitivity)를 향상시키는 기법. 동일한 피사체 영역을 여러 줄의 센서 라인으로 반복 촬영하고, 각 라인의 노출 결과를 누적(적분)하여 신호 대 잡음비(SNR)를 높인다. 센서에 N개의 TDI 스테이지가 있으면 감도가 일반 라인스캔 대비 약 N배 향상된다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 340" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">TDI 동작 원리</text>
+
+                        <!-- TDI 센서 -->
+                        <rect x="150" y="50" width="350" height="220" rx="10" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+                        <text x="325" y="75" text-anchor="middle" font-size="12" fill="#7b1fa2" font-weight="700">TDI 센서 (예: 128 스테이지)</text>
+
+                        <!-- 라인들 -->
+                        <rect x="180" y="90" width="290" height="16" rx="3" fill="#e1bee7" stroke="#9c27b0" stroke-width="1"/>
+                        <text x="325" y="102" text-anchor="middle" font-size="9" fill="#7b1fa2">라인 1: 첫 번째 노출</text>
+
+                        <rect x="180" y="112" width="290" height="16" rx="3" fill="#ce93d8" stroke="#9c27b0" stroke-width="1"/>
+                        <text x="325" y="124" text-anchor="middle" font-size="9" fill="#4a148c">라인 2: 두 번째 노출 (누적)</text>
+
+                        <rect x="180" y="134" width="290" height="16" rx="3" fill="#ba68c8" stroke="#7b1fa2" stroke-width="1"/>
+                        <text x="325" y="146" text-anchor="middle" font-size="9" fill="white">라인 3: 세 번째 노출 (누적)</text>
+
+                        <!-- 점선 (생략) -->
+                        <text x="325" y="168" text-anchor="middle" font-size="14" fill="#9c27b0" font-weight="700">...</text>
+
+                        <rect x="180" y="180" width="290" height="16" rx="3" fill="#8e24aa" stroke="#6a1b9a" stroke-width="1"/>
+                        <text x="325" y="192" text-anchor="middle" font-size="9" fill="white">라인 N: N번째 노출 (누적)</text>
+
+                        <!-- 결과 -->
+                        <rect x="180" y="210" width="290" height="20" rx="4" fill="#4a148c" stroke="#311b92" stroke-width="2"/>
+                        <text x="325" y="224" text-anchor="middle" font-size="10" fill="white" font-weight="700">출력: N배 감도 향상된 라인</text>
+
+                        <!-- 이동 방향 화살표 -->
+                        <defs><marker id="arr-tdi" markerWidth="8" markerHeight="6" refX="4" refY="6" orient="auto"><path d="M0,0 L8,0 L4,6Z" fill="#7b1fa2"/></marker></defs>
+                        <line x1="130" y1="90" x2="130" y2="230" stroke="#7b1fa2" stroke-width="2" marker-end="url(#arr-tdi)"/>
+                        <text x="118" y="165" text-anchor="middle" font-size="9" fill="#7b1fa2" transform="rotate(-90 118 165)">물체 이동 방향</text>
+
+                        <!-- 설명 텍스트 -->
+                        <text x="325" y="295" text-anchor="middle" font-size="11" fill="#7b1fa2" font-weight="600">동일 영역을 N번 노출하여 신호를 누적</text>
+                        <text x="325" y="315" text-anchor="middle" font-size="10" fill="#9c27b0">SNR 향상 = sqrt(N) 배 / 감도 향상 = N배</text>
+                        <text x="325" y="335" text-anchor="middle" font-size="10" fill="#ba68c8">고속 이동 + 낮은 조도 환경에서 필수</text>
+                    </svg>
+                    <div class="caption">그림 5. TDI 센서 동작 원리 - N개 스테이지에서 동일 영역을 반복 노출하여 감도 향상</div>
+                </div>
+
+                <h3 id="tdi-principle"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> TDI의 핵심 원리</h3>
+
+                <p>TDI 센서는 물리적으로 여러 줄의 픽셀 라인이 수직으로 배열되어 있다. 물체가 이동하면서 같은 영역이 라인 1, 라인 2, ..., 라인 N을 순차적으로 지나간다. 각 라인에서 노출된 전하를 다음 라인으로 전달(shift)하면서 누적하므로, 최종 출력은 일반 라인스캔 대비 <strong>N배의 신호량</strong>을 갖는다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>TDI 스테이지 수와 감도</strong>
+                        일반적으로 TDI 센서의 스테이지 수는 32, 64, 128, 256단이다. 128 스테이지 TDI 센서는 일반 라인스캔 대비 128배의 감도를 얻으며, SNR(신호 대 잡음비)은 sqrt(128) = 약 11.3배 향상된다.
+                    </div>
+                </div>
+
+                <h3 id="tdi-usage"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> TDI 활용 사례</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">디스플레이 검사</span>
+                        <span class="term-desc">고속 라인에서 미세 결함을 검출하려면 높은 감도가 필수. TDI 카메라가 표준.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">반도체 웨이퍼 검사</span>
+                        <span class="term-desc">마이크로미터 수준 결함을 고배율 렌즈로 검사. 빛이 부족한 환경에서 TDI로 보상.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">인쇄 검사</span>
+                        <span class="term-desc">고속 인쇄기(수백 m/min)에서 인쇄 품질 실시간 검사. 짧은 노출에도 충분한 신호 확보.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">우편/물류 분류</span>
+                        <span class="term-desc">고속으로 이동하는 소포, 편지의 주소/바코드를 읽기 위한 고감도 촬영.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>TDI 사용 시 주의사항</strong>
+                        TDI는 물체의 이동 방향과 속도가 센서의 전하 전달(shift) 방향 및 속도와 정확히 일치해야 한다. 불일치가 발생하면 이미지가 흐려지는(smearing) 현상이 나타난다. 따라서 인코더 동기화 정밀도가 일반 라인스캔보다 더 중요하다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Teledyne DALSA — Line Scan vs Area Scan Cameras Guide</li>
+                        <li>Basler — Line Scan Camera Technology White Paper</li>
+                        <li>EMVA — European Machine Vision Association Standards</li>
+                        <li>Hamamatsu — TDI (Time Delay Integration) Image Sensor Technical Note</li>
+                        <li>Teledyne e2v — TDI Technology for Industrial Inspection</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-sensor"><i class="fa-solid fa-arrow-left"></i> 센서/ISP 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-sensor');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-sensor');
+</script>
+
+</body>
+</html>

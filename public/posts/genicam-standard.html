@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenICam 표준 이해하기 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-genicam" data-section="what-is-genicam">GenICam이란?</a>
+        <a href="#module-structure" data-section="module-structure">모듈 구조</a>
+        <a href="#sfnc" data-section="sfnc">SFNC</a>
+        <a href="#xml-description" data-section="xml-description">XML 디스크립션</a>
+        <a href="#advantages" data-section="advantages">장점</a>
+        <a href="#practical-tips" data-section="practical-tips">실무 팁</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">통신/인터페이스</span>
+                </div>
+                <h1>GenICam 표준 이해하기 — 제조사 독립적 카메라 제어의 핵심</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 8 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>GenICam 표준의 탄생 배경과 핵심 목적</li>
+                        <li>GenAPI, SFNC, GenTL, GenCP 모듈의 역할과 관계</li>
+                        <li>SFNC 주요 Feature 이름 규칙과 예시</li>
+                        <li>XML 디스크립션 파일의 구조와 동작 원리</li>
+                        <li>실무에서 GenICam을 활용하는 방법과 주의사항</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-genicam">GenICam이란?</a></li>
+                        <li><a href="#module-structure">GenICam 모듈 구조</a></li>
+                        <li><a href="#sfnc">SFNC (Standard Features Naming Convention)</a></li>
+                        <li><a href="#xml-description">XML 디스크립션 파일</a></li>
+                        <li><a href="#advantages">GenICam의 장점</a></li>
+                        <li><a href="#practical-tips">실무 팁</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. GenICam이란? -->
+                <h2 id="what-is-genicam"><i class="fa-solid fa-microchip"></i> GenICam이란?</h2>
+
+                <p><strong>GenICam</strong>(Generic Interface for Cameras)은 EMVA(European Machine Vision Association)에서 제정한 산업용 카메라 제어 표준이다. 카메라 제조사에 관계없이 <strong>동일한 API와 Feature 이름</strong>으로 카메라를 제어할 수 있도록 설계되었다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 GenICam이 필요한가?</div>
+                    <p>GenICam 이전에는 카메라 제조사마다 독자적인 SDK와 API를 제공했다. Basler, FLIR, Hikvision, Daheng 등 각 제조사의 SDK를 따로 학습해야 했고, 카메라를 교체하면 소프트웨어를 처음부터 다시 작성해야 하는 경우가 많았다. GenICam은 이러한 <strong>제조사 종속(Vendor Lock-in) 문제</strong>를 해결하기 위해 탄생했다.</p>
+                </div>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> GenICam 이전</h4>
+                        <ul>
+                            <li>제조사마다 다른 SDK 설치</li>
+                            <li>노출 시간 설정 함수 이름이 제각각</li>
+                            <li>카메라 교체 시 코드 전면 수정</li>
+                            <li>멀티 벤더 환경 구성 어려움</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> GenICam 이후</h4>
+                        <ul>
+                            <li>표준 API로 모든 카메라 제어</li>
+                            <li><code>ExposureTime</code> 하나로 통일</li>
+                            <li>카메라 교체해도 코드 변경 최소</li>
+                            <li>서로 다른 제조사 카메라 혼용 가능</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>GenICam과 전송 표준의 관계</strong>
+                        GenICam은 카메라 <strong>제어 방식</strong>에 대한 표준이지, 데이터 <strong>전송 방식</strong>에 대한 표준이 아니다. GigE Vision, USB3 Vision, Camera Link 등은 전송 표준이고, GenICam은 이들 위에서 동작하는 <strong>제어 계층</strong>이다. 즉, 어떤 전송 표준을 사용하든 GenICam으로 동일하게 카메라를 제어할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 2. GenICam 모듈 구조 -->
+                <h2 id="module-structure"><i class="fa-solid fa-cubes"></i> GenICam 모듈 구조</h2>
+
+                <p>GenICam은 단일 규격이 아니라 <strong>4개의 핵심 모듈</strong>로 구성된 프레임워크다. 각 모듈은 독립적이면서도 서로 연동하여 카메라의 발견, 연결, 제어, 이미지 전송까지의 전 과정을 표준화한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 420" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#3a9a3e"/></marker>
+                        </defs>
+                        <text x="360" y="24" text-anchor="middle" font-size="15" fill="#1b5e20" font-weight="700">GenICam 모듈 구조</text>
+
+                        <!-- Application Layer -->
+                        <rect x="140" y="45" width="440" height="50" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="360" y="75" text-anchor="middle" font-size="13" fill="#2e7d32" font-weight="700">Application (사용자 애플리케이션)</text>
+
+                        <!-- Arrow down -->
+                        <line x1="360" y1="95" x2="360" y2="120" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <!-- GenAPI -->
+                        <rect x="140" y="120" width="440" height="60" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="360" y="148" text-anchor="middle" font-size="13" fill="#1565c0" font-weight="700">GenAPI</text>
+                        <text x="360" y="167" text-anchor="middle" font-size="10" fill="#64b5f6">XML 파싱 + Feature 트리 구성 + 값 읽기/쓰기 인터페이스</text>
+
+                        <!-- Arrow down -->
+                        <line x1="240" y1="180" x2="240" y2="205" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+                        <line x1="480" y1="180" x2="480" y2="205" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <!-- SFNC and GenCP side by side -->
+                        <rect x="100" y="205" width="280" height="60" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="240" y="233" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">SFNC</text>
+                        <text x="240" y="252" text-anchor="middle" font-size="10" fill="#fb8c00">표준 Feature 이름 규칙 (Width, Gain...)</text>
+
+                        <rect x="400" y="205" width="230" height="60" rx="10" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="515" y="233" text-anchor="middle" font-size="13" fill="#7b1fa2" font-weight="700">GenCP</text>
+                        <text x="515" y="252" text-anchor="middle" font-size="10" fill="#ba68c8">레지스터 읽기/쓰기 프로토콜</text>
+
+                        <!-- Arrow down -->
+                        <line x1="360" y1="265" x2="360" y2="295" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <!-- GenTL -->
+                        <rect x="140" y="295" width="440" height="60" rx="10" fill="#fce4ec" stroke="#e91e63" stroke-width="2"/>
+                        <text x="360" y="323" text-anchor="middle" font-size="13" fill="#c2185b" font-weight="700">GenTL (Generic Transport Layer)</text>
+                        <text x="360" y="342" text-anchor="middle" font-size="10" fill="#e91e63">장치 열거, 연결, 이미지 스트림 수신 (Producer/Consumer)</text>
+
+                        <!-- Arrow down -->
+                        <line x1="200" y1="355" x2="200" y2="385" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+                        <line x1="360" y1="355" x2="360" y2="385" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+                        <line x1="520" y1="355" x2="520" y2="385" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <!-- Transport standards -->
+                        <rect x="120" y="385" width="140" height="30" rx="6" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <text x="190" y="405" text-anchor="middle" font-size="11" fill="#616161" font-weight="600">GigE Vision</text>
+
+                        <rect x="290" y="385" width="140" height="30" rx="6" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <text x="360" y="405" text-anchor="middle" font-size="11" fill="#616161" font-weight="600">USB3 Vision</text>
+
+                        <rect x="460" y="385" width="140" height="30" rx="6" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <text x="530" y="405" text-anchor="middle" font-size="11" fill="#616161" font-weight="600">Camera Link</text>
+                    </svg>
+                    <div class="caption">그림 1. GenICam 프레임워크의 계층 구조 — 전송 표준 위에 제어 표준이 위치한다</div>
+                </div>
+
+                <h3 id="module-genapi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> GenAPI</h3>
+
+                <p>GenICam의 핵심 엔진이다. 카메라가 제공하는 <strong>XML 디스크립션 파일</strong>을 파싱하여 Feature 트리를 구성하고, 애플리케이션이 Feature 값을 읽거나 쓸 수 있는 표준 인터페이스를 제공한다. 노드(Node) 기반으로 동작하며, 각 Feature는 <code>IInteger</code>, <code>IFloat</code>, <code>IEnumeration</code>, <code>IBoolean</code>, <code>ICommand</code> 등의 타입을 갖는다.</p>
+
+                <h3 id="module-sfnc"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> SFNC (Standard Features Naming Convention)</h3>
+
+                <p>카메라 Feature의 <strong>이름과 의미를 표준화</strong>한 규약이다. 예를 들어 모든 GenICam 호환 카메라에서 노출 시간은 <code>ExposureTime</code>, 이미지 폭은 <code>Width</code>라는 이름으로 접근한다. 다음 섹션에서 자세히 다룬다.</p>
+
+                <h3 id="module-gentl"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> GenTL (Generic Transport Layer)</h3>
+
+                <p>카메라의 <strong>발견, 연결, 이미지 스트림 수신</strong>을 담당하는 전송 계층 표준이다. Producer(카메라/드라이버 측)와 Consumer(SDK/애플리케이션 측) 모델로 동작한다. GenTL Producer는 <code>.cti</code> 파일 형태로 배포되며, SDK는 이 파일을 로드하여 카메라에 접근한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>GenTL Producer (.cti 파일)</strong>
+                        각 전송 표준(GigE, USB3 등)에 대해 제조사가 GenTL Producer DLL을 제공한다. 환경변수 <code>GENICAM_GENTL64_PATH</code>에 .cti 파일 경로를 등록하면, GenICam 호환 SDK가 자동으로 해당 카메라를 검색할 수 있다.
+                    </div>
+                </div>
+
+                <h3 id="module-gencp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> GenCP (Generic Control Protocol)</h3>
+
+                <p>카메라 레지스터에 대한 <strong>읽기/쓰기 프로토콜</strong>을 정의한다. GenAPI가 Feature 값을 변경하면, 실제로는 GenCP를 통해 카메라 레지스터에 바이트 단위로 데이터가 전달된다. Bootstrap Register(장치 정보, XML 파일 위치 등)도 GenCP로 접근한다.</p>
+
+                <!-- 3. SFNC -->
+                <h2 id="sfnc"><i class="fa-solid fa-tags"></i> SFNC (Standard Features Naming Convention)</h2>
+
+                <p>SFNC는 GenICam에서 가장 실무에 직접적인 모듈이다. 카메라가 제공하는 기능(Feature)에 대해 <strong>표준화된 이름, 타입, 동작 방식</strong>을 정의한다. 개발자는 제조사에 관계없이 동일한 Feature 이름으로 카메라를 제어할 수 있다.</p>
+
+                <h3 id="sfnc-image"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 이미지 포맷 관련 Feature</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>Feature 이름</th>
+                            <th>타입</th>
+                            <th>설명</th>
+                            <th>예시 값</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Width</td>
+                            <td>IInteger</td>
+                            <td>이미지 가로 해상도 (픽셀)</td>
+                            <td>1920</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Height</td>
+                            <td>IInteger</td>
+                            <td>이미지 세로 해상도 (픽셀)</td>
+                            <td>1080</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">OffsetX</td>
+                            <td>IInteger</td>
+                            <td>ROI 시작 X 좌표</td>
+                            <td>0</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">OffsetY</td>
+                            <td>IInteger</td>
+                            <td>ROI 시작 Y 좌표</td>
+                            <td>0</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PixelFormat</td>
+                            <td>IEnumeration</td>
+                            <td>픽셀 데이터 형식</td>
+                            <td>Mono8, BayerRG8</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="sfnc-acquisition"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 획득 제어 관련 Feature</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>Feature 이름</th>
+                            <th>타입</th>
+                            <th>설명</th>
+                            <th>예시 값</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">ExposureTime</td>
+                            <td>IFloat</td>
+                            <td>노출 시간 (마이크로초)</td>
+                            <td>10000.0</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Gain</td>
+                            <td>IFloat</td>
+                            <td>아날로그/디지털 게인 (dB)</td>
+                            <td>6.0</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">AcquisitionMode</td>
+                            <td>IEnumeration</td>
+                            <td>촬영 모드</td>
+                            <td>Continuous, SingleFrame</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">AcquisitionStart</td>
+                            <td>ICommand</td>
+                            <td>이미지 획득 시작 명령</td>
+                            <td>Execute()</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">AcquisitionStop</td>
+                            <td>ICommand</td>
+                            <td>이미지 획득 중지 명령</td>
+                            <td>Execute()</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="sfnc-trigger"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 트리거 관련 Feature</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>Feature 이름</th>
+                            <th>타입</th>
+                            <th>설명</th>
+                            <th>예시 값</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">TriggerMode</td>
+                            <td>IEnumeration</td>
+                            <td>트리거 모드 ON/OFF</td>
+                            <td>On, Off</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">TriggerSource</td>
+                            <td>IEnumeration</td>
+                            <td>트리거 입력 소스</td>
+                            <td>Line1, Software</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">TriggerActivation</td>
+                            <td>IEnumeration</td>
+                            <td>트리거 엣지 방향</td>
+                            <td>RisingEdge, FallingEdge</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">TriggerSoftware</td>
+                            <td>ICommand</td>
+                            <td>소프트웨어 트리거 실행</td>
+                            <td>Execute()</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>SFNC 버전 확인</strong>
+                        SFNC는 버전이 올라가면서 Feature가 추가되거나 이름이 변경될 수 있다. 예를 들어 구버전에서는 <code>ExposureTimeAbs</code>였던 것이 SFNC 2.0부터 <code>ExposureTime</code>으로 변경되었다. 카메라의 SFNC 버전을 확인하는 것이 중요하다.
+                    </div>
+                </div>
+
+                <!-- 4. XML 디스크립션 파일 -->
+                <h2 id="xml-description"><i class="fa-solid fa-file-code"></i> XML 디스크립션 파일</h2>
+
+                <p>GenICam 호환 카메라는 자신이 지원하는 모든 Feature를 <strong>XML 파일</strong>로 기술한다. 이 XML 파일은 카메라 내부 플래시 메모리에 저장되어 있으며, SDK가 카메라에 연결할 때 자동으로 다운로드하여 파싱한다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> XML 파일의 역할</div>
+                    <p>XML 디스크립션 파일은 카메라의 "설명서"와 같다. 어떤 Feature를 지원하는지, 각 Feature의 타입/범위/기본값은 무엇인지, Feature 간 의존 관계는 어떤지를 모두 기술한다. SDK는 이 XML을 파싱하여 Feature 트리를 구성하고, 애플리케이션에 동적으로 인터페이스를 제공한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 300" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="360" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">XML 디스크립션 파일 동작 흐름</text>
+
+                        <!-- Camera -->
+                        <rect x="30" y="60" width="160" height="180" rx="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="110" y="88" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">Camera</text>
+                        <rect x="45" y="100" width="130" height="35" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="110" y="122" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">XML (zip)</text>
+                        <rect x="45" y="145" width="130" height="35" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="110" y="167" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">Registers</text>
+                        <rect x="45" y="190" width="130" height="35" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="110" y="212" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">Image Sensor</text>
+
+                        <!-- Arrow: Camera -> GenAPI -->
+                        <line x1="190" y1="117" x2="270" y2="117" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="230" y="110" text-anchor="middle" font-size="9" fill="#388e3c">XML 전송</text>
+
+                        <!-- GenAPI -->
+                        <rect x="270" y="60" width="180" height="180" rx="12" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="360" y="88" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">GenAPI Engine</text>
+                        <rect x="285" y="100" width="150" height="35" rx="6" fill="white" stroke="#ffb74d" stroke-width="1.5"/>
+                        <text x="360" y="122" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">XML Parser</text>
+                        <rect x="285" y="145" width="150" height="35" rx="6" fill="white" stroke="#ffb74d" stroke-width="1.5"/>
+                        <text x="360" y="167" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">Feature Tree</text>
+                        <rect x="285" y="190" width="150" height="35" rx="6" fill="white" stroke="#ffb74d" stroke-width="1.5"/>
+                        <text x="360" y="212" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">Node Map</text>
+
+                        <!-- Arrow: GenAPI -> App -->
+                        <line x1="450" y1="150" x2="530" y2="150" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="490" y="143" text-anchor="middle" font-size="9" fill="#388e3c">Feature API</text>
+
+                        <!-- Application -->
+                        <rect x="530" y="80" width="160" height="140" rx="12" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="610" y="108" text-anchor="middle" font-size="12" fill="#2e7d32" font-weight="700">Application</text>
+                        <rect x="545" y="120" width="130" height="30" rx="6" fill="white" stroke="#66bb6a" stroke-width="1.5"/>
+                        <text x="610" y="140" text-anchor="middle" font-size="10" fill="#2e7d32">GetValue("Width")</text>
+                        <rect x="545" y="160" width="130" height="30" rx="6" fill="white" stroke="#66bb6a" stroke-width="1.5"/>
+                        <text x="610" y="180" text-anchor="middle" font-size="10" fill="#2e7d32">SetValue("Gain", 6.0)</text>
+
+                        <!-- Bottom note -->
+                        <text x="360" y="275" text-anchor="middle" font-size="10" fill="#616161">카메라 연결 시 XML이 자동 전송되어 Feature 트리가 구성됨</text>
+                    </svg>
+                    <div class="caption">그림 2. XML 디스크립션 파일의 동작 흐름 — 카메라에서 SDK로 Feature 정보가 전달된다</div>
+                </div>
+
+                <p>XML 파일의 구조를 간략히 살펴보면 다음과 같다:</p>
+
+<pre><span class="comment">&lt;!-- GenICam XML 디스크립션 파일 예시 (간략화) --&gt;</span>
+<span class="keyword">&lt;RegisterDescription&gt;</span>
+  <span class="keyword">&lt;Integer</span> <span class="type">Name</span>=<span class="string">"Width"</span><span class="keyword">&gt;</span>
+    <span class="keyword">&lt;Value&gt;</span>1920<span class="keyword">&lt;/Value&gt;</span>
+    <span class="keyword">&lt;Min&gt;</span>1<span class="keyword">&lt;/Min&gt;</span>
+    <span class="keyword">&lt;Max&gt;</span>4096<span class="keyword">&lt;/Max&gt;</span>
+    <span class="keyword">&lt;Inc&gt;</span>1<span class="keyword">&lt;/Inc&gt;</span>
+    <span class="keyword">&lt;pAddress&gt;</span>WidthReg<span class="keyword">&lt;/pAddress&gt;</span>
+  <span class="keyword">&lt;/Integer&gt;</span>
+
+  <span class="keyword">&lt;Float</span> <span class="type">Name</span>=<span class="string">"ExposureTime"</span><span class="keyword">&gt;</span>
+    <span class="keyword">&lt;Value&gt;</span>10000.0<span class="keyword">&lt;/Value&gt;</span>
+    <span class="keyword">&lt;Min&gt;</span>10.0<span class="keyword">&lt;/Min&gt;</span>
+    <span class="keyword">&lt;Max&gt;</span>1000000.0<span class="keyword">&lt;/Max&gt;</span>
+    <span class="keyword">&lt;Unit&gt;</span>us<span class="keyword">&lt;/Unit&gt;</span>
+    <span class="keyword">&lt;pAddress&gt;</span>ExposureTimeReg<span class="keyword">&lt;/pAddress&gt;</span>
+  <span class="keyword">&lt;/Float&gt;</span>
+
+  <span class="keyword">&lt;Enumeration</span> <span class="type">Name</span>=<span class="string">"TriggerMode"</span><span class="keyword">&gt;</span>
+    <span class="keyword">&lt;EnumEntry</span> <span class="type">Name</span>=<span class="string">"Off"</span><span class="keyword">&gt;</span>
+      <span class="keyword">&lt;Value&gt;</span>0<span class="keyword">&lt;/Value&gt;</span>
+    <span class="keyword">&lt;/EnumEntry&gt;</span>
+    <span class="keyword">&lt;EnumEntry</span> <span class="type">Name</span>=<span class="string">"On"</span><span class="keyword">&gt;</span>
+      <span class="keyword">&lt;Value&gt;</span>1<span class="keyword">&lt;/Value&gt;</span>
+    <span class="keyword">&lt;/EnumEntry&gt;</span>
+  <span class="keyword">&lt;/Enumeration&gt;</span>
+<span class="keyword">&lt;/RegisterDescription&gt;</span></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>XML 파일을 직접 수정하지 마세요</strong>
+                        카메라의 XML 파일은 제조사가 작성한 것이며, 사용자가 임의로 수정하면 카메라가 정상 동작하지 않을 수 있다. Feature 값 변경은 반드시 GenAPI 인터페이스를 통해 수행해야 한다.
+                    </div>
+                </div>
+
+                <!-- 5. GenICam의 장점 -->
+                <h2 id="advantages"><i class="fa-solid fa-star"></i> GenICam의 장점</h2>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-rotate" style="color:#1565c0;"></i> 코드 재사용</h4>
+                        <p>한 번 작성한 카메라 제어 코드를 다른 제조사 카메라에도 그대로 사용할 수 있다. Feature 이름이 SFNC로 통일되어 있기 때문이다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-shuffle" style="color:#e65100;"></i> 제조사 전환 용이</h4>
+                        <p>프로젝트 중간에 카메라 제조사를 변경해도 소프트웨어 수정이 최소화된다. 단가, 성능, 납기 등의 이유로 제조사를 바꿔야 할 때 큰 장점이다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-book" style="color:#7b1fa2;"></i> 표준화된 Feature 이름</h4>
+                        <p><code>ExposureTime</code>, <code>Gain</code>, <code>Width</code> 등 직관적인 이름으로 모든 카메라를 제어한다. 새 카메라를 접해도 학습 시간이 짧다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-puzzle-piece" style="color:#2e7d32;"></i> 전송 표준 독립</h4>
+                        <p>GigE Vision, USB3 Vision, Camera Link 등 어떤 전송 표준을 사용하든 동일한 GenICam API로 카메라를 제어할 수 있다.</p>
+                    </div>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 멀티 벤더 환경의 실제 효과</div>
+                    <p>하나의 검사 라인에 Basler(GigE), Hikvision(USB3), Daheng(GigE) 카메라가 혼용되는 경우에도, GenICam 기반 SDK를 사용하면 동일한 코드 패턴으로 모든 카메라를 제어할 수 있다. 이는 유지보수 비용 절감과 개발 생산성 향상으로 직결된다.</p>
+                </div>
+
+                <!-- 6. 실무 팁 -->
+                <h2 id="practical-tips"><i class="fa-solid fa-wrench"></i> 실무 팁</h2>
+
+                <h3 id="tips-code"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Feature 접근 코드 예시</h3>
+
+                <p>GenICam 기반 SDK에서 카메라 Feature에 접근하는 일반적인 패턴은 다음과 같다 (의사 코드):</p>
+
+<pre><span class="comment">// 1. 카메라 연결 및 NodeMap 획득</span>
+<span class="type">Camera</span> cam = <span class="func">OpenCamera</span>(<span class="string">"DeviceSerialNumber"</span>);
+<span class="type">NodeMap</span> nodeMap = cam.<span class="func">GetNodeMap</span>();
+
+<span class="comment">// 2. 이미지 크기 설정 (IInteger)</span>
+nodeMap.<span class="func">GetIntegerNode</span>(<span class="string">"Width"</span>).<span class="func">SetValue</span>(1920);
+nodeMap.<span class="func">GetIntegerNode</span>(<span class="string">"Height"</span>).<span class="func">SetValue</span>(1080);
+
+<span class="comment">// 3. 노출 시간 설정 (IFloat, 단위: us)</span>
+nodeMap.<span class="func">GetFloatNode</span>(<span class="string">"ExposureTime"</span>).<span class="func">SetValue</span>(10000.0);
+
+<span class="comment">// 4. 게인 설정 (IFloat, 단위: dB)</span>
+nodeMap.<span class="func">GetFloatNode</span>(<span class="string">"Gain"</span>).<span class="func">SetValue</span>(6.0);
+
+<span class="comment">// 5. 트리거 모드 설정 (IEnumeration)</span>
+nodeMap.<span class="func">GetEnumNode</span>(<span class="string">"TriggerMode"</span>).<span class="func">SetValue</span>(<span class="string">"On"</span>);
+nodeMap.<span class="func">GetEnumNode</span>(<span class="string">"TriggerSource"</span>).<span class="func">SetValue</span>(<span class="string">"Line1"</span>);
+
+<span class="comment">// 6. 촬영 시작 (ICommand)</span>
+nodeMap.<span class="func">GetCommandNode</span>(<span class="string">"AcquisitionStart"</span>).<span class="func">Execute</span>();
+
+<span class="comment">// 7. 이미지 수신</span>
+<span class="type">Image</span> img = cam.<span class="func">GetNextImage</span>(timeout: 5000);
+
+<span class="comment">// 8. 촬영 종료</span>
+nodeMap.<span class="func">GetCommandNode</span>(<span class="string">"AcquisitionStop"</span>).<span class="func">Execute</span>();
+cam.<span class="func">Close</span>();</pre>
+
+                <h3 id="tips-caution"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 주의사항</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">Feature 유효성 확인</span>
+                        <span class="term-desc">모든 카메라가 모든 SFNC Feature를 지원하지는 않는다. Feature에 접근하기 전에 <code>IsAvailable()</code>, <code>IsReadable()</code>, <code>IsWritable()</code> 체크를 반드시 수행한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">값 범위 확인</span>
+                        <span class="term-desc"><code>GetMin()</code>, <code>GetMax()</code>, <code>GetInc()</code>로 설정 가능한 범위를 확인한 후 값을 설정한다. 범위를 벗어나면 예외가 발생한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Feature 설정 순서</span>
+                        <span class="term-desc">일부 Feature는 다른 Feature에 의존한다. 예를 들어 <code>TriggerSource</code>는 <code>TriggerMode</code>가 "On"인 경우에만 설정할 수 있다. 의존 관계를 고려하여 순서대로 설정한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">스트리밍 중 설정 변경</span>
+                        <span class="term-desc"><code>Width</code>, <code>Height</code>, <code>PixelFormat</code> 등 일부 Feature는 스트리밍 중에 변경할 수 없다. <code>AcquisitionStop</code> 후 변경하고 다시 시작해야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">제조사 고유 Feature</span>
+                        <span class="term-desc">SFNC에 정의되지 않은 제조사 고유 Feature도 존재한다. 이런 Feature는 이름 앞에 벤더 prefix가 붙거나 (예: <code>BslExposureTimeMode</code>), XML에서 직접 확인해야 한다.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>GenICam Browser 활용</strong>
+                        대부분의 머신비전 SDK는 GenICam Feature Browser(또는 Feature Explorer)를 제공한다. 이 도구를 사용하면 카메라가 지원하는 모든 Feature를 트리 형태로 탐색하고, 값을 실시간으로 변경할 수 있다. 코드를 작성하기 전에 Browser에서 먼저 Feature를 확인하는 습관을 들이면 개발 속도가 크게 향상된다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>GenICam 호환 주요 SDK</strong>
+                        Basler Pylon, MVTec HALCON, Matrox MIL, Cognex VisionPro, STEMMER IMAGING CVB 등 대부분의 상용 머신비전 SDK가 GenICam을 지원한다. 오픈소스로는 Aravis(Linux)가 있다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>EMVA — GenICam Standard (https://www.emva.org/standards-technology/genicam/)</li>
+                        <li>EMVA — GenICam SFNC (Standard Features Naming Convention) Specification</li>
+                        <li>EMVA — GenICam GenAPI Module Specification</li>
+                        <li>EMVA — GenICam GenTL (Generic Transport Layer) Specification</li>
+                        <li>AIA — GigE Vision / USB3 Vision Standard (GenICam 연동)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-comm"><i class="fa-solid fa-arrow-left"></i> 통신/인터페이스 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-comm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-comm');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HDR 이미징 기법 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-hdr" data-section="what-is-hdr">HDR이란</a>
+        <a href="#dynamic-range-limit" data-section="dynamic-range-limit">다이나믹 레인지 한계</a>
+        <a href="#multi-exposure" data-section="multi-exposure">다중 노출 합성</a>
+        <a href="#sensor-hdr" data-section="sensor-hdr">센서 내장 HDR</a>
+        <a href="#tone-mapping" data-section="tone-mapping">톤 매핑</a>
+        <a href="#industrial-cases" data-section="industrial-cases">산업용 적용 사례</a>
+        <a href="#hdr-vs-lighting" data-section="hdr-vs-lighting">HDR vs 조명 설계</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">센서/ISP</span>
+                </div>
+                <h1>HDR 이미징 기법</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 7 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>HDR(High Dynamic Range)의 개념과 필요성</li>
+                        <li>이미지 센서의 다이나믹 레인지 한계와 비트 심도</li>
+                        <li>다중 노출 합성 및 센서 내장 HDR 기법</li>
+                        <li>톤 매핑으로 HDR 이미지를 디스플레이 범위로 변환</li>
+                        <li>산업용 HDR 적용 사례와 조명 설계와의 비교</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-hdr">HDR이란</a></li>
+                        <li><a href="#dynamic-range-limit">센서의 다이나믹 레인지 한계</a></li>
+                        <li><a href="#multi-exposure">다중 노출 합성 (Multi-Exposure HDR)</a></li>
+                        <li><a href="#sensor-hdr">센서 내장 HDR</a></li>
+                        <li><a href="#tone-mapping">톤 매핑</a></li>
+                        <li><a href="#industrial-cases">산업용 HDR 적용 사례</a></li>
+                        <li><a href="#hdr-vs-lighting">HDR vs 조명 설계</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. HDR이란 -->
+                <h2 id="what-is-hdr"><i class="fa-solid fa-sun"></i> HDR이란</h2>
+
+                <p><strong>HDR(High Dynamic Range)</strong>은 밝은 부분과 어두운 부분을 동시에 표현할 수 있는 이미징 기법이다. 일반 카메라(SDR)로 역광 장면을 촬영하면, 밝은 하늘은 하얗게 날아가고(포화) 어두운 피사체는 검게 뭉개지는(암부 손실) 현상이 발생한다. HDR은 이 문제를 해결하여 사람의 눈에 가까운 넓은 밝기 범위를 하나의 이미지에 담는다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 HDR이 필요한가?</div>
+                    <p>실제 세계의 밝기 범위는 약 <strong>10만:1 이상</strong>이다. 직사광선 아래 금속 표면의 반사광과 그림자 영역의 밝기 차이는 카메라 센서가 한 번에 담을 수 있는 범위를 훨씬 초과한다. 산업용 검사에서는 금속 반사, 유리 투과, 광택 표면 등에서 이 문제가 빈번하게 발생하며, HDR은 이를 소프트웨어 또는 하드웨어적으로 해결하는 핵심 기술이다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 220" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">SDR vs HDR 촬영 비교</text>
+
+                        <!-- SDR -->
+                        <rect x="30" y="40" width="200" height="150" rx="10" fill="#f5f5f5" stroke="#bdbdbd" stroke-width="1.5"/>
+                        <text x="130" y="62" text-anchor="middle" font-size="11" fill="#616161" font-weight="700">SDR (일반 촬영)</text>
+                        <!-- 포화 영역 -->
+                        <rect x="50" y="75" width="160" height="35" rx="4" fill="#ffffff" stroke="#ef4444" stroke-width="1.5"/>
+                        <text x="130" y="90" text-anchor="middle" font-size="10" fill="#ef4444" font-weight="600">밝은 영역 — 포화 (White)</text>
+                        <text x="130" y="103" text-anchor="middle" font-size="8" fill="#ef4444">정보 손실</text>
+                        <!-- 암부 영역 -->
+                        <rect x="50" y="120" width="160" height="35" rx="4" fill="#1a1a1a" stroke="#616161" stroke-width="1.5"/>
+                        <text x="130" y="135" text-anchor="middle" font-size="10" fill="#999" font-weight="600">어두운 영역 — 암부</text>
+                        <text x="130" y="148" text-anchor="middle" font-size="8" fill="#999">정보 손실</text>
+                        <text x="130" y="178" text-anchor="middle" font-size="9" fill="#9e9e9e">밝기 범위 제한</text>
+
+                        <!-- 화살표 -->
+                        <text x="280" y="120" text-anchor="middle" font-size="24" fill="#4caf50" font-weight="700">→</text>
+                        <text x="280" y="138" text-anchor="middle" font-size="9" fill="#4caf50" font-weight="600">HDR 적용</text>
+
+                        <!-- HDR -->
+                        <rect x="330" y="40" width="340" height="150" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="500" y="62" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">HDR (High Dynamic Range)</text>
+                        <!-- 밝은 영역 -->
+                        <rect x="350" y="75" width="150" height="35" rx="4" fill="#fff9c4" stroke="#f9a825" stroke-width="1.5"/>
+                        <text x="425" y="90" text-anchor="middle" font-size="10" fill="#f57f17" font-weight="600">밝은 영역 — 디테일 유지</text>
+                        <text x="425" y="103" text-anchor="middle" font-size="8" fill="#f9a825">짧은 노출로 캡처</text>
+                        <!-- 어두운 영역 -->
+                        <rect x="350" y="120" width="150" height="35" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="425" y="135" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">어두운 영역 — 디테일 유지</text>
+                        <text x="425" y="148" text-anchor="middle" font-size="8" fill="#42a5f5">긴 노출로 캡처</text>
+                        <!-- 합성 결과 -->
+                        <rect x="520" y="85" width="130" height="55" rx="6" fill="#c8e6c9" stroke="#2e7d32" stroke-width="1.5"/>
+                        <text x="585" y="107" text-anchor="middle" font-size="10" fill="#1b5e20" font-weight="700">합성 결과</text>
+                        <text x="585" y="122" text-anchor="middle" font-size="9" fill="#2e7d32">전 영역 디테일 보존</text>
+                        <text x="500" y="178" text-anchor="middle" font-size="9" fill="#2e7d32">넓은 밝기 범위를 하나의 이미지에 표현</text>
+                    </svg>
+                    <div class="caption">그림 1. SDR과 HDR 촬영의 차이 — HDR은 밝은 영역과 어두운 영역의 디테일을 모두 보존한다</div>
+                </div>
+
+                <!-- 2. 센서의 다이나믹 레인지 한계 -->
+                <h2 id="dynamic-range-limit"><i class="fa-solid fa-microchip"></i> 센서의 다이나믹 레인지 한계</h2>
+
+                <p>이미지 센서가 표현할 수 있는 밝기의 최대 범위를 <strong>다이나믹 레인지(Dynamic Range)</strong>라고 한다. 이는 센서의 비트 심도(bit depth)와 밀접한 관련이 있다.</p>
+
+                <h3 id="bit-depth"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 비트 심도와 밝기 표현</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>비트 심도</th>
+                            <th>밝기 단계</th>
+                            <th>다이나믹 레인지 (dB)</th>
+                            <th>주요 용도</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">8 bit</td>
+                            <td>256 단계 (0~255)</td>
+                            <td>~48 dB</td>
+                            <td>일반 촬영, 웹캠</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">10 bit</td>
+                            <td>1,024 단계</td>
+                            <td>~60 dB</td>
+                            <td>산업용 카메라 기본</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">12 bit</td>
+                            <td>4,096 단계</td>
+                            <td>~72 dB</td>
+                            <td>고급 산업용 카메라</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">14 bit</td>
+                            <td>16,384 단계</td>
+                            <td>~84 dB</td>
+                            <td>과학용, 의료용</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다이나믹 레인지의 단위: dB</strong>
+                        다이나믹 레인지는 <code>20 × log10(최대신호/노이즈)</code>로 계산한다. 60dB는 밝기 비가 1000:1, 72dB는 약 4000:1을 의미한다. 실제 장면의 밝기 비가 이를 초과하면 포화 또는 암부 손실이 발생한다.
+                    </div>
+                </div>
+
+                <h3 id="saturation-loss"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 포화와 암부 손실</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> 포화 (Saturation)</h4>
+                        <p>센서의 픽셀이 받아들일 수 있는 최대 광량(Full Well Capacity)을 초과하면, 더 밝은 영역도 모두 최대값(예: 255)으로 기록된다. 밝은 부분의 디테일이 완전히 사라진다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#1565c0; font-size:0.5rem;"></i> 암부 손실 (Shadow Loss)</h4>
+                        <p>어두운 영역의 신호가 센서의 노이즈 레벨(Read Noise) 이하로 떨어지면, 신호와 노이즈를 구분할 수 없게 된다. 어두운 부분의 디테일이 노이즈에 묻힌다.</p>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 200" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">센서 다이나믹 레인지와 신호 관계</text>
+                        <!-- 축 -->
+                        <line x1="80" y1="170" x2="600" y2="170" stroke="#616161" stroke-width="1.5"/>
+                        <line x1="80" y1="170" x2="80" y2="40" stroke="#616161" stroke-width="1.5"/>
+                        <text x="340" y="195" text-anchor="middle" font-size="10" fill="#616161">장면 밝기 (실제 조도)</text>
+                        <text x="45" y="105" text-anchor="middle" font-size="10" fill="#616161" transform="rotate(-90, 45, 105)">센서 출력</text>
+
+                        <!-- 노이즈 플로어 -->
+                        <line x1="80" y1="155" x2="600" y2="155" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+                        <text x="610" y="158" font-size="8" fill="#ef4444">노이즈 플로어</text>
+
+                        <!-- 포화 레벨 -->
+                        <line x1="80" y1="55" x2="600" y2="55" stroke="#f57f17" stroke-width="1" stroke-dasharray="4,3"/>
+                        <text x="610" y="58" font-size="8" fill="#f57f17">포화 레벨</text>
+
+                        <!-- 선형 응답 -->
+                        <line x1="120" y1="155" x2="420" y2="55" stroke="#4caf50" stroke-width="2.5"/>
+
+                        <!-- 포화 영역 -->
+                        <line x1="420" y1="55" x2="580" y2="55" stroke="#f57f17" stroke-width="2.5"/>
+
+                        <!-- 암부 영역 -->
+                        <rect x="80" y="148" width="60" height="22" rx="3" fill="#ffebee" opacity="0.7"/>
+                        <text x="110" y="165" text-anchor="middle" font-size="8" fill="#c62828" font-weight="600">암부 손실</text>
+
+                        <!-- 포화 영역 표시 -->
+                        <rect x="420" y="42" width="160" height="20" rx="3" fill="#fff3e0" opacity="0.7"/>
+                        <text x="500" y="56" text-anchor="middle" font-size="8" fill="#e65100" font-weight="600">포화 — 정보 손실</text>
+
+                        <!-- 다이나믹 레인지 표시 -->
+                        <line x1="135" y1="45" x2="135" y2="150" stroke="#2e7d32" stroke-width="1.5" marker-start="url(#arrUp)" marker-end="url(#arrDown)"/>
+                        <rect x="100" y="88" width="75" height="18" rx="3" fill="#c8e6c9"/>
+                        <text x="137" y="101" text-anchor="middle" font-size="9" fill="#1b5e20" font-weight="700">DR 범위</text>
+
+                        <defs>
+                            <marker id="arrUp" markerWidth="6" markerHeight="6" refX="3" refY="6" orient="auto"><path d="M0,6 L3,0 L6,6Z" fill="#2e7d32"/></marker>
+                            <marker id="arrDown" markerWidth="6" markerHeight="6" refX="3" refY="0" orient="auto"><path d="M0,0 L3,6 L6,0Z" fill="#2e7d32"/></marker>
+                        </defs>
+                    </svg>
+                    <div class="caption">그림 2. 센서의 응답 곡선 — 노이즈 플로어와 포화 레벨 사이가 다이나믹 레인지</div>
+                </div>
+
+                <!-- 3. 다중 노출 합성 -->
+                <h2 id="multi-exposure"><i class="fa-solid fa-layer-group"></i> 다중 노출 합성 (Multi-Exposure HDR)</h2>
+
+                <p>가장 직관적인 HDR 기법은 <strong>서로 다른 노출 시간으로 여러 장을 촬영</strong>한 뒤 합성하는 방법이다. 짧은 노출은 밝은 영역의 디테일을, 긴 노출은 어두운 영역의 디테일을 캡처한다.</p>
+
+                <h3 id="multi-exposure-process"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 합성 과정</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 280" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">다중 노출 HDR 합성 과정</text>
+
+                        <!-- 짧은 노출 -->
+                        <rect x="30" y="45" width="140" height="80" rx="8" fill="#fff3e0" stroke="#f57f17" stroke-width="1.5"/>
+                        <text x="100" y="70" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">짧은 노출</text>
+                        <text x="100" y="86" text-anchor="middle" font-size="9" fill="#f57f17">예: 1ms</text>
+                        <text x="100" y="102" text-anchor="middle" font-size="8" fill="#ff8f00">밝은 영역 디테일 확보</text>
+                        <text x="100" y="115" text-anchor="middle" font-size="8" fill="#bdbdbd">어두운 영역 — 노이즈</text>
+
+                        <!-- 중간 노출 -->
+                        <rect x="30" y="140" width="140" height="80" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="100" y="165" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">중간 노출</text>
+                        <text x="100" y="181" text-anchor="middle" font-size="9" fill="#42a5f5">예: 5ms</text>
+                        <text x="100" y="197" text-anchor="middle" font-size="8" fill="#1976d2">중간 밝기 영역 최적화</text>
+                        <text x="100" y="210" text-anchor="middle" font-size="8" fill="#90a4ae">밸런스 확보</text>
+
+                        <!-- 긴 노출 -->
+                        <rect x="30" y="235" width="140" height="35" rx="8" fill="#ede7f6" stroke="#7b1fa2" stroke-width="1.5"/>
+                        <text x="100" y="258" text-anchor="middle" font-size="11" fill="#7b1fa2" font-weight="700">긴 노출 (예: 20ms)</text>
+
+                        <!-- 화살표 -->
+                        <path d="M180,85 L230,145" stroke="#4caf50" stroke-width="2" fill="none" marker-end="url(#arrMerge)"/>
+                        <path d="M180,180 L230,155" stroke="#4caf50" stroke-width="2" fill="none" marker-end="url(#arrMerge)"/>
+                        <path d="M180,252 L230,170" stroke="#4caf50" stroke-width="2" fill="none" marker-end="url(#arrMerge)"/>
+
+                        <!-- 가중 합성 -->
+                        <rect x="240" y="115" width="140" height="80" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+                        <text x="310" y="142" text-anchor="middle" font-size="11" fill="#1b5e20" font-weight="700">가중 합성</text>
+                        <text x="310" y="160" text-anchor="middle" font-size="9" fill="#388e3c">Weighted Merge</text>
+                        <text x="310" y="178" text-anchor="middle" font-size="8" fill="#4caf50">각 영역에서 최적 노출 선택</text>
+
+                        <!-- 화살표 -->
+                        <line x1="390" y1="155" x2="440" y2="155" stroke="#4caf50" stroke-width="2" marker-end="url(#arrMerge)"/>
+
+                        <!-- HDR 이미지 -->
+                        <rect x="450" y="105" width="120" height="55" rx="8" fill="#c8e6c9" stroke="#2e7d32" stroke-width="2"/>
+                        <text x="510" y="130" text-anchor="middle" font-size="11" fill="#1b5e20" font-weight="700">HDR 이미지</text>
+                        <text x="510" y="148" text-anchor="middle" font-size="9" fill="#388e3c">16/32 bit float</text>
+
+                        <!-- 톤매핑 화살표 -->
+                        <line x1="510" y1="170" x2="510" y2="210" stroke="#7b1fa2" stroke-width="2" marker-end="url(#arrMerge)"/>
+
+                        <!-- 톤매핑 -->
+                        <rect x="450" y="215" width="120" height="45" rx="8" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1.5"/>
+                        <text x="510" y="235" text-anchor="middle" font-size="10" fill="#7b1fa2" font-weight="700">톤 매핑</text>
+                        <text x="510" y="250" text-anchor="middle" font-size="8" fill="#9c27b0">8bit 디스플레이용</text>
+
+                        <defs>
+                            <marker id="arrMerge" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#4caf50"/></marker>
+                        </defs>
+                    </svg>
+                    <div class="caption">그림 3. 다중 노출 HDR 합성 과정 — 서로 다른 노출의 이미지를 가중 합성 후 톤 매핑</div>
+                </div>
+
+                <h3 id="multi-exposure-formula"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 합성 알고리즘</h3>
+
+                <p>다중 노출 합성의 기본 원리는 각 노출에서 <strong>적정 노출 영역의 픽셀에 높은 가중치</strong>를 부여하는 것이다. 포화되거나 너무 어두운 픽셀은 가중치를 낮추고, 중간 밝기의 신뢰할 수 있는 픽셀을 우선 사용한다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">Debevec 방법</span>
+                        <span class="term-desc">카메라 응답 함수(CRF)를 추정하여 각 노출의 실제 조도(Irradiance)를 복원한 뒤, 가중 평균으로 HDR 맵을 생성한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Mertens 융합</span>
+                        <span class="term-desc">CRF 추정 없이 대비(Contrast), 포화도(Saturation), 적정 노출(Well-exposedness)의 3가지 품질 지표로 가중치를 계산하여 직접 합성한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Robertson 방법</span>
+                        <span class="term-desc">반복 최적화(Iterative)로 CRF와 HDR 맵을 동시에 추정한다. 노이즈에 강하고 수렴이 안정적이다.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>다중 노출 HDR의 한계: 움직이는 피사체</strong>
+                        여러 장을 순차적으로 촬영하기 때문에, 촬영 사이에 피사체가 움직이면 합성 결과에 고스트(Ghost) 아티팩트가 발생한다. 산업용 라인에서 이동하는 부품을 검사할 때는 센서 내장 HDR이나 조명 기법이 더 적합하다.
+                    </div>
+                </div>
+
+                <!-- 4. 센서 내장 HDR -->
+                <h2 id="sensor-hdr"><i class="fa-solid fa-memory"></i> 센서 내장 HDR</h2>
+
+                <p>다중 노출 합성의 고스트 문제를 해결하기 위해, 최신 이미지 센서는 <strong>하드웨어 수준에서 HDR을 지원</strong>한다. 한 프레임 내에서 서로 다른 노출을 동시에 또는 빠르게 교차하여 캡처한 뒤, 센서 내부 또는 ISP에서 합성한다.</p>
+
+                <h3 id="dcg"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Dual Conversion Gain (DCG)</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> DCG (Dual Conversion Gain)</div>
+                    <p>하나의 픽셀에 두 가지 변환 게인(HCG: High Conversion Gain, LCG: Low Conversion Gain)을 적용한다. HCG는 어두운 영역에서 높은 감도를, LCG는 밝은 영역에서 넓은 용량(Full Well)을 제공한다. 두 결과를 합성하면 한 번의 노출로 넓은 다이나믹 레인지를 얻을 수 있다.</p>
+                </div>
+
+                <h3 id="staggered-hdr"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Staggered HDR (시차 HDR)</h3>
+
+                <p>한 프레임 주기 내에서 <strong>롤링 셔터를 이용</strong>하여 긴 노출과 짧은 노출을 행(row) 단위로 시차를 두고 촬영한다. 두 노출의 시간 차이가 매우 작아 고스트 아티팩트가 크게 줄어든다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 220" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">Staggered HDR 타이밍</text>
+
+                        <!-- 시간축 -->
+                        <line x1="80" y1="190" x2="600" y2="190" stroke="#616161" stroke-width="1.5"/>
+                        <text x="340" y="210" text-anchor="middle" font-size="10" fill="#616161">시간 →</text>
+
+                        <!-- Row 축 -->
+                        <line x1="80" y1="190" x2="80" y2="45" stroke="#616161" stroke-width="1.5"/>
+                        <text x="55" y="120" text-anchor="middle" font-size="10" fill="#616161" transform="rotate(-90, 55, 120)">센서 행</text>
+
+                        <!-- 긴 노출 (파란색) -->
+                        <rect x="100" y="55" width="200" height="12" rx="2" fill="#1565c0" opacity="0.7"/>
+                        <rect x="120" y="75" width="200" height="12" rx="2" fill="#1565c0" opacity="0.7"/>
+                        <rect x="140" y="95" width="200" height="12" rx="2" fill="#1565c0" opacity="0.7"/>
+                        <rect x="160" y="115" width="200" height="12" rx="2" fill="#1565c0" opacity="0.7"/>
+                        <rect x="180" y="135" width="200" height="12" rx="2" fill="#1565c0" opacity="0.7"/>
+                        <rect x="200" y="155" width="200" height="12" rx="2" fill="#1565c0" opacity="0.7"/>
+                        <text x="540" y="66" font-size="9" fill="#1565c0" font-weight="600">긴 노출 (Long)</text>
+
+                        <!-- 짧은 노출 (주황색) -->
+                        <rect x="250" y="55" width="50" height="12" rx="2" fill="#f57f17" opacity="0.8"/>
+                        <rect x="270" y="75" width="50" height="12" rx="2" fill="#f57f17" opacity="0.8"/>
+                        <rect x="290" y="95" width="50" height="12" rx="2" fill="#f57f17" opacity="0.8"/>
+                        <rect x="310" y="115" width="50" height="12" rx="2" fill="#f57f17" opacity="0.8"/>
+                        <rect x="330" y="135" width="50" height="12" rx="2" fill="#f57f17" opacity="0.8"/>
+                        <rect x="350" y="155" width="50" height="12" rx="2" fill="#f57f17" opacity="0.8"/>
+                        <text x="540" y="86" font-size="9" fill="#f57f17" font-weight="600">짧은 노출 (Short)</text>
+
+                        <!-- 범례 -->
+                        <rect x="510" y="100" width="12" height="12" rx="2" fill="#1565c0" opacity="0.7"/>
+                        <text x="530" y="110" font-size="8" fill="#616161">Long exposure</text>
+                        <rect x="510" y="118" width="12" height="12" rx="2" fill="#f57f17" opacity="0.8"/>
+                        <text x="530" y="128" font-size="8" fill="#616161">Short exposure</text>
+                    </svg>
+                    <div class="caption">그림 4. Staggered HDR — 롤링 셔터로 긴/짧은 노출을 행 단위로 교차 촬영</div>
+                </div>
+
+                <h3 id="dol-hdr"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> DOL-HDR (Digital Overlap HDR)</h3>
+
+                <p><strong>DOL-HDR</strong>은 Sony가 개발한 방식으로, 긴 노출과 짧은 노출의 읽기 타이밍을 겹치게(overlap) 설계하여 두 노출 간의 시간 차이를 최소화한다. Staggered HDR보다 고스트가 더 적고, 프레임 레이트 손실도 최소화된다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>방식</th>
+                            <th>원리</th>
+                            <th>고스트</th>
+                            <th>프레임레이트</th>
+                            <th>DR 확장</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">DCG</td>
+                            <td>듀얼 게인 (1회 노출)</td>
+                            <td>없음</td>
+                            <td>손실 없음</td>
+                            <td>~20 dB</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Staggered HDR</td>
+                            <td>롤링셔터 시차 노출</td>
+                            <td>적음</td>
+                            <td>약간 감소</td>
+                            <td>~24 dB</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DOL-HDR</td>
+                            <td>노출 오버랩</td>
+                            <td>매우 적음</td>
+                            <td>최소 감소</td>
+                            <td>~30 dB</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">다중 노출 합성</td>
+                            <td>SW 순차 촬영</td>
+                            <td>큼 (이동 시)</td>
+                            <td>N분의 1</td>
+                            <td>노출 수에 비례</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>Sony IMX 시리즈의 DOL-HDR</strong>
+                        Sony의 산업용 센서(IMX174, IMX250, IMX530 등)는 DOL-HDR을 지원하여, 2~3프레임 오버랩 모드로 100dB 이상의 다이나믹 레인지를 달성한다. GenICam의 <code>HDRMode</code>, <code>ExposureTimeSelector</code> 레지스터로 제어한다.
+                    </div>
+                </div>
+
+                <!-- 5. 톤 매핑 -->
+                <h2 id="tone-mapping"><i class="fa-solid fa-sliders"></i> 톤 매핑</h2>
+
+                <p>HDR로 캡처된 이미지는 16bit 또는 32bit float로 저장되어 밝기 범위가 매우 넓다. 이를 일반 8bit 디스플레이(0~255)에 표시하려면 밝기 범위를 압축해야 하는데, 이 과정을 <strong>톤 매핑(Tone Mapping)</strong>이라 한다.</p>
+
+                <h3 id="global-tone-mapping"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 글로벌 톤 매핑</h3>
+
+                <p>이미지 전체에 동일한 변환 함수를 적용한다. 계산이 빠르고 구현이 간단하지만, 밝기 분포가 극단적인 장면에서는 일부 영역의 디테일이 손실될 수 있다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">Reinhard</span>
+                        <span class="term-desc"><code>L_out = L / (1 + L)</code> — 밝은 영역을 자연스럽게 압축하는 가장 기본적인 글로벌 톤 매핑 함수. 구현이 간단하고 결과가 자연스럽다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">감마 커브</span>
+                        <span class="term-desc"><code>L_out = L^(1/gamma)</code> — 감마 2.2 등의 비선형 커브로 압축. ISP에서 가장 흔히 사용된다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">로그 압축</span>
+                        <span class="term-desc"><code>L_out = log(1 + L)</code> — 넓은 범위를 균일하게 압축. 과학 영상이나 천문학에서 활용.</span>
+                    </div>
+                </div>
+
+                <h3 id="local-tone-mapping"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 로컬 톤 매핑</h3>
+
+                <p>이미지의 각 영역(로컬 윈도우)에 따라 다른 변환을 적용한다. 밝은 영역과 어두운 영역 각각에 최적화된 매핑을 수행하므로 디테일 보존이 뛰어나지만, 계산 비용이 높고 후광(halo) 아티팩트가 발생할 수 있다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-globe" style="color:#1565c0;"></i> 글로벌 톤 매핑</h4>
+                        <ul>
+                            <li>전체에 동일 함수 적용</li>
+                            <li>빠른 처리 속도</li>
+                            <li>후광 아티팩트 없음</li>
+                            <li>극단적 장면에서 디테일 손실 가능</li>
+                            <li>산업용 실시간 처리에 적합</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-map" style="color:#7b1fa2;"></i> 로컬 톤 매핑</h4>
+                        <ul>
+                            <li>영역별 적응적 변환</li>
+                            <li>높은 계산 비용</li>
+                            <li>후광(halo) 아티팩트 주의</li>
+                            <li>어두운/밝은 영역 모두 디테일 우수</li>
+                            <li>오프라인 분석, 의료 영상 등에 활용</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>산업용에서의 톤 매핑</strong>
+                        머신비전 검사에서는 톤 매핑된 이미지를 사람이 보는 용도로만 사용하고, 실제 검사 알고리즘은 <strong>톤 매핑 전의 원본 HDR 데이터</strong>(16bit/32bit)를 사용하는 것이 원칙이다. 톤 매핑은 비선형 변환이므로 밝기 관계가 왜곡되어 정량적 측정에 부적합하다.
+                    </div>
+                </div>
+
+                <!-- 6. 산업용 HDR 적용 사례 -->
+                <h2 id="industrial-cases"><i class="fa-solid fa-industry"></i> 산업용 HDR 적용 사례</h2>
+
+                <h3 id="case-metal"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 금속 표면 검사</h3>
+
+                <p>금속 가공품(CNC 절삭면, 압출 표면)은 표면 각도에 따라 정반사(Specular Reflection)가 발생하여, 같은 부품 내에서 밝기 차이가 수천 배에 달한다. HDR을 적용하면 반사광 영역과 비반사 영역의 결함(스크래치, 흠집)을 동시에 검출할 수 있다.</p>
+
+                <h3 id="case-reflective"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 반사 부품 검사</h3>
+
+                <p>커넥터 핀, 납땜 부위, 도금 부품 등 광택이 있는 표면은 조명 방향에 따라 극단적인 하이라이트와 그림자가 동시에 존재한다. 다중 노출 또는 DOL-HDR로 촬영하면, 핀의 휨, 납 브릿지, 도금 불량 등을 놓치지 않고 검출할 수 있다.</p>
+
+                <h3 id="case-automotive"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 자동차 외관 검사</h3>
+
+                <p>자동차 도장면은 고광택 표면으로, 조명 위치에 따라 강한 하이라이트가 이동한다. HDR 촬영과 구조화 조명(Structured Lighting)을 결합하면, 미세 오렌지 필(Orange Peel), 먼지 혼입, 도장 흐름 등 도장 결함을 넓은 영역에서 일관되게 검출할 수 있다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">산업용 HDR 적용 분야</text>
+
+                        <!-- 금속 표면 -->
+                        <rect x="30" y="45" width="190" height="130" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="125" y="70" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">금속 표면 검사</text>
+                        <text x="125" y="90" text-anchor="middle" font-size="9" fill="#42a5f5">CNC 가공면, 압출 표면</text>
+                        <text x="125" y="108" text-anchor="middle" font-size="9" fill="#616161">정반사 + 산란 동시 존재</text>
+                        <rect x="55" y="118" width="140" height="22" rx="4" fill="#bbdefb"/>
+                        <text x="125" y="133" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">DR 요구: 80~100 dB</text>
+                        <text x="125" y="162" text-anchor="middle" font-size="8" fill="#90a4ae">스크래치, 흠집 검출</text>
+
+                        <!-- 반사 부품 -->
+                        <rect x="250" y="45" width="190" height="130" rx="10" fill="#fff3e0" stroke="#f57f17" stroke-width="1.5"/>
+                        <text x="345" y="70" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">반사 부품 검사</text>
+                        <text x="345" y="90" text-anchor="middle" font-size="9" fill="#ff9800">커넥터 핀, 납땜, 도금</text>
+                        <text x="345" y="108" text-anchor="middle" font-size="9" fill="#616161">극단적 하이라이트 + 그림자</text>
+                        <rect x="275" y="118" width="140" height="22" rx="4" fill="#ffe0b2"/>
+                        <text x="345" y="133" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">DR 요구: 70~90 dB</text>
+                        <text x="345" y="162" text-anchor="middle" font-size="8" fill="#90a4ae">핀 휨, 납 브릿지 검출</text>
+
+                        <!-- 자동차 외관 -->
+                        <rect x="470" y="45" width="200" height="130" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+                        <text x="570" y="70" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">자동차 외관 검사</text>
+                        <text x="570" y="90" text-anchor="middle" font-size="9" fill="#4caf50">도장면, 고광택 표면</text>
+                        <text x="570" y="108" text-anchor="middle" font-size="9" fill="#616161">이동 하이라이트, 넓은 면적</text>
+                        <rect x="495" y="118" width="150" height="22" rx="4" fill="#c8e6c9"/>
+                        <text x="570" y="133" text-anchor="middle" font-size="9" fill="#1b5e20" font-weight="600">DR 요구: 90~120 dB</text>
+                        <text x="570" y="162" text-anchor="middle" font-size="8" fill="#90a4ae">오렌지필, 먼지, 흐름 결함</text>
+                    </svg>
+                    <div class="caption">그림 5. 산업 현장에서 HDR이 필요한 주요 검사 분야와 요구 다이나믹 레인지</div>
+                </div>
+
+                <!-- 7. HDR vs 조명 설계 -->
+                <h2 id="hdr-vs-lighting"><i class="fa-solid fa-lightbulb"></i> HDR vs 조명 설계</h2>
+
+                <p>HDR은 강력한 기술이지만 만능은 아니다. 산업용 머신비전에서는 <strong>적절한 조명 설계로 해결할 수 있는 문제라면, HDR보다 조명이 우선</strong>이라는 원칙이 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 조명이 우선인가?</div>
+                    <p>조명으로 장면의 밝기 차이 자체를 줄이면, 센서의 기본 다이나믹 레인지 내에서 촬영이 가능하다. HDR은 추가적인 처리 시간, 복잡성, 잠재적 아티팩트를 수반하므로, <strong>조명으로 문제를 해결할 수 있다면 더 안정적이고 빠른 솔루션</strong>이 된다.</p>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>비교 항목</th>
+                            <th>조명 설계</th>
+                            <th>HDR 이미징</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">처리 속도</td>
+                            <td>추가 시간 없음 (1회 촬영)</td>
+                            <td>다중 노출 시 2~4배 시간 소요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">아티팩트</td>
+                            <td>없음</td>
+                            <td>고스트, 후광, 합성 경계 가능</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">비용</td>
+                            <td>조명 장비 비용</td>
+                            <td>SW 처리 비용 + 고성능 카메라</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">복잡도</td>
+                            <td>광학 설계 노하우 필요</td>
+                            <td>알고리즘 튜닝 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">적용 한계</td>
+                            <td>조명 공간 부족, 곡면 등</td>
+                            <td>고속 이동체, 실시간 요구</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">최적 상황</td>
+                            <td>조명 공간 확보 가능, 반사 제어 가능</td>
+                            <td>조명으로 해결 불가능한 극단적 DR 차이</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">확산 조명</span>
+                        <span class="term-desc">돔 조명이나 확산판으로 정반사를 억제하여 밝기 차이를 줄인다. 광택 부품 검사의 1차 해결책.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">편광 필터</span>
+                        <span class="term-desc">카메라와 조명에 편광판을 설치하여 정반사 성분만 제거한다. 금속/유리 표면에 효과적.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">다방향 조명</span>
+                        <span class="term-desc">여러 방향에서 동시에 조명하여 그림자를 최소화. 복잡한 3D 형상의 부품 검사에 활용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">HDR + 조명 병행</span>
+                        <span class="term-desc">조명으로 밝기 차이를 1차 줄이고, 남은 차이를 HDR로 보완하는 하이브리드 접근. 최고 품질 요구 시 사용.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 판단 기준</strong>
+                        장면의 밝기 차이가 센서 DR의 70% 이내라면 조명 설계로 충분하다. 70%를 초과하거나 조명 공간이 부족하면 HDR을 검토한다. 자동차 도장면처럼 100dB 이상의 DR이 필요한 경우는 센서 내장 HDR(DOL-HDR)과 조명을 병행하는 것이 최선이다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Debevec & Malik — "Recovering High Dynamic Range Radiance Maps from Photographs" (SIGGRAPH 1997)</li>
+                        <li>Reinhard et al. — "Photographic Tone Reproduction for Digital Images" (SIGGRAPH 2002)</li>
+                        <li>Mertens, Kautz, Van Reeth — "Exposure Fusion" (Pacific Graphics 2007)</li>
+                        <li>Sony Semiconductor — IMX Series HDR Mode Application Notes</li>
+                        <li>EMVA 1288 — Standard for Characterization of Image Sensors and Cameras</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-sensor"><i class="fa-solid fa-arrow-left"></i> 센서/ISP 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-sensor');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-sensor');
+</script>
+
+</body>
+</html>

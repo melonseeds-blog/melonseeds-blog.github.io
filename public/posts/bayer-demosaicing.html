@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bayer 패턴과 디모자이킹 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#bayer-pattern" data-section="bayer-pattern">Bayer 패턴이란</a>
+        <a href="#bayer-structure" data-section="bayer-structure">패턴 구조</a>
+        <a href="#demosaicing" data-section="demosaicing">디모자이킹</a>
+        <a href="#algorithms" data-section="algorithms">보간 알고리즘 비교</a>
+        <a href="#artifacts" data-section="artifacts">아티팩트</a>
+        <a href="#mono-vs-color" data-section="mono-vs-color">모노 vs 컬러</a>
+        <a href="#practical-tips" data-section="practical-tips">실무 팁</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">센서/ISP</span>
+                </div>
+                <h1>Bayer 패턴과 디모자이킹</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 7 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Bayer 패턴(CFA)의 원리와 RGGB/GRBG/BGGR/GBRG 배치</li>
+                        <li>디모자이킹(Demosaicing) — 빠진 색 정보를 보간하는 과정</li>
+                        <li>보간 알고리즘 비교: Nearest Neighbor, Bilinear, MHC, AHD</li>
+                        <li>디모자이킹 아티팩트: 지퍼링, 모아레, 컬러 프린징</li>
+                        <li>머신비전에서 모노 vs 컬러 센서 선택 기준</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#bayer-pattern">Bayer 패턴이란</a></li>
+                        <li><a href="#bayer-structure">Bayer 패턴 구조</a></li>
+                        <li><a href="#demosaicing">디모자이킹(Demosaicing)</a></li>
+                        <li><a href="#algorithms">보간 알고리즘 비교</a></li>
+                        <li><a href="#artifacts">디모자이킹 아티팩트</a></li>
+                        <li><a href="#mono-vs-color">모노 vs 컬러 센서</a></li>
+                        <li><a href="#practical-tips">실무 팁</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. Bayer 패턴이란 -->
+                <h2 id="bayer-pattern"><i class="fa-solid fa-grip"></i> Bayer 패턴이란</h2>
+
+                <p>이미지 센서의 각 픽셀은 본래 <strong>밝기(광량)</strong>만 측정할 수 있다. 색상 정보를 얻으려면 각 픽셀 위에 특정 색만 통과시키는 <strong>컬러 필터 배열(CFA, Color Filter Array)</strong>을 올려야 한다. 1976년 Kodak의 Bryce Bayer가 발명한 <strong>Bayer 패턴</strong>은 가장 널리 쓰이는 CFA 방식이다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 핵심 원리 — 1픽셀 = 1색</div>
+                    <p>Bayer 패턴에서 각 픽셀은 R, G, B 중 <strong>하나의 색상 정보만</strong> 기록한다. 나머지 두 색상은 주변 픽셀 값으로부터 추정(보간)해야 한다. 이 보간 과정이 바로 <strong>디모자이킹(Demosaicing)</strong>이다.</p>
+                </div>
+
+                <h3 id="why-green-two"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 왜 Green이 2개인가?</h3>
+
+                <p>Bayer 패턴은 2x2 단위 셀에서 R 1개, G 2개, B 1개로 구성된다. Green 필터가 2배 많은 이유는 다음과 같다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">인간 시각 특성</span>
+                        <span class="term-desc">사람의 눈은 녹색 파장(~555nm)에 가장 민감하다. 녹색 해상도를 높이면 전체 이미지의 선명도가 향상된다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">휘도(Luminance) 기여</span>
+                        <span class="term-desc">밝기 정보의 약 70%가 녹색 채널에서 온다. Green 샘플이 많으면 노이즈가 줄고 디테일이 살아난다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">보간 정확도</span>
+                        <span class="term-desc">Green 샘플이 촘촘하면 나머지 R, B 채널의 보간도 Green을 기준으로 더 정확하게 수행할 수 있다.</span>
+                    </div>
+                </div>
+
+                <h3 id="cfa-variants"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CFA 배치 변형</h3>
+
+                <p>2x2 단위 셀에서 R, G, B 필터의 시작 위치에 따라 4가지 변형이 존재한다. 센서 제조사마다 다르므로, SDK에서 올바른 패턴을 설정해야 정확한 색상이 나온다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>패턴 이름</th>
+                            <th>첫 번째 행</th>
+                            <th>두 번째 행</th>
+                            <th>대표 센서</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">RGGB</td>
+                            <td>R G</td>
+                            <td>G B</td>
+                            <td>Sony IMX 시리즈 다수</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">GRBG</td>
+                            <td>G R</td>
+                            <td>B G</td>
+                            <td>ON Semi PYTHON 시리즈</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">GBRG</td>
+                            <td>G B</td>
+                            <td>R G</td>
+                            <td>일부 CMOSIS 센서</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">BGGR</td>
+                            <td>B G</td>
+                            <td>G R</td>
+                            <td>일부 Aptina 센서</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>패턴을 잘못 설정하면?</strong>
+                        Bayer 패턴 타입이 실제 센서와 다르면 R과 B가 뒤바뀌거나, 이미지 전체에 색 줄무늬(color cast)가 나타난다. SDK에서 <code>PixelFormat</code>을 설정할 때 센서 데이터시트의 CFA 배치를 반드시 확인하자.
+                    </div>
+                </div>
+
+                <!-- 2. Bayer 패턴 구조 SVG -->
+                <h2 id="bayer-structure"><i class="fa-solid fa-table-cells"></i> Bayer 패턴 구조</h2>
+
+                <p>아래는 RGGB 배치의 4x4 Bayer 패턴 다이어그램이다. 각 픽셀은 하나의 색상 필터만 가지며, 이 Raw 데이터로부터 풀컬러 이미지를 복원하는 것이 디모자이킹의 목표이다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 520 380" style="width:100%; max-width:520px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="260" y="24" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">RGGB Bayer 패턴 (4x4)</text>
+
+                        <!-- Grid -->
+                        <!-- Row 0 -->
+                        <rect x="80" y="50" width="80" height="70" rx="4" fill="#ff6b6b" stroke="#d63031" stroke-width="2"/>
+                        <text x="120" y="90" text-anchor="middle" font-size="16" fill="white" font-weight="700">R</text>
+                        <rect x="160" y="50" width="80" height="70" rx="4" fill="#51cf66" stroke="#2f9e44" stroke-width="2"/>
+                        <text x="200" y="90" text-anchor="middle" font-size="16" fill="white" font-weight="700">G</text>
+                        <rect x="240" y="50" width="80" height="70" rx="4" fill="#ff6b6b" stroke="#d63031" stroke-width="2"/>
+                        <text x="280" y="90" text-anchor="middle" font-size="16" fill="white" font-weight="700">R</text>
+                        <rect x="320" y="50" width="80" height="70" rx="4" fill="#51cf66" stroke="#2f9e44" stroke-width="2"/>
+                        <text x="360" y="90" text-anchor="middle" font-size="16" fill="white" font-weight="700">G</text>
+
+                        <!-- Row 1 -->
+                        <rect x="80" y="120" width="80" height="70" rx="4" fill="#51cf66" stroke="#2f9e44" stroke-width="2"/>
+                        <text x="120" y="160" text-anchor="middle" font-size="16" fill="white" font-weight="700">G</text>
+                        <rect x="160" y="120" width="80" height="70" rx="4" fill="#339af0" stroke="#1864ab" stroke-width="2"/>
+                        <text x="200" y="160" text-anchor="middle" font-size="16" fill="white" font-weight="700">B</text>
+                        <rect x="240" y="120" width="80" height="70" rx="4" fill="#51cf66" stroke="#2f9e44" stroke-width="2"/>
+                        <text x="280" y="160" text-anchor="middle" font-size="16" fill="white" font-weight="700">G</text>
+                        <rect x="320" y="120" width="80" height="70" rx="4" fill="#339af0" stroke="#1864ab" stroke-width="2"/>
+                        <text x="360" y="160" text-anchor="middle" font-size="16" fill="white" font-weight="700">B</text>
+
+                        <!-- Row 2 -->
+                        <rect x="80" y="190" width="80" height="70" rx="4" fill="#ff6b6b" stroke="#d63031" stroke-width="2"/>
+                        <text x="120" y="230" text-anchor="middle" font-size="16" fill="white" font-weight="700">R</text>
+                        <rect x="160" y="190" width="80" height="70" rx="4" fill="#51cf66" stroke="#2f9e44" stroke-width="2"/>
+                        <text x="200" y="230" text-anchor="middle" font-size="16" fill="white" font-weight="700">G</text>
+                        <rect x="240" y="190" width="80" height="70" rx="4" fill="#ff6b6b" stroke="#d63031" stroke-width="2"/>
+                        <text x="280" y="230" text-anchor="middle" font-size="16" fill="white" font-weight="700">R</text>
+                        <rect x="320" y="190" width="80" height="70" rx="4" fill="#51cf66" stroke="#2f9e44" stroke-width="2"/>
+                        <text x="360" y="230" text-anchor="middle" font-size="16" fill="white" font-weight="700">G</text>
+
+                        <!-- Row 3 -->
+                        <rect x="80" y="260" width="80" height="70" rx="4" fill="#51cf66" stroke="#2f9e44" stroke-width="2"/>
+                        <text x="120" y="300" text-anchor="middle" font-size="16" fill="white" font-weight="700">G</text>
+                        <rect x="160" y="260" width="80" height="70" rx="4" fill="#339af0" stroke="#1864ab" stroke-width="2"/>
+                        <text x="200" y="300" text-anchor="middle" font-size="16" fill="white" font-weight="700">B</text>
+                        <rect x="240" y="260" width="80" height="70" rx="4" fill="#51cf66" stroke="#2f9e44" stroke-width="2"/>
+                        <text x="280" y="300" text-anchor="middle" font-size="16" fill="white" font-weight="700">G</text>
+                        <rect x="320" y="260" width="80" height="70" rx="4" fill="#339af0" stroke="#1864ab" stroke-width="2"/>
+                        <text x="360" y="300" text-anchor="middle" font-size="16" fill="white" font-weight="700">B</text>
+
+                        <!-- 2x2 unit highlight -->
+                        <rect x="78" y="48" width="164" height="144" rx="6" fill="none" stroke="#ff9800" stroke-width="3" stroke-dasharray="8,4"/>
+                        <text x="160" y="365" text-anchor="middle" font-size="11" fill="#e65100" font-weight="600">2x2 단위 셀 (RGGB)</text>
+
+                        <!-- Legend -->
+                        <rect x="420" y="80" width="20" height="20" rx="3" fill="#ff6b6b"/>
+                        <text x="448" y="95" font-size="11" fill="#333" font-weight="600">Red (25%)</text>
+                        <rect x="420" y="110" width="20" height="20" rx="3" fill="#51cf66"/>
+                        <text x="448" y="125" font-size="11" fill="#333" font-weight="600">Green (50%)</text>
+                        <rect x="420" y="140" width="20" height="20" rx="3" fill="#339af0"/>
+                        <text x="448" y="155" font-size="11" fill="#333" font-weight="600">Blue (25%)</text>
+                    </svg>
+                    <div class="caption">그림 1. RGGB Bayer 패턴의 4x4 격자 구조 — Green이 전체의 50%를 차지한다</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Raw 이미지란?</strong>
+                        Bayer 패턴 센서에서 출력되는 가공되지 않은 데이터를 <strong>Raw 이미지</strong>라고 한다. 각 픽셀에 하나의 색상 값(8~16bit)만 들어 있으며, 이를 그대로 보면 모자이크처럼 보인다. 디모자이킹을 거쳐야 우리가 보는 풀컬러 RGB 이미지가 된다.
+                    </div>
+                </div>
+
+                <!-- 3. 디모자이킹 -->
+                <h2 id="demosaicing"><i class="fa-solid fa-wand-magic-sparkles"></i> 디모자이킹(Demosaicing)</h2>
+
+                <p>디모자이킹(Demosaicing, 또는 Debayering)은 Bayer Raw 이미지에서 각 픽셀의 <strong>빠진 2개 색상 값을 보간(interpolation)</strong>하여 풀컬러 RGB 이미지를 생성하는 과정이다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 디모자이킹의 본질</div>
+                    <p>예를 들어 Red 필터가 있는 픽셀은 R 값만 알고 있다. 이 픽셀의 G, B 값을 인접 픽셀들의 G, B 값으로부터 추정해야 한다. 모든 픽셀에 대해 이 과정을 수행하면 최종 RGB 이미지가 완성된다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-demo" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#3a9a3e"/></marker>
+                        </defs>
+                        <text x="350" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">디모자이킹 과정</text>
+
+                        <!-- Raw (Bayer) -->
+                        <rect x="30" y="40" width="180" height="130" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="120" y="65" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">Bayer Raw</text>
+                        <!-- Mini grid -->
+                        <rect x="60" y="80" width="30" height="30" rx="2" fill="#ff6b6b"/><text x="75" y="100" text-anchor="middle" font-size="10" fill="white" font-weight="700">R</text>
+                        <rect x="90" y="80" width="30" height="30" rx="2" fill="#51cf66"/><text x="105" y="100" text-anchor="middle" font-size="10" fill="white" font-weight="700">G</text>
+                        <rect x="60" y="110" width="30" height="30" rx="2" fill="#51cf66"/><text x="75" y="130" text-anchor="middle" font-size="10" fill="white" font-weight="700">G</text>
+                        <rect x="90" y="110" width="30" height="30" rx="2" fill="#339af0"/><text x="105" y="130" text-anchor="middle" font-size="10" fill="white" font-weight="700">B</text>
+                        <text x="120" y="158" text-anchor="middle" font-size="9" fill="#78350f">1픽셀 = 1채널</text>
+
+                        <!-- Arrow -->
+                        <line x1="220" y1="105" x2="280" y2="105" stroke="#3a9a3e" stroke-width="2.5" marker-end="url(#arr-demo)"/>
+                        <text x="250" y="95" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">보간</text>
+
+                        <!-- Demosaicing Process -->
+                        <rect x="290" y="40" width="140" height="130" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="360" y="65" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">Demosaicing</text>
+                        <text x="360" y="90" text-anchor="middle" font-size="9" fill="#1565c0">주변 픽셀 참조</text>
+                        <text x="360" y="108" text-anchor="middle" font-size="9" fill="#1565c0">빠진 색 추정</text>
+                        <text x="360" y="126" text-anchor="middle" font-size="9" fill="#1565c0">에지 방향 감지</text>
+                        <text x="360" y="144" text-anchor="middle" font-size="9" fill="#1565c0">아티팩트 억제</text>
+
+                        <!-- Arrow -->
+                        <line x1="440" y1="105" x2="500" y2="105" stroke="#3a9a3e" stroke-width="2.5" marker-end="url(#arr-demo)"/>
+                        <text x="470" y="95" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">출력</text>
+
+                        <!-- Full Color -->
+                        <rect x="510" y="40" width="170" height="130" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="595" y="65" text-anchor="middle" font-size="12" fill="#2e7d32" font-weight="700">풀컬러 RGB</text>
+                        <!-- Mini pixel with 3 channels - full color gradient -->
+                        <defs>
+                            <linearGradient id="gc1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff6b6b"/><stop offset="50%" stop-color="#51cf66"/><stop offset="100%" stop-color="#339af0"/></linearGradient>
+                            <linearGradient id="gc2" x1="1" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffd43b"/><stop offset="50%" stop-color="#ff922b"/><stop offset="100%" stop-color="#e64980"/></linearGradient>
+                            <linearGradient id="gc3" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#845ef7"/><stop offset="50%" stop-color="#339af0"/><stop offset="100%" stop-color="#20c997"/></linearGradient>
+                            <linearGradient id="gc4" x1="1" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#ff922b"/><stop offset="50%" stop-color="#51cf66"/><stop offset="100%" stop-color="#339af0"/></linearGradient>
+                        </defs>
+                        <rect x="545" y="80" width="30" height="30" rx="2" fill="url(#gc1)"/><text x="560" y="100" text-anchor="middle" font-size="8" fill="white" font-weight="700">RGB</text>
+                        <rect x="575" y="80" width="30" height="30" rx="2" fill="url(#gc2)"/><text x="590" y="100" text-anchor="middle" font-size="8" fill="white" font-weight="700">RGB</text>
+                        <rect x="545" y="110" width="30" height="30" rx="2" fill="url(#gc3)"/><text x="560" y="130" text-anchor="middle" font-size="8" fill="white" font-weight="700">RGB</text>
+                        <rect x="575" y="110" width="30" height="30" rx="2" fill="url(#gc4)"/><text x="590" y="130" text-anchor="middle" font-size="8" fill="white" font-weight="700">RGB</text>
+                        <text x="595" y="158" text-anchor="middle" font-size="9" fill="#065f46">1픽셀 = 3채널</text>
+                    </svg>
+                    <div class="caption">그림 2. Bayer Raw에서 풀컬러 RGB로의 디모자이킹 과정</div>
+                </div>
+
+                <!-- 4. 보간 알고리즘 비교 -->
+                <h2 id="algorithms"><i class="fa-solid fa-code-compare"></i> 보간 알고리즘 비교</h2>
+
+                <p>디모자이킹 알고리즘은 속도와 품질 사이의 트레이드오프가 있다. 단순한 알고리즘은 빠르지만 아티팩트가 많고, 고급 알고리즘은 품질이 좋지만 연산량이 크다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>알고리즘</th>
+                            <th>원리</th>
+                            <th>품질</th>
+                            <th>속도</th>
+                            <th>용도</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Nearest Neighbor</td>
+                            <td>가장 가까운 같은 색 픽셀 복사</td>
+                            <td>낮음</td>
+                            <td>매우 빠름</td>
+                            <td>미리보기, 실시간 모니터링</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Bilinear</td>
+                            <td>상하좌우 같은 색 픽셀의 평균</td>
+                            <td>보통</td>
+                            <td>빠름</td>
+                            <td>일반 산업용, 실시간 처리</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">MHC (Malvar-He-Cutler)</td>
+                            <td>5x5 커널, 그래디언트 보정 포함</td>
+                            <td>높음</td>
+                            <td>보통</td>
+                            <td>고품질 산업 검사</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">AHD (Adaptive Homogeneity-Directed)</td>
+                            <td>수평/수직 보간 후 균질성 비교</td>
+                            <td>매우 높음</td>
+                            <td>느림</td>
+                            <td>사진, 의료 영상</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DCB (DCB Demosaicing)</td>
+                            <td>반복 색차 보정, 에지 보존</td>
+                            <td>매우 높음</td>
+                            <td>느림</td>
+                            <td>RAW 현상 소프트웨어</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="algo-bilinear"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Bilinear 보간 원리</h3>
+
+                <p>가장 많이 쓰이는 Bilinear 보간은 인접한 같은 색 픽셀의 평균을 취한다. 예를 들어 Green 위치에서 빠진 Red 값을 구할 때, 좌우(또는 상하)에 있는 R 픽셀의 평균을 사용한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 460 260" style="width:100%; max-width:460px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="230" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">Bilinear 보간 예시 (Green 위치에서 R 추정)</text>
+
+                        <!-- 3x3 grid -->
+                        <rect x="120" y="40" width="60" height="60" rx="3" fill="#ff6b6b" stroke="#d63031" stroke-width="1.5"/>
+                        <text x="150" y="68" text-anchor="middle" font-size="11" fill="white" font-weight="700">R</text>
+                        <text x="150" y="83" text-anchor="middle" font-size="9" fill="white">120</text>
+
+                        <rect x="180" y="40" width="60" height="60" rx="3" fill="#51cf66" stroke="#2f9e44" stroke-width="1.5"/>
+                        <text x="210" y="68" text-anchor="middle" font-size="11" fill="white" font-weight="700">G</text>
+                        <text x="210" y="83" text-anchor="middle" font-size="9" fill="white">?R</text>
+
+                        <rect x="240" y="40" width="60" height="60" rx="3" fill="#ff6b6b" stroke="#d63031" stroke-width="1.5"/>
+                        <text x="270" y="68" text-anchor="middle" font-size="11" fill="white" font-weight="700">R</text>
+                        <text x="270" y="83" text-anchor="middle" font-size="9" fill="white">140</text>
+
+                        <rect x="120" y="100" width="60" height="60" rx="3" fill="#51cf66" stroke="#2f9e44" stroke-width="1.5"/>
+                        <text x="150" y="128" text-anchor="middle" font-size="11" fill="white" font-weight="700">G</text>
+
+                        <rect x="180" y="100" width="60" height="60" rx="3" fill="#339af0" stroke="#1864ab" stroke-width="2.5"/>
+                        <text x="210" y="128" text-anchor="middle" font-size="11" fill="white" font-weight="700">B</text>
+                        <text x="210" y="143" text-anchor="middle" font-size="9" fill="white">?R</text>
+
+                        <rect x="240" y="100" width="60" height="60" rx="3" fill="#51cf66" stroke="#2f9e44" stroke-width="1.5"/>
+                        <text x="270" y="128" text-anchor="middle" font-size="11" fill="white" font-weight="700">G</text>
+
+                        <rect x="120" y="160" width="60" height="60" rx="3" fill="#ff6b6b" stroke="#d63031" stroke-width="1.5"/>
+                        <text x="150" y="188" text-anchor="middle" font-size="11" fill="white" font-weight="700">R</text>
+                        <text x="150" y="203" text-anchor="middle" font-size="9" fill="white">110</text>
+
+                        <rect x="180" y="160" width="60" height="60" rx="3" fill="#51cf66" stroke="#2f9e44" stroke-width="1.5"/>
+                        <text x="210" y="188" text-anchor="middle" font-size="11" fill="white" font-weight="700">G</text>
+                        <text x="210" y="203" text-anchor="middle" font-size="9" fill="white">?R</text>
+
+                        <rect x="240" y="160" width="60" height="60" rx="3" fill="#ff6b6b" stroke="#d63031" stroke-width="1.5"/>
+                        <text x="270" y="188" text-anchor="middle" font-size="11" fill="white" font-weight="700">R</text>
+                        <text x="270" y="203" text-anchor="middle" font-size="9" fill="white">130</text>
+
+                        <!-- Arrows showing average -->
+                        <text x="380" y="80" font-size="11" fill="#d63031" font-weight="600">G 위치의 R 추정:</text>
+                        <text x="380" y="100" font-size="10" fill="#333">(120 + 140) / 2 = 130</text>
+                        <text x="380" y="130" font-size="11" fill="#1864ab" font-weight="600">B 위치의 R 추정:</text>
+                        <text x="380" y="150" font-size="10" fill="#333">(120+140+110+130)/4</text>
+                        <text x="380" y="168" font-size="10" fill="#333">= 125</text>
+                    </svg>
+                    <div class="caption">그림 3. Bilinear 보간 — 인접 같은 색 픽셀의 평균으로 빠진 값을 추정</div>
+                </div>
+
+                <h3 id="algo-mhc"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> MHC(Malvar-He-Cutler) 알고리즘</h3>
+
+                <p>Bilinear의 개선 버전으로, Microsoft Research에서 2004년에 발표했다. 단순 평균 대신 <strong>5x5 커널</strong>을 사용하고, 그래디언트(기울기) 정보를 반영하여 에지 부근에서의 보간 정확도를 높인다. 연산량은 Bilinear보다 약간 많지만, 하드웨어 구현이 가능한 수준이라 많은 카메라 SDK에서 기본 디모자이킹으로 채택한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무에서의 선택 기준</strong>
+                        머신비전에서는 <strong>속도가 중요하면 Bilinear</strong>, <strong>색 정확도가 중요하면 MHC</strong>를 선택한다. AHD나 DCB는 오프라인 분석이나 사진 후처리에 적합하다. 대부분의 산업용 카메라 SDK는 Bilinear과 MHC를 모두 지원한다.
+                    </div>
+                </div>
+
+                <!-- 5. 디모자이킹 아티팩트 -->
+                <h2 id="artifacts"><i class="fa-solid fa-bug"></i> 디모자이킹 아티팩트</h2>
+
+                <p>디모자이킹은 본질적으로 <strong>없는 정보를 추정</strong>하는 과정이므로, 완벽할 수 없다. 특히 고주파 패턴이나 급격한 에지 부근에서 다양한 아티팩트가 발생한다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> 지퍼링 (Zippering)</h4>
+                        <p>에지를 따라 톱니 모양의 색상 줄무늬가 나타나는 현상. 수평/수직 에지에서 보간 방향이 잘못 선택되면 발생한다.</p>
+                        <ul>
+                            <li>원인: 에지 방향과 수직인 방향으로 보간</li>
+                            <li>대책: 에지 감지 기반 알고리즘(MHC, AHD) 사용</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> 모아레 (Moire)</h4>
+                        <p>미세한 반복 패턴(직물, 격자)에서 원래 없던 물결무늬가 나타나는 현상. Bayer 격자의 샘플링 주파수보다 높은 공간 주파수가 원인이다.</p>
+                        <ul>
+                            <li>원인: 나이퀴스트 주파수 초과 (앨리어싱)</li>
+                            <li>대책: 광학 로우패스 필터(OLPF) 사용</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> 컬러 프린징 (Color Fringing)</h4>
+                        <p>밝고 어두운 영역의 경계에서 원래 없는 색상 번짐이 나타나는 현상. False color라고도 한다.</p>
+                        <ul>
+                            <li>원인: 인접 채널 간 상관관계 무시한 보간</li>
+                            <li>대책: 색차(chrominance) 기반 후처리</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> 해상도 저하</h4>
+                        <p>보간 자체가 일종의 로우패스 필터 역할을 하여, 원본 센서 해상도보다 실효 해상도가 낮아진다.</p>
+                        <ul>
+                            <li>원인: 보간에 의한 평활화(smoothing)</li>
+                            <li>대책: 샤프닝 후처리, 고급 알고리즘 사용</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>OLPF (Optical Low-Pass Filter)</strong>
+                        일부 카메라는 센서 앞에 광학 로우패스 필터를 배치하여 모아레와 앨리어싱을 억제한다. 단, OLPF는 전체적인 선명도를 약간 저하시키므로, 머신비전 카메라에서는 OLPF를 제거한 모델이 많다.
+                    </div>
+                </div>
+
+                <!-- 6. 모노 vs 컬러 -->
+                <h2 id="mono-vs-color"><i class="fa-solid fa-circle-half-stroke"></i> 모노 vs 컬러 센서</h2>
+
+                <p>머신비전에서는 <strong>모노(Monochrome) 센서</strong>가 컬러 센서보다 선호되는 경우가 많다. 그 핵심 이유는 Bayer 패턴의 근본적 한계에 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 모노 센서의 핵심 장점</div>
+                    <p>모노 센서에는 Bayer 패턴(컬러 필터)이 없다. 따라서 각 픽셀이 입사광의 <strong>전체 파장</strong>을 받아들여, 동일 센서 대비 더 높은 감도, 해상도, 속도를 제공한다.</p>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>모노 센서</th>
+                            <th>컬러(Bayer) 센서</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">감도(Sensitivity)</td>
+                            <td>높음 — 필터 없이 전체 광량 수집</td>
+                            <td>낮음 — CFA가 약 2/3 광량 차단</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">공간 해상도</td>
+                            <td>센서 원래 해상도 그대로</td>
+                            <td>디모자이킹으로 실효 해상도 저하</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">전송 속도</td>
+                            <td>1채널 데이터 — 3배 작은 데이터량</td>
+                            <td>RGB 3채널 또는 Raw 후 변환 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">아티팩트</td>
+                            <td>디모자이킹 불필요 — 아티팩트 없음</td>
+                            <td>지퍼링, 모아레, 컬러 프린징 가능</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">색상 정보</td>
+                            <td>없음 — 밝기만 측정</td>
+                            <td>있음 — RGB 풀컬러</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">주요 용도</td>
+                            <td>치수 측정, 결함 검출, OCR</td>
+                            <td>색상 분류, 외관 검사, 식품 검사</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> 모노 선택 시나리오</h4>
+                        <ul>
+                            <li>치수/형상 측정 — 밝기 대비만 필요</li>
+                            <li>표면 결함(스크래치, 크랙) 검출</li>
+                            <li>OCR/바코드 — 흑백 대비 충분</li>
+                            <li>고속 라인스캔 — 데이터량 최소화</li>
+                            <li>NIR/UV 특수 조명 — 단파장 필터 사용</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#2563eb; font-size:0.5rem;"></i> 컬러 선택 시나리오</h4>
+                        <ul>
+                            <li>색상 기반 분류 — 과일 숙성도, 불량 색</li>
+                            <li>외관 검사 — 도장, 인쇄물 색상 확인</li>
+                            <li>식품 검사 — 이물질 색상 구분</li>
+                            <li>의약품 — 정제/캡슐 색상 확인</li>
+                            <li>PCB 검사 — 납땜 색상으로 품질 판별</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>모노 + 컬러 조명 조합</strong>
+                        모노 센서에 특정 파장의 조명(예: Red LED)을 사용하면, 해당 파장에서의 반사 특성을 고감도로 촬영할 수 있다. 이 조합은 컬러 센서보다 특정 검사에서 더 높은 대비(contrast)를 제공한다.
+                    </div>
+                </div>
+
+                <!-- 7. 실무 팁 -->
+                <h2 id="practical-tips"><i class="fa-solid fa-wrench"></i> 실무 팁</h2>
+
+                <h3 id="tip-pixelformat"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> SDK에서 Bayer 포맷 설정</h3>
+
+                <p>카메라 SDK에서 <code>PixelFormat</code> 레지스터를 설정할 때, Bayer Raw 출력과 RGB 출력 중 선택할 수 있다. GenICam 표준 픽셀 포맷 이름은 다음과 같다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name"><code>BayerRG8</code></span>
+                        <span class="term-desc">RGGB 패턴, 8비트 Raw 출력. 디모자이킹은 호스트 PC에서 수행.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name"><code>BayerGR8</code></span>
+                        <span class="term-desc">GRBG 패턴, 8비트 Raw 출력.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name"><code>BayerGB8</code></span>
+                        <span class="term-desc">GBRG 패턴, 8비트 Raw 출력.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name"><code>BayerBG8</code></span>
+                        <span class="term-desc">BGGR 패턴, 8비트 Raw 출력.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name"><code>RGB8</code></span>
+                        <span class="term-desc">카메라 내부에서 디모자이킹 완료된 8비트 RGB 출력. 대역폭 3배 사용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name"><code>BayerRG12</code></span>
+                        <span class="term-desc">RGGB 패턴, 12비트 Raw. 더 넓은 다이내믹 레인지 제공.</span>
+                    </div>
+                </div>
+
+                <h3 id="tip-raw-vs-rgb"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Raw vs RGB 출력 선택</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>Raw(Bayer) 출력</th>
+                            <th>RGB 출력</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">데이터 크기</td>
+                            <td>1채널 (작음)</td>
+                            <td>3채널 (3배)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">전송 대역폭</td>
+                            <td>적게 사용 — 높은 프레임률 가능</td>
+                            <td>많이 사용 — 프레임률 감소</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">디모자이킹 위치</td>
+                            <td>호스트 PC (소프트웨어)</td>
+                            <td>카메라 내부 (FPGA)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">디모자이킹 품질</td>
+                            <td>PC에서 고급 알고리즘 적용 가능</td>
+                            <td>카메라 FPGA의 고정 알고리즘</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">CPU 부하</td>
+                            <td>높음 — PC에서 변환 필요</td>
+                            <td>낮음 — 바로 사용 가능</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">권장 상황</td>
+                            <td>고속 촬영, 대역폭 제한, 후처리 필요</td>
+                            <td>간단한 구성, 실시간 디스플레이</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>GigE Vision에서 RGB 출력 주의</strong>
+                        GigE Vision(1Gbps)에서 RGB8 포맷을 사용하면 데이터가 3배로 늘어나 프레임률이 크게 떨어진다. 예를 들어 5MP 카메라의 경우 BayerRG8은 약 23fps가 가능하지만, RGB8은 약 7fps로 떨어진다. 고속이 필요하면 반드시 Raw 출력 후 PC에서 디모자이킹하자.
+                    </div>
+                </div>
+
+                <h3 id="tip-whitebalance"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 화이트 밸런스와 디모자이킹</h3>
+
+                <p>디모자이킹 전후로 <strong>화이트 밸런스(White Balance)</strong> 보정이 필요하다. 조명의 색온도에 따라 R, G, B 채널의 게인을 조절하여 흰색이 실제로 흰색으로 보이도록 한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>화이트 밸런스 적용 순서</strong>
+                        일반적으로 화이트 밸런스는 디모자이킹 <strong>전(Raw 단계)</strong>에 적용하는 것이 좋다. Raw 데이터에서 각 채널의 게인을 조절한 후 디모자이킹하면, 보간 과정에서 채널 간 불균형으로 인한 컬러 아티팩트를 줄일 수 있다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Bayer, B. E. (1976) — Color imaging array, US Patent 3,971,065</li>
+                        <li>Malvar, H. S., He, L., Cutler, R. (2004) — High-quality linear interpolation for demosaicing of Bayer-patterned color images</li>
+                        <li>Hirakawa, K., Parks, T. W. (2005) — Adaptive homogeneity-directed demosaicing algorithm</li>
+                        <li>EMVA — GenICam Pixel Format Naming Convention (PFNC)</li>
+                        <li>FLIR/Teledyne — Understanding CFA and Demosaicing (Technical Note)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-sensor"><i class="fa-solid fa-arrow-left"></i> 센서/ISP 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-sensor');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-sensor');
+</script>
+
+</body>
+</html>
