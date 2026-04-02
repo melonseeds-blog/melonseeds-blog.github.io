@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>산업용 3D 검사 적용 사례 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why-3d" data-section="why-3d">왜 3D 검사인가</a>
+        <a href="#height" data-section="height">높이 측정</a>
+        <a href="#volume" data-section="volume">체적 검사</a>
+        <a href="#bin-picking" data-section="bin-picking">로봇 빈피킹</a>
+        <a href="#spi-aoi" data-section="spi-aoi">납땜 검사</a>
+        <a href="#flatness" data-section="flatness">평탄도/휨 검사</a>
+        <a href="#gap-flush" data-section="gap-flush">갭/단차 검사</a>
+        <a href="#system-tips" data-section="system-tips">시스템 구성 팁</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">3D 스테레오 비전</span>
+                </div>
+                <h1>산업용 3D 검사 적용 사례</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 9 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>2D 검사의 한계와 3D 검사가 필요한 이유</li>
+                        <li>높이/체적/평탄도 등 3D 고유 측정 항목별 적용 사례</li>
+                        <li>로봇 빈피킹, SPI/AOI, 자동차 갭&플러시 등 산업별 사례</li>
+                        <li>3D 검사 시스템 구성 시 조명, 진동, 캘리브레이션 실무 팁</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-3d">왜 3D 검사인가</a></li>
+                        <li><a href="#height">높이 측정</a></li>
+                        <li><a href="#volume">체적 검사</a></li>
+                        <li><a href="#bin-picking">로봇 빈피킹</a></li>
+                        <li><a href="#spi-aoi">납땜 검사 (SPI/AOI)</a></li>
+                        <li><a href="#flatness">평탄도/휨 검사</a></li>
+                        <li><a href="#gap-flush">갭/단차 검사</a></li>
+                        <li><a href="#system-tips">3D 검사 시스템 구성 팁</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 3D 검사인가 -->
+                <h2 id="why-3d"><i class="fa-solid fa-cube"></i> 왜 3D 검사인가</h2>
+
+                <p>2D 카메라는 밝기(intensity) 정보만 취득하므로 <strong>높이, 체적, 형상</strong>과 같은 Z축 정보를 직접 측정할 수 없다. 색상이나 조명 변화에 따라 검사 결과가 달라지고, 동일 평면상의 결함은 잘 잡지만 미세한 높이 차이나 3차원 형상 불량은 근본적으로 검출이 어렵다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 3D 검사가 반드시 필요한 항목</div>
+                    <p>납땜 높이, 접착제 도포량(체적), PCB 휨(워피지), 자동차 바디 갭&플러시, 부품 적재 자세(빈피킹) 등은 2D로는 원천적으로 측정 불가능하거나 정확도가 크게 떨어진다. 3D 검사는 높이 맵(Height Map) 또는 포인트 클라우드(Point Cloud) 데이터를 기반으로 이러한 항목을 직접 정량화한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 260" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">2D vs 3D 검사 비교</text>
+
+                        <!-- 2D 영역 -->
+                        <rect x="30" y="40" width="300" height="200" rx="12" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="180" y="65" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">2D 검사</text>
+                        <rect x="50" y="80" width="120" height="40" rx="6" fill="white" stroke="#ffb74d" stroke-width="1.5"/>
+                        <text x="110" y="105" text-anchor="middle" font-size="10" fill="#e65100">외관 (색상/패턴)</text>
+                        <rect x="190" y="80" width="120" height="40" rx="6" fill="white" stroke="#ffb74d" stroke-width="1.5"/>
+                        <text x="250" y="105" text-anchor="middle" font-size="10" fill="#e65100">치수 (X, Y)</text>
+                        <rect x="50" y="130" width="120" height="40" rx="6" fill="white" stroke="#ffb74d" stroke-width="1.5"/>
+                        <text x="110" y="155" text-anchor="middle" font-size="10" fill="#e65100">유무 판정</text>
+                        <rect x="190" y="130" width="120" height="40" rx="6" fill="white" stroke="#ffb74d" stroke-width="1.5"/>
+                        <text x="250" y="155" text-anchor="middle" font-size="10" fill="#e65100">OCR / 바코드</text>
+                        <text x="180" y="210" text-anchor="middle" font-size="10" fill="#bf360c">밝기(Intensity) 기반 - Z축 정보 없음</text>
+
+                        <!-- 3D 영역 -->
+                        <rect x="370" y="40" width="300" height="200" rx="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="520" y="65" text-anchor="middle" font-size="13" fill="#1565c0" font-weight="700">3D 검사</text>
+                        <rect x="390" y="80" width="120" height="40" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="450" y="105" text-anchor="middle" font-size="10" fill="#1565c0">높이 (Z)</text>
+                        <rect x="530" y="80" width="120" height="40" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="590" y="105" text-anchor="middle" font-size="10" fill="#1565c0">체적 (Volume)</text>
+                        <rect x="390" y="130" width="120" height="40" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="450" y="155" text-anchor="middle" font-size="10" fill="#1565c0">형상 / 곡률</text>
+                        <rect x="530" y="130" width="120" height="40" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="590" y="155" text-anchor="middle" font-size="10" fill="#1565c0">갭 / 단차</text>
+                        <text x="520" y="210" text-anchor="middle" font-size="10" fill="#0d47a1">Height Map / Point Cloud 기반</text>
+                    </svg>
+                    <div class="caption">그림 1. 2D 검사와 3D 검사의 측정 가능 항목 비교</div>
+                </div>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ff9800; font-size:0.5rem;"></i> 2D로 가능한 검사</h4>
+                        <ul>
+                            <li>외관 결함 (스크래치, 얼룩, 이물)</li>
+                            <li>평면 치수 측정 (길이, 폭, 면적)</li>
+                            <li>부품 유무 판정</li>
+                            <li>문자/바코드 인식</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#1565c0; font-size:0.5rem;"></i> 3D가 필수인 검사</h4>
+                        <ul>
+                            <li>납땜/씰 높이 측정</li>
+                            <li>접착제/그리스 도포량 (체적)</li>
+                            <li>PCB 휨, 유리 평탄도</li>
+                            <li>갭&플러시, 빈피킹 자세 인식</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 2. 높이 측정 -->
+                <h2 id="height"><i class="fa-solid fa-ruler-vertical"></i> 높이 측정</h2>
+
+                <p>3D 검사에서 가장 기본적이면서 빈번한 적용 사례가 <strong>높이 측정</strong>이다. 기준면(Reference Plane) 대비 대상물의 Z값 차이를 측정하여 규격 이내인지 판정한다.</p>
+
+                <h3 id="height-solder"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 납땜 높이 검사</h3>
+
+                <p>SMT 공정에서 솔더 범프나 BGA 볼의 높이를 측정한다. 높이가 부족하면 접촉 불량, 과다하면 쇼트 위험이 있으므로 수 um 단위의 정밀 측정이 필요하다. 구조광(Structured Light) 또는 공초점(Confocal) 방식이 주로 사용된다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 200" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="20" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="700">납땜 높이 측정 원리</text>
+                        <!-- PCB 기판 -->
+                        <rect x="50" y="140" width="550" height="30" rx="4" fill="#c8e6c9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="325" y="160" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">PCB 기판 (기준면)</text>
+                        <!-- 솔더 범프들 -->
+                        <ellipse cx="150" cy="140" rx="30" ry="15" fill="#ff9800" stroke="#e65100" stroke-width="1.5"/>
+                        <text x="150" y="125" text-anchor="middle" font-size="9" fill="#e65100">정상</text>
+                        <line x1="150" y1="140" x2="150" y2="105" stroke="#1565c0" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <text x="160" y="115" font-size="8" fill="#1565c0">h=0.3mm</text>
+
+                        <ellipse cx="325" cy="140" rx="30" ry="8" fill="#ffcdd2" stroke="#ef4444" stroke-width="1.5"/>
+                        <text x="325" y="125" text-anchor="middle" font-size="9" fill="#ef4444">높이 부족</text>
+                        <line x1="325" y1="140" x2="325" y2="118" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <text x="340" y="127" font-size="8" fill="#ef4444">h=0.1mm</text>
+
+                        <ellipse cx="500" cy="140" rx="35" ry="25" fill="#ffcdd2" stroke="#ef4444" stroke-width="1.5"/>
+                        <text x="500" y="115" text-anchor="middle" font-size="9" fill="#ef4444">높이 과다</text>
+                        <line x1="500" y1="140" x2="500" y2="90" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <text x="515" y="100" font-size="8" fill="#ef4444">h=0.6mm</text>
+
+                        <!-- 규격선 -->
+                        <line x1="50" y1="105" x2="600" y2="105" stroke="#1565c0" stroke-width="1" stroke-dasharray="6,4"/>
+                        <text x="610" y="108" font-size="8" fill="#1565c0">상한</text>
+                        <line x1="50" y1="120" x2="600" y2="120" stroke="#4caf50" stroke-width="1" stroke-dasharray="6,4"/>
+                        <text x="610" y="123" font-size="8" fill="#4caf50">하한</text>
+                    </svg>
+                    <div class="caption">그림 2. 납땜 높이 검사 - 기준면 대비 Z값으로 OK/NG 판정</div>
+                </div>
+
+                <h3 id="height-seal"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 씰(Seal) 도포 높이 검사</h3>
+
+                <p>자동차 엔진 블록, 변속기 케이스 등의 결합면에 도포되는 실리콘 씰(가스켓 대체)의 높이를 측정한다. 높이가 불균일하면 누유 원인이 되므로, 도포 경로 전체를 3D 스캔하여 높이 프로파일을 추출한다.</p>
+
+                <h3 id="height-step"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 단차 검사</h3>
+
+                <p>두 부품이 조립된 상태에서 표면 높이 차이(단차, Step Height)를 측정한다. 반도체 패키지의 리드 평탄도, 커넥터 핀 돌출량, 스마트폰 카메라 모듈 높이 등이 대표 사례다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>측정 정밀도</strong>
+                        레이저 변위 센서는 반복 정밀도 0.1um 수준까지 가능하며, 구조광 방식은 대상 영역이 넓은 대신 정밀도는 수 um~수십 um 수준이다. 검사 항목에 따라 적절한 방식을 선택해야 한다.
+                    </div>
+                </div>
+
+                <!-- 3. 체적 검사 -->
+                <h2 id="volume"><i class="fa-solid fa-droplet"></i> 체적 검사</h2>
+
+                <p>3D 검사의 큰 장점 중 하나는 <strong>체적(Volume)</strong>을 직접 측정할 수 있다는 것이다. 높이 맵에서 기준면 이상의 영역을 적분하면 도포된 물질의 총량을 정량화할 수 있다.</p>
+
+                <h3 id="volume-adhesive"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 접착제 도포량 검사</h3>
+
+                <p>자동차 바디 패널 접합, 디스플레이 패널 본딩, 전자부품 언더필(Underfill) 등에서 접착제의 도포량이 규격 범위 내인지 확인한다. 도포량 부족은 접합 강도 저하, 과다는 오염이나 치수 초과의 원인이 된다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 220" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="20" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="700">체적 측정 원리 (높이맵 적분)</text>
+                        <!-- 기판 -->
+                        <rect x="80" y="160" width="490" height="25" rx="4" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <text x="325" y="178" text-anchor="middle" font-size="9" fill="#616161">기판 (기준면 Z=0)</text>
+                        <!-- 도포 비드 단면 - 정상 -->
+                        <path d="M120,160 Q140,80 160,85 Q200,90 220,160" fill="#bbdefb" stroke="#1565c0" stroke-width="2" fill-opacity="0.5"/>
+                        <text x="170" y="130" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">정상</text>
+                        <text x="170" y="60" text-anchor="middle" font-size="8" fill="#1565c0">V = 12.5 mm3</text>
+                        <!-- 도포 비드 단면 - 부족 -->
+                        <path d="M280,160 Q295,120 310,125 Q340,130 360,160" fill="#ffcdd2" stroke="#ef4444" stroke-width="2" fill-opacity="0.5"/>
+                        <text x="320" y="138" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="600">부족</text>
+                        <text x="320" y="60" text-anchor="middle" font-size="8" fill="#ef4444">V = 5.2 mm3</text>
+                        <!-- 도포 비드 단면 - 과다 -->
+                        <path d="M420,160 Q430,50 460,55 Q510,60 530,160" fill="#ffcdd2" stroke="#ef4444" stroke-width="2" fill-opacity="0.5"/>
+                        <text x="475" y="110" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="600">과다</text>
+                        <text x="475" y="60" text-anchor="middle" font-size="8" fill="#ef4444">V = 25.8 mm3</text>
+                        <!-- 적분 표시 -->
+                        <text x="325" y="210" text-anchor="middle" font-size="10" fill="#616161">Volume = integrate(Z(x,y)) over ROI</text>
+                    </svg>
+                    <div class="caption">그림 3. 체적 검사 - 높이맵의 Z값을 적분하여 도포량 산출</div>
+                </div>
+
+                <h3 id="volume-grease"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 그리스 도포량 검사</h3>
+
+                <p>베어링, 기어, 슬라이드 레일 등에 도포된 그리스의 양을 측정한다. 그리스는 반투명하여 2D 영상으로 양을 판단하기 어렵지만, 3D 프로파일로는 정확한 체적 산출이 가능하다.</p>
+
+                <h3 id="volume-fill"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 충진(Fill) 검사</h3>
+
+                <p>식품/제약 분야에서 용기 내 내용물의 충진량을 비접촉으로 측정하거나, 전자부품의 몰딩(Molding) 충진 상태를 확인하는 데 활용된다. 용기 상단에서 3D 스캔하여 빈 공간의 체적을 계산하면 충진율을 알 수 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>체적 검사의 핵심: 기준면 설정</strong>
+                        체적 계산의 정확도는 기준면(Reference Plane) 설정에 크게 좌우된다. 기판이 평탄하지 않은 경우 ROI 주변의 실제 기판 높이를 샘플링하여 가상 기준면을 보정해야 한다.
+                    </div>
+                </div>
+
+                <!-- 4. 로봇 빈피킹 -->
+                <h2 id="bin-picking"><i class="fa-solid fa-robot"></i> 로봇 빈피킹</h2>
+
+                <p><strong>빈피킹(Bin Picking)</strong>은 상자(Bin)에 무작위로 적재된 부품의 3D 위치와 자세(Pose)를 인식하여, 로봇이 하나씩 집어내는 기술이다. 3D 비전 없이는 겹침(Occlusion)과 다양한 자세를 처리할 수 없어 자동화가 불가능한 대표적 영역이다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 빈피킹 프로세스</div>
+                    <p>3D 카메라(스테레오, 구조광, ToF 등)로 상자 내부를 스캔 &rarr; 포인트 클라우드 생성 &rarr; 개별 부품 세그멘테이션 &rarr; CAD 모델 매칭으로 6DoF 자세 추정 &rarr; 충돌 없는 그리핑 경로 계획 &rarr; 로봇 피킹 실행. 이 과정이 수 초 내에 완료되어야 한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 180" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="20" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="700">빈피킹 워크플로우</text>
+                        <!-- Step boxes -->
+                        <rect x="20" y="45" width="110" height="55" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="75" y="68" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">3D 스캔</text>
+                        <text x="75" y="82" text-anchor="middle" font-size="8" fill="#64b5f6">Point Cloud</text>
+
+                        <rect x="155" y="45" width="110" height="55" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="210" y="68" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">세그멘테이션</text>
+                        <text x="210" y="82" text-anchor="middle" font-size="8" fill="#66bb6a">개별 부품 분리</text>
+
+                        <rect x="290" y="45" width="110" height="55" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="345" y="68" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">자세 추정</text>
+                        <text x="345" y="82" text-anchor="middle" font-size="8" fill="#ffb74d">6DoF Pose</text>
+
+                        <rect x="425" y="45" width="110" height="55" rx="8" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="480" y="68" text-anchor="middle" font-size="9" fill="#7b1fa2" font-weight="600">경로 계획</text>
+                        <text x="480" y="82" text-anchor="middle" font-size="8" fill="#ba68c8">충돌 회피</text>
+
+                        <rect x="560" y="45" width="110" height="55" rx="8" fill="#ffebee" stroke="#ef4444" stroke-width="1.5"/>
+                        <text x="615" y="68" text-anchor="middle" font-size="9" fill="#c62828" font-weight="600">로봇 피킹</text>
+                        <text x="615" y="82" text-anchor="middle" font-size="8" fill="#ef9a9a">그리퍼 동작</text>
+
+                        <!-- 화살표 -->
+                        <line x1="130" y1="72" x2="155" y2="72" stroke="#9e9e9e" stroke-width="2" marker-end="url(#arr-bp)"/>
+                        <line x1="265" y1="72" x2="290" y2="72" stroke="#9e9e9e" stroke-width="2" marker-end="url(#arr-bp)"/>
+                        <line x1="400" y1="72" x2="425" y2="72" stroke="#9e9e9e" stroke-width="2" marker-end="url(#arr-bp)"/>
+                        <line x1="535" y1="72" x2="560" y2="72" stroke="#9e9e9e" stroke-width="2" marker-end="url(#arr-bp)"/>
+                        <defs><marker id="arr-bp" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#9e9e9e"/></marker></defs>
+
+                        <!-- 하단 설명 -->
+                        <text x="350" y="140" text-anchor="middle" font-size="10" fill="#616161">전체 사이클: 2~5초 (부품 복잡도/적재 밀도에 따라 상이)</text>
+                        <text x="350" y="158" text-anchor="middle" font-size="9" fill="#9e9e9e">핵심 기술: 포인트 클라우드 처리 + CAD 매칭 + 모션 플래닝</text>
+                    </svg>
+                    <div class="caption">그림 4. 로봇 빈피킹의 일반적 워크플로우</div>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>3D 센서 방식</th>
+                            <th>FOV / 해상도</th>
+                            <th>속도</th>
+                            <th>빈피킹 적합도</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">스테레오 비전</td>
+                            <td>넓음 / 중간</td>
+                            <td>빠름 (단일 촬영)</td>
+                            <td>대형 부품, 물류</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">구조광 (Structured Light)</td>
+                            <td>중간 / 높음</td>
+                            <td>중간 (패턴 투사)</td>
+                            <td>소형 정밀 부품</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">ToF (Time of Flight)</td>
+                            <td>넓음 / 낮음</td>
+                            <td>매우 빠름</td>
+                            <td>대형 박스, 팔레트</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>빈피킹의 난제: 광택/반사 부품</strong>
+                        금속 가공품처럼 반사가 심한 부품은 3D 데이터 취득이 어렵다. 편광 필터, HDR 촬영, 또는 특수 패턴 투사 기법을 조합해야 하며, 최근에는 딥러닝 기반 포인트 클라우드 보정 기법도 연구되고 있다.
+                    </div>
+                </div>
+
+                <!-- 5. 납땜 검사 (SPI/AOI) -->
+                <h2 id="spi-aoi"><i class="fa-solid fa-microchip"></i> 납땜 검사 (SPI/AOI)</h2>
+
+                <p>SMT(Surface Mount Technology) 공정에서 3D 검사는 가장 성숙한 적용 분야 중 하나다. <strong>SPI(Solder Paste Inspection)</strong>는 솔더 페이스트 인쇄 직후, <strong>3D AOI(Automated Optical Inspection)</strong>는 리플로우 후 납땜 상태를 검사한다.</p>
+
+                <h3 id="spi-detail"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> SPI - 솔더 페이스트 검사</h3>
+
+                <p>스텐실 프린팅 직후 각 패드 위의 솔더 페이스트 <strong>높이, 면적, 체적</strong>을 3D로 측정한다. SMT 불량의 60~70%가 인쇄 공정에서 기인하므로, SPI는 수율 향상의 핵심 공정이다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">높이(Height)</span>
+                        <span class="term-desc">페이스트 높이가 규격(보통 100~150um) 범위 내인지 확인. 스텐실 두께와 직결.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">면적(Area)</span>
+                        <span class="term-desc">페이스트가 패드를 적절히 커버하는지 확인. 50% 미만이면 미납 위험.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">체적(Volume)</span>
+                        <span class="term-desc">도포된 총량. 리플로우 후 납땜 품질과 직접 상관. 가장 중요한 지표.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">오프셋(Offset)</span>
+                        <span class="term-desc">페이스트 중심과 패드 중심의 편차. 미세 피치 부품에서 브릿지 원인.</span>
+                    </div>
+                </div>
+
+                <h3 id="aoi-3d"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3D AOI - 리플로우 후 검사</h3>
+
+                <p>리플로우 후 완성된 납땜의 필렛(Fillet) 형상을 3D로 측정한다. 기존 2D AOI는 조명 방향에 따라 오검 비율이 높았으나, 3D 프로파일을 활용하면 <strong>브릿지, 미납, 들뜸, 볼 결함</strong> 등을 더 정확하게 검출할 수 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>SPI + AOI 연계 분석</strong>
+                        SPI에서 측정한 솔더 페이스트 체적과 AOI에서 측정한 납땜 높이를 연계하면, 공정 파라미터(스텐실 갭, 인쇄 속도, 리플로우 프로파일) 최적화에 매우 유용하다. 이를 <strong>공정 연동 분석(Process Correlation)</strong>이라 한다.
+                    </div>
+                </div>
+
+                <!-- 6. 평탄도/휨 검사 -->
+                <h2 id="flatness"><i class="fa-solid fa-wave-square"></i> 평탄도/휨 검사</h2>
+
+                <p>대상물의 표면이 얼마나 평평한지, 또는 얼마나 휘어져 있는지를 측정하는 검사다. 3D 높이 맵에서 이상적 평면(Best-fit Plane)을 피팅한 후, 각 지점의 편차를 계산하여 평탄도를 정량화한다.</p>
+
+                <h3 id="flatness-pcb"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PCB 워피지(Warpage)</h3>
+
+                <p>리플로우 전후의 PCB 휨 변형을 측정한다. BGA나 미세 피치 부품은 PCB 워피지가 크면 솔더 접합 불량이 발생하므로, 실장 전 기판 평탄도를 확인하거나 리플로우 프로파일 최적화에 활용한다. 모아레(Moire) 방식이나 디지털 프린지 프로젝션(DFP)이 주로 사용된다.</p>
+
+                <h3 id="flatness-glass"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 유리/필름 평탄도</h3>
+
+                <p>디스플레이 커버 글라스, 광학 렌즈, 보호 필름 등의 평탄도를 측정한다. 수 nm~um 수준의 정밀도가 요구되며, 간섭계(Interferometer)나 크로매틱 공초점(Chromatic Confocal) 방식이 사용된다.</p>
+
+                <h3 id="flatness-metal"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 금속판 굴곡</h3>
+
+                <p>프레스 성형 후 금속판의 스프링백(Springback) 변형이나, 용접 후 열변형으로 인한 굴곡을 측정한다. 레이저 라인 스캐너를 이동시키며 전체 표면의 3D 프로파일을 취득하고, 설계 CAD와 비교하여 변형량을 정량화한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 200" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="20" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="700">평탄도 측정 원리</text>
+                        <!-- 이상 평면 -->
+                        <line x1="60" y1="120" x2="590" y2="120" stroke="#4caf50" stroke-width="2" stroke-dasharray="8,4"/>
+                        <text x="600" y="124" font-size="8" fill="#4caf50">Best-fit Plane</text>
+                        <!-- 실제 표면 -->
+                        <path d="M60,120 Q150,85 200,110 Q280,140 350,100 Q420,75 480,115 Q540,135 590,120" fill="none" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="60" y="70" font-size="9" fill="#1565c0" font-weight="600">실제 표면 프로파일</text>
+                        <!-- 편차 화살표 -->
+                        <line x1="200" y1="110" x2="200" y2="120" stroke="#ef4444" stroke-width="1.5"/>
+                        <line x1="350" y1="100" x2="350" y2="120" stroke="#ef4444" stroke-width="1.5"/>
+                        <line x1="420" y1="90" x2="420" y2="120" stroke="#ef4444" stroke-width="1.5"/>
+                        <text x="350" y="155" text-anchor="middle" font-size="9" fill="#ef4444">편차(Deviation) = 실측 Z - 기준면 Z</text>
+                        <text x="350" y="180" text-anchor="middle" font-size="10" fill="#616161">평탄도 = Max(편차) - Min(편차)</text>
+                    </svg>
+                    <div class="caption">그림 5. 평탄도 측정 - Best-fit Plane 대비 편차로 평탄도 정량화</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>워피지 측정 시점</strong>
+                        PCB 워피지는 온도에 따라 달라지므로, 상온 측정값과 리플로우 온도(~260도C)에서의 실시간 측정값이 다를 수 있다. 정밀한 분석이 필요하면 섀도우 모아레 방식의 실시간 워피지 측정 장비를 사용한다.
+                    </div>
+                </div>
+
+                <!-- 7. 갭/단차 검사 -->
+                <h2 id="gap-flush"><i class="fa-solid fa-arrows-left-right-to-line"></i> 갭/단차 검사</h2>
+
+                <p><strong>갭(Gap)</strong>은 두 부품 사이의 틈새, <strong>플러시(Flush)</strong>는 두 부품 표면의 높이 차이를 의미한다. 자동차 바디, 가전제품 외관, 항공기 동체 등에서 조립 품질을 정량적으로 평가하는 핵심 항목이다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 650 220" style="width:100%; max-width:650px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="325" y="20" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="700">갭(Gap) & 플러시(Flush) 개념</text>
+
+                        <!-- 갭 설명 (좌측) -->
+                        <text x="180" y="50" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">Gap (틈새)</text>
+                        <rect x="50" y="70" width="120" height="80" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="110" y="115" text-anchor="middle" font-size="9" fill="#1565c0">패널 A</text>
+                        <rect x="190" y="70" width="120" height="80" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="250" y="115" text-anchor="middle" font-size="9" fill="#1565c0">패널 B</text>
+                        <!-- 갭 표시 -->
+                        <line x1="170" y1="75" x2="170" y2="145" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>
+                        <line x1="190" y1="75" x2="190" y2="145" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>
+                        <line x1="170" y1="110" x2="190" y2="110" stroke="#ef4444" stroke-width="2"/>
+                        <text x="180" y="170" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="600">Gap = d</text>
+
+                        <!-- 플러시 설명 (우측) -->
+                        <text x="490" y="50" text-anchor="middle" font-size="11" fill="#4caf50" font-weight="700">Flush (단차)</text>
+                        <rect x="380" y="70" width="120" height="80" rx="4" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="440" y="115" text-anchor="middle" font-size="9" fill="#2e7d32">패널 A</text>
+                        <rect x="510" y="85" width="120" height="80" rx="4" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="570" y="130" text-anchor="middle" font-size="9" fill="#2e7d32">패널 B</text>
+                        <!-- 플러시 표시 -->
+                        <line x1="505" y1="70" x2="535" y2="70" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>
+                        <line x1="505" y1="85" x2="535" y2="85" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>
+                        <line x1="520" y1="70" x2="520" y2="85" stroke="#ef4444" stroke-width="2"/>
+                        <text x="490" y="200" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="600">Flush = h</text>
+
+                        <text x="325" y="210" text-anchor="middle" font-size="9" fill="#616161">자동차 바디 갭 기준: 3~5mm, 플러시 기준: 0.5mm 이내</text>
+                    </svg>
+                    <div class="caption">그림 6. 갭(Gap)과 플러시(Flush)의 정의</div>
+                </div>
+
+                <h3 id="gap-auto"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 자동차 바디 갭&플러시</h3>
+
+                <p>자동차 도어, 후드, 트렁크, 펜더 등 외장 패널 간의 갭과 플러시를 측정한다. 소비자가 직접 눈으로 보는 품질이므로 매우 엄격한 규격이 적용된다. 레이저 삼각법 기반의 핸드헬드 갭 측정기 또는 라인 센서 기반 자동 측정 시스템이 사용된다.</p>
+
+                <h3 id="gap-assembly"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 조립 정밀도 검사</h3>
+
+                <p>스마트폰 디스플레이와 프레임의 갭, 가전제품 외관 패널 간 단차, 항공기 동체 패널 이음부 등에서도 갭/단차 검사가 필수적이다. 제품 크기와 요구 정밀도에 따라 레이저 변위 센서, 구조광 스캐너, 또는 접촉식 CMM(좌표 측정기)이 선택된다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>인라인 vs 오프라인 측정</strong>
+                        자동차 공장에서는 라인 위에서 실시간으로 측정하는 <strong>인라인(In-line)</strong> 방식과, 샘플을 빼내 정밀 측정하는 <strong>오프라인(Off-line)</strong> 방식을 병행한다. 인라인은 전수 검사가 가능하지만 정밀도가 다소 낮고, 오프라인은 높은 정밀도를 제공하지만 샘플링 검사에 그친다.
+                    </div>
+                </div>
+
+                <!-- 8. 3D 검사 시스템 구성 팁 -->
+                <h2 id="system-tips"><i class="fa-solid fa-gears"></i> 3D 검사 시스템 구성 팁</h2>
+
+                <p>3D 검사 시스템을 현장에 도입할 때 간과하기 쉬운 실무적 사항들을 정리한다.</p>
+
+                <h3 id="tips-lighting"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 조명 설계</h3>
+
+                <p>3D 센서 자체가 레이저나 패턴을 투사하므로, 외부 조명이 간섭할 수 있다. 특히 구조광 방식은 환경광에 민감하므로 <strong>밴드패스 필터</strong>와 조합하거나, 센서 파장과 다른 대역의 조명을 사용해야 한다. 2D+3D 복합 검사 시에는 3D 촬영과 2D 촬영의 조명을 시분할로 제어한다.</p>
+
+                <h3 id="tips-vibration"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 진동 대책</h3>
+
+                <p>3D 검사는 um 단위의 정밀 측정이 많으므로 진동에 취약하다. 컨베이어 진동, 프레스 충격, 로봇 동작 시 진동이 측정 오차의 주요 원인이 된다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">방진 마운트</span>
+                        <span class="term-desc">센서 브래킷에 방진 고무, 에어 스프링 등을 적용. 고주파 진동 차단에 효과적.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">정지 촬영</span>
+                        <span class="term-desc">컨베이어를 순간 정지시키고 촬영. 택트 타임에 영향을 줄 수 있으므로 사전 검토 필요.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">고속 촬영</span>
+                        <span class="term-desc">노출 시간을 극단적으로 줄여 진동 영향을 최소화. 충분한 광량 확보가 전제 조건.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">소프트웨어 보정</span>
+                        <span class="term-desc">가속도 센서로 진동을 측정하고, 3D 데이터에서 진동 성분을 제거하는 후처리 기법.</span>
+                    </div>
+                </div>
+
+                <h3 id="tips-calibration"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캘리브레이션 주기</h3>
+
+                <p>3D 센서의 측정 정밀도는 시간이 지남에 따라 드리프트(Drift)할 수 있다. 온도 변화, 기계적 변형, 렌즈 오염 등이 원인이다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>캘리브레이션 항목</th>
+                            <th>권장 주기</th>
+                            <th>방법</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Z축 정밀도</td>
+                            <td>주 1회 또는 교대 시</td>
+                            <td>표준 게이지 블록 측정 후 보정 계수 갱신</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">XY 스케일</td>
+                            <td>월 1회</td>
+                            <td>캘리브레이션 타겟(도트 패턴) 촬영</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Hand-Eye (로봇)</td>
+                            <td>충격/이동 후 즉시</td>
+                            <td>캘리브레이션 볼/보드로 좌표계 재정렬</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">렌즈 클리닝</td>
+                            <td>일 1회</td>
+                            <td>렌즈/윈도우 오염 확인 및 청소</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>온도 보상의 중요성</strong>
+                        공장 내 온도가 10도C 변하면 금속 브래킷의 열팽창으로 센서 위치가 수십 um 변할 수 있다. 정밀 측정이 필요한 경우 온도 센서를 부착하고 보상 알고리즘을 적용하거나, 항온 환경을 구축해야 한다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>골든 샘플(Golden Sample) 활용</strong>
+                        양품 기준이 되는 골든 샘플을 정기적으로 측정하여 시스템 드리프트를 모니터링하는 것이 가장 실용적인 방법이다. 측정값이 허용 범위를 벗어나면 캘리브레이션을 수행한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>SICK AG — 3D Vision Guidebook for Industrial Applications</li>
+                        <li>Keyence — 3D Measurement Principles and Applications</li>
+                        <li>Koh Young — SPI/AOI 3D Inspection Technology White Paper</li>
+                        <li>IPC-A-610 — Acceptability of Electronic Assemblies (납땜 검사 기준)</li>
+                        <li>ISO 12781 — Geometrical Product Specifications - Flatness</li>
+                        <li>Photoneo / Zivid — Bin Picking Application Notes</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-stereo"><i class="fa-solid fa-arrow-left"></i> 3D 스테레오 비전 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-stereo');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-stereo');
+</script>
+
+</body>
+</html>

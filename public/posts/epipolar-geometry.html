@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>에피폴라 기하학 이해하기 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 수식 블록 */
+        .math-block {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; text-align: center;
+            font-family: 'Georgia', 'Times New Roman', serif; font-size: 1.1rem;
+            line-height: 2; overflow-x: auto;
+        }
+        .math-block .math-label {
+            font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;
+            font-family: 'Pretendard', sans-serif;
+        }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e1e2e; color: #cdd6f4; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #6c7086; }
+        pre .keyword { color: #cba6f7; }
+        pre .string { color: #a6e3a1; }
+        pre .func { color: #89b4fa; }
+        pre .number { color: #fab387; }
+        pre .type { color: #94e2d5; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">에피폴라 기하학이란</a>
+        <a href="#elements" data-section="elements">핵심 요소</a>
+        <a href="#fundamental" data-section="fundamental">기본 행렬 (F)</a>
+        <a href="#essential" data-section="essential">필수 행렬 (E)</a>
+        <a href="#constraint" data-section="constraint">에피폴라 제약</a>
+        <a href="#rectification" data-section="rectification">정류 (Rectification)</a>
+        <a href="#opencv" data-section="opencv">OpenCV 실무</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">3D 스테레오 비전</span>
+                </div>
+                <h1>에피폴라 기하학 이해하기</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 9 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>에피폴라 기하학의 정의와 스테레오 비전에서의 역할</li>
+                        <li>에피폴(Epipole), 에피폴라 라인(Epipolar Line), 에피폴라 평면(Epipolar Plane)의 관계</li>
+                        <li>기본 행렬(Fundamental Matrix)과 필수 행렬(Essential Matrix)의 차이</li>
+                        <li>에피폴라 제약 조건을 활용한 대응점 탐색 최적화</li>
+                        <li>정류(Rectification)로 에피폴라 라인을 수평 정렬하는 방법</li>
+                        <li>OpenCV를 이용한 실무 구현 코드</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">에피폴라 기하학이란</a></li>
+                        <li><a href="#elements">에피폴 / 에피폴라 라인 / 에피폴라 평면</a></li>
+                        <li><a href="#fundamental">기본 행렬 (Fundamental Matrix, F)</a></li>
+                        <li><a href="#essential">필수 행렬 (Essential Matrix, E)</a></li>
+                        <li><a href="#constraint">에피폴라 제약 (Epipolar Constraint)</a></li>
+                        <li><a href="#rectification">정류 (Rectification)</a></li>
+                        <li><a href="#opencv">OpenCV 실무 코드</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 에피폴라 기하학이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-cube"></i> 에피폴라 기하학이란</h2>
+
+                <p>에피폴라 기하학(Epipolar Geometry)은 <strong>두 대의 카메라가 같은 장면을 서로 다른 시점에서 촬영</strong>했을 때, 두 이미지 사이의 기하학적 관계를 설명하는 이론이다. 스테레오 비전 시스템에서 3D 복원의 수학적 기반이 되며, 대응점(Correspondence) 탐색을 2D 영역에서 1D 직선으로 축소하여 계산 효율을 극적으로 높여준다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 에피폴라 기하학이 중요한가?</div>
+                    <p>스테레오 매칭에서 왼쪽 이미지의 한 점에 대응하는 오른쪽 이미지의 점을 찾으려면, 이론적으로 이미지 전체를 탐색해야 한다. 에피폴라 기하학을 활용하면 탐색 범위를 <strong>하나의 직선(에피폴라 라인)</strong>으로 제한할 수 있어, 탐색 비용이 O(N^2)에서 O(N)으로 줄어든다.</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>사전 지식</strong>
+                        이 글을 이해하려면 카메라 캘리브레이션(내부 파라미터, 외부 파라미터)과 핀홀 카메라 모델에 대한 기본 개념이 필요하다. 동차 좌표(Homogeneous Coordinates)도 수식에서 자주 등장한다.
+                    </div>
+                </div>
+
+                <!-- 2. 에피폴 / 에피폴라 라인 / 평면 -->
+                <h2 id="elements"><i class="fa-solid fa-draw-polygon"></i> 에피폴 / 에피폴라 라인 / 에피폴라 평면</h2>
+
+                <h3 id="elements-terms"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 핵심 용어 정의</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">에피폴 (Epipole)</span>
+                        <span class="term-desc">한쪽 카메라의 광학 중심(Optical Center)이 반대쪽 이미지 평면에 투영된 점. 왼쪽 카메라의 중심이 오른쪽 이미지에 투영되면 <strong>e'</strong>, 반대는 <strong>e</strong>로 표기한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">에피폴라 라인 (Epipolar Line)</span>
+                        <span class="term-desc">3D 공간의 한 점 P와 두 카메라 중심을 잇는 에피폴라 평면이 각 이미지 평면과 만드는 교선. 왼쪽 이미지의 점 p에 대응하는 오른쪽 이미지의 점 p'는 반드시 이 직선 위에 존재한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">에피폴라 평면 (Epipolar Plane)</span>
+                        <span class="term-desc">3D 점 P와 두 카메라의 광학 중심 O, O'가 이루는 삼각형이 정의하는 평면. 모든 에피폴라 라인은 에피폴을 지나며, 에피폴라 평면의 수에 따라 무한히 많은 에피폴라 라인이 존재한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">베이스라인 (Baseline)</span>
+                        <span class="term-desc">두 카메라의 광학 중심 O와 O'를 잇는 선분. 모든 에피폴라 평면은 베이스라인을 포함한다.</span>
+                    </div>
+                </div>
+
+                <h3 id="elements-diagram"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 에피폴라 기하학 다이어그램</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 400" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#2e7d32"/></marker>
+                            <marker id="arr-b" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                        </defs>
+
+                        <!-- 배경 라벨 -->
+                        <text x="360" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">에피폴라 기하학 핵심 구조</text>
+
+                        <!-- 에피폴라 평면 (삼각형 반투명) -->
+                        <polygon points="360,60 100,300 620,300" fill="#e8f5e9" fill-opacity="0.5" stroke="#4caf50" stroke-width="1.5" stroke-dasharray="6,3"/>
+                        <text x="360" y="180" text-anchor="middle" font-size="11" fill="#388e3c" font-weight="600">에피폴라 평면 (Epipolar Plane)</text>
+
+                        <!-- 3D 점 P -->
+                        <circle cx="360" cy="60" r="7" fill="#e53935" stroke="#b71c1c" stroke-width="2"/>
+                        <text x="375" y="55" font-size="13" fill="#b71c1c" font-weight="700">P</text>
+                        <text x="375" y="70" font-size="9" fill="#e53935">(3D 점)</text>
+
+                        <!-- 왼쪽 카메라 (O) -->
+                        <circle cx="100" cy="300" r="8" fill="#1565c0" stroke="#0d47a1" stroke-width="2"/>
+                        <text x="70" y="325" font-size="12" fill="#0d47a1" font-weight="700">O</text>
+                        <text x="55" y="340" font-size="9" fill="#1565c0">왼쪽 카메라 중심</text>
+
+                        <!-- 오른쪽 카메라 (O') -->
+                        <circle cx="620" cy="300" r="8" fill="#1565c0" stroke="#0d47a1" stroke-width="2"/>
+                        <text x="595" y="325" font-size="12" fill="#0d47a1" font-weight="700">O'</text>
+                        <text x="580" y="340" font-size="9" fill="#1565c0">오른쪽 카메라 중심</text>
+
+                        <!-- 베이스라인 -->
+                        <line x1="108" y1="300" x2="612" y2="300" stroke="#ff9800" stroke-width="2.5"/>
+                        <text x="360" y="316" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">베이스라인 (Baseline)</text>
+
+                        <!-- 왼쪽 이미지 평면 -->
+                        <rect x="140" y="210" width="120" height="70" rx="4" fill="white" fill-opacity="0.85" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="200" y="228" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">왼쪽 이미지 평면</text>
+
+                        <!-- 오른쪽 이미지 평면 -->
+                        <rect x="460" y="210" width="120" height="70" rx="4" fill="white" fill-opacity="0.85" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="520" y="228" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">오른쪽 이미지 평면</text>
+
+                        <!-- 투영점 p (왼쪽) -->
+                        <circle cx="210" cy="250" r="5" fill="#e53935"/>
+                        <text x="218" y="248" font-size="11" fill="#b71c1c" font-weight="700">p</text>
+
+                        <!-- 투영점 p' (오른쪽) -->
+                        <circle cx="510" cy="252" r="5" fill="#e53935"/>
+                        <text x="518" y="250" font-size="11" fill="#b71c1c" font-weight="700">p'</text>
+
+                        <!-- 에피폴 e (왼쪽 이미지 위 오른쪽 카메라 투영) -->
+                        <circle cx="175" cy="265" r="4" fill="#ff9800" stroke="#e65100" stroke-width="1.5"/>
+                        <text x="155" y="262" font-size="10" fill="#e65100" font-weight="700">e</text>
+
+                        <!-- 에피폴 e' (오른쪽 이미지 위 왼쪽 카메라 투영) -->
+                        <circle cx="545" cy="267" r="4" fill="#ff9800" stroke="#e65100" stroke-width="1.5"/>
+                        <text x="553" y="264" font-size="10" fill="#e65100" font-weight="700">e'</text>
+
+                        <!-- 에피폴라 라인 (왼쪽) -->
+                        <line x1="155" y1="270" x2="250" y2="240" stroke="#7b1fa2" stroke-width="2" stroke-dasharray="4,2"/>
+                        <text x="245" y="237" font-size="8" fill="#7b1fa2" font-weight="600">에피폴라 라인 l</text>
+
+                        <!-- 에피폴라 라인 (오른쪽) -->
+                        <line x1="470" y1="272" x2="570" y2="245" stroke="#7b1fa2" stroke-width="2" stroke-dasharray="4,2"/>
+                        <text x="478" y="240" font-size="8" fill="#7b1fa2" font-weight="600">에피폴라 라인 l'</text>
+
+                        <!-- 투영선 O -> p -> P -->
+                        <line x1="100" y1="300" x2="360" y2="60" stroke="#1565c0" stroke-width="1" stroke-dasharray="3,3"/>
+                        <!-- 투영선 O' -> p' -> P -->
+                        <line x1="620" y1="300" x2="360" y2="60" stroke="#1565c0" stroke-width="1" stroke-dasharray="3,3"/>
+
+                        <!-- 범례 -->
+                        <rect x="20" y="365" width="680" height="28" rx="6" fill="#f5f5f5" stroke="#e0e0e0"/>
+                        <circle cx="50" cy="379" r="4" fill="#e53935"/>
+                        <text x="60" y="383" font-size="9" fill="#555">3D점/투영점</text>
+                        <circle cx="155" cy="379" r="4" fill="#ff9800"/>
+                        <text x="165" y="383" font-size="9" fill="#555">에피폴</text>
+                        <line x1="230" y1="379" x2="260" y2="379" stroke="#7b1fa2" stroke-width="2" stroke-dasharray="4,2"/>
+                        <text x="268" y="383" font-size="9" fill="#555">에피폴라 라인</text>
+                        <line x1="370" y1="379" x2="400" y2="379" stroke="#ff9800" stroke-width="2.5"/>
+                        <text x="408" y="383" font-size="9" fill="#555">베이스라인</text>
+                        <polygon points="510,375 520,379 510,383" fill="#4caf50" fill-opacity="0.4"/>
+                        <text x="528" y="383" font-size="9" fill="#555">에피폴라 평면</text>
+                    </svg>
+                    <div class="caption">그림 1. 에피폴라 기하학의 핵심 구조 -- 3D 점 P, 두 카메라 중심 O/O', 에피폴, 에피폴라 라인, 에피폴라 평면</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>핵심 성질</strong>
+                        모든 에피폴라 라인은 해당 이미지의 에피폴을 지난다. 즉, 에피폴은 에피폴라 라인들의 교차점(Pencil of Lines)이다. 3D 점 P의 위치가 바뀌면 에피폴라 평면이 회전하고, 이에 따라 에피폴라 라인도 변하지만 항상 에피폴을 통과한다.
+                    </div>
+                </div>
+
+                <!-- 3. 기본 행렬 (F) -->
+                <h2 id="fundamental"><i class="fa-solid fa-table-cells"></i> 기본 행렬 (Fundamental Matrix, F)</h2>
+
+                <p>기본 행렬 <strong>F</strong>는 두 이미지 사이의 에피폴라 기하학을 <strong>픽셀 좌표계</strong>에서 표현하는 3x3 행렬이다. 카메라의 내부 파라미터(intrinsic)와 외부 파라미터(extrinsic) 정보를 모두 포함하며, <strong>캘리브레이션 없이도</strong> 대응점 쌍만으로 추정할 수 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 기본 행렬의 정의</div>
+                    <div class="math-block">
+                        <strong>x'<sup>T</sup> F x = 0</strong>
+                        <div class="math-label">x, x'는 왼쪽/오른쪽 이미지의 대응점 (동차 픽셀 좌표)</div>
+                    </div>
+                    <p>이 수식은 오른쪽 이미지의 점 x'가 왼쪽 이미지의 점 x에 의해 결정되는 에피폴라 라인 <strong>l' = Fx</strong> 위에 놓인다는 것을 의미한다.</p>
+                </div>
+
+                <h3 id="fundamental-properties"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> F 행렬의 주요 성질</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>성질</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">크기</td>
+                            <td>3 x 3 행렬</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">랭크</td>
+                            <td>rank 2 (특이 행렬, det(F) = 0)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">자유도</td>
+                            <td>7 (9개 원소 - 스케일 1 - rank 제약 1)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">에피폴 관계</td>
+                            <td>Fe = 0, F<sup>T</sup>e' = 0 (에피폴은 F의 널 공간)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">에피폴라 라인</td>
+                            <td>l' = Fx (오른쪽), l = F<sup>T</sup>x' (왼쪽)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">추정 방법</td>
+                            <td>8-Point Algorithm, RANSAC + 7-Point 등</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>8-Point Algorithm</strong>
+                        최소 8쌍의 대응점으로 F를 추정하는 고전적 방법이다. 각 대응점 쌍 (x, x')로부터 하나의 선형 방정식을 만들고, 8개 이상의 방정식을 SVD로 풀어 F를 구한다. 실무에서는 노이즈에 강건한 <strong>Normalized 8-Point</strong>나 <strong>RANSAC</strong>을 함께 사용한다.
+                    </div>
+                </div>
+
+                <!-- 4. 필수 행렬 (E) -->
+                <h2 id="essential"><i class="fa-solid fa-vector-square"></i> 필수 행렬 (Essential Matrix, E)</h2>
+
+                <p>필수 행렬 <strong>E</strong>는 에피폴라 기하학을 <strong>정규화된 카메라 좌표계</strong>(normalized image coordinates)에서 표현하는 3x3 행렬이다. 카메라의 내부 파라미터 K가 이미 알려진(캘리브레이션 완료) 상태에서 사용하며, 순수하게 <strong>두 카메라 간의 회전(R)과 이동(t)</strong> 정보만 담고 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> E와 F의 관계</div>
+                    <div class="math-block">
+                        <strong>E = K'<sup>T</sup> F K</strong>
+                        <div class="math-label">K, K'는 왼쪽/오른쪽 카메라의 내부 파라미터 행렬</div>
+                    </div>
+                    <div class="math-block">
+                        <strong>E = [t]<sub>x</sub> R = S R</strong>
+                        <div class="math-label">[t]x는 이동 벡터 t의 반대칭 행렬(Skew-symmetric), R은 회전 행렬</div>
+                    </div>
+                </div>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-f" style="color:#1565c0;"></i> 기본 행렬 (F)</h4>
+                        <ul>
+                            <li>픽셀 좌표계에서 동작</li>
+                            <li>캘리브레이션 불필요</li>
+                            <li>자유도: 7</li>
+                            <li>최소 7~8쌍 대응점 필요</li>
+                            <li>내부+외부 파라미터 혼합</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-e" style="color:#2e7d32;"></i> 필수 행렬 (E)</h4>
+                        <ul>
+                            <li>정규화 좌표계에서 동작</li>
+                            <li>캘리브레이션 필수 (K 필요)</li>
+                            <li>자유도: 5</li>
+                            <li>최소 5쌍 대응점 필요</li>
+                            <li>순수 외부 파라미터 (R, t)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 선택 기준</strong>
+                        캘리브레이션된 스테레오 카메라를 사용하면 E를 직접 구하는 것이 정확도가 높다. 캘리브레이션 없이 특징점 매칭만으로 기하학을 추정해야 하는 경우(예: SfM, Visual SLAM)에는 F를 먼저 구한 뒤 E로 변환한다.
+                    </div>
+                </div>
+
+                <!-- 5. 에피폴라 제약 -->
+                <h2 id="constraint"><i class="fa-solid fa-link"></i> 에피폴라 제약 (Epipolar Constraint)</h2>
+
+                <p>에피폴라 제약은 스테레오 비전의 가장 강력한 기하학적 제약 조건이다. 이 제약을 통해 <strong>2D 이미지 영역 전체 탐색</strong>을 <strong>1D 직선(에피폴라 라인) 위 탐색</strong>으로 축소할 수 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 에피폴라 제약의 의미</div>
+                    <div class="math-block">
+                        <strong>x'<sup>T</sup> F x = 0</strong> &nbsp;&nbsp;또는&nbsp;&nbsp; <strong>x&#770;'<sup>T</sup> E x&#770; = 0</strong>
+                        <div class="math-label">왼쪽 이미지의 점 x에 대응하는 오른쪽 이미지의 점 x'는 에피폴라 라인 l' = Fx 위에 반드시 존재한다</div>
+                    </div>
+                </div>
+
+                <h3 id="constraint-search"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 탐색 공간 축소 효과</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>에피폴라 제약 미적용</th>
+                            <th>에피폴라 제약 적용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">탐색 공간</td>
+                            <td>이미지 전체 (2D)</td>
+                            <td>에피폴라 라인 (1D)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">연산 복잡도</td>
+                            <td>O(W x H) = O(N^2)</td>
+                            <td>O(W) = O(N)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">1920x1080 예시</td>
+                            <td>~2,073,600 픽셀 탐색</td>
+                            <td>~1,920 픽셀 탐색</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">속도 향상</td>
+                            <td>기준</td>
+                            <td>약 1000배 빠름</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">오매칭 가능성</td>
+                            <td>높음 (넓은 탐색 영역)</td>
+                            <td>낮음 (제한된 후보)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>주의: 에피폴라 제약의 한계</strong>
+                        에피폴라 제약은 대응점이 어느 직선 위에 있는지만 알려줄 뿐, 직선 위 어디에 있는지는 알려주지 않는다. 따라서 에피폴라 라인 위에서 추가적인 매칭 알고리즘(SAD, NCC, Census Transform 등)이 여전히 필요하다.
+                    </div>
+                </div>
+
+                <!-- 6. 정류 (Rectification) -->
+                <h2 id="rectification"><i class="fa-solid fa-arrows-left-right"></i> 정류 (Rectification)</h2>
+
+                <p>정류(Rectification)는 두 카메라의 이미지를 변환하여 <strong>모든 에피폴라 라인이 수평이 되도록</strong> 만드는 과정이다. 정류 후에는 대응점 탐색이 같은 행(row)에서만 이루어지므로 구현이 매우 단순해진다.</p>
+
+                <h3 id="rectification-diagram"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정류 전후 비교</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 340" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 정류 전 -->
+                        <text x="180" y="22" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">정류 전 (Before Rectification)</text>
+
+                        <!-- 왼쪽 이미지 -->
+                        <rect x="30" y="35" width="140" height="110" rx="6" fill="#fafafa" stroke="#bdbdbd" stroke-width="1.5"/>
+                        <text x="100" y="52" text-anchor="middle" font-size="9" fill="#757575">왼쪽 이미지</text>
+                        <!-- 기울어진 에피폴라 라인들 -->
+                        <line x1="35" y1="70" x2="165" y2="85" stroke="#7b1fa2" stroke-width="1" stroke-opacity="0.6"/>
+                        <line x1="35" y1="90" x2="165" y2="100" stroke="#7b1fa2" stroke-width="1" stroke-opacity="0.6"/>
+                        <line x1="35" y1="110" x2="165" y2="118" stroke="#7b1fa2" stroke-width="1" stroke-opacity="0.6"/>
+                        <circle cx="90" cy="88" r="4" fill="#e53935"/>
+                        <text x="98" y="85" font-size="9" fill="#b71c1c" font-weight="600">p</text>
+
+                        <!-- 오른쪽 이미지 -->
+                        <rect x="200" y="35" width="140" height="110" rx="6" fill="#fafafa" stroke="#bdbdbd" stroke-width="1.5"/>
+                        <text x="270" y="52" text-anchor="middle" font-size="9" fill="#757575">오른쪽 이미지</text>
+                        <!-- 기울어진 에피폴라 라인들 -->
+                        <line x1="205" y1="75" x2="335" y2="90" stroke="#7b1fa2" stroke-width="1" stroke-opacity="0.6"/>
+                        <line x1="205" y1="95" x2="335" y2="105" stroke="#7b1fa2" stroke-width="1" stroke-opacity="0.6"/>
+                        <line x1="205" y1="115" x2="335" y2="120" stroke="#7b1fa2" stroke-width="1" stroke-opacity="0.6"/>
+                        <circle cx="280" cy="102" r="4" fill="#e53935"/>
+                        <text x="288" y="99" font-size="9" fill="#b71c1c" font-weight="600">p'</text>
+
+                        <!-- 화살표: 정류 -->
+                        <text x="360" y="170" text-anchor="middle" font-size="28" fill="#4caf50">&#x2193;</text>
+                        <text x="360" y="190" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="700">Rectification</text>
+                        <text x="360" y="202" text-anchor="middle" font-size="8" fill="#388e3c">(H, H' 변환 적용)</text>
+
+                        <!-- 정류 후 -->
+                        <text x="180" y="225" text-anchor="middle" font-size="13" fill="#1565c0" font-weight="700">정류 후 (After Rectification)</text>
+
+                        <!-- 왼쪽 이미지 정류 후 -->
+                        <rect x="30" y="238" width="140" height="90" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="100" y="253" text-anchor="middle" font-size="9" fill="#1565c0">왼쪽 이미지</text>
+                        <!-- 수평 에피폴라 라인 -->
+                        <line x1="35" y1="270" x2="165" y2="270" stroke="#1565c0" stroke-width="1" stroke-opacity="0.4"/>
+                        <line x1="35" y1="285" x2="165" y2="285" stroke="#1565c0" stroke-width="1.5" stroke-opacity="0.8"/>
+                        <line x1="35" y1="300" x2="165" y2="300" stroke="#1565c0" stroke-width="1" stroke-opacity="0.4"/>
+                        <circle cx="90" cy="285" r="4" fill="#e53935"/>
+                        <text x="98" y="282" font-size="9" fill="#b71c1c" font-weight="600">p</text>
+
+                        <!-- 오른쪽 이미지 정류 후 -->
+                        <rect x="200" y="238" width="140" height="90" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="270" y="253" text-anchor="middle" font-size="9" fill="#1565c0">오른쪽 이미지</text>
+                        <!-- 수평 에피폴라 라인 -->
+                        <line x1="205" y1="270" x2="335" y2="270" stroke="#1565c0" stroke-width="1" stroke-opacity="0.4"/>
+                        <line x1="205" y1="285" x2="335" y2="285" stroke="#1565c0" stroke-width="1.5" stroke-opacity="0.8"/>
+                        <line x1="205" y1="300" x2="335" y2="300" stroke="#1565c0" stroke-width="1" stroke-opacity="0.4"/>
+                        <circle cx="260" cy="285" r="4" fill="#e53935"/>
+                        <text x="268" y="282" font-size="9" fill="#b71c1c" font-weight="600">p'</text>
+
+                        <!-- 같은 행 강조 -->
+                        <line x1="90" y1="285" x2="260" y2="285" stroke="#e53935" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <text x="175" y="280" text-anchor="middle" font-size="8" fill="#e53935" font-weight="600">같은 y 좌표 (같은 행)</text>
+
+                        <!-- 오른쪽 설명 패널 -->
+                        <rect x="400" y="35" width="300" height="290" rx="10" fill="#f1f8e9" stroke="#aed581" stroke-width="1.5"/>
+                        <text x="550" y="58" text-anchor="middle" font-size="12" fill="#33691e" font-weight="700">정류의 효과</text>
+
+                        <text x="420" y="82" font-size="10" fill="#33691e" font-weight="600">1. 에피폴라 라인 수평 정렬</text>
+                        <text x="430" y="97" font-size="9" fill="#558b2f">모든 에피폴라 라인이 이미지의 행(row)과</text>
+                        <text x="430" y="110" font-size="9" fill="#558b2f">평행하게 변환됨</text>
+
+                        <text x="420" y="135" font-size="10" fill="#33691e" font-weight="600">2. 대응점 y좌표 일치</text>
+                        <text x="430" y="150" font-size="9" fill="#558b2f">p와 p'의 y좌표가 동일해져</text>
+                        <text x="430" y="163" font-size="9" fill="#558b2f">수평 방향(x축)만 탐색</text>
+
+                        <text x="420" y="188" font-size="10" fill="#33691e" font-weight="600">3. 시차(Disparity) 계산 단순화</text>
+                        <text x="430" y="203" font-size="9" fill="#558b2f">d = x - x' 로 직접 계산 가능</text>
+                        <text x="430" y="216" font-size="9" fill="#558b2f">depth = f * B / d</text>
+
+                        <text x="420" y="241" font-size="10" fill="#33691e" font-weight="600">4. 에피폴이 무한원점으로 이동</text>
+                        <text x="430" y="256" font-size="9" fill="#558b2f">평행한 에피폴라 라인 = 에피폴이</text>
+                        <text x="430" y="269" font-size="9" fill="#558b2f">이미지 밖 무한대에 위치</text>
+
+                        <text x="420" y="294" font-size="10" fill="#33691e" font-weight="600">5. 실시간 처리 가능</text>
+                        <text x="430" y="309" font-size="9" fill="#558b2f">SGM, Block Matching 등 고속</text>
+                        <text x="430" y="322" font-size="9" fill="#558b2f">매칭 알고리즘 적용 용이</text>
+                    </svg>
+                    <div class="caption">그림 2. 정류(Rectification) 전후 비교 -- 에피폴라 라인이 수평으로 정렬되어 탐색이 단순해진다</div>
+                </div>
+
+                <h3 id="rectification-methods"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정류 방법</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-camera" style="color:#1565c0;"></i> 캘리브레이션 기반 정류</h4>
+                        <ul>
+                            <li>카메라 내부/외부 파라미터 사용</li>
+                            <li>R, t로부터 정류 회전 행렬 계산</li>
+                            <li><code>cv::stereoRectify()</code> 사용</li>
+                            <li>가장 정확하고 안정적</li>
+                            <li>사전 캘리브레이션 필수</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-crosshairs" style="color:#2e7d32;"></i> 비캘리브레이션 정류</h4>
+                        <ul>
+                            <li>F 행렬로부터 호모그래피 계산</li>
+                            <li>대응점 쌍만으로 정류 가능</li>
+                            <li><code>cv::stereoRectifyUncalibrated()</code></li>
+                            <li>캘리브레이션 없이 사용 가능</li>
+                            <li>정확도가 상대적으로 낮음</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 7. OpenCV 실무 -->
+                <h2 id="opencv"><i class="fa-solid fa-code"></i> OpenCV 실무 코드</h2>
+
+                <p>OpenCV에서 에피폴라 기하학을 다루는 핵심 함수들을 정리한다. 아래 코드는 스테레오 이미지에서 기본 행렬 추정, 에피폴라 라인 시각화, 정류까지의 전체 파이프라인을 보여준다.</p>
+
+                <h3 id="opencv-fundamental"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본 행렬 추정 및 에피폴라 라인 시각화</h3>
+
+<pre><span class="keyword">import</span> <span class="type">cv2</span>
+<span class="keyword">import</span> <span class="type">numpy</span> <span class="keyword">as</span> np
+
+<span class="comment"># 1. 특징점 검출 및 매칭</span>
+sift = cv2.<span class="func">SIFT_create</span>()
+kp1, des1 = sift.<span class="func">detectAndCompute</span>(img_left, <span class="keyword">None</span>)
+kp2, des2 = sift.<span class="func">detectAndCompute</span>(img_right, <span class="keyword">None</span>)
+
+bf = cv2.<span class="func">BFMatcher</span>()
+matches = bf.<span class="func">knnMatch</span>(des1, des2, k=<span class="number">2</span>)
+
+<span class="comment"># Lowe's ratio test</span>
+good = []
+<span class="keyword">for</span> m, n <span class="keyword">in</span> matches:
+    <span class="keyword">if</span> m.distance &lt; <span class="number">0.7</span> * n.distance:
+        good.<span class="func">append</span>(m)
+
+pts1 = np.<span class="func">float32</span>([kp1[m.queryIdx].pt <span class="keyword">for</span> m <span class="keyword">in</span> good])
+pts2 = np.<span class="func">float32</span>([kp2[m.trainIdx].pt <span class="keyword">for</span> m <span class="keyword">in</span> good])
+
+<span class="comment"># 2. 기본 행렬 추정 (RANSAC)</span>
+F, mask = cv2.<span class="func">findFundamentalMat</span>(pts1, pts2, cv2.FM_RANSAC, <span class="number">1.0</span>, <span class="number">0.99</span>)
+pts1 = pts1[mask.ravel() == <span class="number">1</span>]
+pts2 = pts2[mask.ravel() == <span class="number">1</span>]
+
+<span class="comment"># 3. 에피폴라 라인 계산 및 시각화</span>
+lines2 = cv2.<span class="func">computeCorrespondEpilines</span>(pts1.reshape(-<span class="number">1</span>, <span class="number">1</span>, <span class="number">2</span>), <span class="number">1</span>, F)
+lines2 = lines2.reshape(-<span class="number">1</span>, <span class="number">3</span>)
+
+<span class="keyword">for</span> r, pt1, pt2 <span class="keyword">in</span> <span class="func">zip</span>(lines2, pts1, pts2):
+    color = <span class="func">tuple</span>(np.random.<span class="func">randint</span>(<span class="number">0</span>, <span class="number">255</span>, <span class="number">3</span>).tolist())
+    x0, y0 = <span class="func">map</span>(<span class="func">int</span>, [<span class="number">0</span>, -r[<span class="number">2</span>] / r[<span class="number">1</span>]])
+    x1, y1 = <span class="func">map</span>(<span class="func">int</span>, [w, -(r[<span class="number">2</span>] + r[<span class="number">0</span>] * w) / r[<span class="number">1</span>]])
+    img_right_lines = cv2.<span class="func">line</span>(img_right_lines, (x0, y0), (x1, y1), color, <span class="number">1</span>)
+    img_right_lines = cv2.<span class="func">circle</span>(img_right_lines, <span class="func">tuple</span>(<span class="func">map</span>(<span class="func">int</span>, pt2)), <span class="number">5</span>, color, -<span class="number">1</span>)</pre>
+
+                <h3 id="opencv-rectify"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캘리브레이션 기반 정류</h3>
+
+<pre><span class="comment"># 캘리브레이션 결과가 있는 경우 정류</span>
+R1, R2, P1, P2, Q, roi1, roi2 = cv2.<span class="func">stereoRectify</span>(
+    K1, D1, K2, D2,
+    image_size,
+    R, T,
+    alpha=<span class="number">0</span>  <span class="comment"># 0: 유효 영역만, 1: 전체 보존</span>
+)
+
+<span class="comment"># 리맵 테이블 생성</span>
+map1x, map1y = cv2.<span class="func">initUndistortRectifyMap</span>(K1, D1, R1, P1, image_size, cv2.CV_32FC1)
+map2x, map2y = cv2.<span class="func">initUndistortRectifyMap</span>(K2, D2, R2, P2, image_size, cv2.CV_32FC1)
+
+<span class="comment"># 정류 적용</span>
+rect_left  = cv2.<span class="func">remap</span>(img_left,  map1x, map1y, cv2.INTER_LINEAR)
+rect_right = cv2.<span class="func">remap</span>(img_right, map2x, map2y, cv2.INTER_LINEAR)
+
+<span class="comment"># 정류 검증: 수평선 그리기</span>
+<span class="keyword">for</span> y <span class="keyword">in</span> <span class="func">range</span>(<span class="number">0</span>, rect_left.shape[<span class="number">0</span>], <span class="number">40</span>):
+    cv2.<span class="func">line</span>(rect_left,  (<span class="number">0</span>, y), (rect_left.shape[<span class="number">1</span>], y), (<span class="number">0</span>, <span class="number">255</span>, <span class="number">0</span>), <span class="number">1</span>)
+    cv2.<span class="func">line</span>(rect_right, (<span class="number">0</span>, y), (rect_right.shape[<span class="number">1</span>], y), (<span class="number">0</span>, <span class="number">255</span>, <span class="number">0</span>), <span class="number">1</span>)</pre>
+
+                <h3 id="opencv-essential"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 필수 행렬 추정 및 포즈 복원</h3>
+
+<pre><span class="comment"># 카메라 내부 파라미터가 알려진 경우</span>
+E, mask = cv2.<span class="func">findEssentialMat</span>(pts1, pts2, K, method=cv2.RANSAC, prob=<span class="number">0.999</span>, threshold=<span class="number">1.0</span>)
+
+<span class="comment"># E로부터 R, t 복원 (4가지 해 중 유효한 1개 선택)</span>
+_, R, t, mask_pose = cv2.<span class="func">recoverPose</span>(E, pts1, pts2, K)
+
+<span class="func">print</span>(<span class="string">f"회전 행렬 R:\n{R}"</span>)
+<span class="func">print</span>(<span class="string">f"이동 벡터 t:\n{t.ravel()}"</span>)
+
+<span class="comment"># E와 F 변환 검증</span>
+K_inv = np.linalg.<span class="func">inv</span>(K)
+F_from_E = K_inv.T @ E @ K_inv
+<span class="func">print</span>(<span class="string">f"F (from E):\n{F_from_E / F_from_E[2,2]}"</span>)</pre>
+
+                <h3 id="opencv-functions"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> OpenCV 핵심 함수 정리</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>함수</th>
+                            <th>입력</th>
+                            <th>출력</th>
+                            <th>용도</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight"><code>findFundamentalMat</code></td>
+                            <td>대응점 쌍</td>
+                            <td>F, inlier mask</td>
+                            <td>기본 행렬 추정</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight"><code>findEssentialMat</code></td>
+                            <td>대응점 + K</td>
+                            <td>E, inlier mask</td>
+                            <td>필수 행렬 추정</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight"><code>recoverPose</code></td>
+                            <td>E + 대응점 + K</td>
+                            <td>R, t</td>
+                            <td>E에서 포즈 복원</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight"><code>computeCorrespondEpilines</code></td>
+                            <td>점 + F</td>
+                            <td>에피폴라 라인 계수</td>
+                            <td>에피폴라 라인 계산</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight"><code>stereoRectify</code></td>
+                            <td>K, D, R, T</td>
+                            <td>R1, R2, P1, P2, Q</td>
+                            <td>캘리브레이션 기반 정류</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight"><code>stereoRectifyUncalibrated</code></td>
+                            <td>대응점 + F</td>
+                            <td>H1, H2</td>
+                            <td>비캘리브레이션 정류</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Hartley &amp; Zisserman, "Multiple View Geometry in Computer Vision", 2nd Ed.</li>
+                        <li>Bradski &amp; Kaehler, "Learning OpenCV 3"</li>
+                        <li>OpenCV Documentation -- Camera Calibration and 3D Reconstruction</li>
+                        <li>Longuet-Higgins, "A Computer Algorithm for Reconstructing a Scene from Two Projections", Nature (1981)</li>
+                        <li>Nister, "An Efficient Solution to the Five-Point Relative Pose Problem", TPAMI (2004)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-stereo"><i class="fa-solid fa-arrow-left"></i> 3D 스테레오 비전 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-stereo');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-stereo');
+</script>
+
+</body>
+</html>

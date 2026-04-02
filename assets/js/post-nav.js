@@ -25,11 +25,24 @@ const POST_NAV_DATA = {
         { file: 'poe-power-delivery.html', title: 'PoE / PoCL / PoCXP 전원 공급 방식' },
         { file: 'industrial-ethernet.html', title: 'EtherCAT, PROFINET, EtherNet/IP' },
     ]
+    'tech-stereo': [
+        { file: 'stereo-vision-basics.html', title: '스테레오 비전 기본 원리' },
+        { file: 'epipolar-geometry.html', title: '에피폴라 기하학 이해하기' },
+        { file: 'camera-calibration.html', title: '카메라 캘리브레이션' },
+        { file: 'stereo-matching.html', title: '스테레오 정합(Stereo Matching)' },
+        { file: 'disparity-to-3d.html', title: '시차 맵에서 3D 포인트 클라우드로' },
+        { file: 'structured-light.html', title: '구조광(Structured Light) 3D 스캐닝' },
+        { file: 'tof-sensors.html', title: 'ToF(Time-of-Flight) 센서' },
+        { file: '3d-vision-guide.html', title: '3D 비전 시스템 선택 가이드' },
+        { file: 'point-cloud-basics.html', title: '포인트 클라우드 처리 기초' },
+        { file: '3d-inspection-cases.html', title: '산업용 3D 검사 적용 사례' },
+    ],
 };
 
 const CAT_LABELS = {
     'tech-sensor': '센서/ISP',
-    'tech-comm': '통신/인터페이스'
+    'tech-comm': '통신/인터페이스',
+    'tech-stereo': '3D 스테레오 비전'
 };
 
 function renderPostNav(category) {

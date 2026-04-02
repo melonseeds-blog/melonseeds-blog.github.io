@@ -1,0 +1,937 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스테레오 비전 기본 원리 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 수식 강조 */
+        .formula-box {
+            background: var(--card-bg); border: 2px solid var(--melon-light);
+            border-radius: 12px; padding: 20px 28px; margin: 20px 0;
+            text-align: center; font-size: 1.3rem; font-weight: 700;
+            color: var(--primary-dark); letter-spacing: 0.5px;
+        }
+        .formula-box .formula-desc {
+            font-size: 0.85rem; font-weight: 400; color: var(--text-muted);
+            margin-top: 8px; letter-spacing: 0;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">스테레오 비전이란</a>
+        <a href="#triangulation" data-section="triangulation">삼각측량 원리</a>
+        <a href="#camera-setup" data-section="camera-setup">카메라 구성</a>
+        <a href="#pipeline" data-section="pipeline">처리 파이프라인</a>
+        <a href="#depth-resolution" data-section="depth-resolution">깊이 해상도와 한계</a>
+        <a href="#compare-3d" data-section="compare-3d">다른 3D 방식 비교</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">3D 스테레오 비전</span>
+                </div>
+                <h1>스테레오 비전 기본 원리</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 8 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>스테레오 비전의 개념과 사람 눈과의 유사성</li>
+                        <li>삼각측량 원리와 깊이 계산 공식 (Z = f * B / d)</li>
+                        <li>스테레오 카메라 구성 요소와 배치 방법</li>
+                        <li>캘리브레이션부터 3D 복원까지의 전체 파이프라인</li>
+                        <li>깊이 해상도의 한계와 다른 3D 센싱 방식과의 비교</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">스테레오 비전이란</a></li>
+                        <li><a href="#triangulation">삼각측량 원리</a></li>
+                        <li><a href="#camera-setup">스테레오 카메라 구성</a></li>
+                        <li><a href="#pipeline">처리 파이프라인</a></li>
+                        <li><a href="#depth-resolution">깊이 해상도와 한계</a></li>
+                        <li><a href="#compare-3d">다른 3D 방식 비교</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 스테레오 비전이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-eye"></i> 스테레오 비전이란</h2>
+
+                <p>스테레오 비전(Stereo Vision)은 <strong>두 대의 카메라</strong>로 동일한 장면을 약간 다른 시점에서 촬영하고, 두 영상 사이의 <strong>시차(Disparity)</strong>를 분석하여 물체까지의 거리를 계산하는 기술이다. 사람이 양쪽 눈으로 입체감과 거리감을 느끼는 원리를 그대로 모방한 것이다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 사람의 양안시와 스테레오 비전</div>
+                    <p>사람의 두 눈은 약 6.5cm 간격으로 떨어져 있다. 가까운 물체를 볼 때 좌우 눈에 맺히는 상의 위치 차이(양안 시차)가 크고, 먼 물체일수록 이 차이가 줄어든다. 뇌는 이 시차 정보를 해석하여 3차원 공간을 인지한다. 스테레오 비전은 이 과정을 카메라 2대와 컴퓨터 알고리즘으로 재현한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 300" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">사람의 양안시 vs 스테레오 비전</text>
+
+                        <!-- 사람 눈 -->
+                        <rect x="30" y="45" width="280" height="230" rx="12" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="170" y="70" text-anchor="middle" font-size="12" fill="#2e7d32" font-weight="700">사람의 양안시</text>
+
+                        <!-- 왼쪽 눈 -->
+                        <ellipse cx="120" cy="200" rx="25" ry="15" fill="white" stroke="#2e7d32" stroke-width="2"/>
+                        <circle cx="120" cy="200" r="6" fill="#2e7d32"/>
+                        <text x="120" y="230" text-anchor="middle" font-size="10" fill="#388e3c">왼쪽 눈</text>
+
+                        <!-- 오른쪽 눈 -->
+                        <ellipse cx="220" cy="200" rx="25" ry="15" fill="white" stroke="#2e7d32" stroke-width="2"/>
+                        <circle cx="220" cy="200" r="6" fill="#2e7d32"/>
+                        <text x="220" y="230" text-anchor="middle" font-size="10" fill="#388e3c">오른쪽 눈</text>
+
+                        <!-- 물체 -->
+                        <circle cx="170" cy="110" r="15" fill="#ff9800" stroke="#e65100" stroke-width="2"/>
+                        <text x="170" y="114" text-anchor="middle" font-size="9" fill="white" font-weight="600">물체</text>
+
+                        <!-- 시선 -->
+                        <line x1="120" y1="185" x2="170" y2="125" stroke="#66bb6a" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <line x1="220" y1="185" x2="170" y2="125" stroke="#66bb6a" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+                        <text x="170" y="255" text-anchor="middle" font-size="10" fill="#388e3c">간격 ~6.5cm</text>
+
+                        <!-- 카메라 -->
+                        <rect x="390" y="45" width="280" height="230" rx="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="530" y="70" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">스테레오 카메라</text>
+
+                        <!-- 왼쪽 카메라 -->
+                        <rect x="440" y="185" width="40" height="30" rx="4" fill="white" stroke="#1565c0" stroke-width="2"/>
+                        <circle cx="460" cy="200" r="8" fill="#1565c0"/>
+                        <text x="460" y="230" text-anchor="middle" font-size="10" fill="#1565c0">Left Cam</text>
+
+                        <!-- 오른쪽 카메라 -->
+                        <rect x="560" y="185" width="40" height="30" rx="4" fill="white" stroke="#1565c0" stroke-width="2"/>
+                        <circle cx="580" cy="200" r="8" fill="#1565c0"/>
+                        <text x="580" y="230" text-anchor="middle" font-size="10" fill="#1565c0">Right Cam</text>
+
+                        <!-- 물체 -->
+                        <circle cx="530" cy="110" r="15" fill="#ff9800" stroke="#e65100" stroke-width="2"/>
+                        <text x="530" y="114" text-anchor="middle" font-size="9" fill="white" font-weight="600">물체</text>
+
+                        <!-- 시선 -->
+                        <line x1="460" y1="185" x2="530" y2="125" stroke="#64b5f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <line x1="580" y1="185" x2="530" y2="125" stroke="#64b5f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+                        <text x="530" y="255" text-anchor="middle" font-size="10" fill="#1565c0">베이스라인 B</text>
+                    </svg>
+                    <div class="caption">그림 1. 사람의 양안시와 스테레오 카메라 시스템의 대응 관계</div>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">시차 (Disparity)</span>
+                        <span class="term-desc">동일한 3D 점이 좌우 영상에서 맺히는 위치의 차이(픽셀 단위). 가까운 물체일수록 시차가 크다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">베이스라인 (Baseline)</span>
+                        <span class="term-desc">두 카메라 광학 중심 사이의 거리. 기호 B로 표기하며, 측정 범위와 정밀도를 결정하는 핵심 파라미터.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">에피폴라 기하</span>
+                        <span class="term-desc">두 카메라 사이의 기하학적 관계를 기술하는 이론. 한쪽 영상의 한 점에 대응하는 점은 다른 영상에서 에피폴라 선 위에 존재한다.</span>
+                    </div>
+                </div>
+
+                <!-- 2. 삼각측량 원리 -->
+                <h2 id="triangulation"><i class="fa-solid fa-ruler-combined"></i> 삼각측량 원리</h2>
+
+                <p>스테레오 비전의 핵심은 <strong>삼각측량(Triangulation)</strong>이다. 두 카메라에서 같은 점을 관측했을 때, 카메라 간 거리(베이스라인)와 시차를 이용하여 물체까지의 깊이를 기하학적으로 계산할 수 있다.</p>
+
+                <div class="formula-box">
+                    Z = f &times; B / d
+                    <div class="formula-desc">Z: 깊이(거리), f: 초점 거리(픽셀), B: 베이스라인(mm), d: 시차(픽셀)</div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 380" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-grn" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#2e7d32"/></marker>
+                            <marker id="arr-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">삼각측량 기하학 (Top-Down View)</text>
+
+                        <!-- 물체 P -->
+                        <circle cx="350" cy="80" r="12" fill="#ff9800" stroke="#e65100" stroke-width="2"/>
+                        <text x="350" y="84" text-anchor="middle" font-size="10" fill="white" font-weight="700">P</text>
+
+                        <!-- 왼쪽 카메라 -->
+                        <rect x="130" y="290" width="60" height="40" rx="6" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+                        <text x="160" y="315" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="600">Left</text>
+                        <text x="160" y="350" text-anchor="middle" font-size="10" fill="#388e3c">O_L</text>
+
+                        <!-- 오른쪽 카메라 -->
+                        <rect x="460" y="290" width="60" height="40" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="490" y="315" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="600">Right</text>
+                        <text x="490" y="350" text-anchor="middle" font-size="10" fill="#1565c0">O_R</text>
+
+                        <!-- 시선 (왼쪽 → P) -->
+                        <line x1="160" y1="290" x2="350" y2="92" stroke="#2e7d32" stroke-width="1.8" stroke-dasharray="6,3"/>
+                        <!-- 시선 (오른쪽 → P) -->
+                        <line x1="490" y1="290" x2="350" y2="92" stroke="#1565c0" stroke-width="1.8" stroke-dasharray="6,3"/>
+
+                        <!-- 베이스라인 B -->
+                        <line x1="160" y1="280" x2="490" y2="280" stroke="#e65100" stroke-width="2" marker-end="url(#arr-grn)"/>
+                        <text x="325" y="275" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">B (베이스라인)</text>
+
+                        <!-- Z 거리 -->
+                        <line x1="100" y1="80" x2="100" y2="310" stroke="#9e9e9e" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <text x="90" y="195" text-anchor="middle" font-size="12" fill="#616161" font-weight="700" transform="rotate(-90, 90, 195)">Z (깊이)</text>
+
+                        <!-- 이미지 평면 (왼쪽) -->
+                        <rect x="135" y="240" width="50" height="8" rx="2" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1"/>
+                        <text x="160" y="238" text-anchor="middle" font-size="8" fill="#2e7d32">이미지 평면</text>
+
+                        <!-- 이미지 평면 (오른쪽) -->
+                        <rect x="465" y="240" width="50" height="8" rx="2" fill="#90caf9" stroke="#1565c0" stroke-width="1"/>
+                        <text x="490" y="238" text-anchor="middle" font-size="8" fill="#1565c0">이미지 평면</text>
+
+                        <!-- x_L, x_R 표시 -->
+                        <circle cx="150" cy="244" r="3" fill="#2e7d32"/>
+                        <text x="145" y="260" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="600">x_L</text>
+                        <circle cx="500" cy="244" r="3" fill="#1565c0"/>
+                        <text x="505" y="260" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">x_R</text>
+
+                        <!-- 수식 -->
+                        <rect x="530" y="100" width="155" height="80" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="607" y="125" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">Z = f * B / d</text>
+                        <text x="607" y="145" text-anchor="middle" font-size="9" fill="#795548">d = x_L - x_R (시차)</text>
+                        <text x="607" y="160" text-anchor="middle" font-size="9" fill="#795548">f: 초점 거리 (px)</text>
+                        <text x="607" y="175" text-anchor="middle" font-size="9" fill="#795548">B: 베이스라인 (mm)</text>
+                    </svg>
+                    <div class="caption">그림 2. 삼각측량 기하학 -- 두 카메라의 시차(d)로 깊이(Z)를 계산</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>시차와 깊이의 반비례 관계</strong>
+                        Z = f*B/d 에서 시차 d와 깊이 Z는 반비례한다. 물체가 가까울수록 시차가 크고(좌우 영상에서 위치 차이가 큼), 멀어질수록 시차가 0에 가까워진다. 이 때문에 먼 거리일수록 깊이 정밀도가 급격히 떨어진다.
+                    </div>
+                </div>
+
+                <h3 id="triangulation-example"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 계산 예제</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-calculator"></i> 실제 계산 예시</div>
+                    <p>초점 거리 f = 800 px, 베이스라인 B = 120 mm, 시차 d = 48 px인 경우:</p>
+                    <p style="text-align:center; font-size:1.1rem; font-weight:700; color:var(--primary-dark); margin:12px 0;">
+                        Z = 800 &times; 120 / 48 = <strong>2,000 mm (2m)</strong>
+                    </p>
+                    <p>같은 설정에서 시차가 24 px로 줄어들면 Z = 4,000 mm (4m)가 된다. 시차가 절반이면 거리는 2배가 되는 반비례 관계를 확인할 수 있다.</p>
+                </div>
+
+                <!-- 3. 스테레오 카메라 구성 -->
+                <h2 id="camera-setup"><i class="fa-solid fa-camera"></i> 스테레오 카메라 구성</h2>
+
+                <p>스테레오 비전 시스템은 <strong>두 대의 카메라</strong>, <strong>고정 마운트</strong>, 그리고 <strong>캘리브레이션 패턴</strong>으로 구성된다. 카메라 배치 방식에 따라 측정 특성이 크게 달라진다.</p>
+
+                <h3 id="camera-arrangement"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 카메라 배치 방식</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrows-left-right" style="color:#2e7d32;"></i> 수평 배치 (Horizontal)</h4>
+                        <ul>
+                            <li>가장 일반적인 구성</li>
+                            <li>에피폴라 선이 수평 → 정합이 간단</li>
+                            <li>수평 방향 거리 측정에 유리</li>
+                            <li>자율주행, 산업 검사에 주로 사용</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrows-up-down" style="color:#1565c0;"></i> 수직 배치 (Vertical)</h4>
+                        <ul>
+                            <li>수직 방향 시차 분석</li>
+                            <li>수평 시야각(FOV)이 넓어야 할 때 유리</li>
+                            <li>특수 환경(좁은 공간 등)에서 활용</li>
+                            <li>소프트웨어 처리가 다소 복잡</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 id="camera-parameters"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 핵심 구성 파라미터</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">베이스라인 (B)</span>
+                        <span class="term-desc">두 카메라 간 거리. 클수록 먼 거리 측정에 유리하나, 가까운 물체에서 오클루전(가림)이 증가한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">초점 거리 (f)</span>
+                        <span class="term-desc">렌즈의 초점 거리. 길수록 해상도/정밀도가 높지만 시야각(FOV)이 좁아진다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">해상도</span>
+                        <span class="term-desc">센서 해상도가 높을수록 서브픽셀 시차 계산의 정밀도가 향상된다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">동기 트리거</span>
+                        <span class="term-desc">두 카메라가 정확히 같은 순간에 촬영해야 한다. 외부 트리거 또는 하드웨어 동기가 필수.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>베이스라인 선택의 트레이드오프</strong>
+                        베이스라인이 너무 넓으면 가까운 물체에서 좌우 영상의 겹치는 영역이 줄고 오클루전이 심해진다. 반대로 너무 좁으면 먼 거리에서 시차가 미세해져 깊이 정밀도가 떨어진다. 측정하려는 거리 범위에 맞게 적절한 베이스라인을 선택해야 한다.
+                    </div>
+                </div>
+
+                <!-- 4. 처리 파이프라인 -->
+                <h2 id="pipeline"><i class="fa-solid fa-diagram-project"></i> 처리 파이프라인</h2>
+
+                <p>스테레오 비전은 촬영부터 3D 복원까지 다섯 단계의 파이프라인으로 구성된다. 각 단계는 이전 단계의 결과에 의존하므로, 앞 단계의 품질이 최종 3D 결과를 좌우한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 420" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-pipe" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">스테레오 비전 처리 파이프라인</text>
+
+                        <!-- Step 1: 캘리브레이션 -->
+                        <rect x="50" y="50" width="600" height="55" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="80" y="72" font-size="11" fill="#1b5e20" font-weight="700">1</text>
+                        <circle cx="80" cy="75" r="12" fill="#4caf50"/>
+                        <text x="80" y="79" text-anchor="middle" font-size="11" fill="white" font-weight="700">1</text>
+                        <text x="105" y="72" font-size="12" fill="#2e7d32" font-weight="700">캘리브레이션 (Calibration)</text>
+                        <text x="105" y="92" font-size="10" fill="#388e3c">체스보드 패턴으로 내부 파라미터(f, cx, cy, 왜곡 계수)와 외부 파라미터(R, T)를 추출</text>
+
+                        <!-- 화살표 -->
+                        <line x1="350" y1="105" x2="350" y2="125" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-pipe)"/>
+
+                        <!-- Step 2: 정류 -->
+                        <rect x="50" y="125" width="600" height="55" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <circle cx="80" cy="150" r="12" fill="#1565c0"/>
+                        <text x="80" y="154" text-anchor="middle" font-size="11" fill="white" font-weight="700">2</text>
+                        <text x="105" y="147" font-size="12" fill="#1565c0" font-weight="700">스테레오 정류 (Rectification)</text>
+                        <text x="105" y="167" font-size="10" fill="#42a5f5">두 영상을 가상 평행 카메라로 변환 → 에피폴라 선이 수평 직선이 됨 → 1D 검색으로 단순화</text>
+
+                        <!-- 화살표 -->
+                        <line x1="350" y1="180" x2="350" y2="200" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-pipe)"/>
+
+                        <!-- Step 3: 스테레오 정합 -->
+                        <rect x="50" y="200" width="600" height="55" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <circle cx="80" cy="225" r="12" fill="#ff9800"/>
+                        <text x="80" y="229" text-anchor="middle" font-size="11" fill="white" font-weight="700">3</text>
+                        <text x="105" y="222" font-size="12" fill="#e65100" font-weight="700">스테레오 정합 (Matching)</text>
+                        <text x="105" y="242" font-size="10" fill="#fb8c00">좌우 영상에서 동일한 점을 찾음. Block Matching, SGM(Semi-Global Matching) 등 알고리즘 사용</text>
+
+                        <!-- 화살표 -->
+                        <line x1="350" y1="255" x2="350" y2="275" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-pipe)"/>
+
+                        <!-- Step 4: 시차 맵 -->
+                        <rect x="50" y="275" width="600" height="55" rx="10" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
+                        <circle cx="80" cy="300" r="12" fill="#9c27b0"/>
+                        <text x="80" y="304" text-anchor="middle" font-size="11" fill="white" font-weight="700">4</text>
+                        <text x="105" y="297" font-size="12" fill="#7b1fa2" font-weight="700">시차 맵 (Disparity Map)</text>
+                        <text x="105" y="317" font-size="10" fill="#ab47bc">각 픽셀의 시차 값을 담은 2D 맵 생성. 밝을수록 가까움, 어두울수록 멀리 있음</text>
+
+                        <!-- 화살표 -->
+                        <line x1="350" y1="330" x2="350" y2="350" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-pipe)"/>
+
+                        <!-- Step 5: 3D 복원 -->
+                        <rect x="50" y="350" width="600" height="55" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+                        <circle cx="80" cy="375" r="12" fill="#2e7d32"/>
+                        <text x="80" y="379" text-anchor="middle" font-size="11" fill="white" font-weight="700">5</text>
+                        <text x="105" y="372" font-size="12" fill="#1b5e20" font-weight="700">3D 복원 (Reprojection)</text>
+                        <text x="105" y="392" font-size="10" fill="#388e3c">시차 맵 + 캘리브레이션 행렬(Q)로 각 픽셀을 3D 좌표(X, Y, Z)로 변환 → 포인트 클라우드 생성</text>
+                    </svg>
+                    <div class="caption">그림 3. 스테레오 비전 처리 파이프라인 -- 5단계 흐름</div>
+                </div>
+
+                <h3 id="pipeline-calibration"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캘리브레이션 상세</h3>
+
+                <p>스테레오 캘리브레이션은 <strong>내부 파라미터</strong>(intrinsic)와 <strong>외부 파라미터</strong>(extrinsic) 두 가지를 동시에 추출한다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-gear" style="color:#2e7d32;"></i> 내부 파라미터 (Intrinsic)</h4>
+                        <ul>
+                            <li><strong>초점 거리</strong> f_x, f_y (픽셀 단위)</li>
+                            <li><strong>주점</strong> c_x, c_y (광축 중심)</li>
+                            <li><strong>왜곡 계수</strong> k1, k2, p1, p2, k3</li>
+                            <li>각 카메라마다 독립적으로 존재</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrows-rotate" style="color:#1565c0;"></i> 외부 파라미터 (Extrinsic)</h4>
+                        <ul>
+                            <li><strong>회전 행렬</strong> R (3x3)</li>
+                            <li><strong>이동 벡터</strong> T (3x1)</li>
+                            <li>두 카메라 간의 상대적 위치/자세</li>
+                            <li>||T|| = 베이스라인 B</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 id="pipeline-matching"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스테레오 정합 알고리즘</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>알고리즘</th>
+                            <th>방식</th>
+                            <th>속도</th>
+                            <th>품질</th>
+                            <th>특징</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Block Matching (BM)</td>
+                            <td>로컬 윈도우</td>
+                            <td>매우 빠름</td>
+                            <td>보통</td>
+                            <td>실시간 가능, 텍스처 없는 영역에서 약함</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">SGM</td>
+                            <td>세미 글로벌</td>
+                            <td>빠름</td>
+                            <td>좋음</td>
+                            <td>8/16방향 비용 집계, 가장 널리 사용</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Graph Cut</td>
+                            <td>글로벌 최적화</td>
+                            <td>느림</td>
+                            <td>매우 좋음</td>
+                            <td>에너지 최소화, 경계 보존 우수</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">딥러닝 기반</td>
+                            <td>CNN/Transformer</td>
+                            <td>GPU 필요</td>
+                            <td>최고</td>
+                            <td>AANet, RAFT-Stereo 등, 학습 데이터 필요</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무에서의 정합 알고리즘 선택</strong>
+                        산업 검사처럼 실시간성이 중요한 경우 SGM이 가장 많이 쓰인다. OpenCV의 <code>StereoSGBM</code> 클래스로 쉽게 구현 가능하며, GPU 가속(CUDA)을 적용하면 HD 해상도에서 30fps 이상 처리할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 5. 깊이 해상도와 한계 -->
+                <h2 id="depth-resolution"><i class="fa-solid fa-chart-line"></i> 깊이 해상도와 한계</h2>
+
+                <p>스테레오 비전의 깊이 정밀도는 거리에 따라 비선형적으로 변한다. Z = f*B/d에서 시차 1픽셀 변화에 대한 깊이 변화량을 구하면:</p>
+
+                <div class="formula-box">
+                    &Delta;Z = Z&sup2; / (f &times; B)
+                    <div class="formula-desc">거리의 제곱에 비례하여 깊이 분해능이 나빠진다</div>
+                </div>
+
+                <h3 id="depth-example"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 거리별 깊이 분해능 예시</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>거리 Z</th>
+                            <th>시차 d (px)</th>
+                            <th>&Delta;Z (1px 변화 시)</th>
+                            <th>상대 정밀도</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">1 m</td>
+                            <td>96</td>
+                            <td>~10.4 mm</td>
+                            <td>1.04%</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">2 m</td>
+                            <td>48</td>
+                            <td>~41.7 mm</td>
+                            <td>2.08%</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">5 m</td>
+                            <td>19.2</td>
+                            <td>~260 mm</td>
+                            <td>5.21%</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">10 m</td>
+                            <td>9.6</td>
+                            <td>~1,042 mm</td>
+                            <td>10.42%</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p style="font-size:0.85rem; color:var(--text-muted);">* 조건: f = 800px, B = 120mm 기준. 서브픽셀 정합으로 실제 정밀도는 5~10배 향상 가능.</p>
+
+                <h3 id="depth-limits"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스테레오 비전의 한계</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">텍스처 부재</span>
+                        <span class="term-desc">흰 벽, 단색 표면처럼 텍스처가 없으면 좌우 대응점을 찾을 수 없어 시차 계산이 실패한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">오클루전</span>
+                        <span class="term-desc">한쪽 카메라에서만 보이는 영역은 대응점이 존재하지 않아 깊이를 구할 수 없다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">반복 패턴</span>
+                        <span class="term-desc">타일, 격자 등 반복되는 패턴에서는 잘못된 대응점을 찾아 시차 오류가 발생한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">조명 변화</span>
+                        <span class="term-desc">좌우 카메라에 서로 다른 조명이 비치면 밝기 차이로 정합 정확도가 떨어진다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">원거리 정밀도</span>
+                        <span class="term-desc">Z^2에 비례하여 깊이 오차가 증가하므로, 먼 거리 측정에는 부적합하다.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>텍스처 문제 해결 방법</strong>
+                        텍스처가 부족한 환경에서는 프로젝터로 랜덤 패턴을 투사하는 <strong>액티브 스테레오(Active Stereo)</strong> 방식을 사용한다. Intel RealSense D400 시리즈가 대표적인 예로, IR 도트 패턴을 투사하여 텍스처 없는 표면에서도 정합이 가능하다.
+                    </div>
+                </div>
+
+                <!-- 6. 다른 3D 방식 비교 -->
+                <h2 id="compare-3d"><i class="fa-solid fa-scale-balanced"></i> 다른 3D 방식 비교</h2>
+
+                <p>3D 센싱 기술은 스테레오 비전 외에도 여러 가지가 있다. 각 방식은 고유한 장단점이 있으며, 응용 분야에 따라 적합한 기술이 다르다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>방식</th>
+                            <th>원리</th>
+                            <th>정밀도</th>
+                            <th>거리</th>
+                            <th>장점</th>
+                            <th>단점</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">패시브 스테레오</td>
+                            <td>양안 시차</td>
+                            <td>mm급</td>
+                            <td>~30m</td>
+                            <td>별도 광원 불필요, 컬러+깊이 동시</td>
+                            <td>텍스처 의존, 원거리 약함</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">액티브 스테레오</td>
+                            <td>패턴 투사 + 시차</td>
+                            <td>sub-mm</td>
+                            <td>~10m</td>
+                            <td>텍스처 없는 표면도 가능</td>
+                            <td>야외 강한 조명에서 불리</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">ToF (Time-of-Flight)</td>
+                            <td>빛의 왕복 시간</td>
+                            <td>cm급</td>
+                            <td>~10m</td>
+                            <td>실시간, 텍스처 무관</td>
+                            <td>해상도 낮음, 다중경로 오류</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">구조광 (Structured Light)</td>
+                            <td>코딩된 패턴 투사</td>
+                            <td>um~mm</td>
+                            <td>~5m</td>
+                            <td>매우 높은 정밀도</td>
+                            <td>야외 불가, 이동 물체에 약함</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">LiDAR</td>
+                            <td>레이저 스캔</td>
+                            <td>mm~cm</td>
+                            <td>~200m</td>
+                            <td>장거리, 야외 강인</td>
+                            <td>고가, 밀도 낮음, 텍스처 없음</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> 스테레오 비전이 적합한 경우</h4>
+                        <ul>
+                            <li>컬러 영상과 깊이를 동시에 필요로 할 때</li>
+                            <li>별도 광원 없이 패시브 측정이 필요할 때</li>
+                            <li>중거리(1~10m) 범위의 3D 계측</li>
+                            <li>비용 효율적인 시스템이 필요할 때</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> 다른 방식이 나은 경우</h4>
+                        <ul>
+                            <li><strong>um급 정밀도</strong> → 구조광</li>
+                            <li><strong>50m 이상 장거리</strong> → LiDAR</li>
+                            <li><strong>텍스처 없는 실내</strong> → ToF 또는 액티브 스테레오</li>
+                            <li><strong>저조도/야간</strong> → ToF 또는 LiDAR</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 팁: 센서 퓨전</strong>
+                        실제 시스템에서는 단일 방식보다 여러 센서를 조합하는 경우가 많다. 예를 들어 자율주행에서는 스테레오 카메라(중거리 + 색상) + LiDAR(장거리 + 정밀) + ToF(근거리)를 함께 사용하여 각 센서의 약점을 보완한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Hartley & Zisserman — Multiple View Geometry in Computer Vision (2nd Ed.)</li>
+                        <li>Szeliski — Computer Vision: Algorithms and Applications (2nd Ed.)</li>
+                        <li>OpenCV Documentation — Stereo Calibration and 3D Reconstruction</li>
+                        <li>Hirschmuller, H. — "Stereo Processing by Semiglobal Matching and Mutual Information" (SGM 논문)</li>
+                        <li>Intel RealSense — Stereo Depth Technology White Paper</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-stereo"><i class="fa-solid fa-arrow-left"></i> 3D 스테레오 비전 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-stereo');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-stereo');
+</script>
+
+</body>
+</html>

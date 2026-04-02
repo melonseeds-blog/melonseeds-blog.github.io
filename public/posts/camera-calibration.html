@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카메라 캘리브레이션 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 수식 블록 */
+        .math-block {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; text-align: center;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.95rem;
+            line-height: 2; color: var(--text);
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">캘리브레이션이란</a>
+        <a href="#intrinsic" data-section="intrinsic">내부 파라미터</a>
+        <a href="#extrinsic" data-section="extrinsic">외부 파라미터</a>
+        <a href="#distortion" data-section="distortion">렌즈 왜곡</a>
+        <a href="#checkerboard" data-section="checkerboard">체커보드 캘리브레이션</a>
+        <a href="#stereo-calib" data-section="stereo-calib">스테레오 캘리브레이션</a>
+        <a href="#validation" data-section="validation">정확도 검증</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">3D 스테레오 비전</span>
+                </div>
+                <h1>카메라 캘리브레이션</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 8 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>카메라 캘리브레이션의 개념과 필요성</li>
+                        <li>내부 파라미터(초점거리, 주점, 왜곡계수)의 의미</li>
+                        <li>외부 파라미터(회전 행렬 R, 이동 벡터 t)의 역할</li>
+                        <li>렌즈 왜곡(방사 왜곡, 접선 왜곡)의 원리와 보정</li>
+                        <li>체커보드를 이용한 캘리브레이션 절차</li>
+                        <li>스테레오 캘리브레이션과 정확도 검증 방법</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">캘리브레이션이란</a></li>
+                        <li><a href="#intrinsic">내부 파라미터 (Intrinsic Parameters)</a></li>
+                        <li><a href="#extrinsic">외부 파라미터 (Extrinsic Parameters)</a></li>
+                        <li><a href="#distortion">렌즈 왜곡 (Lens Distortion)</a></li>
+                        <li><a href="#checkerboard">체커보드 캘리브레이션</a></li>
+                        <li><a href="#stereo-calib">스테레오 캘리브레이션</a></li>
+                        <li><a href="#validation">정확도 검증</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 캘리브레이션이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-crosshairs"></i> 캘리브레이션이란</h2>
+
+                <p>카메라 캘리브레이션(Camera Calibration)은 <strong>3D 세계의 좌표를 2D 이미지 좌표로 매핑하는 카메라의 수학적 모델을 결정</strong>하는 과정이다. 실제 카메라는 렌즈 왜곡, 제조 공차, 센서 정렬 오차 등으로 인해 이상적인 핀홀 카메라와 차이가 있으며, 캘리브레이션을 통해 이를 보정한다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 캘리브레이션이 필요한가?</div>
+                    <p>3D 복원, 스테레오 비전, 로봇 비전, 정밀 계측 등 모든 응용에서 카메라 파라미터가 정확해야 결과가 신뢰할 수 있다. 캘리브레이션 없이는 이미지에서 측정한 거리나 각도가 실제와 다르며, 특히 렌즈 왜곡이 보정되지 않으면 직선이 곡선으로 보이는 등 심각한 오차가 발생한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 260" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs><marker id="arr1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#3a9a3e"/></marker></defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">핀홀 카메라 모델 (Pinhole Camera Model)</text>
+
+                        <!-- 3D 세계 -->
+                        <rect x="20" y="50" width="160" height="170" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="100" y="75" text-anchor="middle" font-size="12" fill="#2e7d32" font-weight="700">3D 세계</text>
+                        <text x="100" y="100" text-anchor="middle" font-size="11" fill="#388e3c">점 P(X, Y, Z)</text>
+                        <circle cx="100" cy="140" r="6" fill="#4caf50"/>
+                        <text x="100" y="160" text-anchor="middle" font-size="10" fill="#66bb6a">월드 좌표계</text>
+                        <text x="100" y="178" text-anchor="middle" font-size="9" fill="#a5d6a7">[Extrinsic]</text>
+                        <text x="100" y="194" text-anchor="middle" font-size="9" fill="#a5d6a7">R, t 적용</text>
+
+                        <!-- 화살표 -->
+                        <line x1="180" y1="135" x2="260" y2="135" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="220" y="125" text-anchor="middle" font-size="9" fill="#3a9a3e">변환</text>
+
+                        <!-- 카메라 좌표 -->
+                        <rect x="270" y="50" width="160" height="170" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="350" y="75" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">카메라 좌표</text>
+                        <text x="350" y="100" text-anchor="middle" font-size="11" fill="#f57c00">점 Pc(Xc, Yc, Zc)</text>
+                        <!-- 렌즈 표현 -->
+                        <ellipse cx="350" cy="140" rx="20" ry="30" fill="none" stroke="#ff9800" stroke-width="2"/>
+                        <text x="350" y="145" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">렌즈</text>
+                        <text x="350" y="178" text-anchor="middle" font-size="9" fill="#ffb74d">[Intrinsic]</text>
+                        <text x="350" y="194" text-anchor="middle" font-size="9" fill="#ffb74d">fx, fy, cx, cy</text>
+
+                        <!-- 화살표 -->
+                        <line x1="430" y1="135" x2="510" y2="135" stroke="#3a9a3e" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="470" y="125" text-anchor="middle" font-size="9" fill="#3a9a3e">투영</text>
+
+                        <!-- 이미지 평면 -->
+                        <rect x="520" y="50" width="160" height="170" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="600" y="75" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">이미지 평면</text>
+                        <text x="600" y="100" text-anchor="middle" font-size="11" fill="#1976d2">점 p(u, v)</text>
+                        <rect x="555" y="115" width="90" height="60" rx="4" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <circle cx="585" cy="145" r="4" fill="#1565c0"/>
+                        <text x="600" y="190" text-anchor="middle" font-size="9" fill="#90caf9">2D 픽셀 좌표</text>
+
+                        <!-- 전체 수식 -->
+                        <text x="350" y="245" text-anchor="middle" font-size="11" fill="#424242" font-weight="600">s [u, v, 1]' = K [R | t] [X, Y, Z, 1]'</text>
+                    </svg>
+                    <div class="caption">그림 1. 핀홀 카메라 모델 - 3D 세계 좌표에서 2D 이미지 좌표로의 변환 과정</div>
+                </div>
+
+                <!-- 2. 내부 파라미터 -->
+                <h2 id="intrinsic"><i class="fa-solid fa-camera"></i> 내부 파라미터 (Intrinsic Parameters)</h2>
+
+                <p>내부 파라미터(Intrinsic Parameters)는 카메라 자체의 광학적, 기하학적 특성을 나타내는 값이다. 카메라가 바뀌지 않는 한 고정이며, <strong>카메라 행렬 K</strong>로 표현된다.</p>
+
+                <div class="math-block">
+                    K = | fx  0   cx |<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| 0   fy  cy |<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| 0   0   1  |
+                </div>
+
+                <h3 id="intrinsic-focal"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 초점거리 (fx, fy)</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">fx (수평 초점거리)</span>
+                        <span class="term-desc">렌즈 중심에서 이미지 센서까지의 거리를 <strong>수평 픽셀 단위</strong>로 환산한 값. fx = f / px (f: 물리적 초점거리 mm, px: 픽셀 간격 mm)</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">fy (수직 초점거리)</span>
+                        <span class="term-desc">수직 방향의 픽셀 단위 초점거리. fy = f / py. 정사각 픽셀이면 fx = fy이지만, 센서에 따라 다를 수 있다.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>초점거리의 단위</strong>
+                        렌즈 스펙에 적힌 8mm, 12mm 등은 물리적 초점거리(f)이고, 캘리브레이션으로 구하는 fx, fy는 <strong>픽셀 단위</strong>이다. 예를 들어 물리적 초점거리 12mm, 픽셀 크기 3.45um인 카메라라면 fx = 12 / 0.00345 = 약 3478 pixels.
+                    </div>
+                </div>
+
+                <h3 id="intrinsic-principal"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 주점 (cx, cy)</h3>
+
+                <p>주점(Principal Point)은 렌즈 광축이 이미지 센서와 만나는 점의 <strong>픽셀 좌표</strong>이다. 이상적으로는 이미지 중심 (W/2, H/2)이지만, 실제로는 렌즈 정렬 오차로 인해 수 픽셀에서 수십 픽셀까지 차이가 날 수 있다.</p>
+
+                <h3 id="intrinsic-distortion"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 왜곡 계수 (Distortion Coefficients)</h3>
+
+                <p>내부 파라미터에 포함되는 왜곡 계수는 렌즈에 의한 이미지 왜곡을 모델링한다. OpenCV 기준으로 일반적으로 5개의 계수 <code>(k1, k2, p1, p2, k3)</code>를 사용한다. 왜곡에 대해서는 4장에서 자세히 다룬다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>파라미터</th>
+                            <th>기호</th>
+                            <th>단위</th>
+                            <th>의미</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">수평 초점거리</td>
+                            <td>fx</td>
+                            <td>pixel</td>
+                            <td>수평 방향 픽셀 단위 초점거리</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">수직 초점거리</td>
+                            <td>fy</td>
+                            <td>pixel</td>
+                            <td>수직 방향 픽셀 단위 초점거리</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">주점 X</td>
+                            <td>cx</td>
+                            <td>pixel</td>
+                            <td>광축과 센서가 만나는 수평 좌표</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">주점 Y</td>
+                            <td>cy</td>
+                            <td>pixel</td>
+                            <td>광축과 센서가 만나는 수직 좌표</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">방사 왜곡</td>
+                            <td>k1, k2, k3</td>
+                            <td>-</td>
+                            <td>렌즈 중심으로부터 거리에 따른 왜곡</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">접선 왜곡</td>
+                            <td>p1, p2</td>
+                            <td>-</td>
+                            <td>렌즈-센서 비평행에 의한 왜곡</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 3. 외부 파라미터 -->
+                <h2 id="extrinsic"><i class="fa-solid fa-arrows-up-down-left-right"></i> 외부 파라미터 (Extrinsic Parameters)</h2>
+
+                <p>외부 파라미터(Extrinsic Parameters)는 <strong>세계 좌표계(World Coordinate)와 카메라 좌표계(Camera Coordinate) 사이의 관계</strong>를 나타낸다. 카메라의 위치와 방향이 바뀌면 외부 파라미터도 바뀐다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-rotate" style="color:#1565c0;"></i> 회전 행렬 R (3x3)</h4>
+                        <p>세계 좌표축을 카메라 좌표축으로 회전시키는 <strong>직교 행렬</strong>. 3개의 자유도(roll, pitch, yaw)를 가진다. R'R = I, det(R) = 1.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrows-left-right" style="color:#e65100;"></i> 이동 벡터 t (3x1)</h4>
+                        <p>세계 좌표계 원점에서 카메라 좌표계 원점까지의 <strong>이동(Translation)</strong>. 카메라 좌표계 기준으로 표현된 3차원 벡터 [tx, ty, tz]'.</p>
+                    </div>
+                </div>
+
+                <div class="math-block">
+                    Pc = R * Pw + t<br><br>
+                    여기서 Pw: 월드 좌표, Pc: 카메라 좌표<br>
+                    [R | t]는 3x4 변환 행렬
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>내부 vs 외부 파라미터 요약</strong>
+                        내부 파라미터는 카메라 "자체"의 특성(렌즈, 센서)이고 한 번 구하면 고정. 외부 파라미터는 카메라의 "자세"(위치, 방향)이고 카메라를 움직이면 변한다. 캘리브레이션은 보통 내부 파라미터를 구하는 것이 주 목적이다.
+                    </div>
+                </div>
+
+                <!-- 4. 렌즈 왜곡 -->
+                <h2 id="distortion"><i class="fa-solid fa-circle-notch"></i> 렌즈 왜곡 (Lens Distortion)</h2>
+
+                <p>실제 렌즈는 빛을 완벽하게 직선으로 통과시키지 못한다. 렌즈 왜곡은 크게 <strong>방사 왜곡(Radial Distortion)</strong>과 <strong>접선 왜곡(Tangential Distortion)</strong>으로 나뉜다.</p>
+
+                <h3 id="distortion-radial"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 방사 왜곡 (Radial Distortion)</h3>
+
+                <p>렌즈 중심으로부터의 거리(r)에 따라 발생하는 왜곡. 배럴(Barrel) 왜곡과 핀쿠션(Pincushion) 왜곡이 있다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 280" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">방사 왜곡의 종류</text>
+
+                        <!-- 정상 -->
+                        <rect x="20" y="40" width="200" height="210" rx="10" fill="#f5f5f5" stroke="#bdbdbd" stroke-width="1.5"/>
+                        <text x="120" y="65" text-anchor="middle" font-size="12" fill="#424242" font-weight="700">정상 (No Distortion)</text>
+                        <rect x="50" y="80" width="140" height="140" rx="2" fill="white" stroke="#e0e0e0" stroke-width="1"/>
+                        <line x1="50" y1="115" x2="190" y2="115" stroke="#bdbdbd" stroke-width="0.8"/>
+                        <line x1="50" y1="150" x2="190" y2="150" stroke="#bdbdbd" stroke-width="0.8"/>
+                        <line x1="50" y1="185" x2="190" y2="185" stroke="#bdbdbd" stroke-width="0.8"/>
+                        <line x1="97" y1="80" x2="97" y2="220" stroke="#bdbdbd" stroke-width="0.8"/>
+                        <line x1="143" y1="80" x2="143" y2="220" stroke="#bdbdbd" stroke-width="0.8"/>
+                        <text x="120" y="240" text-anchor="middle" font-size="10" fill="#757575">직선이 직선으로 유지</text>
+
+                        <!-- 배럴 왜곡 -->
+                        <rect x="250" y="40" width="200" height="210" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="350" y="65" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">배럴 왜곡 (k1 &lt; 0)</text>
+                        <rect x="280" y="80" width="140" height="140" rx="2" fill="white" stroke="#ffcc80" stroke-width="1"/>
+                        <!-- 배럴: 바깥으로 볼록 -->
+                        <path d="M280,115 Q350,108 420,115" fill="none" stroke="#ff9800" stroke-width="1.2"/>
+                        <path d="M280,150 Q350,148 420,150" fill="none" stroke="#ff9800" stroke-width="1.2"/>
+                        <path d="M280,185 Q350,192 420,185" fill="none" stroke="#ff9800" stroke-width="1.2"/>
+                        <path d="M327,80 Q320,150 327,220" fill="none" stroke="#ff9800" stroke-width="1.2"/>
+                        <path d="M350,80 Q350,150 350,220" fill="none" stroke="#ff9800" stroke-width="1.2"/>
+                        <path d="M373,80 Q380,150 373,220" fill="none" stroke="#ff9800" stroke-width="1.2"/>
+                        <text x="350" y="240" text-anchor="middle" font-size="10" fill="#e65100">가장자리가 바깥으로 팽창</text>
+
+                        <!-- 핀쿠션 왜곡 -->
+                        <rect x="480" y="40" width="200" height="210" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="580" y="65" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">핀쿠션 왜곡 (k1 &gt; 0)</text>
+                        <rect x="510" y="80" width="140" height="140" rx="2" fill="white" stroke="#90caf9" stroke-width="1"/>
+                        <!-- 핀쿠션: 안으로 오목 -->
+                        <path d="M510,115 Q580,122 650,115" fill="none" stroke="#1565c0" stroke-width="1.2"/>
+                        <path d="M510,150 Q580,152 650,150" fill="none" stroke="#1565c0" stroke-width="1.2"/>
+                        <path d="M510,185 Q580,178 650,185" fill="none" stroke="#1565c0" stroke-width="1.2"/>
+                        <path d="M557,80 Q564,150 557,220" fill="none" stroke="#1565c0" stroke-width="1.2"/>
+                        <path d="M580,80 Q580,150 580,220" fill="none" stroke="#1565c0" stroke-width="1.2"/>
+                        <path d="M603,80 Q596,150 603,220" fill="none" stroke="#1565c0" stroke-width="1.2"/>
+                        <text x="580" y="240" text-anchor="middle" font-size="10" fill="#1565c0">가장자리가 안으로 수축</text>
+
+                        <text x="350" y="272" text-anchor="middle" font-size="10" fill="#616161">광각 렌즈일수록 배럴 왜곡이 크고, 망원 렌즈는 핀쿠션 왜곡 경향</text>
+                    </svg>
+                    <div class="caption">그림 2. 방사 왜곡 - 배럴 왜곡(볼록)과 핀쿠션 왜곡(오목) 비교</div>
+                </div>
+
+                <div class="math-block">
+                    x_distorted = x(1 + k1*r<sup>2</sup> + k2*r<sup>4</sup> + k3*r<sup>6</sup>)<br>
+                    y_distorted = y(1 + k1*r<sup>2</sup> + k2*r<sup>4</sup> + k3*r<sup>6</sup>)<br><br>
+                    r<sup>2</sup> = x<sup>2</sup> + y<sup>2</sup> (렌즈 중심으로부터의 거리)
+                </div>
+
+                <h3 id="distortion-tangential"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 접선 왜곡 (Tangential Distortion)</h3>
+
+                <p>렌즈가 이미지 센서와 완벽하게 평행하지 않을 때 발생하는 왜곡이다. 렌즈 조립 공정에서의 미세한 기울어짐이 원인이며, 이미지가 한쪽으로 치우치는 형태로 나타난다.</p>
+
+                <div class="math-block">
+                    x_distorted = x + [2*p1*x*y + p2*(r<sup>2</sup> + 2*x<sup>2</sup>)]<br>
+                    y_distorted = y + [p1*(r<sup>2</sup> + 2*y<sup>2</sup>) + 2*p2*x*y]
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>왜곡 보정 순서에 주의</strong>
+                        왜곡 보정(Undistortion)은 반드시 다른 이미지 처리(에지 검출, 매칭 등) <strong>이전에</strong> 수행해야 한다. 왜곡된 이미지에서 추출한 특징점은 위치가 부정확하여 후속 처리의 정확도를 떨어뜨린다.
+                    </div>
+                </div>
+
+                <!-- 5. 체커보드 캘리브레이션 -->
+                <h2 id="checkerboard"><i class="fa-solid fa-chess-board"></i> 체커보드 캘리브레이션</h2>
+
+                <p>체커보드 패턴은 가장 널리 사용되는 캘리브레이션 타겟이다. 흑백 격자의 <strong>코너점</strong>을 서브픽셀 정밀도로 검출할 수 있어 높은 정확도를 달성할 수 있다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 320" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">체커보드 캘리브레이션 절차</text>
+
+                        <!-- Step 1 -->
+                        <rect x="20" y="50" width="150" height="100" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="95" y="75" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">Step 1</text>
+                        <text x="95" y="95" text-anchor="middle" font-size="10" fill="#1976d2">다양한 각도/위치로</text>
+                        <text x="95" y="110" text-anchor="middle" font-size="10" fill="#1976d2">체커보드 촬영</text>
+                        <text x="95" y="130" text-anchor="middle" font-size="9" fill="#64b5f6">(15~30장 권장)</text>
+
+                        <line x1="170" y1="100" x2="195" y2="100" stroke="#1565c0" stroke-width="2" marker-end="url(#arr2)"/>
+
+                        <!-- Step 2 -->
+                        <rect x="200" y="50" width="150" height="100" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="275" y="75" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">Step 2</text>
+                        <text x="275" y="95" text-anchor="middle" font-size="10" fill="#f57c00">코너점 검출</text>
+                        <text x="275" y="110" text-anchor="middle" font-size="10" fill="#f57c00">(findChessboard</text>
+                        <text x="275" y="125" text-anchor="middle" font-size="10" fill="#f57c00">Corners)</text>
+                        <text x="275" y="140" text-anchor="middle" font-size="9" fill="#ffb74d">서브픽셀 보정 포함</text>
+
+                        <line x1="350" y1="100" x2="375" y2="100" stroke="#1565c0" stroke-width="2" marker-end="url(#arr2)"/>
+
+                        <!-- Step 3 -->
+                        <rect x="380" y="50" width="150" height="100" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="455" y="75" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">Step 3</text>
+                        <text x="455" y="95" text-anchor="middle" font-size="10" fill="#388e3c">3D-2D 대응점</text>
+                        <text x="455" y="110" text-anchor="middle" font-size="10" fill="#388e3c">생성</text>
+                        <text x="455" y="130" text-anchor="middle" font-size="9" fill="#66bb6a">격자 간격으로 3D 좌표</text>
+
+                        <line x1="530" y1="100" x2="555" y2="100" stroke="#1565c0" stroke-width="2" marker-end="url(#arr2)"/>
+
+                        <!-- Step 4 -->
+                        <rect x="560" y="50" width="120" height="100" rx="10" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="620" y="75" text-anchor="middle" font-size="11" fill="#7b1fa2" font-weight="700">Step 4</text>
+                        <text x="620" y="95" text-anchor="middle" font-size="10" fill="#8e24aa">calibrateCamera</text>
+                        <text x="620" y="115" text-anchor="middle" font-size="10" fill="#8e24aa">최적화 실행</text>
+
+                        <!-- 체커보드 미니 그림 -->
+                        <rect x="160" y="190" width="180" height="110" rx="6" fill="white" stroke="#bdbdbd" stroke-width="1"/>
+                        <!-- 체커보드 패턴 -->
+                        <rect x="175" y="200" width="20" height="20" fill="#333"/>
+                        <rect x="215" y="200" width="20" height="20" fill="#333"/>
+                        <rect x="255" y="200" width="20" height="20" fill="#333"/>
+                        <rect x="295" y="200" width="20" height="20" fill="#333"/>
+                        <rect x="195" y="220" width="20" height="20" fill="#333"/>
+                        <rect x="235" y="220" width="20" height="20" fill="#333"/>
+                        <rect x="275" y="220" width="20" height="20" fill="#333"/>
+                        <rect x="175" y="240" width="20" height="20" fill="#333"/>
+                        <rect x="215" y="240" width="20" height="20" fill="#333"/>
+                        <rect x="255" y="240" width="20" height="20" fill="#333"/>
+                        <rect x="295" y="240" width="20" height="20" fill="#333"/>
+                        <rect x="195" y="260" width="20" height="20" fill="#333"/>
+                        <rect x="235" y="260" width="20" height="20" fill="#333"/>
+                        <rect x="275" y="260" width="20" height="20" fill="#333"/>
+                        <!-- 코너점 표시 -->
+                        <circle cx="195" cy="220" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="215" cy="220" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="235" cy="220" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="255" cy="220" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="195" cy="240" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="215" cy="240" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="235" cy="240" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="255" cy="240" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="195" cy="260" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="215" cy="260" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="235" cy="260" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <circle cx="255" cy="260" r="3" fill="#ef4444" stroke="white" stroke-width="1"/>
+                        <text x="250" y="310" text-anchor="middle" font-size="10" fill="#ef4444">빨간 점: 검출된 내부 코너점</text>
+
+                        <!-- 팁 텍스트 -->
+                        <rect x="400" y="190" width="270" height="110" rx="8" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1"/>
+                        <text x="415" y="212" font-size="11" fill="#065f46" font-weight="700">촬영 가이드</text>
+                        <text x="415" y="232" font-size="10" fill="#065f46">- 체커보드가 이미지의 다양한 영역에 위치</text>
+                        <text x="415" y="248" font-size="10" fill="#065f46">- 다양한 각도 (기울임 30도 이상)</text>
+                        <text x="415" y="264" font-size="10" fill="#065f46">- 최소 15장, 보통 20~30장 촬영</text>
+                        <text x="415" y="280" font-size="10" fill="#065f46">- 초점이 맞고 블러 없는 이미지 사용</text>
+                    </svg>
+                    <div class="caption">그림 3. 체커보드 캘리브레이션 절차 및 코너점 검출 예시</div>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> OpenCV 캘리브레이션 함수</div>
+                    <p>OpenCV에서는 <code>cv::findChessboardCorners()</code>로 코너를 검출하고, <code>cv::cornerSubPix()</code>로 서브픽셀 보정을 수행한 후, <code>cv::calibrateCamera()</code>로 내부/외부 파라미터를 한번에 추정한다. 결과로 카메라 행렬 K, 왜곡 계수, 각 이미지별 R과 t가 반환된다.</p>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>체커보드 외 캘리브레이션 타겟</strong>
+                        체커보드 외에도 원형 패턴(Circle Grid), ChArUco 보드(체커보드 + ArUco 마커), Halcon 캘리브레이션 플레이트 등이 있다. ChArUco는 부분적으로 가려져도 검출이 가능하여 자동화 환경에서 유리하다.
+                    </div>
+                </div>
+
+                <!-- 6. 스테레오 캘리브레이션 -->
+                <h2 id="stereo-calib"><i class="fa-solid fa-binoculars"></i> 스테레오 캘리브레이션</h2>
+
+                <p>스테레오 캘리브레이션은 두 카메라 사이의 <strong>상대적 위치 관계(R, T)</strong>를 정밀하게 구하는 과정이다. 각 카메라의 내부 파라미터를 먼저 구한 후, 동일한 체커보드를 두 카메라로 동시에 촬영하여 상대 자세를 추정한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 300" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">스테레오 카메라 기하학</text>
+
+                        <!-- 왼쪽 카메라 -->
+                        <rect x="60" y="80" width="100" height="70" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="110" y="105" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">Left Cam</text>
+                        <text x="110" y="122" text-anchor="middle" font-size="9" fill="#64b5f6">K_L, D_L</text>
+                        <text x="110" y="138" text-anchor="middle" font-size="9" fill="#64b5f6">기준 카메라</text>
+
+                        <!-- 오른쪽 카메라 -->
+                        <rect x="460" y="80" width="100" height="70" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="510" y="105" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">Right Cam</text>
+                        <text x="510" y="122" text-anchor="middle" font-size="9" fill="#ffb74d">K_R, D_R</text>
+
+                        <!-- 베이스라인 -->
+                        <line x1="160" y1="115" x2="460" y2="115" stroke="#9c27b0" stroke-width="2.5" stroke-dasharray="8,4"/>
+                        <text x="310" y="108" text-anchor="middle" font-size="11" fill="#7b1fa2" font-weight="700">Baseline (B)</text>
+
+                        <!-- R, T 표시 -->
+                        <rect x="260" y="125" width="100" height="40" rx="6" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="310" y="142" text-anchor="middle" font-size="10" fill="#7b1fa2" font-weight="600">R, T</text>
+                        <text x="310" y="157" text-anchor="middle" font-size="9" fill="#ba68c8">상대 자세</text>
+
+                        <!-- 3D 점 -->
+                        <circle cx="310" cy="220" r="8" fill="#4caf50" stroke="#2e7d32" stroke-width="2"/>
+                        <text x="310" y="250" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">3D 점 P</text>
+
+                        <!-- 투영선 -->
+                        <line x1="110" y1="150" x2="310" y2="220" stroke="#1565c0" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <line x1="510" y1="150" x2="310" y2="220" stroke="#ff9800" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+                        <!-- 이미지 점 -->
+                        <text x="180" y="195" font-size="9" fill="#1565c0">p_L(u_L, v_L)</text>
+                        <text x="400" y="195" font-size="9" fill="#e65100">p_R(u_R, v_R)</text>
+
+                        <!-- 수식 -->
+                        <text x="350" y="285" text-anchor="middle" font-size="11" fill="#424242" font-weight="600">Z = f * B / (u_L - u_R) = f * B / disparity</text>
+                    </svg>
+                    <div class="caption">그림 4. 스테레오 카메라 기하학 - 두 카메라 간의 R, T와 삼각측량 원리</div>
+                </div>
+
+                <h3 id="stereo-steps"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스테레오 캘리브레이션 절차</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">1. 개별 캘리브레이션</span>
+                        <span class="term-desc">좌/우 카메라 각각 단독으로 캘리브레이션하여 내부 파라미터(K, D)를 구한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">2. 스테레오 촬영</span>
+                        <span class="term-desc">동일한 체커보드를 두 카메라로 동시에 촬영한다. 최소 15~20쌍의 이미지가 필요하다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">3. stereoCalibrate</span>
+                        <span class="term-desc">OpenCV의 <code>cv::stereoCalibrate()</code>로 두 카메라 간의 R(회전), T(이동)를 추정한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">4. stereoRectify</span>
+                        <span class="term-desc"><code>cv::stereoRectify()</code>로 두 이미지를 수평 정렬(Rectification)하여 에피폴라 라인을 수평으로 만든다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">5. Remap 생성</span>
+                        <span class="term-desc"><code>cv::initUndistortRectifyMap()</code>으로 왜곡 보정 + 정렬 변환을 합친 Remap 테이블을 생성한다.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Rectification의 중요성</strong>
+                        스테레오 정렬(Rectification)을 수행하면 좌/우 이미지에서 같은 3D 점이 <strong>같은 y좌표(행)</strong>에 나타나게 된다. 이를 통해 대응점 탐색을 1차원(수평 방향)으로 줄일 수 있어 스테레오 매칭 속도와 정확도가 크게 향상된다.
+                    </div>
+                </div>
+
+                <!-- 7. 정확도 검증 -->
+                <h2 id="validation"><i class="fa-solid fa-check-double"></i> 정확도 검증</h2>
+
+                <p>캘리브레이션 결과의 신뢰성을 확인하는 것은 실제 응용에서 매우 중요하다. 주요 검증 방법과 판단 기준을 알아본다.</p>
+
+                <h3 id="validation-rpe"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 재투영 오차 (Reprojection Error)</h3>
+
+                <p>캘리브레이션으로 구한 파라미터를 사용하여 3D 점을 다시 이미지에 투영했을 때, <strong>실제 검출된 코너점과의 거리</strong>를 측정한다. 가장 기본적이고 중요한 지표이다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>재투영 오차 (RMS)</th>
+                            <th>평가</th>
+                            <th>비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">&lt; 0.3 pixel</td>
+                            <td>우수</td>
+                            <td>정밀 계측, 스테레오 비전에 적합</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">0.3 ~ 0.5 pixel</td>
+                            <td>양호</td>
+                            <td>일반적인 머신비전 응용에 충분</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">0.5 ~ 1.0 pixel</td>
+                            <td>보통</td>
+                            <td>정밀도가 낮은 응용에서는 사용 가능</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">&gt; 1.0 pixel</td>
+                            <td>불량</td>
+                            <td>재캘리브레이션 필요. 이미지 품질 확인</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="validation-epipolar"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 에피폴라 오차 (스테레오)</h3>
+
+                <p>스테레오 캘리브레이션에서는 대응점이 <strong>에피폴라 라인 위에 정확히 놓이는지</strong> 확인한다. 정렬(Rectification) 후 좌/우 이미지의 대응점은 같은 행(y좌표)에 있어야 하며, y좌표 차이가 에피폴라 오차이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>좋은 캘리브레이션을 위한 체크리스트</strong>
+                        1) 재투영 오차 RMS &lt; 0.5 pixel 이하인가?<br>
+                        2) 왜곡 보정 후 직선이 직선으로 보이는가?<br>
+                        3) (스테레오) 정렬 후 에피폴라 라인이 수평인가?<br>
+                        4) 이미지 전체 영역에서 오차가 균일한가? (특정 영역에 오차 집중 시 재촬영)<br>
+                        5) 이상치(Outlier) 이미지를 제거하고 재캘리브레이션했는가?
+                    </div>
+                </div>
+
+                <h3 id="validation-practical"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 실전 검증 방법</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 실측 비교 검증</div>
+                    <p>캘리브레이션 결과를 실제 환경에서 검증하는 가장 확실한 방법이다. 알려진 크기의 물체(게이지 블록, 자)를 촬영하고, 이미지에서 측정한 치수와 실제 치수를 비교한다. 스테레오 비전의 경우 알려진 거리에 놓인 물체의 깊이를 추정하여 오차를 확인한다.</p>
+                </div>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> 오차가 클 때 확인할 점</h4>
+                        <ul>
+                            <li>체커보드 평탄도 (휘어짐 확인)</li>
+                            <li>촬영 시 포커스 정확성</li>
+                            <li>조명 반사/글레어 여부</li>
+                            <li>이미지 블러 (흔들림)</li>
+                            <li>격자 크기 입력값 정확성</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#1565c0; font-size:0.5rem;"></i> 정확도 향상 팁</h4>
+                        <ul>
+                            <li>더 많은 이미지 촬영 (30장 이상)</li>
+                            <li>이미지 전 영역에 체커보드 분포</li>
+                            <li>다양한 거리에서 촬영</li>
+                            <li>고정밀 캘리브레이션 플레이트 사용</li>
+                            <li>이상치 이미지 수동 제거</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Zhang, Z. (2000). "A Flexible New Technique for Camera Calibration" — IEEE TPAMI</li>
+                        <li>OpenCV Documentation — Camera Calibration and 3D Reconstruction</li>
+                        <li>Hartley, R. & Zisserman, A. — "Multiple View Geometry in Computer Vision"</li>
+                        <li>Bradski, G. & Kaehler, A. — "Learning OpenCV 3"</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-stereo"><i class="fa-solid fa-arrow-left"></i> 3D 스테레오 비전 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-stereo');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-stereo');
+</script>
+
+</body>
+</html>

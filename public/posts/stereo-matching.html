@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스테레오 정합(Stereo Matching) — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; overflow-x: auto; font-size: 0.85rem;
+            line-height: 1.7; margin: 16px 0;
+        }
+        pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+        .code-comment { color: #94a3b8; }
+        .code-keyword { color: #c084fc; }
+        .code-string { color: #86efac; }
+        .code-func { color: #67e8f9; }
+        .code-number { color: #fbbf24; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">스테레오 정합이란</a>
+        <a href="#block-matching" data-section="block-matching">Block Matching</a>
+        <a href="#sgm" data-section="sgm">SGM</a>
+        <a href="#global" data-section="global">글로벌 방법</a>
+        <a href="#quality" data-section="quality">시차 맵 품질 문제</a>
+        <a href="#comparison" data-section="comparison">알고리즘 비교</a>
+        <a href="#opencv" data-section="opencv">OpenCV 구현</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">3D 스테레오 비전</span>
+                </div>
+                <h1>스테레오 정합(Stereo Matching)</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 8 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>스테레오 정합의 개념과 시차(Disparity) 맵 생성 원리</li>
+                        <li>Block Matching(BM) 알고리즘의 동작 방식</li>
+                        <li>Semi-Global Matching(SGM)의 다중 경로 최적화</li>
+                        <li>글로벌 방법(Graph Cut, Belief Propagation)의 특징</li>
+                        <li>시차 맵 품질 문제와 후처리 기법</li>
+                        <li>OpenCV를 활용한 실전 구현 코드</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">스테레오 정합이란</a></li>
+                        <li><a href="#block-matching">Block Matching (BM)</a></li>
+                        <li><a href="#sgm">SGM (Semi-Global Matching)</a></li>
+                        <li><a href="#global">글로벌 방법</a></li>
+                        <li><a href="#quality">시차 맵 품질 문제</a></li>
+                        <li><a href="#comparison">알고리즘 비교 테이블</a></li>
+                        <li><a href="#opencv">OpenCV 구현</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 스테레오 정합이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-binoculars"></i> 스테레오 정합이란</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> Stereo Matching</div>
+                    <p>두 대의 카메라(또는 한 카메라의 두 시점)에서 촬영한 좌/우 영상을 비교하여, 같은 3D 점이 양쪽 영상에서 각각 어디에 맺히는지 <strong>대응점(Correspondence)</strong>을 찾는 과정이다. 대응점 간의 수평 위치 차이를 <strong>시차(Disparity)</strong>라 하며, 시차 값이 클수록 카메라에 가까운 물체를 의미한다.</p>
+                </div>
+
+                <p>스테레오 정합은 3D 복원의 핵심 단계다. 에피폴라 기하(Epipolar Geometry)에 의해 정류(Rectification)된 영상에서는 대응점 탐색이 <strong>같은 행(Scanline)</strong> 위의 1차원 문제로 단순화된다. 시차 값 <code>d</code>와 깊이 <code>Z</code>의 관계는 다음과 같다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>시차-깊이 관계</strong>
+                        <code>Z = f * B / d</code> 여기서 <code>f</code>는 초점거리(px), <code>B</code>는 기선 길이(Baseline, m), <code>d</code>는 시차(px). 시차가 클수록 깊이가 작다(가까움).
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 320" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">스테레오 정합 원리</text>
+
+                        <!-- 좌 카메라 -->
+                        <rect x="60" y="200" width="100" height="70" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="110" y="230" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="600">좌 카메라</text>
+                        <text x="110" y="248" text-anchor="middle" font-size="9" fill="#64b5f6">Image L</text>
+
+                        <!-- 우 카메라 -->
+                        <rect x="540" y="200" width="100" height="70" rx="8" fill="#fce4ec" stroke="#c62828" stroke-width="2"/>
+                        <text x="590" y="230" text-anchor="middle" font-size="11" fill="#c62828" font-weight="600">우 카메라</text>
+                        <text x="590" y="248" text-anchor="middle" font-size="9" fill="#ef9a9a">Image R</text>
+
+                        <!-- Baseline -->
+                        <line x1="160" y1="235" x2="540" y2="235" stroke="#616161" stroke-width="1.5" stroke-dasharray="6,3"/>
+                        <text x="350" y="252" text-anchor="middle" font-size="10" fill="#616161" font-weight="600">Baseline (B)</text>
+
+                        <!-- 3D 점 -->
+                        <circle cx="350" cy="70" r="12" fill="#ff9800" stroke="#e65100" stroke-width="2"/>
+                        <text x="350" y="74" text-anchor="middle" font-size="9" fill="white" font-weight="700">P</text>
+                        <text x="385" y="65" font-size="10" fill="#e65100" font-weight="600">3D 점</text>
+
+                        <!-- 투영선 -->
+                        <line x1="110" y1="200" x2="350" y2="82" stroke="#1565c0" stroke-width="1.5" marker-end="url(#arr1)"/>
+                        <line x1="590" y1="200" x2="350" y2="82" stroke="#c62828" stroke-width="1.5"/>
+
+                        <!-- 이미지 평면 -->
+                        <rect x="70" y="160" width="80" height="30" rx="4" fill="#bbdefb" stroke="#1565c0" stroke-width="1"/>
+                        <text x="110" y="178" text-anchor="middle" font-size="8" fill="#1565c0">x_L</text>
+                        <rect x="550" y="160" width="80" height="30" rx="4" fill="#ffcdd2" stroke="#c62828" stroke-width="1"/>
+                        <text x="590" y="178" text-anchor="middle" font-size="8" fill="#c62828">x_R</text>
+
+                        <!-- 시차 표시 -->
+                        <line x1="110" y1="150" x2="590" y2="150" stroke="#ff9800" stroke-width="2"/>
+                        <text x="350" y="145" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">d = x_L - x_R (시차)</text>
+
+                        <!-- 깊이 -->
+                        <line x1="350" y1="82" x2="350" y2="200" stroke="#4caf50" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <text x="370" y="140" font-size="10" fill="#2e7d32" font-weight="600">Z (깊이)</text>
+
+                        <text x="350" y="305" text-anchor="middle" font-size="10" fill="#616161">Z = f * B / d : 시차가 클수록 가까운 물체</text>
+                    </svg>
+                    <div class="caption">그림 1. 스테레오 정합의 기본 원리 - 좌/우 영상의 시차로 깊이를 계산</div>
+                </div>
+
+                <h3 id="what-is-pipeline"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스테레오 정합 파이프라인</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">1. 비용 계산</span>
+                        <span class="term-desc">각 픽셀에 대해 가능한 시차 범위(0~d_max)의 매칭 비용(Cost)을 계산. SAD, SSD, Census 등.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">2. 비용 집계</span>
+                        <span class="term-desc">로컬 윈도우 또는 경로(Path)를 따라 비용을 합산하여 노이즈 영향을 줄임.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">3. 시차 선택</span>
+                        <span class="term-desc">각 픽셀에서 비용이 최소인 시차 값을 선택 (Winner-Takes-All, WTA).</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">4. 후처리</span>
+                        <span class="term-desc">좌우 일관성 검사(LR Check), 서브픽셀 보간, 미디언 필터 등으로 품질 개선.</span>
+                    </div>
+                </div>
+
+                <!-- 2. Block Matching -->
+                <h2 id="block-matching"><i class="fa-solid fa-th"></i> Block Matching (BM)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> Block Matching 알고리즘</div>
+                    <p>가장 단순하고 빠른 로컬(Local) 정합 방법. 좌 영상의 각 픽셀 주변에 <strong>고정 크기 윈도우(Block)</strong>를 잡고, 우 영상의 같은 행(에피폴라 라인)에서 가장 유사한 블록을 찾아 시차를 결정한다. OpenCV의 <code>StereoBM</code>이 대표적 구현이다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 250" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">Block Matching 동작 원리</text>
+
+                        <!-- 좌 영상 -->
+                        <rect x="30" y="45" width="200" height="160" rx="8" fill="#f5f5f5" stroke="#bdbdbd" stroke-width="1.5"/>
+                        <text x="130" y="65" text-anchor="middle" font-size="11" fill="#616161" font-weight="600">좌 영상 (Reference)</text>
+                        <!-- 블록 -->
+                        <rect x="90" y="100" width="50" height="50" rx="3" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/>
+                        <text x="115" y="128" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="700">Block</text>
+
+                        <!-- 화살표 -->
+                        <line x1="245" y1="125" x2="290" y2="125" stroke="#ff9800" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="267" y="118" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">탐색</text>
+
+                        <!-- 우 영상 -->
+                        <rect x="305" y="45" width="370" height="160" rx="8" fill="#f5f5f5" stroke="#bdbdbd" stroke-width="1.5"/>
+                        <text x="490" y="65" text-anchor="middle" font-size="11" fill="#616161" font-weight="600">우 영상 (Target) - 에피폴라 라인</text>
+                        <!-- 탐색 범위 -->
+                        <rect x="320" y="100" width="340" height="50" rx="3" fill="#fff3e0" stroke="#ff9800" stroke-width="1" stroke-dasharray="4,2"/>
+                        <text x="490" y="145" text-anchor="middle" font-size="8" fill="#e65100">탐색 범위 (0 ~ d_max)</text>
+                        <!-- 후보 블록들 -->
+                        <rect x="330" y="105" width="40" height="40" rx="2" fill="#ffccbc" stroke="#ff7043" stroke-width="1"/>
+                        <rect x="385" y="105" width="40" height="40" rx="2" fill="#ffccbc" stroke="#ff7043" stroke-width="1"/>
+                        <rect x="440" y="105" width="40" height="40" rx="2" fill="#ffccbc" stroke="#ff7043" stroke-width="1"/>
+                        <rect x="495" y="105" width="40" height="40" rx="2" fill="#c8e6c9" stroke="#4caf50" stroke-width="2.5"/>
+                        <text x="515" y="128" text-anchor="middle" font-size="8" fill="#2e7d32" font-weight="700">Best</text>
+                        <rect x="550" y="105" width="40" height="40" rx="2" fill="#ffccbc" stroke="#ff7043" stroke-width="1"/>
+                        <rect x="605" y="105" width="40" height="40" rx="2" fill="#ffccbc" stroke="#ff7043" stroke-width="1"/>
+
+                        <!-- 시차 -->
+                        <line x1="115" y1="170" x2="515" y2="170" stroke="#4caf50" stroke-width="2"/>
+                        <text x="315" y="190" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">d = x_L - x_R</text>
+
+                        <text x="350" y="235" text-anchor="middle" font-size="10" fill="#616161">비용 함수: SAD = Sum of Absolute Differences</text>
+                    </svg>
+                    <div class="caption">그림 2. Block Matching - 좌 영상의 블록을 우 영상에서 슬라이딩 탐색</div>
+                </div>
+
+                <h3 id="bm-cost"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 비용 함수 종류</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-calculator" style="color:#1565c0;"></i> 밝기 기반</h4>
+                        <ul>
+                            <li><strong>SAD</strong> (Sum of Absolute Differences) - 절대차 합</li>
+                            <li><strong>SSD</strong> (Sum of Squared Differences) - 제곱차 합</li>
+                            <li><strong>NCC</strong> (Normalized Cross-Correlation) - 정규화 상관</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-binary" style="color:#7b1fa2;"></i> 구조 기반</h4>
+                        <ul>
+                            <li><strong>Census Transform</strong> - 주변 픽셀과의 대소관계 비트열</li>
+                            <li><strong>Rank Transform</strong> - 주변보다 작은 픽셀 수</li>
+                            <li><strong>BRIEF</strong> - 바이너리 패턴 기술자</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>Census Transform이 강건한 이유</strong>
+                        밝기 절대값이 아닌 <strong>상대적 순서</strong>만 비교하므로, 좌우 카메라 간 노출 차이나 조명 변화에 강건하다. SGM에서도 Census 기반 비용이 가장 널리 쓰인다.
+                    </div>
+                </div>
+
+                <h3 id="bm-limits"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> BM의 한계</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">텍스처 부족 영역</span>
+                        <span class="term-desc">벽면, 하늘 등 균일한 영역에서 블록 간 구분이 안 되어 오정합 발생.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">경계 번짐</span>
+                        <span class="term-desc">윈도우 크기가 크면 물체 경계에서 시차가 번져 정밀도 저하.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">가림 영역(Occlusion)</span>
+                        <span class="term-desc">한쪽 영상에서만 보이는 영역은 대응점을 찾을 수 없음.</span>
+                    </div>
+                </div>
+
+                <!-- 3. SGM -->
+                <h2 id="sgm"><i class="fa-solid fa-route"></i> SGM (Semi-Global Matching)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> Semi-Global Matching</div>
+                    <p>Hirschmuller(2005)가 제안한 알고리즘으로, 로컬 방법의 속도와 글로벌 방법의 품질을 절충한다. 픽셀별 매칭 비용에 <strong>여러 방향(보통 8~16개)에서의 경로 비용</strong>을 합산하여, 인접 픽셀 간 시차 변화에 <strong>스무드니스 패널티</strong>를 부여한다. OpenCV의 <code>StereoSGBM</code>이 대표 구현이다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 320" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">SGM 다중 경로 최적화</text>
+
+                        <!-- 중심 픽셀 -->
+                        <circle cx="350" cy="170" r="16" fill="#ff9800" stroke="#e65100" stroke-width="2"/>
+                        <text x="350" y="174" text-anchor="middle" font-size="9" fill="white" font-weight="700">p</text>
+
+                        <!-- 8방향 경로 -->
+                        <line x1="350" y1="60" x2="350" y2="154" stroke="#1565c0" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="350" y="55" text-anchor="middle" font-size="9" fill="#1565c0" font-weight="600">r1</text>
+
+                        <line x1="490" y1="80" x2="365" y2="158" stroke="#2196f3" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="498" y="78" font-size="9" fill="#2196f3" font-weight="600">r2</text>
+
+                        <line x1="530" y1="170" x2="366" y2="170" stroke="#42a5f5" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="540" y="174" font-size="9" fill="#42a5f5" font-weight="600">r3</text>
+
+                        <line x1="490" y1="260" x2="365" y2="182" stroke="#64b5f6" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="498" y="268" font-size="9" fill="#64b5f6" font-weight="600">r4</text>
+
+                        <line x1="350" y1="280" x2="350" y2="186" stroke="#90caf9" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="350" y="295" text-anchor="middle" font-size="9" fill="#90caf9" font-weight="600">r5</text>
+
+                        <line x1="210" y1="260" x2="335" y2="182" stroke="#64b5f6" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="198" y="268" font-size="9" fill="#64b5f6" font-weight="600">r6</text>
+
+                        <line x1="170" y1="170" x2="334" y2="170" stroke="#42a5f5" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="155" y="174" font-size="9" fill="#42a5f5" font-weight="600">r7</text>
+
+                        <line x1="210" y1="80" x2="335" y2="158" stroke="#2196f3" stroke-width="2" marker-end="url(#arr1)"/>
+                        <text x="198" y="78" font-size="9" fill="#2196f3" font-weight="600">r8</text>
+
+                        <!-- 수식 -->
+                        <text x="350" y="310" text-anchor="middle" font-size="10" fill="#616161">S(p, d) = SUM_r [ L_r(p, d) ] - 각 경로 비용의 합으로 최적 시차 선택</text>
+                    </svg>
+                    <div class="caption">그림 3. SGM - 8개 방향에서 경로 비용을 누적하여 픽셀 p의 최적 시차 결정</div>
+                </div>
+
+                <h3 id="sgm-penalty"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스무드니스 패널티 (P1, P2)</h3>
+
+                <p>SGM의 핵심은 인접 픽셀 간 시차 변화에 패널티를 부여하는 것이다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-minus" style="color:#ff9800;"></i> P1 (소형 패널티)</h4>
+                        <p>시차가 1 픽셀만 변할 때 적용. 값이 작아 경사면 등 부드러운 깊이 변화를 허용한다. 일반적으로 <strong>P1 = 8 * numChannels * blockSize^2</strong> 수준.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-bars" style="color:#c62828;"></i> P2 (대형 패널티)</h4>
+                        <p>시차가 2 이상 변할 때 적용. P1보다 훨씬 크게 설정하여 급격한 시차 점프를 억제한다. 단, 물체 경계에서는 적응적으로 줄여야 한다. <strong>P2 > P1</strong> 필수.</p>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>적응적 P2</strong>
+                        원래 SGM 논문에서는 <code>P2 = P2' / |I_L(p) - I_L(p-r)|</code>처럼 영상 그래디언트에 반비례하게 P2를 조정한다. 물체 경계(밝기 변화가 큰 곳)에서는 패널티를 줄여 시차 불연속을 허용하고, 평탄한 영역에서는 크게 유지해 스무딩한다.
+                    </div>
+                </div>
+
+                <h3 id="sgm-advantages"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> SGM의 강점</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">속도/품질 균형</span>
+                        <span class="term-desc">O(W * H * D * R) 복잡도. 글로벌 최적화 대비 10~100배 빠르면서 품질은 유사.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">병렬화 용이</span>
+                        <span class="term-desc">각 경로(r)가 독립적이므로 SIMD, GPU, FPGA 구현이 자연스럽다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">산업 표준</span>
+                        <span class="term-desc">자율주행(LiDAR 보완), 드론 매핑, 산업용 3D 검사 등 실무에서 가장 많이 사용.</span>
+                    </div>
+                </div>
+
+                <!-- 4. 글로벌 방법 -->
+                <h2 id="global"><i class="fa-solid fa-globe"></i> 글로벌 방법</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 글로벌 최적화 방법</div>
+                    <p>영상 전체에 걸쳐 에너지 함수를 최소화하는 방식. <strong>데이터 항(Data Term)</strong>과 <strong>스무드니스 항(Smoothness Term)</strong>으로 구성된 에너지 함수 E(d) = E_data(d) + E_smooth(d)를 전역적으로 최적화한다. 품질은 최고이나 계산 비용이 매우 높다.</p>
+                </div>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-diagram-project" style="color:#7b1fa2;"></i> Graph Cut (GC)</h4>
+                        <ul>
+                            <li>영상을 <strong>그래프</strong>로 모델링, 최소 컷으로 최적 시차 할당</li>
+                            <li>alpha-expansion 방식으로 반복 최적화</li>
+                            <li>MRF 에너지의 근사 최적해 보장</li>
+                            <li>고해상도에서 <strong>메모리/시간 매우 큼</strong></li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-share-nodes" style="color:#1565c0;"></i> Belief Propagation (BP)</h4>
+                        <ul>
+                            <li>인접 노드 간 <strong>메시지 전달</strong>로 확률적 최적화</li>
+                            <li>Loopy BP: MRF에서 반복적 메시지 갱신</li>
+                            <li>TRW-S (Tree-Reweighted) 변형이 수렴성 개선</li>
+                            <li>GC보다 빠르지만 여전히 <strong>실시간 어려움</strong></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>실무에서 글로벌 방법이 잘 안 쓰이는 이유</strong>
+                        VGA(640x480) 영상에서도 수 초~수십 초가 소요되어 실시간 처리가 불가능하다. 학술 벤치마크에서는 최고 성능을 보이지만, 산업 현장에서는 SGM이나 딥러닝 기반 방법이 선호된다.
+                    </div>
+                </div>
+
+                <!-- 5. 시차 맵 품질 문제 -->
+                <h2 id="quality"><i class="fa-solid fa-bug"></i> 시차 맵 품질 문제</h2>
+
+                <p>어떤 알고리즘을 사용하든 스테레오 정합에는 본질적으로 어려운 영역이 존재한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">스테레오 정합의 어려운 영역</text>
+
+                        <!-- 텍스처 부족 -->
+                        <rect x="20" y="45" width="150" height="130" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <rect x="40" y="75" width="110" height="50" rx="4" fill="#ffe0b2"/>
+                        <text x="95" y="104" text-anchor="middle" font-size="10" fill="#e65100">균일한 영역</text>
+                        <text x="95" y="63" text-anchor="middle" font-size="10" fill="#e65100" font-weight="700">텍스처 부족</text>
+                        <text x="95" y="155" text-anchor="middle" font-size="8" fill="#bf360c">벽면, 하늘, 테이블</text>
+
+                        <!-- 가림 -->
+                        <rect x="190" y="45" width="150" height="130" rx="10" fill="#fce4ec" stroke="#c62828" stroke-width="2"/>
+                        <rect x="230" y="70" width="40" height="60" rx="4" fill="#ef9a9a"/>
+                        <rect x="260" y="80" width="40" height="50" rx="4" fill="#ffcdd2" stroke="#c62828" stroke-dasharray="3,2"/>
+                        <text x="265" y="63" text-anchor="middle" font-size="10" fill="#c62828" font-weight="700">가림 (Occlusion)</text>
+                        <text x="265" y="155" text-anchor="middle" font-size="8" fill="#b71c1c">한쪽에만 보이는 영역</text>
+
+                        <!-- 반복 패턴 -->
+                        <rect x="360" y="45" width="150" height="130" rx="10" fill="#e8eaf6" stroke="#3f51b5" stroke-width="2"/>
+                        <g transform="translate(385, 75)">
+                            <rect x="0" y="0" width="15" height="50" rx="2" fill="#c5cae9"/>
+                            <rect x="20" y="0" width="15" height="50" rx="2" fill="#c5cae9"/>
+                            <rect x="40" y="0" width="15" height="50" rx="2" fill="#c5cae9"/>
+                            <rect x="60" y="0" width="15" height="50" rx="2" fill="#c5cae9"/>
+                            <rect x="80" y="0" width="15" height="50" rx="2" fill="#c5cae9"/>
+                        </g>
+                        <text x="435" y="63" text-anchor="middle" font-size="10" fill="#283593" font-weight="700">반복 패턴</text>
+                        <text x="435" y="155" text-anchor="middle" font-size="8" fill="#1a237e">울타리, 타일, 격자</text>
+
+                        <!-- 반사/투명 -->
+                        <rect x="530" y="45" width="150" height="130" rx="10" fill="#e0f7fa" stroke="#00838f" stroke-width="2"/>
+                        <ellipse cx="605" cy="100" rx="45" ry="25" fill="#b2ebf2" stroke="#00838f" stroke-width="1"/>
+                        <line x1="570" y1="85" x2="640" y2="115" stroke="white" stroke-width="2" opacity="0.7"/>
+                        <text x="605" y="63" text-anchor="middle" font-size="10" fill="#00695c" font-weight="700">반사/투명</text>
+                        <text x="605" y="155" text-anchor="middle" font-size="8" fill="#004d40">유리, 금속, 물</text>
+                    </svg>
+                    <div class="caption">그림 4. 스테레오 정합이 어려운 4가지 대표적 영역</div>
+                </div>
+
+                <h3 id="quality-post"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 후처리 기법</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">LR Check</span>
+                        <span class="term-desc">좌→우, 우→좌 시차 맵을 각각 계산 후 차이가 임계값(보통 1px) 초과인 픽셀을 가림 영역으로 마킹.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">서브픽셀 보간</span>
+                        <span class="term-desc">비용 함수의 최소값 주변 3점에 포물선 피팅하여 0.1px 이하의 정밀도 달성.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">미디언 필터</span>
+                        <span class="term-desc">스파이크 형태의 오정합(Salt-and-pepper noise)을 제거. 3x3 또는 5x5.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">WLS 필터</span>
+                        <span class="term-desc">Weighted Least Squares 필터로 물체 경계를 보존하면서 시차 맵을 스무딩. OpenCV <code>ximgproc::DisparityWLSFilter</code>.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">스펙클 제거</span>
+                        <span class="term-desc">작은 고립 영역(speckle)을 무효화. <code>filterSpeckles()</code>로 연결 요소 크기 기반 필터링.</span>
+                    </div>
+                </div>
+
+                <!-- 6. 알고리즘 비교 테이블 -->
+                <h2 id="comparison"><i class="fa-solid fa-scale-balanced"></i> 알고리즘 비교 테이블</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>Block Matching</th>
+                            <th>SGM</th>
+                            <th>Graph Cut</th>
+                            <th>Belief Propagation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">분류</td>
+                            <td>로컬 (Local)</td>
+                            <td>세미글로벌</td>
+                            <td>글로벌 (Global)</td>
+                            <td>글로벌 (Global)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">비용 집계</td>
+                            <td>윈도우 합산</td>
+                            <td>8~16 경로 합산</td>
+                            <td>전역 에너지 최소화</td>
+                            <td>메시지 전달</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">속도 (VGA)</td>
+                            <td>~5 ms</td>
+                            <td>~30 ms</td>
+                            <td>~5,000 ms</td>
+                            <td>~2,000 ms</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">품질</td>
+                            <td>낮음</td>
+                            <td>높음</td>
+                            <td>매우 높음</td>
+                            <td>매우 높음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">텍스처 부족</td>
+                            <td>매우 취약</td>
+                            <td>양호</td>
+                            <td>우수</td>
+                            <td>우수</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">경계 정밀도</td>
+                            <td>낮음 (번짐)</td>
+                            <td>양호</td>
+                            <td>우수</td>
+                            <td>양호</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">GPU 가속</td>
+                            <td>용이</td>
+                            <td>용이</td>
+                            <td>어려움</td>
+                            <td>보통</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">실시간 가능</td>
+                            <td>가능</td>
+                            <td>가능</td>
+                            <td>불가</td>
+                            <td>불가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">OpenCV 지원</td>
+                            <td>StereoBM</td>
+                            <td>StereoSGBM</td>
+                            <td>미지원</td>
+                            <td>미지원</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">주요 용도</td>
+                            <td>임베디드, 저사양</td>
+                            <td>자율주행, 산업검사</td>
+                            <td>학술 연구</td>
+                            <td>학술 연구</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>딥러닝 기반 스테레오 정합</strong>
+                        최근에는 AANet, RAFT-Stereo, CREStereo 등 딥러닝 모델이 Middlebury/KITTI 벤치마크에서 전통적 방법을 크게 앞선다. 다만 학습 데이터 의존성, 도메인 일반화, 추론 속도 문제가 산업 적용의 과제로 남아 있다.
+                    </div>
+                </div>
+
+                <!-- 7. OpenCV 구현 -->
+                <h2 id="opencv"><i class="fa-solid fa-code"></i> OpenCV 구현</h2>
+
+                <h3 id="opencv-bm"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> StereoBM (Block Matching)</h3>
+
+<pre><code><span class="code-keyword">import</span> cv2
+<span class="code-keyword">import</span> numpy <span class="code-keyword">as</span> np
+
+<span class="code-comment"># 영상 로드 (그레이스케일)</span>
+imgL = cv2.<span class="code-func">imread</span>(<span class="code-string">'left.png'</span>, cv2.IMREAD_GRAYSCALE)
+imgR = cv2.<span class="code-func">imread</span>(<span class="code-string">'right.png'</span>, cv2.IMREAD_GRAYSCALE)
+
+<span class="code-comment"># StereoBM 생성</span>
+stereo = cv2.<span class="code-func">StereoBM_create</span>(
+    numDisparities=<span class="code-number">128</span>,   <span class="code-comment"># 시차 탐색 범위 (16의 배수)</span>
+    blockSize=<span class="code-number">15</span>           <span class="code-comment"># 블록 크기 (홀수, 5~51)</span>
+)
+
+<span class="code-comment"># 시차 맵 계산 (16배 스케일된 정수)</span>
+disparity = stereo.<span class="code-func">compute</span>(imgL, imgR)
+disparity_float = disparity.<span class="code-func">astype</span>(np.float32) / <span class="code-number">16.0</span>
+
+<span class="code-comment"># 시각화</span>
+disp_vis = cv2.<span class="code-func">normalize</span>(disparity_float, <span class="code-number">None</span>, <span class="code-number">0</span>, <span class="code-number">255</span>, cv2.NORM_MINMAX)
+cv2.<span class="code-func">imshow</span>(<span class="code-string">'Disparity BM'</span>, disp_vis.<span class="code-func">astype</span>(np.uint8))
+cv2.<span class="code-func">waitKey</span>(<span class="code-number">0</span>)</code></pre>
+
+                <h3 id="opencv-sgbm"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> StereoSGBM (Semi-Global Block Matching)</h3>
+
+<pre><code><span class="code-comment"># StereoSGBM 파라미터 설정</span>
+numDisparities = <span class="code-number">128</span>
+blockSize = <span class="code-number">5</span>
+
+stereo = cv2.<span class="code-func">StereoSGBM_create</span>(
+    minDisparity=<span class="code-number">0</span>,
+    numDisparities=numDisparities,
+    blockSize=blockSize,
+    P1=<span class="code-number">8</span> * <span class="code-number">3</span> * blockSize ** <span class="code-number">2</span>,      <span class="code-comment"># 소형 패널티</span>
+    P2=<span class="code-number">32</span> * <span class="code-number">3</span> * blockSize ** <span class="code-number">2</span>,     <span class="code-comment"># 대형 패널티 (P2 > P1)</span>
+    disp12MaxDiff=<span class="code-number">1</span>,               <span class="code-comment"># LR 일관성 검사</span>
+    uniquenessRatio=<span class="code-number">10</span>,            <span class="code-comment"># 최적/차선 비용 차이 비율</span>
+    speckleWindowSize=<span class="code-number">100</span>,         <span class="code-comment"># 스펙클 필터 윈도우</span>
+    speckleRange=<span class="code-number">32</span>,               <span class="code-comment"># 스펙클 시차 범위</span>
+    mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY  <span class="code-comment"># 최적화 모드</span>
+)
+
+<span class="code-comment"># 시차 맵 계산</span>
+disparity = stereo.<span class="code-func">compute</span>(imgL, imgR)
+disparity_float = disparity.<span class="code-func">astype</span>(np.float32) / <span class="code-number">16.0</span></code></pre>
+
+                <h3 id="opencv-wls"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> WLS 필터로 후처리</h3>
+
+<pre><code><span class="code-keyword">from</span> cv2 <span class="code-keyword">import</span> ximgproc
+
+<span class="code-comment"># 좌/우 매처 생성</span>
+left_matcher = cv2.<span class="code-func">StereoSGBM_create</span>(...) <span class="code-comment"># 위와 동일 파라미터</span>
+right_matcher = ximgproc.<span class="code-func">createRightMatcher</span>(left_matcher)
+
+<span class="code-comment"># 좌/우 시차 맵 계산</span>
+dispL = left_matcher.<span class="code-func">compute</span>(imgL, imgR)
+dispR = right_matcher.<span class="code-func">compute</span>(imgR, imgL)
+
+<span class="code-comment"># WLS 필터 적용</span>
+wls_filter = ximgproc.<span class="code-func">createDisparityWLSFilter</span>(left_matcher)
+wls_filter.<span class="code-func">setLambda</span>(<span class="code-number">8000</span>)      <span class="code-comment"># 스무딩 강도</span>
+wls_filter.<span class="code-func">setSigmaColor</span>(<span class="code-number">1.5</span>)  <span class="code-comment"># 에지 보존 정도</span>
+
+<span class="code-comment"># 필터링된 시차 맵</span>
+filtered_disp = wls_filter.<span class="code-func">filter</span>(dispL, imgL, disparity_map_right=dispR)
+filtered_disp = filtered_disp.<span class="code-func">astype</span>(np.float32) / <span class="code-number">16.0</span></code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>파라미터 튜닝 가이드</strong>
+                        <code>numDisparities</code>는 장면의 깊이 범위에 맞게, <code>blockSize</code>는 텍스처에 따라 조절한다. 텍스처가 풍부하면 작게(5~7), 부족하면 크게(15~21). P1/P2는 blockSize에 비례하여 설정하되, <strong>P2는 항상 P1보다 커야</strong> 한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Hirschmuller, H. (2005). "Accurate and Efficient Stereo Processing by Semi-Global Matching and Mutual Information"</li>
+                        <li>Scharstein, D. & Szeliski, R. (2002). "A Taxonomy and Evaluation of Dense Two-Frame Stereo Correspondence Algorithms"</li>
+                        <li>OpenCV Documentation — Depth Map from Stereo Images</li>
+                        <li>Middlebury Stereo Evaluation Benchmark v3</li>
+                        <li>KITTI Stereo Benchmark 2015</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-stereo"><i class="fa-solid fa-arrow-left"></i> 3D 스테레오 비전 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-stereo');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-stereo');
+</script>
+
+</body>
+</html>

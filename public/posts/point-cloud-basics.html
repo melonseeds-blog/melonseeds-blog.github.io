@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>포인트 클라우드 처리 기초 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-pc" data-section="what-is-pc">포인트 클라우드란</a>
+        <a href="#libraries" data-section="libraries">주요 라이브러리</a>
+        <a href="#preprocessing" data-section="preprocessing">전처리</a>
+        <a href="#registration" data-section="registration">정합(Registration)</a>
+        <a href="#shape-detection" data-section="shape-detection">평면/형상 검출</a>
+        <a href="#normals" data-section="normals">법선 벡터 추정</a>
+        <a href="#industrial" data-section="industrial">산업 활용</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">3D 스테레오 비전</span>
+                </div>
+                <h1>포인트 클라우드 처리 기초</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 8 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>포인트 클라우드의 개념과 주요 파일 포맷(PLY/PCD/LAS)</li>
+                        <li>PCL, Open3D, CloudCompare 라이브러리 비교</li>
+                        <li>다운샘플링, 노이즈 제거, 정합(ICP) 등 핵심 전처리 기법</li>
+                        <li>RANSAC 기반 형상 검출과 DBSCAN 클러스터링</li>
+                        <li>법선 벡터 추정 및 산업 현장 활용 사례</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-pc">포인트 클라우드란</a></li>
+                        <li><a href="#libraries">주요 라이브러리</a></li>
+                        <li><a href="#preprocessing">전처리</a></li>
+                        <li><a href="#registration">정합(Registration)</a></li>
+                        <li><a href="#shape-detection">평면/형상 검출</a></li>
+                        <li><a href="#normals">법선 벡터 추정</a></li>
+                        <li><a href="#industrial">산업 활용</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 포인트 클라우드란 -->
+                <h2 id="what-is-pc"><i class="fa-solid fa-cubes"></i> 포인트 클라우드란</h2>
+
+                <p>포인트 클라우드(Point Cloud)는 3D 공간에서 물체 표면이나 환경을 나타내는 <strong>점(Point)의 집합</strong>이다. 각 점은 최소한 <code>X, Y, Z</code> 좌표를 가지며, 추가로 색상(RGB), 법선 벡터(Normal), 반사 강도(Intensity) 등의 속성을 포함할 수 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 포인트 클라우드의 핵심 특성</div>
+                    <p>2D 이미지가 격자(Grid) 형태의 픽셀로 구성되는 것과 달리, 포인트 클라우드는 <strong>비정형(Unstructured)</strong> 데이터다. 점 간의 연결 관계나 순서가 없고, 밀도가 균일하지 않다. 이 특성 때문에 전용 알고리즘과 자료구조(KD-Tree, Octree)가 필요하다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 300" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">포인트 클라우드 데이터 구조</text>
+
+                        <!-- 3D 공간 표현 -->
+                        <rect x="30" y="40" width="280" height="240" rx="12" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="170" y="65" text-anchor="middle" font-size="12" fill="#2e7d32" font-weight="700">3D 점 집합</text>
+                        <!-- 점들 -->
+                        <circle cx="80" cy="120" r="4" fill="#2e7d32"/>
+                        <circle cx="120" cy="100" r="4" fill="#388e3c"/>
+                        <circle cx="150" cy="140" r="4" fill="#43a047"/>
+                        <circle cx="100" cy="170" r="4" fill="#2e7d32"/>
+                        <circle cx="180" cy="110" r="4" fill="#66bb6a"/>
+                        <circle cx="200" cy="160" r="4" fill="#388e3c"/>
+                        <circle cx="140" cy="200" r="4" fill="#43a047"/>
+                        <circle cx="230" cy="130" r="4" fill="#2e7d32"/>
+                        <circle cx="250" cy="180" r="4" fill="#66bb6a"/>
+                        <circle cx="90" cy="220" r="4" fill="#388e3c"/>
+                        <circle cx="170" cy="240" r="4" fill="#43a047"/>
+                        <circle cx="220" cy="210" r="4" fill="#2e7d32"/>
+                        <circle cx="260" cy="240" r="4" fill="#66bb6a"/>
+                        <circle cx="70" cy="150" r="4" fill="#43a047"/>
+                        <circle cx="210" cy="90" r="4" fill="#388e3c"/>
+
+                        <!-- 축 -->
+                        <line x1="50" y1="260" x2="290" y2="260" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <line x1="50" y1="260" x2="50" y2="80" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <line x1="50" y1="260" x2="110" y2="275" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <text x="292" y="258" font-size="10" fill="#616161" font-weight="600">X</text>
+                        <text x="42" y="78" font-size="10" fill="#616161" font-weight="600">Z</text>
+                        <text x="112" y="278" font-size="10" fill="#616161" font-weight="600">Y</text>
+
+                        <!-- 속성 정보 -->
+                        <rect x="380" y="40" width="290" height="240" rx="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="525" y="65" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">점(Point) 속성</text>
+
+                        <rect x="400" y="80" width="250" height="36" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="525" y="103" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="600">XYZ 좌표 (필수)</text>
+
+                        <rect x="400" y="126" width="250" height="36" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="525" y="149" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="600">RGB 색상 (선택)</text>
+
+                        <rect x="400" y="172" width="250" height="36" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="525" y="195" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="600">Normal 법선 벡터 (선택)</text>
+
+                        <rect x="400" y="218" width="250" height="36" rx="6" fill="white" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="525" y="241" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="600">Intensity 반사 강도 (선택)</text>
+                    </svg>
+                    <div class="caption">그림 1. 포인트 클라우드의 구조 - 3D 점 집합과 점별 속성</div>
+                </div>
+
+                <h3 id="pc-formats"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 주요 파일 포맷</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>포맷</th>
+                            <th>확장자</th>
+                            <th>특징</th>
+                            <th>주요 사용처</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">PLY</td>
+                            <td>.ply</td>
+                            <td>ASCII/Binary, 메시 포함 가능, 범용</td>
+                            <td>연구, 3D 스캐닝, Open3D</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PCD</td>
+                            <td>.pcd</td>
+                            <td>PCL 전용, ASCII/Binary, 뷰포인트 저장</td>
+                            <td>PCL 기반 프로젝트, 로보틱스</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">LAS/LAZ</td>
+                            <td>.las / .laz</td>
+                            <td>LiDAR 표준, 분류 코드 포함, LAZ는 압축</td>
+                            <td>측량, 지형 매핑, 항공 LiDAR</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">XYZ</td>
+                            <td>.xyz / .txt</td>
+                            <td>단순 텍스트(X Y Z), 가장 간단</td>
+                            <td>빠른 테스트, 데이터 교환</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">E57</td>
+                            <td>.e57</td>
+                            <td>ASTM 표준, 이미지+포인트, 메타데이터</td>
+                            <td>건축, BIM, 3D 스캐너</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 2. 주요 라이브러리 -->
+                <h2 id="libraries"><i class="fa-solid fa-toolbox"></i> 주요 라이브러리</h2>
+
+                <p>포인트 클라우드 처리를 위한 대표적인 도구 세 가지를 비교한다. 프로젝트의 성격과 요구사항에 따라 적합한 도구가 다르다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>PCL</th>
+                            <th>Open3D</th>
+                            <th>CloudCompare</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">언어</td>
+                            <td>C++ (Python 바인딩 일부)</td>
+                            <td>Python / C++</td>
+                            <td>GUI (C++ 기반)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">난이도</td>
+                            <td>높음 (빌드 복잡)</td>
+                            <td>낮음 (pip install)</td>
+                            <td>매우 낮음 (클릭)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">성능</td>
+                            <td>최고 (네이티브 C++)</td>
+                            <td>좋음 (C++ 백엔드)</td>
+                            <td>좋음 (대용량 지원)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">알고리즘</td>
+                            <td>가장 풍부 (200+)</td>
+                            <td>핵심 위주 (100+)</td>
+                            <td>시각화 + 플러그인</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">시각화</td>
+                            <td>VTK 기반 (복잡)</td>
+                            <td>내장 뷰어 (간편)</td>
+                            <td>최고 (전문 3D 뷰어)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">적합 용도</td>
+                            <td>산업용 실시간 시스템</td>
+                            <td>프로토타이핑, 연구</td>
+                            <td>데이터 확인, 수동 분석</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 추천 워크플로우</strong>
+                        Open3D로 빠르게 알고리즘을 프로토타이핑하고, CloudCompare로 결과를 시각적으로 검증한 뒤, 최종 배포 시 PCL(C++)로 포팅하는 방식이 효율적이다.
+                    </div>
+                </div>
+
+                <!-- 3. 전처리 -->
+                <h2 id="preprocessing"><i class="fa-solid fa-filter"></i> 전처리</h2>
+
+                <p>3D 스캐너나 스테레오 카메라에서 획득한 원시 포인트 클라우드는 노이즈, 과도한 밀도, 이상치를 포함한다. 전처리를 통해 데이터를 정제해야 이후 알고리즘이 안정적으로 동작한다.</p>
+
+                <h3 id="downsampling"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 다운샘플링 (Voxel Grid Filter)</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> Voxel Grid 다운샘플링</div>
+                    <p>3D 공간을 일정 크기의 복셀(Voxel, 3D 픽셀)로 분할한 뒤, 각 복셀 내의 점들을 하나의 대표점(중심점)으로 치환한다. 복셀 크기가 클수록 점이 줄어들지만 디테일도 손실된다. 일반적으로 원본의 10~30%로 축소하면서 형상은 유지한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">Voxel Grid 다운샘플링 과정</text>
+
+                        <!-- 원본 -->
+                        <rect x="20" y="35" width="200" height="150" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="120" y="55" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">원본 (밀집)</text>
+                        <circle cx="50" cy="80" r="3" fill="#e65100"/><circle cx="58" cy="85" r="3" fill="#e65100"/>
+                        <circle cx="55" cy="75" r="3" fill="#e65100"/><circle cx="90" cy="100" r="3" fill="#e65100"/>
+                        <circle cx="95" cy="95" r="3" fill="#e65100"/><circle cx="88" cy="105" r="3" fill="#e65100"/>
+                        <circle cx="130" cy="120" r="3" fill="#e65100"/><circle cx="135" cy="115" r="3" fill="#e65100"/>
+                        <circle cx="128" cy="125" r="3" fill="#e65100"/><circle cx="170" cy="90" r="3" fill="#e65100"/>
+                        <circle cx="175" cy="95" r="3" fill="#e65100"/><circle cx="165" cy="88" r="3" fill="#e65100"/>
+                        <circle cx="60" cy="140" r="3" fill="#e65100"/><circle cx="65" cy="145" r="3" fill="#e65100"/>
+                        <circle cx="100" cy="150" r="3" fill="#e65100"/><circle cx="105" cy="155" r="3" fill="#e65100"/>
+                        <circle cx="155" cy="140" r="3" fill="#e65100"/><circle cx="160" cy="145" r="3" fill="#e65100"/>
+                        <circle cx="190" cy="130" r="3" fill="#e65100"/><circle cx="185" cy="135" r="3" fill="#e65100"/>
+
+                        <!-- 화살표 -->
+                        <text x="260" y="115" font-size="11" fill="#616161" font-weight="600">Voxel</text>
+                        <text x="260" y="130" font-size="11" fill="#616161" font-weight="600">Grid</text>
+                        <line x1="240" y1="110" x2="320" y2="110" stroke="#616161" stroke-width="2" marker-end="url(#arr-pc)"/>
+                        <defs><marker id="arr-pc" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#616161"/></marker></defs>
+
+                        <!-- 복셀 그리드 -->
+                        <rect x="330" y="35" width="150" height="150" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="405" y="55" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">복셀 분할</text>
+                        <!-- 그리드 라인 -->
+                        <line x1="330" y1="95" x2="480" y2="95" stroke="#bbdefb" stroke-width="1"/>
+                        <line x1="330" y1="135" x2="480" y2="135" stroke="#bbdefb" stroke-width="1"/>
+                        <line x1="380" y1="60" x2="380" y2="185" stroke="#bbdefb" stroke-width="1"/>
+                        <line x1="430" y1="60" x2="430" y2="185" stroke="#bbdefb" stroke-width="1"/>
+                        <!-- 점 묶음 표시 -->
+                        <circle cx="355" cy="78" r="6" fill="#1565c0" opacity="0.3"/><circle cx="355" cy="78" r="3" fill="#1565c0"/>
+                        <circle cx="405" cy="78" r="6" fill="#1565c0" opacity="0.3"/><circle cx="405" cy="78" r="3" fill="#1565c0"/>
+                        <circle cx="455" cy="78" r="6" fill="#1565c0" opacity="0.3"/><circle cx="455" cy="78" r="3" fill="#1565c0"/>
+                        <circle cx="355" cy="115" r="6" fill="#1565c0" opacity="0.3"/><circle cx="355" cy="115" r="3" fill="#1565c0"/>
+                        <circle cx="405" cy="115" r="6" fill="#1565c0" opacity="0.3"/><circle cx="405" cy="115" r="3" fill="#1565c0"/>
+                        <circle cx="455" cy="155" r="6" fill="#1565c0" opacity="0.3"/><circle cx="455" cy="155" r="3" fill="#1565c0"/>
+
+                        <!-- 화살표 -->
+                        <line x1="500" y1="110" x2="530" y2="110" stroke="#616161" stroke-width="2" marker-end="url(#arr-pc)"/>
+
+                        <!-- 결과 -->
+                        <rect x="540" y="35" width="140" height="150" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="610" y="55" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">결과 (정제)</text>
+                        <circle cx="570" cy="85" r="4" fill="#2e7d32"/>
+                        <circle cx="610" cy="95" r="4" fill="#2e7d32"/>
+                        <circle cx="650" cy="85" r="4" fill="#2e7d32"/>
+                        <circle cx="570" cy="130" r="4" fill="#2e7d32"/>
+                        <circle cx="610" cy="140" r="4" fill="#2e7d32"/>
+                        <circle cx="650" cy="155" r="4" fill="#2e7d32"/>
+                    </svg>
+                    <div class="caption">그림 2. Voxel Grid 다운샘플링 - 밀집 점군을 균일한 밀도로 축소</div>
+                </div>
+
+                <h3 id="noise-removal"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 노이즈 제거 (Outlier Removal)</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-chart-bar" style="color:#1565c0;"></i> Statistical Outlier Removal</h4>
+                        <p>각 점에서 k개 이웃까지의 평균 거리를 계산하고, 전체 평균에서 표준편차의 n배를 초과하는 점을 이상치로 제거한다.</p>
+                        <ul>
+                            <li><strong>파라미터</strong>: k(이웃 수), std_ratio(표준편차 배수)</li>
+                            <li><strong>장점</strong>: 글로벌 통계 기반, 안정적</li>
+                            <li><strong>적합</strong>: 균일 밀도 데이터</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle-dot" style="color:#9c27b0;"></i> Radius Outlier Removal</h4>
+                        <p>각 점을 중심으로 반경 r 내에 존재하는 이웃 점의 수를 세어, 최소 개수 미만인 점을 제거한다.</p>
+                        <ul>
+                            <li><strong>파라미터</strong>: radius(반경), min_neighbors(최소 이웃 수)</li>
+                            <li><strong>장점</strong>: 직관적, 국소 밀도 기반</li>
+                            <li><strong>적합</strong>: 경계 영역 고립점 제거</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>전처리 순서가 중요하다</strong>
+                        일반적으로 <strong>다운샘플링 -> 노이즈 제거</strong> 순서로 진행한다. 다운샘플링으로 데이터 양을 줄이면 노이즈 제거 알고리즘의 연산 시간이 크게 단축된다. 단, 극소 노이즈가 다운샘플링 결과에 영향을 줄 수 있으므로 상황에 따라 순서를 조정한다.
+                    </div>
+                </div>
+
+                <!-- 4. 정합(Registration) -->
+                <h2 id="registration"><i class="fa-solid fa-object-group"></i> 정합(Registration)</h2>
+
+                <p>서로 다른 시점에서 촬영한 여러 포인트 클라우드를 하나의 좌표계로 합치는 과정을 <strong>정합(Registration)</strong>이라 한다. 3D 스캐닝, 로봇 네비게이션, 물체 인식 등에서 핵심 단계다.</p>
+
+                <h3 id="icp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ICP (Iterative Closest Point)</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> ICP 알고리즘</div>
+                    <p>가장 널리 사용되는 정합 알고리즘. 두 포인트 클라우드(Source, Target) 간의 가장 가까운 점 쌍을 찾고, 이 쌍들 사이의 거리를 최소화하는 변환(회전 + 이동)을 반복적으로 계산한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 220" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">ICP 정합 과정</text>
+
+                        <!-- Step 1 -->
+                        <rect x="20" y="35" width="150" height="170" rx="10" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="95" y="55" text-anchor="middle" font-size="10" fill="#c2185b" font-weight="700">1. 초기 상태</text>
+                        <!-- Source (빨강) -->
+                        <circle cx="55" cy="100" r="3" fill="#e91e63"/><circle cx="70" cy="90" r="3" fill="#e91e63"/>
+                        <circle cx="85" cy="110" r="3" fill="#e91e63"/><circle cx="60" cy="130" r="3" fill="#e91e63"/>
+                        <circle cx="80" cy="140" r="3" fill="#e91e63"/>
+                        <!-- Target (파랑) -->
+                        <circle cx="100" cy="120" r="3" fill="#1565c0"/><circle cx="120" cy="105" r="3" fill="#1565c0"/>
+                        <circle cx="135" cy="130" r="3" fill="#1565c0"/><circle cx="110" cy="150" r="3" fill="#1565c0"/>
+                        <circle cx="130" cy="160" r="3" fill="#1565c0"/>
+                        <text x="55" y="180" font-size="9" fill="#e91e63">Source</text>
+                        <text x="110" y="180" font-size="9" fill="#1565c0">Target</text>
+
+                        <!-- 화살표 -->
+                        <text x="200" y="115" font-size="9" fill="#616161">대응점</text>
+                        <text x="200" y="128" font-size="9" fill="#616161">탐색</text>
+                        <line x1="185" y1="120" x2="240" y2="120" stroke="#616161" stroke-width="1.5" marker-end="url(#arr-pc)"/>
+
+                        <!-- Step 2 -->
+                        <rect x="250" y="35" width="150" height="170" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="325" y="55" text-anchor="middle" font-size="10" fill="#e65100" font-weight="700">2. 대응점 매칭</text>
+                        <circle cx="280" cy="100" r="3" fill="#e91e63"/><circle cx="295" cy="90" r="3" fill="#e91e63"/>
+                        <circle cx="310" cy="110" r="3" fill="#e91e63"/>
+                        <circle cx="325" cy="115" r="3" fill="#1565c0"/><circle cx="340" cy="100" r="3" fill="#1565c0"/>
+                        <circle cx="355" cy="125" r="3" fill="#1565c0"/>
+                        <line x1="280" y1="100" x2="325" y2="115" stroke="#ff9800" stroke-width="1" stroke-dasharray="3,2"/>
+                        <line x1="295" y1="90" x2="340" y2="100" stroke="#ff9800" stroke-width="1" stroke-dasharray="3,2"/>
+                        <line x1="310" y1="110" x2="355" y2="125" stroke="#ff9800" stroke-width="1" stroke-dasharray="3,2"/>
+                        <text x="325" y="175" text-anchor="middle" font-size="9" fill="#e65100">Closest Point Pairs</text>
+
+                        <!-- 화살표 -->
+                        <text x="425" y="115" font-size="9" fill="#616161">변환</text>
+                        <text x="425" y="128" font-size="9" fill="#616161">계산</text>
+                        <line x1="415" y1="120" x2="470" y2="120" stroke="#616161" stroke-width="1.5" marker-end="url(#arr-pc)"/>
+
+                        <!-- Step 3 -->
+                        <rect x="480" y="35" width="200" height="170" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="580" y="55" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="700">3. 수렴 (정합 완료)</text>
+                        <circle cx="530" cy="100" r="3" fill="#e91e63"/><circle cx="550" cy="90" r="3" fill="#e91e63"/>
+                        <circle cx="570" cy="110" r="3" fill="#e91e63"/><circle cx="540" cy="130" r="3" fill="#e91e63"/>
+                        <circle cx="560" cy="140" r="3" fill="#e91e63"/>
+                        <circle cx="533" cy="103" r="3" fill="#1565c0"/><circle cx="553" cy="92" r="3" fill="#1565c0"/>
+                        <circle cx="572" cy="113" r="3" fill="#1565c0"/><circle cx="542" cy="132" r="3" fill="#1565c0"/>
+                        <circle cx="562" cy="142" r="3" fill="#1565c0"/>
+                        <text x="580" y="175" text-anchor="middle" font-size="9" fill="#2e7d32">두 클라우드가 정렬됨</text>
+
+                        <!-- 반복 화살표 -->
+                        <path d="M400,40 C420,25 450,25 465,40" fill="none" stroke="#9e9e9e" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr-pc)"/>
+                        <text x="430" y="30" text-anchor="middle" font-size="8" fill="#9e9e9e">반복(iterate)</text>
+                    </svg>
+                    <div class="caption">그림 3. ICP 알고리즘 - 대응점 매칭과 변환 계산을 반복하여 정합</div>
+                </div>
+
+                <h3 id="registration-methods"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 초기 정렬과 RANSAC 기반 정합</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">초기 정렬 필요성</span>
+                        <span class="term-desc">ICP는 <strong>로컬 최적화</strong> 알고리즘이므로, 초기 위치가 너무 멀면 잘못된 결과에 수렴한다. 대략적인 초기 정렬(Coarse Alignment)을 먼저 수행해야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">FPFH + RANSAC</span>
+                        <span class="term-desc">Fast Point Feature Histogram(FPFH) 특징점을 추출하고, RANSAC으로 대응 관계를 찾아 글로벌 정합을 수행한다. ICP의 초기 정렬로 사용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Point-to-Plane ICP</span>
+                        <span class="term-desc">기본 ICP(Point-to-Point) 대신 점과 평면 간 거리를 최소화하는 변형. 평면이 많은 환경에서 수렴 속도가 5~10배 빠르다.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>ICP 실패 원인과 대처</strong>
+                        오버랩(겹치는 영역)이 30% 미만이거나, 반복적 구조(평면벽, 복도)에서는 ICP가 실패할 수 있다. 이 경우 특징점 기반 정합(FPFH+RANSAC)을 선행하거나, 오버랩 비율이 높도록 스캔 경로를 조정해야 한다.
+                    </div>
+                </div>
+
+                <!-- 5. 평면/형상 검출 -->
+                <h2 id="shape-detection"><i class="fa-solid fa-shapes"></i> 평면/형상 검출</h2>
+
+                <p>포인트 클라우드에서 특정 기하학적 형상(평면, 실린더, 구 등)을 자동으로 검출하는 것은 산업 검사, 역설계, 환경 인식에서 핵심 작업이다.</p>
+
+                <h3 id="ransac-fitting"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> RANSAC 평면 피팅</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> RANSAC (Random Sample Consensus)</div>
+                    <p>무작위로 최소 점(평면의 경우 3개)을 선택하여 모델을 세우고, 나머지 점들이 이 모델에 부합하는지(Inlier/Outlier) 판별하는 과정을 반복한다. 가장 많은 Inlier를 가진 모델을 최종 결과로 채택한다. 노이즈와 이상치에 강건하다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 230" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">RANSAC 평면 검출 과정</text>
+
+                        <!-- Step 1: 랜덤 3점 선택 -->
+                        <rect x="20" y="35" width="200" height="180" rx="10" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+                        <text x="120" y="55" text-anchor="middle" font-size="10" fill="#7b1fa2" font-weight="700">1. 랜덤 3점 선택</text>
+                        <!-- 점들 -->
+                        <circle cx="60" cy="90" r="3" fill="#bdbdbd"/><circle cx="80" cy="100" r="3" fill="#bdbdbd"/>
+                        <circle cx="100" cy="85" r="3" fill="#bdbdbd"/><circle cx="130" cy="95" r="3" fill="#bdbdbd"/>
+                        <circle cx="150" cy="105" r="3" fill="#bdbdbd"/><circle cx="170" cy="90" r="3" fill="#bdbdbd"/>
+                        <circle cx="70" cy="130" r="3" fill="#bdbdbd"/><circle cx="110" cy="140" r="3" fill="#bdbdbd"/>
+                        <circle cx="140" cy="135" r="3" fill="#bdbdbd"/><circle cx="180" cy="125" r="3" fill="#bdbdbd"/>
+                        <!-- 선택된 3점 -->
+                        <circle cx="80" cy="100" r="6" fill="none" stroke="#9c27b0" stroke-width="2"/>
+                        <circle cx="130" cy="95" r="6" fill="none" stroke="#9c27b0" stroke-width="2"/>
+                        <circle cx="170" cy="90" r="6" fill="none" stroke="#9c27b0" stroke-width="2"/>
+                        <!-- 이상치 -->
+                        <circle cx="90" cy="170" r="3" fill="#ef4444"/>
+                        <circle cx="160" cy="175" r="3" fill="#ef4444"/>
+                        <text x="120" y="200" text-anchor="middle" font-size="9" fill="#7b1fa2">3개 점으로 평면 정의</text>
+
+                        <!-- 화살표 -->
+                        <line x1="230" y1="125" x2="260" y2="125" stroke="#616161" stroke-width="1.5" marker-end="url(#arr-pc)"/>
+
+                        <!-- Step 2: 평면 모델 + Inlier -->
+                        <rect x="270" y="35" width="200" height="180" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="370" y="55" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="700">2. Inlier/Outlier 분류</text>
+                        <!-- 평면 (선으로 표현) -->
+                        <line x1="285" y1="105" x2="455" y2="85" stroke="#1565c0" stroke-width="2" stroke-dasharray="5,3"/>
+                        <!-- Inlier (파랑) -->
+                        <circle cx="310" cy="100" r="3" fill="#1565c0"/><circle cx="330" cy="97" r="3" fill="#1565c0"/>
+                        <circle cx="350" cy="95" r="3" fill="#1565c0"/><circle cx="370" cy="93" r="3" fill="#1565c0"/>
+                        <circle cx="390" cy="91" r="3" fill="#1565c0"/><circle cx="410" cy="89" r="3" fill="#1565c0"/>
+                        <circle cx="430" cy="87" r="3" fill="#1565c0"/>
+                        <!-- Outlier (빨강) -->
+                        <circle cx="340" cy="155" r="3" fill="#ef4444"/>
+                        <circle cx="400" cy="165" r="3" fill="#ef4444"/>
+                        <text x="325" y="195" font-size="9" fill="#1565c0">Inlier</text>
+                        <text x="395" y="195" font-size="9" fill="#ef4444">Outlier</text>
+
+                        <!-- 화살표 -->
+                        <line x1="480" y1="125" x2="510" y2="125" stroke="#616161" stroke-width="1.5" marker-end="url(#arr-pc)"/>
+
+                        <!-- Step 3: 결과 -->
+                        <rect x="520" y="35" width="160" height="180" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="600" y="55" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="700">3. 최적 평면 검출</text>
+                        <rect x="535" y="80" width="130" height="60" rx="6" fill="#a5d6a7" opacity="0.5" stroke="#4caf50" stroke-width="1"/>
+                        <text x="600" y="115" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">검출된 평면</text>
+                        <circle cx="555" cy="95" r="3" fill="#2e7d32"/><circle cx="575" cy="93" r="3" fill="#2e7d32"/>
+                        <circle cx="595" cy="91" r="3" fill="#2e7d32"/><circle cx="615" cy="89" r="3" fill="#2e7d32"/>
+                        <circle cx="635" cy="87" r="3" fill="#2e7d32"/><circle cx="645" cy="86" r="3" fill="#2e7d32"/>
+                        <text x="600" y="175" text-anchor="middle" font-size="9" fill="#2e7d32">ax + by + cz + d = 0</text>
+                        <text x="600" y="200" text-anchor="middle" font-size="8" fill="#66bb6a">N회 반복 중 최다 Inlier</text>
+                    </svg>
+                    <div class="caption">그림 4. RANSAC 평면 검출 - 무작위 샘플링과 반복을 통한 강건한 평면 피팅</div>
+                </div>
+
+                <h3 id="shape-types"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 실린더/구 검출과 클러스터링</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">실린더 검출</span>
+                        <span class="term-desc">RANSAC 모델을 실린더로 확장. 7개 파라미터(중심축 방향 3 + 축 위의 점 3 + 반지름 1)를 추정. 파이프, 볼트 등 원통형 부품 검사에 활용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">구(Sphere) 검출</span>
+                        <span class="term-desc">4개 파라미터(중심 XYZ + 반지름). 볼 베어링, 구형 부품의 위치와 크기 측정에 사용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">DBSCAN 클러스터링</span>
+                        <span class="term-desc">밀도 기반 군집화 알고리즘. 가까운 점들을 하나의 클러스터로 묶고, 고립된 점은 노이즈로 분류. 형상 검출 전에 물체 단위로 분리할 때 유용.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>형상 검출의 일반적인 파이프라인</strong>
+                        다운샘플링 -> 노이즈 제거 -> DBSCAN 클러스터링 -> 각 클러스터에 RANSAC 적용 -> 형상 파라미터 추출. 이 순서를 따르면 복잡한 장면에서도 개별 형상을 안정적으로 검출할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 6. 법선 벡터 추정 -->
+                <h2 id="normals"><i class="fa-solid fa-arrows-up-down-left-right"></i> 법선 벡터 추정</h2>
+
+                <p>법선 벡터(Normal Vector)는 각 점에서의 <strong>표면 방향</strong>을 나타낸다. 조명 계산, 메시 생성, ICP 정합, 표면 재구성 등 거의 모든 고급 처리에서 필수적으로 사용된다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 법선 벡터 추정 원리</div>
+                    <p>각 점의 k개 최근접 이웃(k-NN)을 찾고, 이 이웃 점들로 <strong>공분산 행렬(Covariance Matrix)</strong>을 구성한다. 고유값 분해(PCA)를 수행하면 가장 작은 고유값에 대응하는 고유벡터가 법선 방향이 된다. 즉, 이웃 점들이 이루는 국소 평면에 수직인 방향을 법선으로 추정한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 220" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="20" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">법선 벡터 추정 과정</text>
+
+                        <!-- k-NN 탐색 -->
+                        <rect x="20" y="35" width="200" height="170" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="120" y="55" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="700">1. k-NN 이웃 탐색</text>
+                        <!-- 중심점 -->
+                        <circle cx="120" cy="120" r="5" fill="#e91e63"/>
+                        <!-- 이웃 점 -->
+                        <circle cx="95" cy="105" r="3" fill="#1565c0"/>
+                        <circle cx="140" cy="108" r="3" fill="#1565c0"/>
+                        <circle cx="105" cy="135" r="3" fill="#1565c0"/>
+                        <circle cx="145" cy="130" r="3" fill="#1565c0"/>
+                        <circle cx="110" cy="100" r="3" fill="#1565c0"/>
+                        <circle cx="130" cy="140" r="3" fill="#1565c0"/>
+                        <!-- 탐색 반경 -->
+                        <circle cx="120" cy="120" r="35" fill="none" stroke="#64b5f6" stroke-width="1" stroke-dasharray="4,2"/>
+                        <!-- 비이웃 점 -->
+                        <circle cx="50" cy="80" r="3" fill="#bdbdbd"/>
+                        <circle cx="180" cy="160" r="3" fill="#bdbdbd"/>
+                        <circle cx="170" cy="75" r="3" fill="#bdbdbd"/>
+                        <text x="120" y="185" text-anchor="middle" font-size="9" fill="#1565c0">k=6 이웃 선택</text>
+
+                        <!-- 화살표 -->
+                        <line x1="230" y1="120" x2="270" y2="120" stroke="#616161" stroke-width="1.5" marker-end="url(#arr-pc)"/>
+                        <text x="250" y="110" text-anchor="middle" font-size="8" fill="#616161">PCA</text>
+
+                        <!-- PCA 결과 -->
+                        <rect x="280" y="35" width="200" height="170" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="380" y="55" text-anchor="middle" font-size="10" fill="#e65100" font-weight="700">2. 공분산 행렬 + PCA</text>
+                        <!-- 국소 평면 -->
+                        <line x1="305" y1="145" x2="455" y2="105" stroke="#ff9800" stroke-width="2"/>
+                        <!-- 점들이 평면 위에 -->
+                        <circle cx="320" cy="140" r="3" fill="#e65100"/>
+                        <circle cx="350" cy="132" r="3" fill="#e65100"/>
+                        <circle cx="380" cy="124" r="3" fill="#e65100"/>
+                        <circle cx="410" cy="116" r="3" fill="#e65100"/>
+                        <circle cx="440" cy="108" r="3" fill="#e65100"/>
+                        <!-- 고유벡터 (법선) -->
+                        <line x1="380" y1="124" x2="360" y2="70" stroke="#9c27b0" stroke-width="2.5" marker-end="url(#arr-normal)"/>
+                        <defs><marker id="arr-normal" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#9c27b0"/></marker></defs>
+                        <text x="345" y="68" font-size="9" fill="#9c27b0" font-weight="600">n</text>
+                        <text x="380" y="185" text-anchor="middle" font-size="9" fill="#e65100">최소 고유값의 고유벡터 = 법선</text>
+
+                        <!-- 화살표 -->
+                        <line x1="490" y1="120" x2="520" y2="120" stroke="#616161" stroke-width="1.5" marker-end="url(#arr-pc)"/>
+
+                        <!-- 시각화 결과 -->
+                        <rect x="530" y="35" width="150" height="170" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="605" y="55" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="700">3. 법선 시각화</text>
+                        <!-- 곡면 위 점 + 법선 -->
+                        <circle cx="560" cy="140" r="3" fill="#2e7d32"/>
+                        <line x1="560" y1="140" x2="550" y2="110" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#arr-n2)"/>
+                        <circle cx="580" cy="130" r="3" fill="#2e7d32"/>
+                        <line x1="580" y1="130" x2="575" y2="100" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#arr-n2)"/>
+                        <circle cx="600" cy="115" r="3" fill="#2e7d32"/>
+                        <line x1="600" y1="115" x2="600" y2="85" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#arr-n2)"/>
+                        <circle cx="620" cy="105" r="3" fill="#2e7d32"/>
+                        <line x1="620" y1="105" x2="625" y2="75" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#arr-n2)"/>
+                        <circle cx="645" cy="100" r="3" fill="#2e7d32"/>
+                        <line x1="645" y1="100" x2="655" y2="72" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#arr-n2)"/>
+                        <defs><marker id="arr-n2" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto"><path d="M0,0 L6,2.5 L0,5Z" fill="#2e7d32"/></marker></defs>
+                        <text x="605" y="185" text-anchor="middle" font-size="9" fill="#2e7d32">표면 방향 표시</text>
+                    </svg>
+                    <div class="caption">그림 5. 법선 벡터 추정 - k-NN 이웃으로 국소 평면을 구하고 수직 방향을 법선으로 설정</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>k 값 선택 가이드</strong>
+                        k가 너무 작으면 노이즈에 민감하고, 너무 크면 세밀한 형상을 무시한다. 일반적으로 <code>k=20~50</code> 범위에서 시작하고, 데이터 밀도와 곡률에 따라 조정한다. Open3D에서는 <code>estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=30))</code>로 설정한다.
+                    </div>
+                </div>
+
+                <!-- 7. 산업 활용 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 활용</h2>
+
+                <p>포인트 클라우드 처리 기술은 제조업, 건설, 자동차, 물류 등 다양한 산업 현장에서 <strong>비접촉 3D 측정</strong>의 핵심으로 활용되고 있다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-cube" style="color:#1565c0;"></i> 체적 측정</h4>
+                        <p>적재된 원자재, 곡물, 광석 등의 부피를 포인트 클라우드로 계산. 메시 생성 후 부피 적분 또는 복셀 기반 근사.</p>
+                        <ul>
+                            <li>물류 창고 적재량 모니터링</li>
+                            <li>광산/건설 현장 토량 계산</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-ruler-combined" style="color:#9c27b0;"></i> 평탄도 검사</h4>
+                        <p>RANSAC으로 기준 평면을 피팅하고, 각 점에서 평면까지의 거리 편차를 분석하여 평탄도를 정량화.</p>
+                        <ul>
+                            <li>자동차 패널 표면 검사</li>
+                            <li>PCB 기판 휨(Warpage) 측정</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrows-left-right" style="color:#e65100;"></i> 갭/단차 측정</h4>
+                        <p>두 부품 접합면의 틈새(Gap)와 높이차(Flush)를 포인트 클라우드 단면 분석으로 측정. 자동차 바디 조립 품질 관리의 핵심.</p>
+                        <ul>
+                            <li>자동차 도어/펜더 갭 측정</li>
+                            <li>전자제품 외관 단차 검사</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-rotate" style="color:#2e7d32;"></i> 역설계 (Reverse Engineering)</h4>
+                        <p>실물 부품을 3D 스캔하여 CAD 모델로 변환. 표면 재구성(Poisson, Ball Pivoting) 후 NURBS 변환.</p>
+                        <ul>
+                            <li>단종 부품 복원 및 재생산</li>
+                            <li>금형/치공구 디지털화</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>산업용 3D 센서 선택 기준</strong>
+                        체적/토량 측정처럼 넓은 영역은 LiDAR나 ToF 카메라, 평탄도/갭 측정처럼 정밀한 영역은 구조광(Structured Light) 또는 스테레오 카메라가 적합하다. 센서의 정확도(accuracy)와 정밀도(precision)를 구분하여 요구사항에 맞게 선택해야 한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>PCL (Point Cloud Library) — pointclouds.org</li>
+                        <li>Open3D — www.open3d.org / Documentation</li>
+                        <li>CloudCompare — www.cloudcompare.org</li>
+                        <li>Rusu, R.B. & Cousins, S. — "3D is here: Point Cloud Library (PCL)", ICRA 2011</li>
+                        <li>Fischler, M.A. & Bolles, R.C. — "Random Sample Consensus", Communications of the ACM, 1981</li>
+                        <li>Besl, P.J. & McKay, N.D. — "A Method for Registration of 3-D Shapes", IEEE TPAMI, 1992</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-stereo"><i class="fa-solid fa-arrow-left"></i> 3D 스테레오 비전 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-stereo');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-stereo');
+</script>
+
+</body>
+</html>

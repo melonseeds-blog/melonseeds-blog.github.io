@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시차 맵에서 3D 포인트 클라우드로 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 18px 22px; overflow-x: auto; font-size: 0.85rem;
+            line-height: 1.6; margin: 16px 0;
+            font-family: 'Consolas', 'D2Coding', monospace;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .func { color: #a5f3fc; }
+        pre .string { color: #86efac; }
+        pre .number { color: #fca5a5; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#disparity-map" data-section="disparity-map">시차 맵이란</a>
+        <a href="#disparity-to-depth" data-section="disparity-to-depth">Disparity to Depth</a>
+        <a href="#q-matrix" data-section="q-matrix">Q 행렬과 재투영</a>
+        <a href="#point-cloud" data-section="point-cloud">포인트 클라우드 생성</a>
+        <a href="#filtering" data-section="filtering">노이즈 제거</a>
+        <a href="#visualization" data-section="visualization">시각화</a>
+        <a href="#precision" data-section="precision">정밀도 한계</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">3D 스테레오 비전</span>
+                </div>
+                <h1>시차 맵에서 3D 포인트 클라우드로</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 7 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>시차 맵(Disparity Map)의 정의와 물리적 의미</li>
+                        <li>Z = f*B/d 공식을 이용한 깊이(Depth) 변환 원리</li>
+                        <li>Q 행렬과 reprojectImageTo3D 함수를 이용한 3D 재투영</li>
+                        <li>포인트 클라우드 생성, 노이즈 필터링, 시각화 도구 활용</li>
+                        <li>거리에 따른 깊이 정밀도 한계와 서브픽셀 시차의 중요성</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#disparity-map">시차 맵(Disparity Map)이란</a></li>
+                        <li><a href="#disparity-to-depth">Disparity → Depth 변환</a></li>
+                        <li><a href="#q-matrix">Q 행렬과 재투영</a></li>
+                        <li><a href="#point-cloud">포인트 클라우드 생성</a></li>
+                        <li><a href="#filtering">노이즈 제거와 필터링</a></li>
+                        <li><a href="#visualization">시각화</a></li>
+                        <li><a href="#precision">정밀도 한계</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 시차 맵이란 -->
+                <h2 id="disparity-map"><i class="fa-solid fa-map"></i> 시차 맵(Disparity Map)이란</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 시차 (Disparity)</div>
+                    <p>스테레오 카메라의 좌측 이미지와 우측 이미지에서 동일한 물체가 나타나는 <strong>수평 위치 차이</strong>를 시차(disparity)라고 한다. 가까운 물체는 시차가 크고, 먼 물체는 시차가 작다. 시차 맵은 모든 픽셀에 대해 이 시차값을 계산한 2D 영상이다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 300" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-disp" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">스테레오 시차의 원리</text>
+
+                        <!-- Left image -->
+                        <rect x="30" y="50" width="200" height="150" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="130" y="45" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">좌측 이미지</text>
+                        <!-- Object in left -->
+                        <circle cx="150" cy="125" r="15" fill="#ef5350" opacity="0.8"/>
+                        <text x="150" y="129" text-anchor="middle" font-size="9" fill="white" font-weight="700">P</text>
+                        <line x1="150" y1="145" x2="150" y2="175" stroke="#ef5350" stroke-width="1" stroke-dasharray="3"/>
+                        <text x="150" y="190" text-anchor="middle" font-size="9" fill="#ef5350" font-weight="600">x_L</text>
+
+                        <!-- Right image -->
+                        <rect x="300" y="50" width="200" height="150" rx="8" fill="#fce4ec" stroke="#c62828" stroke-width="2"/>
+                        <text x="400" y="45" text-anchor="middle" font-size="11" fill="#c62828" font-weight="700">우측 이미지</text>
+                        <!-- Object in right (shifted left = smaller x) -->
+                        <circle cx="390" cy="125" r="15" fill="#ef5350" opacity="0.8"/>
+                        <text x="390" y="129" text-anchor="middle" font-size="9" fill="white" font-weight="700">P</text>
+                        <line x1="390" y1="145" x2="390" y2="175" stroke="#ef5350" stroke-width="1" stroke-dasharray="3"/>
+                        <text x="390" y="190" text-anchor="middle" font-size="9" fill="#ef5350" font-weight="600">x_R</text>
+
+                        <!-- Disparity arrow -->
+                        <line x1="150" y1="215" x2="390" y2="215" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-disp)"/>
+                        <line x1="390" y1="215" x2="150" y2="215" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-disp)"/>
+                        <text x="270" y="235" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">d = x_L - x_R</text>
+
+                        <!-- Disparity map -->
+                        <rect x="550" y="50" width="120" height="150" rx="8" fill="url(#grad-disp)" stroke="#ff9800" stroke-width="2"/>
+                        <defs>
+                            <linearGradient id="grad-disp" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#fff3e0"/>
+                                <stop offset="50%" stop-color="#ffcc80"/>
+                                <stop offset="100%" stop-color="#e65100"/>
+                            </linearGradient>
+                        </defs>
+                        <text x="610" y="45" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">시차 맵</text>
+                        <text x="610" y="240" text-anchor="middle" font-size="9" fill="#e65100">밝을수록 가까움</text>
+
+                        <text x="350" y="280" text-anchor="middle" font-size="10" fill="#616161">가까운 물체 → 큰 시차(밝은 값) / 먼 물체 → 작은 시차(어두운 값)</text>
+                    </svg>
+                    <div class="caption">그림 1. 좌우 이미지에서의 시차와 시차 맵의 관계</div>
+                </div>
+
+                <p>시차 맵은 보통 <code>StereoBM</code> 또는 <code>StereoSGBM</code> 알고리즘으로 생성된다. 출력값은 정수(16배 스케일된 고정소수점) 또는 부동소수점으로 표현되며, 매칭에 실패한 픽셀은 일반적으로 <strong>-1</strong> 또는 <strong>0</strong>으로 표시된다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">StereoBM</span>
+                        <span class="term-desc">Block Matching. 빠르지만 텍스처 없는 영역에서 노이즈 발생. 실시간 처리에 적합.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">StereoSGBM</span>
+                        <span class="term-desc">Semi-Global Block Matching. 경로 기반 비용 집계로 더 부드러운 시차 맵 생성. 품질 우수.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">고정소수점 시차</span>
+                        <span class="term-desc">OpenCV의 시차 맵은 16배 스케일(CV_16S). 실제 시차 = 출력값 / 16.0.</span>
+                    </div>
+                </div>
+
+
+                <!-- 2. Disparity → Depth 변환 -->
+                <h2 id="disparity-to-depth"><i class="fa-solid fa-calculator"></i> Disparity → Depth 변환</h2>
+
+                <p>시차 값을 실제 깊이(거리)로 변환하는 공식은 스테레오 기하학에서 유도된다. 핵심 공식은 다음과 같다:</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 깊이 변환 공식</div>
+                    <p style="text-align:center; font-size:1.3rem; font-weight:800; color:var(--primary-dark); margin:12px 0;">Z = f &times; B / d</p>
+                    <div class="term-list">
+                        <div class="term-item">
+                            <span class="term-name">Z</span>
+                            <span class="term-desc">카메라로부터 물체까지의 깊이(거리), 단위: mm 또는 m</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name">f</span>
+                            <span class="term-desc">카메라의 초점 거리(focal length), 단위: 픽셀</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name">B</span>
+                            <span class="term-desc">두 카메라 간 간격(baseline), 단위: mm 또는 m</span>
+                        </div>
+                        <div class="term-item">
+                            <span class="term-name">d</span>
+                            <span class="term-desc">시차(disparity), 단위: 픽셀</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 id="depth-inverse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 역수 관계 — 시차와 깊이</h3>
+
+                <p>깊이 Z는 시차 d에 <strong>반비례</strong>한다. 이 관계는 깊이 정밀도에 직접적인 영향을 미친다: 가까운 거리에서는 시차가 크므로 정밀하고, 먼 거리에서는 시차가 작아 정밀도가 급격히 떨어진다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 600 350" style="width:100%; max-width:600px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-axis" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#333"/></marker>
+                        </defs>
+                        <text x="300" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">시차(d)와 깊이(Z)의 역수 관계</text>
+
+                        <!-- Axes -->
+                        <line x1="80" y1="290" x2="550" y2="290" stroke="#333" stroke-width="2" marker-end="url(#arr-axis)"/>
+                        <line x1="80" y1="290" x2="80" y2="45" stroke="#333" stroke-width="2" marker-end="url(#arr-axis)"/>
+                        <text x="550" y="310" text-anchor="middle" font-size="11" fill="#333" font-weight="600">시차 d (px)</text>
+                        <text x="40" y="50" text-anchor="middle" font-size="11" fill="#333" font-weight="600">깊이 Z</text>
+
+                        <!-- Hyperbola curve Z = k/d -->
+                        <path d="M95,70 Q120,110 150,155 Q180,195 220,225 Q270,252 340,268 Q420,278 530,282" fill="none" stroke="#1565c0" stroke-width="3"/>
+
+                        <!-- Annotations -->
+                        <circle cx="120" cy="95" r="5" fill="#ef5350"/>
+                        <text x="135" y="88" font-size="10" fill="#ef5350" font-weight="600">먼 거리: 작은 d, 큰 Z</text>
+                        <text x="135" y="102" font-size="9" fill="#ef5350">→ 정밀도 낮음</text>
+
+                        <circle cx="340" cy="268" r="5" fill="#4caf50"/>
+                        <text x="355" y="261" font-size="10" fill="#4caf50" font-weight="600">가까운 거리: 큰 d, 작은 Z</text>
+                        <text x="355" y="275" font-size="9" fill="#4caf50">→ 정밀도 높음</text>
+
+                        <!-- Formula -->
+                        <rect x="380" y="100" width="170" height="50" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="465" y="122" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">Z = f * B / d</text>
+                        <text x="465" y="140" text-anchor="middle" font-size="10" fill="#ff9800">쌍곡선 관계</text>
+
+                        <!-- Grid lines -->
+                        <line x1="80" y1="155" x2="540" y2="155" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4"/>
+                        <line x1="80" y1="225" x2="540" y2="225" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4"/>
+                        <line x1="220" y1="50" x2="220" y2="290" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4"/>
+                        <line x1="400" y1="50" x2="400" y2="290" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4"/>
+                    </svg>
+                    <div class="caption">그림 2. 시차와 깊이의 반비례(쌍곡선) 관계</div>
+                </div>
+
+                <h3 id="depth-units"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 단위 변환 주의사항</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>단위 일관성이 핵심</strong>
+                        초점 거리 f는 <strong>픽셀 단위</strong>이고, 베이스라인 B는 <strong>실세계 단위(mm)</strong>이다. 이 경우 Z의 단위는 B와 동일한 mm가 된다. 캘리브레이션 결과의 단위를 반드시 확인하고, f가 mm 단위인 경우 <code>f_px = f_mm / pixel_size</code>로 변환해야 한다.
+                    </div>
+                </div>
+
+
+                <!-- 3. Q 행렬과 재투영 -->
+                <h2 id="q-matrix"><i class="fa-solid fa-cube"></i> Q 행렬과 재투영</h2>
+
+                <p>OpenCV의 <code>stereoRectify</code> 함수는 스테레오 캘리브레이션 후 <strong>Q 행렬</strong>(Disparity-to-depth mapping matrix)을 출력한다. 이 4x4 행렬을 이용하면 시차 맵의 각 픽셀을 3D 좌표로 일괄 변환할 수 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> Q 행렬의 구조</div>
+                    <div class="figure">
+                        <svg viewBox="0 0 500 250" style="width:100%; max-width:500px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                            <text x="250" y="22" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">Q 행렬 (4x4)</text>
+
+                            <!-- Matrix bracket -->
+                            <text x="60" y="90" font-size="80" fill="#333" font-weight="300">[</text>
+                            <text x="410" y="90" font-size="80" fill="#333" font-weight="300">]</text>
+
+                            <!-- Row 1 -->
+                            <text x="110" y="65" text-anchor="middle" font-size="14" fill="#1565c0" font-weight="600">1</text>
+                            <text x="185" y="65" text-anchor="middle" font-size="14" fill="#999">0</text>
+                            <text x="260" y="65" text-anchor="middle" font-size="14" fill="#999">0</text>
+                            <text x="355" y="65" text-anchor="middle" font-size="14" fill="#ef5350" font-weight="600">-c_x</text>
+
+                            <!-- Row 2 -->
+                            <text x="110" y="100" text-anchor="middle" font-size="14" fill="#999">0</text>
+                            <text x="185" y="100" text-anchor="middle" font-size="14" fill="#1565c0" font-weight="600">1</text>
+                            <text x="260" y="100" text-anchor="middle" font-size="14" fill="#999">0</text>
+                            <text x="355" y="100" text-anchor="middle" font-size="14" fill="#ef5350" font-weight="600">-c_y</text>
+
+                            <!-- Row 3 -->
+                            <text x="110" y="135" text-anchor="middle" font-size="14" fill="#999">0</text>
+                            <text x="185" y="135" text-anchor="middle" font-size="14" fill="#999">0</text>
+                            <text x="260" y="135" text-anchor="middle" font-size="14" fill="#999">0</text>
+                            <text x="355" y="135" text-anchor="middle" font-size="14" fill="#4caf50" font-weight="600">f</text>
+
+                            <!-- Row 4 -->
+                            <text x="110" y="170" text-anchor="middle" font-size="14" fill="#999">0</text>
+                            <text x="185" y="170" text-anchor="middle" font-size="14" fill="#999">0</text>
+                            <text x="260" y="170" text-anchor="middle" font-size="14" fill="#ff9800" font-weight="600">-1/B</text>
+                            <text x="355" y="170" text-anchor="middle" font-size="14" fill="#9c27b0" font-weight="600">(c_x - c_x')/B</text>
+
+                            <!-- Legend -->
+                            <text x="110" y="210" font-size="10" fill="#ef5350" font-weight="600">c_x, c_y: 좌측 카메라 주점</text>
+                            <text x="110" y="226" font-size="10" fill="#4caf50" font-weight="600">f: 초점 거리 (px)</text>
+                            <text x="110" y="242" font-size="10" fill="#ff9800" font-weight="600">B: 베이스라인, c_x': 우측 카메라 주점</text>
+                        </svg>
+                    </div>
+                </div>
+
+                <h3 id="reproject-func"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> reprojectImageTo3D 함수</h3>
+
+                <p><code>cv::reprojectImageTo3D</code> 함수는 시차 맵과 Q 행렬을 입력으로 받아, 각 픽셀의 3D 좌표 <code>(X, Y, Z)</code>를 담은 3채널 영상을 출력한다.</p>
+
+                <pre><span class="comment">// OpenCV: 시차 맵 → 3D 포인트</span>
+cv::Mat disparity, points3D;
+cv::Mat Q;  <span class="comment">// stereoRectify에서 얻은 Q 행렬</span>
+
+<span class="comment">// 시차 맵을 float로 변환 (16배 스케일 제거)</span>
+disparity.convertTo(disparity, CV_32F, <span class="number">1.0</span>/<span class="number">16.0</span>);
+
+<span class="comment">// 3D 재투영</span>
+<span class="func">cv::reprojectImageTo3D</span>(disparity, points3D, Q, <span class="keyword">true</span>);
+
+<span class="comment">// points3D: 각 픽셀에 (X, Y, Z) 좌표 저장</span>
+<span class="comment">// handleMissingValues=true → 유효하지 않은 시차는 매우 큰 Z값으로 설정</span></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>좌표계 방향</strong>
+                        OpenCV 스테레오 좌표계는 좌측 카메라 기준이다. X는 오른쪽, Y는 아래쪽, Z는 카메라 전방(물체 방향)이 양의 방향이다. 이 좌표계는 로봇 비전이나 PCL 등 외부 라이브러리의 좌표계와 다를 수 있으므로 변환이 필요할 수 있다.
+                    </div>
+                </div>
+
+
+                <!-- 4. 포인트 클라우드 생성 -->
+                <h2 id="point-cloud"><i class="fa-solid fa-cloud"></i> 포인트 클라우드 생성</h2>
+
+                <p>3D 재투영 결과를 XYZ 좌표와 RGB 색상 정보를 결합하여 <strong>포인트 클라우드</strong>로 저장하면, 3D 뷰어에서 물체의 형태를 직관적으로 확인할 수 있다.</p>
+
+                <h3 id="xyz-rgb"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> XYZ + RGB 결합</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 220" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-flow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">포인트 클라우드 생성 파이프라인</text>
+
+                        <!-- Disparity Map -->
+                        <rect x="20" y="50" width="120" height="80" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="80" y="82" text-anchor="middle" font-size="11" fill="#e65100" font-weight="600">시차 맵</text>
+                        <text x="80" y="100" text-anchor="middle" font-size="9" fill="#ff9800">(W x H)</text>
+
+                        <!-- Arrow -->
+                        <line x1="145" y1="90" x2="175" y2="90" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-flow)"/>
+
+                        <!-- Q Matrix -->
+                        <rect x="180" y="50" width="100" height="80" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="230" y="82" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="600">Q 행렬</text>
+                        <text x="230" y="100" text-anchor="middle" font-size="9" fill="#64b5f6">재투영</text>
+
+                        <!-- Arrow -->
+                        <line x1="285" y1="90" x2="315" y2="90" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-flow)"/>
+
+                        <!-- XYZ -->
+                        <rect x="320" y="50" width="100" height="80" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="370" y="82" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="600">XYZ 좌표</text>
+                        <text x="370" y="100" text-anchor="middle" font-size="9" fill="#66bb6a">(W x H x 3)</text>
+
+                        <!-- Color Image -->
+                        <rect x="320" y="150" width="100" height="55" rx="8" fill="#fce4ec" stroke="#c62828" stroke-width="2"/>
+                        <text x="370" y="178" text-anchor="middle" font-size="11" fill="#c62828" font-weight="600">좌측 컬러</text>
+                        <text x="370" y="196" text-anchor="middle" font-size="9" fill="#ef9a9a">RGB 영상</text>
+
+                        <!-- Merge Arrow -->
+                        <line x1="425" y1="90" x2="470" y2="90" stroke="#1565c0" stroke-width="2" marker-end="url(#arr-flow)"/>
+                        <line x1="425" y1="177" x2="455" y2="177" stroke="#1565c0" stroke-width="1.5"/>
+                        <line x1="455" y1="177" x2="455" y2="90" stroke="#1565c0" stroke-width="1.5"/>
+
+                        <!-- Point Cloud -->
+                        <rect x="475" y="50" width="140" height="80" rx="8" fill="linear-gradient(135deg, #e8f5e9, #e3f2fd)" stroke="#1b5e20" stroke-width="2"/>
+                        <text x="545" y="78" text-anchor="middle" font-size="11" fill="#1b5e20" font-weight="700">포인트 클라우드</text>
+                        <text x="545" y="96" text-anchor="middle" font-size="9" fill="#388e3c">XYZRGB</text>
+                        <text x="545" y="112" text-anchor="middle" font-size="9" fill="#66bb6a">PLY / PCD</text>
+
+                        <!-- Arrow to file -->
+                        <line x1="620" y1="90" x2="670" y2="90" stroke="#9c27b0" stroke-width="2" marker-end="url(#arr-flow)"/>
+                        <text x="685" y="86" font-size="10" fill="#9c27b0" font-weight="600">.ply</text>
+                        <text x="685" y="100" font-size="10" fill="#9c27b0" font-weight="600">.pcd</text>
+                    </svg>
+                    <div class="caption">그림 3. 시차 맵에서 XYZRGB 포인트 클라우드 생성까지의 흐름</div>
+                </div>
+
+                <h3 id="file-formats"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PLY / PCD 파일 포맷</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>PLY</th>
+                            <th>PCD</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">정식 명칭</td>
+                            <td>Polygon File Format</td>
+                            <td>Point Cloud Data</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">개발</td>
+                            <td>Stanford University</td>
+                            <td>Point Cloud Library (PCL)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">저장 방식</td>
+                            <td>ASCII / Binary</td>
+                            <td>ASCII / Binary / Binary Compressed</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">메쉬 지원</td>
+                            <td>지원 (face 정보 포함 가능)</td>
+                            <td>미지원 (포인트 전용)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">호환성</td>
+                            <td>MeshLab, CloudCompare, Open3D, Blender</td>
+                            <td>PCL, Open3D, CloudCompare</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">추천 용도</td>
+                            <td>범용 3D 데이터 교환</td>
+                            <td>PCL 기반 개발 환경</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <pre><span class="comment"># PLY 파일 예시 (ASCII)</span>
+ply
+format ascii 1.0
+element vertex 307200
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+end_header
+<span class="number">-12.345</span> <span class="number">8.921</span> <span class="number">450.123</span> <span class="number">128</span> <span class="number">64</span> <span class="number">32</span>
+<span class="number">-12.200</span> <span class="number">8.890</span> <span class="number">451.002</span> <span class="number">130</span> <span class="number">66</span> <span class="number">34</span>
+...</pre>
+
+
+                <!-- 5. 노이즈 제거와 필터링 -->
+                <h2 id="filtering"><i class="fa-solid fa-filter"></i> 노이즈 제거와 필터링</h2>
+
+                <p>시차 맵에서 생성된 포인트 클라우드에는 매칭 실패, 오클루전(가려짐), 반사 등으로 인한 <strong>노이즈 포인트</strong>가 포함된다. 유용한 3D 데이터를 얻으려면 후처리 필터링이 필수적이다.</p>
+
+                <h3 id="valid-range"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 유효 시차 범위 필터링</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 유효 범위 제한</div>
+                    <p>시차 값이 <strong>0 이하</strong>이거나 <strong>numDisparities</strong>를 초과하는 픽셀은 매칭 실패이므로 제거한다. 또한 Z 값이 물리적으로 의미 없는 범위(음수, 너무 가까움, 너무 멀음)도 필터링 대상이다.</p>
+                </div>
+
+                <pre><span class="comment"># Python: 유효 시차 및 깊이 범위 필터링</span>
+<span class="keyword">import</span> numpy <span class="keyword">as</span> np
+
+<span class="comment"># 유효 시차 마스크</span>
+mask = (disparity &gt; <span class="number">0</span>) &amp; (disparity &lt; num_disparities)
+
+<span class="comment"># 깊이 범위 제한 (예: 200mm ~ 5000mm)</span>
+Z = points3D[:, :, <span class="number">2</span>]
+depth_mask = (Z &gt; <span class="number">200</span>) &amp; (Z &lt; <span class="number">5000</span>)
+
+<span class="comment"># 결합 마스크 적용</span>
+valid_mask = mask &amp; depth_mask
+filtered_points = points3D[valid_mask]
+filtered_colors = color_image[valid_mask]</pre>
+
+                <h3 id="outlier-removal"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 통계적 아웃라이어 제거 (SOR)</h3>
+
+                <p><strong>Statistical Outlier Removal</strong>은 각 포인트의 k-최근접 이웃까지의 평균 거리를 계산하고, 전체 평균에서 표준편차의 n배를 초과하는 포인트를 제거하는 방법이다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 600 250" style="width:100%; max-width:600px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="300" y="22" text-anchor="middle" font-size="13" fill="#1b5e20" font-weight="700">Statistical Outlier Removal (SOR)</text>
+
+                        <!-- Before -->
+                        <rect x="20" y="45" width="250" height="180" rx="10" fill="#fafafa" stroke="#e0e0e0" stroke-width="1.5"/>
+                        <text x="145" y="65" text-anchor="middle" font-size="11" fill="#616161" font-weight="600">필터링 전</text>
+
+                        <!-- Dense cluster -->
+                        <circle cx="90" cy="140" r="3" fill="#1565c0"/>
+                        <circle cx="100" cy="135" r="3" fill="#1565c0"/>
+                        <circle cx="95" cy="150" r="3" fill="#1565c0"/>
+                        <circle cx="110" cy="142" r="3" fill="#1565c0"/>
+                        <circle cx="105" cy="155" r="3" fill="#1565c0"/>
+                        <circle cx="115" cy="148" r="3" fill="#1565c0"/>
+                        <circle cx="120" cy="138" r="3" fill="#1565c0"/>
+                        <circle cx="125" cy="152" r="3" fill="#1565c0"/>
+                        <circle cx="130" cy="145" r="3" fill="#1565c0"/>
+                        <circle cx="140" cy="140" r="3" fill="#1565c0"/>
+                        <circle cx="135" cy="155" r="3" fill="#1565c0"/>
+                        <circle cx="145" cy="150" r="3" fill="#1565c0"/>
+                        <circle cx="150" cy="135" r="3" fill="#1565c0"/>
+                        <circle cx="155" cy="148" r="3" fill="#1565c0"/>
+                        <circle cx="160" cy="142" r="3" fill="#1565c0"/>
+                        <circle cx="170" cy="138" r="3" fill="#1565c0"/>
+                        <circle cx="175" cy="152" r="3" fill="#1565c0"/>
+                        <circle cx="185" cy="145" r="3" fill="#1565c0"/>
+
+                        <!-- Outliers -->
+                        <circle cx="60" cy="80" r="4" fill="#ef5350"/>
+                        <circle cx="200" cy="200" r="4" fill="#ef5350"/>
+                        <circle cx="220" cy="90" r="4" fill="#ef5350"/>
+                        <circle cx="80" cy="200" r="4" fill="#ef5350"/>
+                        <circle cx="240" cy="180" r="4" fill="#ef5350"/>
+
+                        <!-- After -->
+                        <rect x="330" y="45" width="250" height="180" rx="10" fill="#fafafa" stroke="#e0e0e0" stroke-width="1.5"/>
+                        <text x="455" y="65" text-anchor="middle" font-size="11" fill="#616161" font-weight="600">필터링 후</text>
+
+                        <!-- Dense cluster only -->
+                        <circle cx="400" cy="140" r="3" fill="#1565c0"/>
+                        <circle cx="410" cy="135" r="3" fill="#1565c0"/>
+                        <circle cx="405" cy="150" r="3" fill="#1565c0"/>
+                        <circle cx="420" cy="142" r="3" fill="#1565c0"/>
+                        <circle cx="415" cy="155" r="3" fill="#1565c0"/>
+                        <circle cx="425" cy="148" r="3" fill="#1565c0"/>
+                        <circle cx="430" cy="138" r="3" fill="#1565c0"/>
+                        <circle cx="435" cy="152" r="3" fill="#1565c0"/>
+                        <circle cx="440" cy="145" r="3" fill="#1565c0"/>
+                        <circle cx="450" cy="140" r="3" fill="#1565c0"/>
+                        <circle cx="445" cy="155" r="3" fill="#1565c0"/>
+                        <circle cx="455" cy="150" r="3" fill="#1565c0"/>
+                        <circle cx="460" cy="135" r="3" fill="#1565c0"/>
+                        <circle cx="465" cy="148" r="3" fill="#1565c0"/>
+                        <circle cx="470" cy="142" r="3" fill="#1565c0"/>
+                        <circle cx="480" cy="138" r="3" fill="#1565c0"/>
+                        <circle cx="485" cy="152" r="3" fill="#1565c0"/>
+                        <circle cx="495" cy="145" r="3" fill="#1565c0"/>
+
+                        <!-- Legend -->
+                        <circle cx="140" y="235" cx="120" cy="238" r="4" fill="#1565c0"/>
+                        <text x="130" y="242" font-size="10" fill="#1565c0">유효 포인트</text>
+                        <circle cx="220" cy="238" r="4" fill="#ef5350"/>
+                        <text x="230" y="242" font-size="10" fill="#ef5350">아웃라이어 (제거됨)</text>
+                    </svg>
+                    <div class="caption">그림 4. 통계적 아웃라이어 제거 — 평균 이웃 거리 기준으로 이상치 제거</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>WLS 필터 (Weighted Least Squares)</strong>
+                        OpenCV의 <code>ximgproc::createDisparityWLSFilter</code>를 사용하면 시차 맵 단계에서 좌우 일관성 검사와 에지 보존 스무딩을 동시에 수행할 수 있다. 포인트 클라우드 생성 전에 적용하면 후처리 부담을 크게 줄일 수 있다.
+                    </div>
+                </div>
+
+
+                <!-- 6. 시각화 -->
+                <h2 id="visualization"><i class="fa-solid fa-eye"></i> 시각화</h2>
+
+                <p>생성된 포인트 클라우드를 3D로 확인하는 것은 디버깅과 결과 검증에 필수적이다. 대표적인 도구 3가지를 비교한다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>Open3D</th>
+                            <th>PCL Viewer</th>
+                            <th>CloudCompare</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">유형</td>
+                            <td>Python/C++ 라이브러리</td>
+                            <td>C++ 라이브러리</td>
+                            <td>독립 GUI 프로그램</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">설치</td>
+                            <td><code>pip install open3d</code></td>
+                            <td>소스 빌드 (vcpkg/apt)</td>
+                            <td>설치 파일 다운로드</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">장점</td>
+                            <td>Python 스크립트에서 즉시 시각화. 간결한 API.</td>
+                            <td>산업 표준. 풍부한 알고리즘.</td>
+                            <td>코딩 불필요. 대용량 포인트 고속 렌더링.</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">단점</td>
+                            <td>대규모 데이터 시 메모리 사용 높음</td>
+                            <td>빌드 복잡. Python 바인딩 제한적.</td>
+                            <td>자동화/스크립팅 어려움</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">추천 상황</td>
+                            <td>프로토타이핑, 연구 개발</td>
+                            <td>C++ 기반 생산 시스템</td>
+                            <td>비개발자 검증, 비교 분석</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="open3d-example"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Open3D 시각화 예제</h3>
+
+                <pre><span class="keyword">import</span> open3d <span class="keyword">as</span> o3d
+<span class="keyword">import</span> numpy <span class="keyword">as</span> np
+
+<span class="comment"># 포인트 클라우드 생성</span>
+pcd = o3d.geometry.PointCloud()
+pcd.points = o3d.utility.Vector3dVector(filtered_points)  <span class="comment"># Nx3</span>
+pcd.colors = o3d.utility.Vector3dVector(filtered_colors / <span class="number">255.0</span>)  <span class="comment"># 0~1 정규화</span>
+
+<span class="comment"># 통계적 아웃라이어 제거</span>
+pcd_clean, idx = pcd.remove_statistical_outlier(
+    nb_neighbors=<span class="number">20</span>,   <span class="comment"># k-최근접 이웃 수</span>
+    std_ratio=<span class="number">2.0</span>       <span class="comment"># 표준편차 배수 임계값</span>
+)
+
+<span class="comment"># 시각화</span>
+o3d.visualization.draw_geometries([pcd_clean],
+    window_name=<span class="string">"Point Cloud"</span>,
+    width=<span class="number">1280</span>, height=<span class="number">720</span>)
+
+<span class="comment"># PLY 파일로 저장</span>
+o3d.io.write_point_cloud(<span class="string">"output.ply"</span>, pcd_clean)</pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>CloudCompare 활용 팁</strong>
+                        CloudCompare에서 PLY 파일을 열면 좌측 DB Tree에서 포인트 수, 바운딩 박스, 색상 정보를 즉시 확인할 수 있다. <strong>Edit > Scalar fields > Compute statistical parameters</strong>로 포인트 분포를 분석하면 노이즈 수준을 빠르게 파악할 수 있다.
+                    </div>
+                </div>
+
+
+                <!-- 7. 정밀도 한계 -->
+                <h2 id="precision"><i class="fa-solid fa-crosshairs"></i> 정밀도 한계</h2>
+
+                <p>스테레오 비전의 깊이 정밀도는 무한하지 않다. Z = f*B/d 공식에서 시차 d가 1픽셀 변할 때 깊이 Z가 얼마나 변하는지를 분석하면 정밀도의 한계를 이해할 수 있다.</p>
+
+                <h3 id="depth-resolution"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 거리에 따른 깊이 해상도</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 깊이 해상도 공식</div>
+                    <p>시차 1픽셀 변화에 대한 깊이 변화량(깊이 해상도)은 다음과 같다:</p>
+                    <p style="text-align:center; font-size:1.1rem; font-weight:700; color:var(--primary-dark); margin:12px 0;">deltaZ = Z^2 / (f * B)</p>
+                    <p>거리 Z의 <strong>제곱에 비례</strong>하므로, 거리가 2배가 되면 깊이 오차는 4배로 증가한다. 이것이 스테레오 비전이 근거리 측정에 적합한 근본적인 이유이다.</p>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>거리 Z (m)</th>
+                            <th>시차 d (px)</th>
+                            <th>deltaZ (mm)</th>
+                            <th>상대 오차</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">0.5</td>
+                            <td>120</td>
+                            <td>0.4</td>
+                            <td>0.08%</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">1.0</td>
+                            <td>60</td>
+                            <td>1.7</td>
+                            <td>0.17%</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">2.0</td>
+                            <td>30</td>
+                            <td>6.7</td>
+                            <td>0.33%</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">5.0</td>
+                            <td>12</td>
+                            <td>41.7</td>
+                            <td>0.83%</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">10.0</td>
+                            <td>6</td>
+                            <td>166.7</td>
+                            <td>1.67%</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-top:-12px;">* f=500px, B=120mm 기준 예시</p>
+
+                <h3 id="subpixel"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 서브픽셀 시차의 중요성</h3>
+
+                <p>정수 픽셀 시차만으로는 깊이 해상도가 제한된다. <strong>서브픽셀(sub-pixel)</strong> 시차 추정을 통해 0.1~0.25 픽셀 수준의 정밀도를 확보하면 깊이 해상도가 4~10배 향상된다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#ef4444; font-size:0.5rem;"></i> 정수 시차 (Integer Disparity)</h4>
+                        <ul>
+                            <li>최소 변화량: 1 픽셀</li>
+                            <li>2m 거리에서 deltaZ = 6.7mm</li>
+                            <li>계단형 깊이 아티팩트 발생</li>
+                            <li>처리 속도 빠름</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#4caf50; font-size:0.5rem;"></i> 서브픽셀 시차 (Sub-pixel Disparity)</h4>
+                        <ul>
+                            <li>최소 변화량: 0.1~0.25 픽셀</li>
+                            <li>2m 거리에서 deltaZ = 0.7~1.7mm</li>
+                            <li>부드러운 깊이 전이</li>
+                            <li>포물선/곡선 피팅 필요</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>베이스라인과 해상도의 트레이드오프</strong>
+                        베이스라인 B를 늘리면 깊이 정밀도가 좋아지지만, 좌우 이미지의 외관 차이(오클루전)가 증가하여 매칭 성공률이 떨어진다. 측정 거리와 정밀도 요구사항에 맞춰 적절한 베이스라인을 선택해야 한다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 가이드라인</strong>
+                        일반적으로 베이스라인은 측정 거리의 <strong>1/30 ~ 1/10</strong> 정도로 설정한다. 예를 들어 1m 거리를 측정하려면 30~100mm 베이스라인이 적절하다. 서브픽셀 시차와 적절한 베이스라인을 조합하면 대부분의 산업용 3D 측정 요구를 충족할 수 있다.
+                    </div>
+                </div>
+
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>OpenCV Documentation — Depth Map from Stereo Images</li>
+                        <li>Bradski & Kaehler — Learning OpenCV 3, Chapter 19: Stereo Vision</li>
+                        <li>Hartley & Zisserman — Multiple View Geometry in Computer Vision</li>
+                        <li>Open3D Documentation — Point Cloud Processing</li>
+                        <li>PCL (Point Cloud Library) — Filtering Tutorial</li>
+                        <li>CloudCompare — User Manual</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-stereo"><i class="fa-solid fa-arrow-left"></i> 3D 스테레오 비전 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-stereo');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-stereo');
+</script>
+
+</body>
+</html>

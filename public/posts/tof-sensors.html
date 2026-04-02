@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToF(Time-of-Flight) 센서 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-tof" data-section="what-is-tof">ToF란</a>
+        <a href="#dtof" data-section="dtof">직접 ToF (dToF)</a>
+        <a href="#itof" data-section="itof">간접 ToF (iToF)</a>
+        <a href="#dtof-vs-itof" data-section="dtof-vs-itof">dToF vs iToF</a>
+        <a href="#lidar" data-section="lidar">LiDAR와의 관계</a>
+        <a href="#error-factors" data-section="error-factors">오차 요인</a>
+        <a href="#applications" data-section="applications">산업 적용</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">3D 스테레오 비전</span>
+                </div>
+                <h1>ToF(Time-of-Flight) 센서</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-03-27</span>
+                    <span><i class="fa-regular fa-clock"></i> 7 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>ToF 센서의 원리 — 빛의 왕복 시간으로 거리 측정</li>
+                        <li>직접 ToF(dToF)와 간접 ToF(iToF)의 차이와 동작 방식</li>
+                        <li>LiDAR와 ToF 카메라의 관계</li>
+                        <li>ToF 센서의 주요 오차 요인과 산업 적용 사례</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-tof">ToF란</a></li>
+                        <li><a href="#dtof">직접 ToF (dToF)</a></li>
+                        <li><a href="#itof">간접 ToF (iToF)</a></li>
+                        <li><a href="#dtof-vs-itof">dToF vs iToF 비교</a></li>
+                        <li><a href="#lidar">LiDAR와의 관계</a></li>
+                        <li><a href="#error-factors">ToF 오차 요인</a></li>
+                        <li><a href="#applications">산업 적용</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. ToF란 -->
+                <h2 id="what-is-tof"><i class="fa-solid fa-satellite-dish"></i> ToF란</h2>
+
+                <p>ToF(Time-of-Flight)는 <strong>광원에서 빛을 발사하고, 물체에 반사되어 돌아오는 시간을 측정</strong>하여 거리를 계산하는 기술이다. 빛의 속도(약 3 x 10<sup>8</sup> m/s)는 일정하므로, 왕복 시간만 정확히 측정하면 거리를 알 수 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> ToF 거리 계산 공식</div>
+                    <p>거리 <code>d = (c x t) / 2</code> 여기서 <code>c</code>는 빛의 속도, <code>t</code>는 빛의 왕복 시간이다. 1m 거리의 왕복 시간은 약 6.67ns에 불과하므로, 극도로 정밀한 시간 측정이 필요하다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 220" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr-tof" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                            <marker id="arr-tof-ret" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#e65100"/></marker>
+                        </defs>
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">ToF 거리 측정 원리</text>
+
+                        <!-- 센서 -->
+                        <rect x="40" y="60" width="120" height="100" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="100" y="95" text-anchor="middle" font-size="12" fill="#1565c0" font-weight="700">ToF 센서</text>
+                        <text x="100" y="115" text-anchor="middle" font-size="10" fill="#64b5f6">광원 + 수광부</text>
+                        <rect x="60" y="130" width="80" height="18" rx="4" fill="#bbdefb"/>
+                        <text x="100" y="143" text-anchor="middle" font-size="9" fill="#1565c0">타이머</text>
+
+                        <!-- 발사 화살표 -->
+                        <line x1="160" y1="85" x2="470" y2="85" stroke="#1565c0" stroke-width="2" stroke-dasharray="8,4" marker-end="url(#arr-tof)"/>
+                        <text x="315" y="78" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="600">발사 (IR/NIR 펄스)</text>
+
+                        <!-- 반사 화살표 -->
+                        <line x1="470" y1="135" x2="160" y2="135" stroke="#e65100" stroke-width="2" stroke-dasharray="8,4" marker-end="url(#arr-tof-ret)"/>
+                        <text x="315" y="155" text-anchor="middle" font-size="11" fill="#e65100" font-weight="600">반사 (돌아온 빛)</text>
+
+                        <!-- 물체 -->
+                        <rect x="480" y="55" width="100" height="115" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="530" y="105" text-anchor="middle" font-size="12" fill="#e65100" font-weight="700">물체</text>
+                        <text x="530" y="122" text-anchor="middle" font-size="10" fill="#fb8c00">거리 d</text>
+
+                        <!-- 거리 표시 -->
+                        <line x1="160" y1="190" x2="480" y2="190" stroke="#388e3c" stroke-width="1.5"/>
+                        <line x1="160" y1="185" x2="160" y2="195" stroke="#388e3c" stroke-width="1.5"/>
+                        <line x1="480" y1="185" x2="480" y2="195" stroke="#388e3c" stroke-width="1.5"/>
+                        <text x="320" y="208" text-anchor="middle" font-size="11" fill="#388e3c" font-weight="600">d = (c x t) / 2</text>
+                    </svg>
+                    <div class="caption">그림 1. ToF 센서의 거리 측정 원리 — 빛의 왕복 시간으로 거리 계산</div>
+                </div>
+
+                <p>ToF 센서는 광원으로 주로 <strong>적외선(IR, 850nm~940nm)</strong>을 사용한다. 가시광선 영역이 아니므로 사람 눈에 보이지 않고, 태양광 간섭을 줄이기 위해 대역 통과 필터를 함께 적용한다. 측정 방식에 따라 <strong>직접 ToF(dToF)</strong>와 <strong>간접 ToF(iToF)</strong>로 나뉜다.</p>
+
+                <!-- 2. 직접 ToF (dToF) -->
+                <h2 id="dtof"><i class="fa-solid fa-bolt"></i> 직접 ToF (dToF)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 직접 ToF (Direct Time-of-Flight)</div>
+                    <p>짧은 레이저/LED 펄스를 발사하고, 반사되어 돌아오는 <strong>광자의 도착 시간을 직접 측정</strong>하는 방식이다. 단일 광자까지 감지할 수 있는 SPAD(Single-Photon Avalanche Diode) 센서를 주로 사용하며, 각 광자의 도착 시간을 TDC(Time-to-Digital Converter)로 기록한다.</p>
+                </div>
+
+                <h3 id="dtof-principle"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 동작 원리</h3>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 260" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">dToF 동작 원리 — SPAD + TDC</text>
+
+                        <!-- 타임라인 -->
+                        <line x1="50" y1="70" x2="650" y2="70" stroke="#9e9e9e" stroke-width="1.5"/>
+
+                        <!-- 펄스 발사 -->
+                        <rect x="60" y="45" width="80" height="50" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="100" y="67" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">펄스 발사</text>
+                        <text x="100" y="82" text-anchor="middle" font-size="9" fill="#64b5f6">t = 0</text>
+
+                        <!-- TDC 시작 -->
+                        <rect x="170" y="45" width="80" height="50" rx="6" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="210" y="67" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">TDC 시작</text>
+                        <text x="210" y="82" text-anchor="middle" font-size="9" fill="#fb8c00">카운트 시작</text>
+
+                        <!-- 비행 중 -->
+                        <line x1="260" y1="70" x2="400" y2="70" stroke="#1565c0" stroke-width="3" stroke-dasharray="6,4"/>
+                        <text x="330" y="62" text-anchor="middle" font-size="10" fill="#1565c0">빛 비행 중...</text>
+
+                        <!-- SPAD 감지 -->
+                        <rect x="410" y="45" width="90" height="50" rx="6" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="455" y="67" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">SPAD 감지</text>
+                        <text x="455" y="82" text-anchor="middle" font-size="9" fill="#66bb6a">광자 도착</text>
+
+                        <!-- TDC 정지 -->
+                        <rect x="530" y="45" width="80" height="50" rx="6" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="570" y="67" text-anchor="middle" font-size="10" fill="#c2185b" font-weight="600">TDC 정지</text>
+                        <text x="570" y="82" text-anchor="middle" font-size="9" fill="#e91e63">t = T</text>
+
+                        <!-- 히스토그램 -->
+                        <text x="350" y="125" text-anchor="middle" font-size="12" fill="#1b5e20" font-weight="700">반복 측정 → 히스토그램 생성</text>
+                        <rect x="100" y="140" width="500" height="100" rx="8" fill="#fafafa" stroke="#bdbdbd" stroke-width="1"/>
+
+                        <!-- 히스토그램 바 -->
+                        <rect x="140" y="215" width="20" height="10" fill="#bbdefb"/>
+                        <rect x="170" y="210" width="20" height="15" fill="#bbdefb"/>
+                        <rect x="200" y="205" width="20" height="20" fill="#90caf9"/>
+                        <rect x="230" y="195" width="20" height="30" fill="#90caf9"/>
+                        <rect x="260" y="175" width="20" height="50" fill="#64b5f6"/>
+                        <rect x="290" y="155" width="20" height="70" fill="#42a5f5"/>
+                        <rect x="320" y="148" width="20" height="77" fill="#1e88e5"/>
+                        <rect x="350" y="155" width="20" height="70" fill="#42a5f5"/>
+                        <rect x="380" y="175" width="20" height="50" fill="#64b5f6"/>
+                        <rect x="410" y="195" width="20" height="30" fill="#90caf9"/>
+                        <rect x="440" y="205" width="20" height="20" fill="#90caf9"/>
+                        <rect x="470" y="212" width="20" height="13" fill="#bbdefb"/>
+                        <rect x="500" y="218" width="20" height="7" fill="#bbdefb"/>
+
+                        <!-- 피크 표시 -->
+                        <line x1="330" y1="143" x2="330" y2="135" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="330" y="145" text-anchor="middle" font-size="9" fill="#e91e63" font-weight="600">피크 = 실제 거리</text>
+
+                        <text x="350" y="240" text-anchor="middle" font-size="9" fill="#757575">시간 (Time Bin)</text>
+                    </svg>
+                    <div class="caption">그림 2. dToF 동작 — 펄스 발사 후 SPAD가 광자를 감지하고 TDC로 시간 기록, 히스토그램으로 거리 결정</div>
+                </div>
+
+                <h3 id="dtof-components"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 핵심 구성 요소</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">SPAD</span>
+                        <span class="term-desc">Single-Photon Avalanche Diode. 단일 광자 하나만으로도 눈사태(avalanche) 전류를 발생시켜 감지하는 초고감도 포토다이오드. 가이거 모드에서 동작한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">SiPM</span>
+                        <span class="term-desc">Silicon Photomultiplier. 수천~수만 개의 SPAD를 배열한 광검출기. 동시에 여러 광자를 감지하여 광 강도 정보도 얻을 수 있다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">TDC</span>
+                        <span class="term-desc">Time-to-Digital Converter. SPAD가 광자를 감지한 시간을 디지털 값으로 변환. 수십 ps(피코초) 분해능으로 시간을 측정한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">VCSEL</span>
+                        <span class="term-desc">Vertical-Cavity Surface-Emitting Laser. dToF에서 주로 사용하는 광원. 짧은 펄스(~ns)를 빠르게 반복 발사할 수 있다.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>히스토그래밍 (Histogramming)</strong>
+                        dToF는 한 번의 펄스로 정확한 거리를 얻기 어렵다. 수천~수만 번 펄스를 반복 발사하여 광자 도착 시간의 히스토그램을 만들고, 피크(가장 빈도 높은 시간)가 실제 거리에 대응한다. 배경 노이즈와 실제 신호를 구분하는 핵심 기법이다.
+                    </div>
+                </div>
+
+                <!-- 3. 간접 ToF (iToF) -->
+                <h2 id="itof"><i class="fa-solid fa-wave-square"></i> 간접 ToF (iToF)</h2>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 간접 ToF (Indirect Time-of-Flight)</div>
+                    <p>연속파(CW) 또는 펄스 변조광을 발사하고, 반사광과 발사광 사이의 <strong>위상 차이(phase shift)</strong>를 측정하여 거리를 계산하는 방식이다. 시간을 직접 재지 않고 위상으로 환산하므로 "간접"이라 부른다.</p>
+                </div>
+
+                <h3 id="itof-cw"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CW-iToF (연속파 방식)</h3>
+
+                <p>광원을 사인파로 변조(예: 20~100MHz)하여 연속 발사한다. 반사광의 위상이 거리에 비례하여 지연되므로, 위상 차이 <code>ΔΦ</code>를 측정하면 거리를 알 수 있다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 250" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">CW-iToF — 위상 차이 측정</text>
+
+                        <!-- 발사 파형 -->
+                        <text x="60" y="60" font-size="11" fill="#1565c0" font-weight="700">발사광</text>
+                        <path d="M120,85 Q150,50 180,85 Q210,120 240,85 Q270,50 300,85 Q330,120 360,85 Q390,50 420,85 Q450,120 480,85 Q510,50 540,85" fill="none" stroke="#1565c0" stroke-width="2.5"/>
+
+                        <!-- 반사 파형 (위상 지연) -->
+                        <text x="60" y="145" font-size="11" fill="#e65100" font-weight="700">반사광</text>
+                        <path d="M160,170 Q190,135 220,170 Q250,205 280,170 Q310,135 340,170 Q370,205 400,170 Q430,135 460,170 Q490,205 520,170 Q550,135 580,170" fill="none" stroke="#e65100" stroke-width="2.5"/>
+
+                        <!-- 위상 차이 표시 -->
+                        <line x1="120" y1="95" x2="120" y2="215" stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4,3"/>
+                        <line x1="160" y1="95" x2="160" y2="215" stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4,3"/>
+
+                        <line x1="120" y1="220" x2="160" y2="220" stroke="#e91e63" stroke-width="2"/>
+                        <line x1="120" y1="216" x2="120" y2="224" stroke="#e91e63" stroke-width="2"/>
+                        <line x1="160" y1="216" x2="160" y2="224" stroke="#e91e63" stroke-width="2"/>
+                        <text x="140" y="240" text-anchor="middle" font-size="11" fill="#e91e63" font-weight="700">ΔΦ</text>
+
+                        <!-- 공식 -->
+                        <rect x="440" y="200" width="220" height="40" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="550" y="225" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="600">d = (c x ΔΦ) / (4π x f)</text>
+                    </svg>
+                    <div class="caption">그림 3. CW-iToF — 변조 발사광과 반사광의 위상 차이(ΔΦ)로 거리 계산</div>
+                </div>
+
+                <p>CW-iToF는 각 픽셀에서 4개의 위상 샘플(0°, 90°, 180°, 270°)을 수집하여 위상을 계산한다. 변조 주파수가 높을수록 정밀도는 올라가지만, <strong>비모호 거리(Unambiguous Range)</strong>는 짧아진다. 예를 들어 20MHz에서는 최대 7.5m, 100MHz에서는 1.5m까지만 모호 없이 측정 가능하다.</p>
+
+                <h3 id="itof-pulse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Pulse-iToF (펄스 방식)</h3>
+
+                <p>광 펄스를 발사하고, 반사광이 두 개의 시간 창(time gate)에 얼마나 들어오는지의 <strong>비율</strong>로 거리를 계산한다. CW 방식보다 외광 간섭에 강하고 전력 효율이 높지만, 정밀도가 다소 낮을 수 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>다중 주파수 변조 (Multi-Frequency)</strong>
+                        비모호 거리 제한을 극복하기 위해 2~3개의 서로 다른 변조 주파수를 사용하는 기법이 일반적이다. 예를 들어 80MHz + 100MHz를 조합하면 비모호 거리를 37.5m까지 확장할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 4. dToF vs iToF 비교 -->
+                <h2 id="dtof-vs-itof"><i class="fa-solid fa-scale-balanced"></i> dToF vs iToF 비교</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>dToF (직접)</th>
+                            <th>iToF (간접)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">측정 원리</td>
+                            <td>광자 도착 시간 직접 측정</td>
+                            <td>변조광 위상 차이 측정</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">정밀도</td>
+                            <td>중~장거리에서 우수 (cm급)</td>
+                            <td>근거리에서 우수 (mm급)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">측정 거리</td>
+                            <td>최대 수백 m</td>
+                            <td>보통 0.1~10m</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">해상도</td>
+                            <td>낮음 (SPAD 배열 크기 제한)</td>
+                            <td>높음 (QVGA~VGA급 일반적)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">외광 내성</td>
+                            <td>우수 (히스토그램 필터링)</td>
+                            <td>취약 (배경 노이즈 누적)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">전력 소비</td>
+                            <td>낮음 (펄스 방식)</td>
+                            <td>높음 (연속 변조)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">비용</td>
+                            <td>높음 (SPAD+TDC 복잡)</td>
+                            <td>낮음 (CMOS 공정 호환)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">대표 제품</td>
+                            <td>Apple LiDAR, Sony IMX611, ST VL53L5CX</td>
+                            <td>Microsoft Azure Kinect (Sony IMX556), TI OPT8241, Infineon IRS2877C</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">주요 용도</td>
+                            <td>자율주행 LiDAR, 드론, 측량</td>
+                            <td>로봇 비전, 제스처 인식, 물류</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>비모호 거리 (Unambiguous Range)</strong>
+                        iToF는 위상이 360도를 넘으면 거리가 모호해진다(위상 래핑). 변조 주파수 f에서 최대 비모호 거리는 <code>c / (2 x f)</code>이다. dToF는 이론적으로 비모호 거리 제한이 없다.
+                    </div>
+                </div>
+
+                <!-- 5. LiDAR와의 관계 -->
+                <h2 id="lidar"><i class="fa-solid fa-tower-broadcast"></i> LiDAR와의 관계</h2>
+
+                <p>LiDAR(Light Detection and Ranging)는 넓은 의미에서 <strong>빛을 이용한 모든 거리 측정 기술</strong>을 포괄한다. ToF는 LiDAR의 핵심 측정 원리이며, 구현 방식에 따라 여러 형태로 나뉜다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-rotate" style="color:#1565c0; font-size:0.8rem;"></i> 스캐닝 LiDAR</h4>
+                        <ul>
+                            <li><strong>방식</strong> — 레이저 빔을 회전/진동 미러로 스캔</li>
+                            <li><strong>원리</strong> — 주로 dToF 사용</li>
+                            <li><strong>장점</strong> — 장거리(200m+), 넓은 FOV</li>
+                            <li><strong>단점</strong> — 기계부품 포함, 크기/비용 큼</li>
+                            <li><strong>적용</strong> — 자율주행 차량, 지형 측량</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-expand" style="color:#e65100; font-size:0.8rem;"></i> Flash LiDAR</h4>
+                        <ul>
+                            <li><strong>방식</strong> — 전체 장면에 한 번에 빛 조사</li>
+                            <li><strong>원리</strong> — dToF (SPAD 어레이) 또는 iToF</li>
+                            <li><strong>장점</strong> — 기계부품 없음, 소형화 가능</li>
+                            <li><strong>단점</strong> — 거리 제한, 광량 분산</li>
+                            <li><strong>적용</strong> — 스마트폰, 로봇, AGV</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">LiDAR 유형 분류</text>
+
+                        <!-- 최상위 -->
+                        <rect x="250" y="40" width="200" height="36" rx="8" fill="#1565c0" stroke="none"/>
+                        <text x="350" y="63" text-anchor="middle" font-size="12" fill="white" font-weight="700">LiDAR</text>
+
+                        <!-- 분기선 -->
+                        <line x1="300" y1="76" x2="300" y2="100" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <line x1="500" y1="76" x2="500" y2="100" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <line x1="350" y1="76" x2="350" y2="86" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <line x1="150" y1="86" x2="550" y2="86" stroke="#9e9e9e" stroke-width="1.5"/>
+                        <line x1="150" y1="86" x2="150" y2="100" stroke="#9e9e9e" stroke-width="1.5"/>
+
+                        <!-- 스캐닝 -->
+                        <rect x="60" y="100" width="180" height="36" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="150" y="123" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="600">스캐닝 LiDAR (dToF)</text>
+
+                        <!-- Flash -->
+                        <rect x="260" y="100" width="180" height="36" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="350" y="123" text-anchor="middle" font-size="11" fill="#e65100" font-weight="600">Flash LiDAR (dToF)</text>
+
+                        <!-- ToF 카메라 -->
+                        <rect x="460" y="100" width="180" height="36" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+                        <text x="550" y="123" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="600">ToF 카메라 (iToF)</text>
+
+                        <!-- 특징 -->
+                        <text x="150" y="155" text-anchor="middle" font-size="9" fill="#64b5f6">회전/MEMS 미러</text>
+                        <text x="150" y="168" text-anchor="middle" font-size="9" fill="#64b5f6">장거리, 포인트 클라우드</text>
+                        <text x="350" y="155" text-anchor="middle" font-size="9" fill="#fb8c00">SPAD 어레이, 무기계</text>
+                        <text x="350" y="168" text-anchor="middle" font-size="9" fill="#fb8c00">중거리, 소형화</text>
+                        <text x="550" y="155" text-anchor="middle" font-size="9" fill="#66bb6a">위상 측정, 고해상도</text>
+                        <text x="550" y="168" text-anchor="middle" font-size="9" fill="#66bb6a">근거리, 저비용</text>
+                    </svg>
+                    <div class="caption">그림 4. LiDAR 유형 분류 — 스캐닝, Flash, ToF 카메라</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>ToF 카메라 vs LiDAR</strong>
+                        일반적으로 "ToF 카메라"는 iToF 기반의 면적형 뎁스 카메라를 의미하고, "LiDAR"는 dToF 기반의 장거리 스캐닝 시스템을 의미하는 경우가 많다. 하지만 기술적으로는 모두 ToF 원리를 사용하므로 경계가 점점 흐려지고 있다.
+                    </div>
+                </div>
+
+                <!-- 6. ToF 오차 요인 -->
+                <h2 id="error-factors"><i class="fa-solid fa-bug"></i> ToF 오차 요인</h2>
+
+                <p>ToF 센서는 원리상 다양한 오차 요인이 존재하며, 이를 이해하고 보정하는 것이 정확한 뎁스 맵을 얻는 핵심이다.</p>
+
+                <h3 id="error-multipath"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 멀티패스 (Multipath Interference)</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 멀티패스 간섭</div>
+                    <p>발사된 빛이 여러 표면에서 반사되어 <strong>다중 경로</strong>를 통해 센서에 도달하는 현상. 벽 모서리, 오목한 표면, 반사율이 높은 물체 근처에서 심하게 발생하며, 실제보다 가까운 거리로 측정되는 오류를 유발한다. iToF에서 특히 문제가 된다.</p>
+                </div>
+
+                <h3 id="error-motion"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 모션 블러 (Motion Blur)</h3>
+
+                <p>iToF는 여러 프레임의 위상 샘플(0°, 90°, 180°, 270°)을 순차적으로 수집해야 한다. 이 과정에서 물체나 카메라가 움직이면 각 샘플의 거리 정보가 달라져 <strong>모션 아티팩트</strong>가 발생한다. dToF는 단일 펄스로 측정하므로 상대적으로 강하다.</p>
+
+                <h3 id="error-ambient"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 외광 간섭 (Ambient Light)</h3>
+
+                <p>태양광이나 형광등 등 외부 광원의 적외선 성분이 반사광과 섞여 <strong>SNR(신호 대 잡음비)</strong>을 저하시킨다. 특히 야외 환경에서는 태양광의 NIR 성분이 매우 강하므로, 대역 통과 필터와 SBI(Suppression of Background Illumination) 기술을 적용한다.</p>
+
+                <h3 id="error-flying"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 플라잉 픽셀 (Flying Pixel)</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 플라잉 픽셀</div>
+                    <p>물체의 경계(edge)에서 한 픽셀이 <strong>전경과 배경 두 표면의 빛을 동시에 수신</strong>하여, 실제로 존재하지 않는 중간 거리의 포인트가 생성되는 현상. 뎁스 맵에서 허공에 떠 있는 것처럼 보여 "플라잉 픽셀"이라 부른다. 후처리(에지 필터링, 신뢰도 기반 제거)로 완화한다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="350" y="22" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">플라잉 픽셀 발생 원리</text>
+
+                        <!-- 센서 -->
+                        <rect x="30" y="70" width="80" height="80" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="70" y="105" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">ToF</text>
+                        <text x="70" y="120" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">센서</text>
+
+                        <!-- 빛 경로 -->
+                        <line x1="110" y1="90" x2="350" y2="75" stroke="#1565c0" stroke-width="1.5" stroke-dasharray="5,3"/>
+                        <line x1="110" y1="130" x2="350" y2="145" stroke="#e65100" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+                        <!-- 한 픽셀 영역 -->
+                        <path d="M110,90 L350,75 L350,145 L110,130 Z" fill="rgba(255,152,0,0.1)" stroke="none"/>
+                        <text x="220" y="115" text-anchor="middle" font-size="9" fill="#e65100" font-weight="600">1 픽셀 FOV</text>
+
+                        <!-- 전경 물체 -->
+                        <rect x="340" y="50" width="60" height="50" rx="4" fill="#4caf50" stroke="#2e7d32" stroke-width="1.5"/>
+                        <text x="370" y="80" text-anchor="middle" font-size="9" fill="white" font-weight="600">전경</text>
+
+                        <!-- 배경 물체 -->
+                        <rect x="500" y="110" width="120" height="70" rx="4" fill="#78909c" stroke="#546e7a" stroke-width="1.5"/>
+                        <text x="560" y="150" text-anchor="middle" font-size="9" fill="white" font-weight="600">배경</text>
+
+                        <!-- 플라잉 픽셀 -->
+                        <circle cx="430" cy="110" r="10" fill="#e91e63" stroke="#c2185b" stroke-width="1.5"/>
+                        <text x="430" y="114" text-anchor="middle" font-size="7" fill="white" font-weight="700">FP</text>
+                        <line x1="440" y1="105" x2="490" y2="90" stroke="#e91e63" stroke-width="1" stroke-dasharray="3,2"/>
+                        <text x="530" y="88" text-anchor="middle" font-size="9" fill="#e91e63" font-weight="600">플라잉 픽셀</text>
+                        <text x="530" y="100" text-anchor="middle" font-size="8" fill="#e91e63">(허공의 가짜 포인트)</text>
+                    </svg>
+                    <div class="caption">그림 5. 플라잉 픽셀 — 경계에서 전경과 배경 빛이 섞여 허공에 가짜 포인트 생성</div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>검은 물체와 반사 물체</strong>
+                        검은 물체(저반사율)는 반사광이 약해 SNR이 떨어지고, 거울이나 금속 같은 정반사 물체는 빛이 다른 방향으로 반사되어 측정 불가 영역이 생긴다. 반사율에 따라 측정 가능 거리가 크게 달라진다.
+                    </div>
+                </div>
+
+                <!-- 7. 산업 적용 -->
+                <h2 id="applications"><i class="fa-solid fa-industry"></i> 산업 적용</h2>
+
+                <h3 id="app-logistics"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 물류 — 체적 측정 (DWS)</h3>
+
+                <p>물류 센터에서 박스의 가로/세로/높이를 ToF 센서로 측정하여 <strong>체적(Volume)</strong>을 자동 산출한다. Dimensioning, Weighing, Scanning을 통합한 DWS 시스템에서 핵심 역할을 하며, 컨베이어 위를 지나가는 박스를 실시간으로 측정한다.</p>
+
+                <h3 id="app-agv"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> AGV/AMR 장애물 감지</h3>
+
+                <p>자율 이동 로봇(AGV/AMR)의 전방/측방에 ToF 센서를 장착하여 <strong>장애물 감지 및 충돌 방지</strong>에 사용한다. 2D LiDAR(스캐닝 dToF)로 평면 맵을 만들거나, 3D ToF 카메라로 높이 정보까지 포함한 장애물 인식이 가능하다.</p>
+
+                <h3 id="app-people"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 사람 감지 및 카운팅</h3>
+
+                <p>천장에 설치한 ToF 카메라로 사람의 머리/어깨 높이를 감지하여 <strong>출입 인원 카운팅, 재실 감지, 밀집도 모니터링</strong>에 활용한다. 이미지가 아닌 뎁스 데이터만 사용하므로 <strong>개인정보 보호(Privacy)</strong> 측면에서 RGB 카메라보다 유리하다.</p>
+
+                <h3 id="app-robot"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 로봇 비전 — 빈 피킹</h3>
+
+                <p>산업용 로봇이 상자(bin) 안에 무작위로 쌓인 부품을 집어내는 <strong>빈 피킹(Bin Picking)</strong>에 ToF 카메라가 활용된다. 3D 포인트 클라우드를 생성하여 각 부품의 위치와 자세를 파악하고, 로봇 팔의 경로를 계획한다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">체적 측정</span>
+                        <span class="term-desc">iToF 카메라로 컨베이어 위 박스를 실시간 3D 스캔. 정밀도 ±5mm 수준.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">AGV 장애물</span>
+                        <span class="term-desc">2D dToF LiDAR(SICK, Hokuyo)로 평면 스캔 + 3D ToF로 높이 감지.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">사람 카운팅</span>
+                        <span class="term-desc">Analog Devices ADTF3175, Infineon IRS2877C 등 천장형 ToF 모듈 사용.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">빈 피킹</span>
+                        <span class="term-desc">구조광/스테레오와 병행 사용. 짧은 측정 시간과 간편한 설치가 장점.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>ToF vs 구조광 vs 스테레오</strong>
+                        3D 뎁스 센싱에는 ToF 외에도 구조광(Structured Light)과 스테레오 비전이 있다. ToF는 텍스처가 없는 면에서도 동작하고 계산량이 적은 반면, 해상도가 낮고 멀티패스에 취약하다. 용도에 따라 적절한 방식을 선택하거나 융합(Fusion)하여 사용한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Texas Instruments — "Introduction to Time-of-Flight (ToF) Technology" Application Note</li>
+                        <li>Sony Semiconductor — "DepthSense ToF Sensor Technology" White Paper</li>
+                        <li>Infineon — "3D ToF Image Sensor: REAL3" Technical Documentation</li>
+                        <li>Foix, Alenya, Torras — "Lock-in Time-of-Flight (ToF) Cameras: A Survey" IEEE Sensors Journal, 2011</li>
+                        <li>Lange, Seitz — "Solid-State Time-of-Flight Range Camera" IEEE Journal of Quantum Electronics, 2001</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html?cat=tech-stereo"><i class="fa-solid fa-arrow-left"></i> 3D 스테레오 비전 목록</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+</script>
+</script>
+</script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-stereo');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[\u25B6\uFE0E]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-stereo');
+</script>
+
+</body>
+</html>
