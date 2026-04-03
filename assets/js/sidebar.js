@@ -1,4 +1,4 @@
-/* Melon Seeds - Sidebar Component (Font Awesome) */
+﻿/* Melon Seeds - Sidebar Component (Font Awesome) */
 /* 서브 카테고리 지원 */
 
 function renderSidebar(currentCat) {
@@ -24,8 +24,16 @@ function renderSidebar(currentCat) {
         { id: 'debug',  icon: 'fa-solid fa-bug',              label: '트러블슈팅',     color: 'debug',  desc: '문제 해결 기록' },
         { id: 'growth', icon: 'fa-solid fa-seedling',         label: '자기계발',       color: 'growth', desc: '영어, 자격증',
           subs: [
-              { id: 'growth-lang', label: '어학' },
-              { id: 'growth-cert', label: '자격증' },
+              { id: 'growth-lang', label: '어학',
+                subs: [
+                    { id: 'growth-lang-toeic', label: 'TOEIC' },
+                ]
+              },
+              { id: 'growth-cert', label: '자격증',
+                subs: [
+                    { id: 'growth-cert-istqb', label: 'ISTQB FL' },
+                ]
+              },
           ]
         },
         { id: 'book',   icon: 'fa-solid fa-book-open',        label: '책/강의 후기',   color: 'book',   desc: '읽은 책, 세미나' },
@@ -57,7 +65,7 @@ function renderSidebar(currentCat) {
     html += '<div class="sidebar-section">';
     html += '<div class="sidebar-title"><i class="fa-solid fa-circle"></i> Public</div>';
     publicCats.forEach(c => {
-        const isParentActive = currentCat === c.id || (c.subs && c.subs.some(s => s.id === currentCat));
+        const isParentActive = currentCat === c.id || (c.subs && c.subs.some(s => s.id === currentCat || (s.subs && s.subs.some(ss => ss.id === currentCat))));
         const active = isParentActive ? ' active' : '';
 
         html += `<a href="${base}public/index.html?cat=${c.id}" class="cat-item${active}" title="${c.desc}">
@@ -68,10 +76,21 @@ function renderSidebar(currentCat) {
         // 서브 카테고리
         if (c.subs && isParentActive) {
             c.subs.forEach(s => {
-                const subActive = currentCat === s.id ? ' active' : '';
+                const isSubActive = currentCat === s.id || (s.subs && s.subs.some(ss => ss.id === currentCat));
+                const subActive = isSubActive ? ' active' : '';
                 html += `<a href="${base}public/index.html?cat=${s.id}" class="cat-item cat-sub${subActive}">
                     <span class="cat-label">${s.label}</span>
                 </a>`;
+
+                // 서브-서브 카테고리 (3단계)
+                if (s.subs && isSubActive) {
+                    s.subs.forEach(ss => {
+                        const ssActive = currentCat === ss.id ? ' active' : '';
+                        html += `<a href="${base}public/index.html?cat=${ss.id}" class="cat-item cat-subsub${ssActive}">
+                            <span class="cat-label">${ss.label}</span>
+                        </a>`;
+                    });
+                }
             });
         }
     });

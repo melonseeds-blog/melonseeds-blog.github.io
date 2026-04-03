@@ -1,4 +1,4 @@
-/* 같은 카테고리 이전/다음 글 네비게이션 */
+﻿/* 같은 카테고리 이전/다음 글 네비게이션 */
 const POST_NAV_DATA = {
     'tech-sensor': [
         { file: 'ccd-vs-cmos.html', title: 'CCD vs CMOS 이미지 센서 비교' },
@@ -37,7 +37,7 @@ const POST_NAV_DATA = {
         { file: 'point-cloud-basics.html', title: '포인트 클라우드 처리 기초' },
         { file: '3d-inspection-cases.html', title: '산업용 3D 검사 적용 사례' },
     ],
-    'growth-cert': [
+    'growth-cert-istqb': [
         { file: 'istqb-fl-plan.html', title: 'ISTQB FL 자격증 공부 계획' },
         { file: 'istqb-fl-ch1.html', title: 'ISTQB FL Ch1. 테스팅의 기초' },
         { file: 'istqb-fl-ch2.html', title: 'ISTQB FL Ch2. SDLC와 테스팅' },
@@ -46,7 +46,7 @@ const POST_NAV_DATA = {
         { file: 'istqb-fl-ch5.html', title: 'ISTQB FL Ch5. 테스트 관리' },
         { file: 'istqb-fl-ch6.html', title: 'ISTQB FL Ch6. 테스트 도구' },
     ],
-    'growth-lang': [
+    'growth-lang-toeic': [
         { file: 'toeic-900-strategy.html', title: '토익 900점 달성 전략' },
         { file: 'toeic-part1-2.html', title: '토익 Part 1-2 공략법' },
         { file: 'toeic-part3-4.html', title: '토익 Part 3-4 공략법' },
@@ -65,7 +65,9 @@ const CAT_LABELS = {
     'tech-comm': '통신/인터페이스',
     'tech-stereo': '3D 스테레오 비전',
     'growth-cert': '자격증',
-    'growth-lang': '어학'
+    'growth-cert-istqb': 'ISTQB FL',
+    'growth-lang': '어학',
+    'growth-lang-toeic': 'TOEIC'
 };
 
 function renderPostNav(category) {
