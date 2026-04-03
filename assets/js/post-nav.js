@@ -46,13 +46,26 @@ const POST_NAV_DATA = {
         { file: 'istqb-fl-ch5.html', title: 'ISTQB FL Ch5. 테스트 관리' },
         { file: 'istqb-fl-ch6.html', title: 'ISTQB FL Ch6. 테스트 도구' },
     ],
+    'growth-lang': [
+        { file: 'toeic-900-strategy.html', title: '토익 900점 달성 전략' },
+        { file: 'toeic-part1-2.html', title: '토익 Part 1-2 공략법' },
+        { file: 'toeic-part3-4.html', title: '토익 Part 3-4 공략법' },
+        { file: 'toeic-part5.html', title: '토익 Part 5 공략법' },
+        { file: 'toeic-part6.html', title: '토익 Part 6 공략법' },
+        { file: 'toeic-part7.html', title: '토익 Part 7 공략법' },
+        { file: 'toeic-grammar-1.html', title: '토익 필수 문법 (상)' },
+        { file: 'toeic-grammar-2.html', title: '토익 필수 문법 (하)' },
+        { file: 'toeic-vocab-1.html', title: '토익 빈출 어휘 (비즈니스)' },
+        { file: 'toeic-vocab-2.html', title: '토익 빈출 어휘 (일상)' },
+    ],
 };
 
 const CAT_LABELS = {
     'tech-sensor': '센서/ISP',
     'tech-comm': '통신/인터페이스',
     'tech-stereo': '3D 스테레오 비전',
-    'growth-cert': '자격증'
+    'growth-cert': '자격증',
+    'growth-lang': '어학'
 };
 
 function renderPostNav(category) {
