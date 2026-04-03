@@ -24,7 +24,7 @@ const POST_NAV_DATA = {
         { file: 'coaxpress-vs-clhs.html', title: 'CoaXPress vs Camera Link HS' },
         { file: 'poe-power-delivery.html', title: 'PoE / PoCL / PoCXP 전원 공급 방식' },
         { file: 'industrial-ethernet.html', title: 'EtherCAT, PROFINET, EtherNet/IP' },
-    ]
+    ],
     'tech-stereo': [
         { file: 'stereo-vision-basics.html', title: '스테레오 비전 기본 원리' },
         { file: 'epipolar-geometry.html', title: '에피폴라 기하학 이해하기' },
@@ -37,12 +37,22 @@ const POST_NAV_DATA = {
         { file: 'point-cloud-basics.html', title: '포인트 클라우드 처리 기초' },
         { file: '3d-inspection-cases.html', title: '산업용 3D 검사 적용 사례' },
     ],
+    'growth-cert': [
+        { file: 'istqb-fl-plan.html', title: 'ISTQB FL 자격증 공부 계획' },
+        { file: 'istqb-fl-ch1.html', title: 'ISTQB FL Ch1. 테스팅의 기초' },
+        { file: 'istqb-fl-ch2.html', title: 'ISTQB FL Ch2. SDLC와 테스팅' },
+        { file: 'istqb-fl-ch3.html', title: 'ISTQB FL Ch3. 정적 테스팅' },
+        { file: 'istqb-fl-ch4.html', title: 'ISTQB FL Ch4. 테스트 분석과 설계' },
+        { file: 'istqb-fl-ch5.html', title: 'ISTQB FL Ch5. 테스트 관리' },
+        { file: 'istqb-fl-ch6.html', title: 'ISTQB FL Ch6. 테스트 도구' },
+    ],
 };
 
 const CAT_LABELS = {
     'tech-sensor': '센서/ISP',
     'tech-comm': '통신/인터페이스',
-    'tech-stereo': '3D 스테레오 비전'
+    'tech-stereo': '3D 스테레오 비전',
+    'growth-cert': '자격증'
 };
 
 function renderPostNav(category) {
