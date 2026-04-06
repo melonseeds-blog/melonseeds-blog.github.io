@@ -58,12 +58,19 @@ const POST_NAV_DATA = {
         { file: 'toeic-vocab-1.html', title: '토익 빈출 어휘 (비즈니스)' },
         { file: 'toeic-vocab-2.html', title: '토익 빈출 어휘 (일상)' },
     ],
+    'tool': [
+        { file: 'git-basics.html', title: 'Git 기본 명령어 가이드' },
+        { file: 'claude-code-practical.html', title: 'Claude Code 실전 활용 가이드' },
+        { file: 'claude-desktop-guide.html', title: 'Claude Desktop 활용 가이드' },
+        { file: 'vs2022-productivity.html', title: 'Visual Studio 2022 생산성 팁' },
+    ],
 };
 
 const CAT_LABELS = {
     'tech-sensor': '센서/ISP',
     'tech-comm': '통신/인터페이스',
     'tech-stereo': '3D 스테레오 비전',
+    'tool': '도구/환경 설정',
     'growth-cert': '자격증',
     'growth-cert-istqb': 'ISTQB FL',
     'growth-lang': '어학',
