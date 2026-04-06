@@ -45,6 +45,11 @@ const POST_NAV_DATA = {
         { file: 'istqb-fl-ch4.html', title: 'ISTQB FL Ch4. 테스트 분석과 설계' },
         { file: 'istqb-fl-ch5.html', title: 'ISTQB FL Ch5. 테스트 관리' },
         { file: 'istqb-fl-ch6.html', title: 'ISTQB FL Ch6. 테스트 도구' },
+        { file: 'istqb-fl-glossary.html', title: 'ISTQB FL 핵심 용어 사전' },
+        { file: 'istqb-fl-compare.html', title: 'ISTQB FL 헷갈리는 개념 비교' },
+        { file: 'istqb-fl-mock1.html', title: 'ISTQB FL 모의고사 1회' },
+        { file: 'istqb-fl-mock2.html', title: 'ISTQB FL 모의고사 2회' },
+        { file: 'istqb-fl-strategy.html', title: 'ISTQB FL 시험 전략 & 벼락치기' },
     ],
     'growth-lang-toeic': [
         { file: 'toeic-900-strategy.html', title: '토익 900점 달성 전략' },
