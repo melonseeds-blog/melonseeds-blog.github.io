@@ -277,9 +277,11 @@ HEADER = """<!DOCTYPE html>
 """
 
 FOOTER = """
-</div>
+</div> <!-- /post-detail-body -->
 <div class='score-section' id='sec-score'><h2><i class='fa-solid fa-trophy'></i> 채점 결과</h2><p style='color:var(--text-muted);margin-bottom:16px;'>모든 문제에 답한 후 채점 버튼을 누르세요.</p><button class='btn-score' onclick='calculateScore()'>채점하기</button><div id='score-result' style='display:none;margin-top:24px;'><div class='score-big' id='score-text'></div><div class='score-bar'><div class='score-bar-fill' id='score-bar-fill'></div></div><div class='score-detail' id='score-detail'></div><div id='score-verdict' style='margin-top:12px;'></div></div></div>
-</div><div class='post-nav-bottom' id='post-nav-bottom'><a href='../index.html'><i class='fa-solid fa-arrow-left'></i> 목록으로</a></div></article></main></div>
+</article>
+<div class='post-nav-bottom' id='post-nav-bottom'></div>
+</main></div>
 <div class='site-footer'><span class='melon-icon sm'></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
 <div class='auth-overlay' id='auth-overlay'><div class='auth-box'><div class='auth-icon'><span class='melon-icon lg'></span></div><h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p><input type='password' id='auth-password' placeholder='비밀번호'><button class='auth-btn' onclick='handleLogin()'>인증</button><div class='auth-error' id='auth-error'>비밀번호가 올바르지 않습니다.</div><button class='auth-cancel' onclick='hideAuthModal()'>취소</button></div></div>
 <script src='../../assets/js/auth.js'></script>
