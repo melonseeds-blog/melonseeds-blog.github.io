@@ -29,6 +29,195 @@ SETS = {
     },
 }
 
+# 매칭형/특수형 수동 오버라이드 (정확도 보장)
+# key: (set_key, question_number)
+MATCH_OVERRIDES = {
+    ('a', 13): {
+        'stem': "장애 유형과 테스트 레벨을 올바르게 연결한 것은?",
+        'items_left': [
+            "1. 사용자의 비즈니스 요구와 다른 시스템 동작으로 인한 장애",
+            "2. 컴포넌트 간 통신 실패로 인한 장애",
+            "3. 코드 내 논리로 인한 장애",
+            "4. 올바르게 구현되지 않은 비즈니스 규칙으로 인한 장애",
+        ],
+        'items_right': [
+            "A. 단위 테스팅", "B. 단위 통합 테스팅", "C. 시스템 테스팅", "D. 인수 테스팅",
+        ],
+        'options': {
+            'a': "1D, 2B, 3A, 4C",
+            'b': "1D, 2B, 3C, 4A",
+            'c': "1B, 2A, 3D, 4C",
+            'd': "1C, 2B, 3A, 4D",
+        },
+        'correct': 'a',
+        'explain': "요구 불일치→인수(D), 인터페이스 결함→통합(B), 코드 로직→단위(A), 비즈니스 규칙 구현 오류→시스템(C).",
+    },
+    ('a', 34): {
+        'stem': "테스트 유형과 애자일 테스팅 사분면을 올바르게 짝지은 것은?",
+        'items_left': [
+            "1. 사용성 테스팅",
+            "2. 단위 테스팅",
+            "3. 기능 테스팅",
+            "4. 신뢰성 테스팅",
+        ],
+        'items_right': [
+            "A. 1사분면: 기술 측면, 개발팀 지원",
+            "B. 2사분면: 비즈니스 측면, 개발팀 지원",
+            "C. 3사분면: 비즈니스 측면, 제품 평가",
+            "D. 4사분면: 기술 측면, 제품 평가",
+        ],
+        'options': {
+            'a': "1C, 2A, 3B, 4D",
+            'b': "1D, 2A, 3C, 4B",
+            'c': "1C, 2B, 3D, 4A",
+            'd': "1D, 2B, 3C, 4A",
+        },
+        'correct': 'a',
+        'explain': "사용성은 제품평가(3사분면 C), 단위는 개발지원(1사분면 A), 기능은 개발지원(2사분면 B), 신뢰성은 제품평가(4사분면 D).",
+    },
+    ('b', 17): {
+        'stem': "업무 설명과 리뷰 활동을 올바르게 연결한 것은?",
+        'items_left': [
+            "1. 평가할 품질 특성과 완료 조건을 선택",
+            "2. 모든 사람이 작업 산출물에 접근 가능",
+            "3. 작업 산출물에서 이상한 점을 식별",
+            "4. 이상한 사항에 대해 논의",
+        ],
+        'items_right': [
+            "A. 개별 리뷰", "B. 리뷰 착수", "C. 리뷰 계획", "D. 의사소통 및 분석",
+        ],
+        'options': {
+            'a': "1B, 2C, 3D, 4A",
+            'b': "1B, 2D, 3C, 4A",
+            'c': "1C, 2A, 3B, 4D",
+            'd': "1C, 2B, 3A, 4D",
+        },
+        'correct': 'd',
+        'explain': "계획(C)→착수(B)→개별(A)→의사소통·분석(D) 순서로 매핑됨.",
+    },
+    ('b', 34): {
+        'stem': "리스크와 완화 활동을 가장 적절하게 연결한 것은?",
+        'items_left': [
+            "1. 비효율적인 루프 구현으로 시스템 응답 지연",
+            "2. 소비자 선호도 변경",
+            "3. 서버룸 침수",
+            "4. 특정 연령 이상의 환자가 부정확한 보고서 수신",
+        ],
+        'items_right': [
+            "A. 리스크 수용", "B. 성능 효율성 테스팅", "C. 테스트 기법: 경계값 분석", "D. 리스크 전가",
+        ],
+        'options': {
+            'a': "1C, 2D, 3A, 4B",
+            'b': "1B, 2D, 3A, 4C",
+            'c': "1B, 2A, 3D, 4C",
+            'd': "1C, 2A, 3D, 4B",
+        },
+        'correct': 'c',
+        'explain': "지연→성능테스트(B), 선호도변경→수용(A), 침수→전가(D), 연령 경계 오류→BVA(C).",
+    },
+    ('b', 39): {
+        'stem': "도구 설명과 도구 분류를 가장 적절하게 연결한 것은?",
+        'items_left': [
+            "1. 작업 흐름 추적 지원",
+            "2. 의사소통 촉진",
+            "3. 가상 머신",
+            "4. 리뷰 지원",
+        ],
+        'items_right': [
+            "A. 정적 테스팅 도구",
+            "B. 확장성/배포 표준화 지원 도구",
+            "C. 데브옵스 도구",
+            "D. 협업 도구",
+        ],
+        'options': {
+            'a': "1A, 2B, 3C, 4D",
+            'b': "1B, 2D, 3C, 4A",
+            'c': "1C, 2D, 3B, 4A",
+            'd': "1D, 2C, 3A, 4B",
+        },
+        'correct': 'c',
+        'explain': "CI/CD·워크플로우→데브옵스(C), 소통→협업(D), VM→배포표준화(B), 리뷰→정적도구(A).",
+    },
+    ('c', 5): {
+        'stem': "테스트웨어 유형과 테스트 활동을 올바르게 연결한 것은?",
+        'items_left': [
+            "1. 커버리지 항목",
+            "2. 변경 요청",
+            "3. 테스트 실행 일정",
+            "4. 테스트 컨디션 우선순위",
+        ],
+        'items_right': [
+            "A. 테스트 분석", "B. 테스트 설계", "C. 테스트 구현", "D. 테스트 완료",
+        ],
+        'options': {
+            'a': "1B, 2D, 3C, 4A",
+            'b': "1B, 2D, 3A, 4C",
+            'c': "1D, 2C, 3A, 4B",
+            'd': "1D, 2C, 3B, 4A",
+        },
+        'correct': 'a',
+        'explain': "커버리지모델→설계(B), 변경요청→완료(D), 실행일정→구현(C), 컨디션우선순위→분석(A).",
+    },
+    ('c', 17): {
+        'stem': "리뷰 유형과 설명을 올바르게 연결한 것은?",
+        'items_left': [
+            "1. 기술 리뷰", "2. 비공식 리뷰", "3. 인스펙션", "4. 워크쓰루",
+        ],
+        'items_right': [
+            "A. 합의 도출·아이디어 도출·저자 개선 의지 향상",
+            "B. 리뷰어 훈련, 공감대 형성, 잠재 결함 식별",
+            "C. 잠재 결함 식별, 프로세스 개선 지표 수집",
+            "D. 잠재 결함 식별, 공식 결과 문서 작성 없음",
+        ],
+        'options': {
+            'a': "1A, 2B, 3C, 4D",
+            'b': "1A, 2D, 3C, 4B",
+            'c': "1B, 2C, 3D, 4A",
+            'd': "1C, 2D, 3A, 4B",
+        },
+        'correct': 'b',
+        'explain': "기술리뷰는 합의/아이디어(A), 비공식은 문서 없음(D), 인스펙션은 결함+지표(C), 워크쓰루는 훈련/공감대(B).",
+    },
+    ('d', 4): {
+        'stem': "테스트 업무와 테스트 활동을 올바르게 연결한 것은?",
+        'items_left': [
+            "1. 테스트 컨디션에서 테스트 케이스 도출",
+            "2. 재사용 가능한 테스트웨어 식별",
+            "3. 테스트 케이스를 테스트 절차로 구성",
+            "4. 테스트 베이시스 및 테스트 대상 평가",
+        ],
+        'items_right': [
+            "A. 테스트 분석", "B. 테스트 설계", "C. 테스트 구현", "D. 테스트 완료",
+        ],
+        'options': {
+            'a': "1B, 2A, 3D, 4C",
+            'b': "1B, 2D, 3C, 4A",
+            'c': "1C, 2A, 3B, 4D",
+            'd': "1C, 2D, 3A, 4B",
+        },
+        'correct': 'b',
+        'explain': "컨디션→케이스 도출=설계(B), 재사용 식별=완료(D), 케이스 절차화=구현(C), 베이시스 평가=분석(A).",
+    },
+    ('d', 17): {
+        'stem': "리뷰 활동을 올바른 순서로 나열한 것은?",
+        'items_left': [
+            "1. 감지된 이상현상 논의 및 상태/소유권/조치 결정",
+            "2. 이슈 기록 후 업데이트 처리",
+            "3. 리뷰어가 건의사항·질문 도출 및 이상현상 식별",
+            "4. 집중적 리뷰를 위해 목적/일정 설정",
+            "5. 리뷰 대상 접근 권한 제공",
+        ],
+        'items_right': [],
+        'options': {
+            'a': "4-3-5-2-1",
+            'b': "4-5-3-1-2",
+            'c': "5-4-1-3-2",
+            'd': "5-4-3-2-1",
+        },
+        'correct': 'b',
+        'explain': "권한 제공(5) 전에 목적/일정 설정(4), 준비/식별(3), 회의 논의(1), 사후 조치(2) 순.",
+    },
+}
 HEADER = """<!DOCTYPE html>
 <html lang='ko'>
 <head>
@@ -150,6 +339,29 @@ def build_html(title, qs, ans):
         if i in (1,11,21,31):
             anchor={1:'sec-q1',11:'sec-q11',21:'sec-q21',31:'sec-q31'}[i]
             parts.append(f"<h2 id='{anchor}'><i class='fa-solid fa-pen-to-square'></i> Q{i} ~ Q{min(i+9,40)}</h2>")
+        override = MATCH_OVERRIDES.get((title[-1].lower(), q['num'])) if title.endswith(('A','B','C','D')) else None
+        if override:
+            corr = override['correct']
+            parts.append(f"<div class='question-card' id='q{q['num']}'>")
+            parts.append(f"<div class='q-header'><span class='q-number'>Q{q['num']}</span><span class='q-chapter'>CTFL</span><span class='q-lo'>-</span></div>")
+            parts.append(f"<div class='q-text'>{html.escape(override['stem'])}</div>")
+            if override['items_left']:
+                parts.append("<table class='match-table'><tr><th>항목</th><th>내용</th></tr>")
+                for item in override['items_left']:
+                    parts.append(f"<tr><td>{html.escape(item.split('.')[0])}</td><td>{html.escape(item.split('.',1)[1].strip())}</td></tr>")
+                parts.append("</table>")
+                parts.append("<table class='match-table'><tr><th>코드</th><th>설명</th></tr>")
+                for item in override['items_right']:
+                    code,desc=item.split('.',1)
+                    parts.append(f"<tr><td>{html.escape(code.strip())}</td><td>{html.escape(desc.strip())}</td></tr>")
+                parts.append("</table>")
+            parts.append(f"<ul class='q-options' data-correct='{corr}'>")
+            for opt_key,label in override['options'].items():
+                parts.append(f"<li data-val='{opt_key}'><span class='opt-label'>{opt_key.upper()}</span><span>{html.escape(label)}</span></li>")
+            parts.append("</ul><button class='btn-answer' onclick='showAnswer(this)'>정답 확인</button>")
+            parts.append(f"<div class='answer-section'><div class='ans-title'><i class='fa-solid fa-check-circle'></i> 정답: <span class='ans-correct'>{corr.upper()}</span></div><p>{html.escape(override['explain'])}</p></div>")
+            parts.append("</div>")
+            continue
         ainfo=ans.get(q['num'], {'correct':'a','explain':'정답/해설을 찾지 못했습니다.'})
         parts.append(f"<div class='question-card' id='q{q['num']}'>")
         parts.append(f"<div class='q-header'><span class='q-number'>Q{q['num']}</span><span class='q-chapter'>CTFL</span><span class='q-lo'>-</span></div>")
