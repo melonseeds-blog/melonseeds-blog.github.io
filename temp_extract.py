@@ -333,6 +333,12 @@ def extract_answers(pdf_path):
         ans[cur[0]]={'correct':cur[1], 'explain':' '.join(buf).strip()}
     return ans
 
+def to_html(text: str) -> str:
+    # Preserve bullet-like markers by forcing line breaks before escaping.
+    text = text.replace('', '\n•').replace('', '\n-')
+    parts = [p.strip() for p in text.split('\n') if p.strip()]
+    return '<br>'.join(html.escape(p) for p in parts)
+
 def build_html(title, qs, ans):
     parts=[HEADER.replace("$TITLE", title)]
     for i,q in enumerate(qs,1):
@@ -344,7 +350,7 @@ def build_html(title, qs, ans):
             corr = override['correct']
             parts.append(f"<div class='question-card' id='q{q['num']}'>")
             parts.append(f"<div class='q-header'><span class='q-number'>Q{q['num']}</span><span class='q-chapter'>CTFL</span><span class='q-lo'>-</span></div>")
-            parts.append(f"<div class='q-text'>{html.escape(override['stem'])}</div>")
+            parts.append(f"<div class='q-text'>{to_html(override['stem'])}</div>")
             if override['items_left']:
                 parts.append("<table class='match-table'><tr><th>항목</th><th>내용</th></tr>")
                 for item in override['items_left']:
@@ -357,7 +363,7 @@ def build_html(title, qs, ans):
                 parts.append("</table>")
             parts.append(f"<ul class='q-options' data-correct='{corr}'>")
             for opt_key,label in override['options'].items():
-                parts.append(f"<li data-val='{opt_key}'><span class='opt-label'>{opt_key.upper()}</span><span>{html.escape(label)}</span></li>")
+                parts.append(f"<li data-val='{opt_key}'><span class='opt-label'>{opt_key.upper()}</span><span>{to_html(label)}</span></li>")
             parts.append("</ul><button class='btn-answer' onclick='showAnswer(this)'>정답 확인</button>")
             parts.append(f"<div class='answer-section'><div class='ans-title'><i class='fa-solid fa-check-circle'></i> 정답: <span class='ans-correct'>{corr.upper()}</span></div><p>{html.escape(override['explain'])}</p></div>")
             parts.append("</div>")
@@ -365,11 +371,11 @@ def build_html(title, qs, ans):
         ainfo=ans.get(q['num'], {'correct':'a','explain':'정답/해설을 찾지 못했습니다.'})
         parts.append(f"<div class='question-card' id='q{q['num']}'>")
         parts.append(f"<div class='q-header'><span class='q-number'>Q{q['num']}</span><span class='q-chapter'>CTFL</span><span class='q-lo'>-</span></div>")
-        parts.append(f"<div class='q-text'>{html.escape(q['stem'])}</div>")
+        parts.append(f"<div class='q-text'>{to_html(q['stem'])}</div>")
         parts.append(f"<ul class='q-options' data-correct='{html.escape(ainfo['correct'])}'>")
         for opt_key in ['a','b','c','d']:
             val=q['opts'].get(opt_key,'')
-            parts.append(f"<li data-val='{opt_key}'><span class='opt-label'>{opt_key.upper()}</span><span>{html.escape(val)}</span></li>")
+            parts.append(f"<li data-val='{opt_key}'><span class='opt-label'>{opt_key.upper()}</span><span>{to_html(val)}</span></li>")
         parts.append("</ul><button class='btn-answer' onclick='showAnswer(this)'>정답 확인</button>")
         parts.append(f"<div class='answer-section'><div class='ans-title'><i class='fa-solid fa-check-circle'></i> 정답: <span class='ans-correct'>{ainfo['correct'].upper()}</span></div><p>{html.escape(ainfo['explain'])}</p></div>")
         parts.append("</div>")
