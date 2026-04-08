@@ -299,8 +299,7 @@ const answerKey=$ANSWER_KEY;
 document.querySelectorAll('.q-options').forEach(ul=>{
     ul.querySelectorAll('li').forEach(li=>{
         li.addEventListener('click',()=>{
-            ul.querySelectorAll('li').forEach(x=>x.classList.remove('selected'));
-            li.classList.add('selected');
+            li.classList.toggle('selected');
         });
     });
 });
@@ -309,13 +308,17 @@ function showAnswer(btn){
     const ul=card.querySelector('.q-options');
     const ansDiv=card.querySelector('.answer-section');
     const qNum=parseInt(card.id.replace('q',''));
-    const correct=answerKey[qNum];
-    if(!ul||!correct) return;
+    const correctRaw=answerKey[qNum];
+    if(!ul||!correctRaw) return;
+    const correctList=correctRaw.split(',').map(s=>s.trim());
     ul.querySelectorAll('li').forEach(x=>x.classList.remove('correct','wrong'));
-    const sel=ul.querySelector('li.selected');
-    if(sel){
-        if(sel.dataset.val===correct){sel.classList.add('correct');}else{sel.classList.add('wrong');}
-    }
+    ul.querySelectorAll('li').forEach(li=>{
+        if(correctList.includes(li.dataset.val)) li.classList.add('correct');
+    });
+    const sel=ul.querySelectorAll('li.selected');
+    sel.forEach(li=>{
+        if(!correctList.includes(li.dataset.val)) li.classList.add('wrong');
+    });
     ansDiv.classList.toggle('show');
 }
 function calculateScore(){
@@ -325,10 +328,12 @@ function calculateScore(){
         const card=document.getElementById('q'+k);
         if(!card) return;
         const ul=card.querySelector('.q-options');
-        const sel=ul.querySelector('li.selected');
-        if(sel){
+        const sel=ul.querySelectorAll('li.selected');
+        if(sel.length){
             answered++;
-            if(sel.dataset.val===answerKey[k]) correctCnt++;
+            const selSet=new Set(Array.from(sel).map(li=>li.dataset.val));
+            const corrSet=new Set(answerKey[k].split(',').map(s=>s.trim()));
+            if(selSet.size===corrSet.size && [...selSet].every(v=>corrSet.has(v))) correctCnt++;
         }
         const btn=card.querySelector('.btn-answer');
         if(btn && !card.querySelector('.answer-section').classList.contains('show')) showAnswer(btn);
