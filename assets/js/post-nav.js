@@ -49,6 +49,10 @@ const POST_NAV_DATA = {
         { file: 'istqb-fl-compare.html', title: 'ISTQB FL 헷갈리는 개념 비교' },
         { file: 'istqb-fl-mock1.html', title: 'ISTQB FL 모의고사 1회' },
         { file: 'istqb-fl-mock2.html', title: 'ISTQB FL 모의고사 2회' },
+        { file: 'istqb-fl-sample-a.html', title: 'ISTQB FL 샘플문제 A' },
+        { file: 'istqb-fl-sample-b.html', title: 'ISTQB FL 샘플문제 B' },
+        { file: 'istqb-fl-sample-c.html', title: 'ISTQB FL 샘플문제 C' },
+        { file: 'istqb-fl-sample-d.html', title: 'ISTQB FL 샘플문제 D' },
         { file: 'istqb-fl-strategy.html', title: 'ISTQB FL 시험 전략 & 벼락치기' },
     ],
     'growth-lang-toeic': [
