@@ -1,0 +1,798 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blob과 Segmentation — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .post-detail-body h4 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 0.98rem; font-weight: 700; margin: 20px 0 8px;
+            color: var(--text-sub);
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#overview" data-section="overview">개요</a>
+        <a href="#segmentation" data-section="segmentation">Segmentation</a>
+        <a href="#preprocessing" data-section="preprocessing">전처리</a>
+        <a href="#connected" data-section="connected">Connected</a>
+        <a href="#feature" data-section="feature">Feature</a>
+        <a href="#filtering" data-section="filtering">Filtering</a>
+        <a href="#limits" data-section="limits">한계</a>
+        <a href="#blob-vs-measure" data-section="blob-vs-measure">vs Measuring</a>
+        <a href="#debugging" data-section="debugging">디버깅</a>
+        <a href="#patterns" data-section="patterns">실무 패턴</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">HALCON 비전 라이브러리</span>
+                </div>
+                <h1>Blob과 Segmentation</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-29</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Blob Analysis의 전체 처리 흐름과 성능을 결정하는 두 축(segmentation 품질, feature margin)</li>
+                        <li>threshold / adaptive threshold / color segmentation의 적용 조건과 한계</li>
+                        <li>전처리(smoothing, background correction, morphology)에서 빠지기 쉬운 함정</li>
+                        <li>area, position, shape feature를 조합한 안정적 판정 기준 설계</li>
+                        <li>Blob의 한계가 드러나는 상황과 edge/XLD/matching/딥러닝으로의 대체 경로</li>
+                        <li>부품 유무·이물·hole·scratch 검사의 실무 패턴과 디버깅 절차</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#overview">Blob Analysis 개요</a></li>
+                        <li><a href="#segmentation">Segmentation</a></li>
+                        <li><a href="#preprocessing">Preprocessing</a></li>
+                        <li><a href="#connected">Connected Components</a></li>
+                        <li><a href="#feature">Feature Extraction</a></li>
+                        <li><a href="#filtering">Blob Filtering</a></li>
+                        <li><a href="#limits">Blob Analysis의 한계</a></li>
+                        <li><a href="#blob-vs-measure">Blob과 Measuring의 차이</a></li>
+                        <li><a href="#debugging">디버깅 방법</a></li>
+                        <li><a href="#patterns">실무 패턴</a></li>
+                        <li><a href="#summary">핵심 정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 개요 -->
+                <h2 id="overview"><i class="fa-solid fa-circle-nodes"></i> Blob Analysis 개요</h2>
+
+                <p>Blob Analysis는 이미지에서 연결된 영역을 추출하고, 그 영역의 feature를 계산해 판단하는 방식입니다. HALCON에서 가장 기본적이면서도 산업 현장에서 매우 많이 쓰이는 접근입니다.</p>
+
+                <p>대표 흐름:</p>
+
+<pre><code>Image acquisition
+→ ROI/domain 제한
+→ preprocessing
+→ segmentation
+→ connection
+→ region selection
+→ feature extraction
+→ decision</code></pre>
+
+                <p>Blob 분석은 단순해 보이지만, 실제 성능은 <strong>segmentation 품질</strong>과 <strong>feature margin</strong>에 의해 결정됩니다.</p>
+
+                <!-- 2. Segmentation -->
+                <h2 id="segmentation"><i class="fa-solid fa-scissors"></i> Segmentation</h2>
+
+                <p>Segmentation은 image를 object와 background로 나누는 단계입니다.</p>
+
+                <h3 id="threshold"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.1 Threshold</h3>
+
+                <p>가장 기본적인 segmentation 방법입니다.</p>
+
+<pre><code>threshold(Image, Region, MinGray, MaxGray)</code></pre>
+
+                <p>장점:</p>
+                <ul>
+                    <li>빠름</li>
+                    <li>직관적</li>
+                    <li>parameter가 단순</li>
+                </ul>
+
+                <p>한계:</p>
+                <ul>
+                    <li>조명 변화에 취약</li>
+                    <li>표면 반사에 취약</li>
+                    <li>배경 gray가 겹치면 실패</li>
+                    <li>제품 색/재질 변화에 취약</li>
+                </ul>
+
+                <h4>실무 포인트</h4>
+
+                <p>threshold 값은 "눈으로 보기 좋은 값"이 아니라 histogram margin으로 결정해야 합니다.</p>
+
+<pre><code>background max &lt; threshold &lt; object min</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>margin이 작으면 흔들립니다</strong>
+                        이 margin이 작으면 현장에서는 반드시 흔들립니다. 양품·불량 모두에서 background와 object의 gray 분포 사이 간격이 충분한지 histogram으로 확인하세요.
+                    </div>
+                </div>
+
+                <h3 id="adaptive"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.2 Adaptive / Dynamic Threshold</h3>
+
+                <p>조명 불균일이나 배경 변화가 있을 때 사용합니다.</p>
+
+                <p>개념:</p>
+
+<pre><code>local background estimate
+→ original image와 비교
+→ local contrast 기반 segmentation</code></pre>
+
+                <p>적합한 경우:</p>
+                <ul>
+                    <li>배경 밝기가 위치별로 다름</li>
+                    <li>표면 조명 gradient 존재</li>
+                    <li>작은 defect를 local contrast로 찾음</li>
+                </ul>
+
+                <p>주의점:</p>
+                <ul>
+                    <li>window size 설정이 중요</li>
+                    <li>defect 크기와 background 변화 scale을 구분해야 함</li>
+                    <li>noise까지 검출할 수 있음</li>
+                </ul>
+
+                <h3 id="color-seg"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.3 Color Segmentation</h3>
+
+                <p>색상 기반 segmentation은 color space 선택이 중요합니다.</p>
+
+                <ul>
+                    <li>RGB threshold</li>
+                    <li>HSV hue/saturation</li>
+                    <li>Lab color distance</li>
+                    <li>learned classifier</li>
+                </ul>
+
+                <p>실무에서는 조명 변동을 줄이기 위해 다음을 고려합니다.</p>
+
+                <ul>
+                    <li>white balance 고정</li>
+                    <li>flat-field correction</li>
+                    <li>color calibration</li>
+                    <li>diffuse illumination</li>
+                    <li>reference patch 사용</li>
+                </ul>
+
+                <!-- 3. Preprocessing -->
+                <h2 id="preprocessing"><i class="fa-solid fa-wand-magic-sparkles"></i> Preprocessing</h2>
+
+                <p>Segmentation 전 전처리는 안정성에 매우 중요합니다.</p>
+
+                <h3 id="smoothing"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.1 Smoothing</h3>
+
+                <p>Noise를 줄여 threshold 안정성을 높입니다.</p>
+
+                <ul>
+                    <li>mean filter</li>
+                    <li>gaussian filter</li>
+                    <li>median filter</li>
+                </ul>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>필터</th>
+                            <th>특징</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">mean</td><td>빠르지만 edge blur</td></tr>
+                        <tr><td class="highlight">gaussian</td><td>자연스러운 smoothing</td></tr>
+                        <tr><td class="highlight">median</td><td>salt-and-pepper noise에 강함</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>과도한 smoothing 주의</strong>
+                        과도한 smoothing은 작은 defect를 제거할 수 있습니다.
+                    </div>
+                </div>
+
+                <h3 id="bg-correction"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.2 Background Correction</h3>
+
+                <p>조명 불균일을 보정합니다.</p>
+
+                <p>방법:</p>
+                <ul>
+                    <li>flat-field correction</li>
+                    <li>large scale smoothing 후 subtraction</li>
+                    <li>shading correction</li>
+                    <li>reference image division</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>표면 검사에서의 우선순위</strong>
+                        표면 검사에서는 background correction이 defect detection보다 중요할 수 있습니다.
+                    </div>
+                </div>
+
+                <h3 id="morphology"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.3 Morphology</h3>
+
+                <p>Region 형태를 보정합니다.</p>
+
+                <p>주요 연산:</p>
+                <ul>
+                    <li>opening: 작은 noise 제거</li>
+                    <li>closing: 작은 hole 메움</li>
+                    <li>dilation: 영역 확장</li>
+                    <li>erosion: 영역 축소</li>
+                    <li>fill_up: hole 채움</li>
+                </ul>
+
+                <h4>주의점</h4>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>측정 목적에서의 morphology</strong>
+                        Morphology는 결과를 보기 좋게 만들 수 있지만, 실제 결함 크기를 왜곡할 수 있습니다. 측정 목적이라면 morphology 후 feature가 실제 물리량을 유지하는지 확인해야 합니다.
+                    </div>
+                </div>
+
+                <!-- 4. Connected Components -->
+                <h2 id="connected"><i class="fa-solid fa-link"></i> Connected Components</h2>
+
+                <p>Threshold 결과 region은 여러 연결 성분을 포함할 수 있습니다. <code>connection</code>을 통해 개별 blob으로 분리합니다.</p>
+
+<pre><code>threshold
+→ connection
+→ select_shape</code></pre>
+
+                <p>중요 feature:</p>
+                <ul>
+                    <li>area</li>
+                    <li>row/column center</li>
+                    <li>width/height</li>
+                    <li>orientation</li>
+                    <li>circularity</li>
+                    <li>rectangularity</li>
+                    <li>compactness</li>
+                    <li>convexity</li>
+                </ul>
+
+                <!-- 5. Feature Extraction -->
+                <h2 id="feature"><i class="fa-solid fa-ruler-combined"></i> Feature Extraction</h2>
+
+                <p>Blob 판단은 feature selection이 핵심입니다.</p>
+
+                <h3 id="feat-area"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.1 Area</h3>
+
+                <p>가장 많이 사용하는 feature입니다.</p>
+
+                <p>사용 예:</p>
+                <ul>
+                    <li>부품 존재 여부</li>
+                    <li>이물 크기</li>
+                    <li>hole 크기</li>
+                    <li>누락 판단</li>
+                </ul>
+
+                <p>주의점:</p>
+                <ul>
+                    <li>threshold에 매우 민감</li>
+                    <li>조명 변화에 따라 area가 변함</li>
+                    <li>morphology 적용 시 실제 면적과 달라짐</li>
+                </ul>
+
+                <h3 id="feat-pos"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.2 Position</h3>
+
+                <p>중심 좌표를 이용합니다.</p>
+
+                <ul>
+                    <li>area_center</li>
+                    <li>smallest rectangle</li>
+                    <li>ellipse fitting</li>
+                    <li>moments</li>
+                </ul>
+
+                <p>부품 위치 판정에서는 center만 보는 것보다 <strong>orientation과 bounding box를 함께 보는 것</strong>이 좋습니다.</p>
+
+                <h3 id="feat-shape"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.3 Shape Features</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>의미</th>
+                            <th>사용 예</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">circularity</td><td>원형성</td><td>hole, ball, circular defect</td></tr>
+                        <tr><td class="highlight">rectangularity</td><td>사각형성</td><td>chip, pad</td></tr>
+                        <tr><td class="highlight">compactness</td><td>조밀도</td><td>이물/파편 구분</td></tr>
+                        <tr><td class="highlight">convexity</td><td>볼록성</td><td>깨짐/파손</td></tr>
+                        <tr><td class="highlight">anisometry</td><td>장축/단축 비</td><td>scratch, fiber</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- 6. Filtering -->
+                <h2 id="filtering"><i class="fa-solid fa-filter"></i> Blob Filtering</h2>
+
+                <p><code>select_shape</code> 계열로 feature 조건에 맞는 region을 선택합니다.</p>
+
+                <p>단일 조건보다 복합 조건이 안정적입니다.</p>
+
+<pre><code>area range
++ circularity
++ position range
++ orientation range</code></pre>
+
+                <h3 id="judge-criteria"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 실무 판정 기준</h3>
+
+                <p>threshold는 nominal 값이 아니라 양품/불량 데이터 분포로 잡아야 합니다.</p>
+
+<pre><code>양품 feature 분포
+불량 feature 분포
+환경 변화 분포
+→ margin 있는 threshold 설정</code></pre>
+
+                <!-- 7. 한계 -->
+                <h2 id="limits"><i class="fa-solid fa-circle-xmark"></i> Blob Analysis의 한계</h2>
+
+                <p>Blob은 segmentation 기반이므로 다음 경우 약합니다.</p>
+
+                <ul>
+                    <li>object와 background gray가 비슷함</li>
+                    <li>조명 변화가 큼</li>
+                    <li>표면 반사가 강함</li>
+                    <li>object edge가 흐림</li>
+                    <li>defect contrast가 낮음</li>
+                    <li>주변 구조와 연결됨</li>
+                </ul>
+
+                <p>이 경우 대안:</p>
+                <ul>
+                    <li>edge/XLD 기반 분석</li>
+                    <li>matching 기반 ROI 정렬</li>
+                    <li>local contrast detection</li>
+                    <li>texture feature</li>
+                    <li>deep learning segmentation/anomaly</li>
+                </ul>
+
+                <!-- 8. Blob vs Measuring -->
+                <h2 id="blob-vs-measure"><i class="fa-solid fa-scale-balanced"></i> Blob과 Measuring의 차이</h2>
+
+                <p>Blob은 영역 기반입니다. Measuring은 edge 위치 기반입니다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>Blob</th>
+                            <th>Measuring</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">기준</td><td>region area/shape</td><td>edge position</td></tr>
+                        <tr><td class="highlight">정밀도</td><td>pixel 수준</td><td>subpixel 가능</td></tr>
+                        <tr><td class="highlight">속도</td><td>빠름</td><td>빠름~중간</td></tr>
+                        <tr><td class="highlight">조명 의존</td><td>threshold 의존</td><td>edge contrast 의존</td></tr>
+                        <tr><td class="highlight">용도</td><td>존재/개수/대략 형상</td><td>폭/간격/치수</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>정밀 치수의 선택</strong>
+                        정밀 치수는 blob area보다 edge/measure 기반이 적합합니다.
+                    </div>
+                </div>
+
+                <!-- 9. 디버깅 -->
+                <h2 id="debugging"><i class="fa-solid fa-bug"></i> 디버깅 방법</h2>
+
+                <p>Blob 실패 시 결과 feature부터 보지 말고 중간 결과를 확인해야 합니다.</p>
+
+                <h3 id="debug-order"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 확인 순서</h3>
+
+                <ol>
+                    <li>원본 image</li>
+                    <li>ROI/domain</li>
+                    <li>filtered image</li>
+                    <li>threshold region</li>
+                    <li>connected components</li>
+                    <li>selected region</li>
+                    <li>final features</li>
+                    <li>decision threshold</li>
+                </ol>
+
+                <h3 id="debug-save"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 저장 권장 이미지</h3>
+
+                <ul>
+                    <li>raw image</li>
+                    <li>ROI overlay</li>
+                    <li>threshold overlay</li>
+                    <li>selected blob overlay</li>
+                    <li>feature text overlay</li>
+                </ul>
+
+                <!-- 10. 실무 패턴 -->
+                <h2 id="patterns"><i class="fa-solid fa-diagram-project"></i> 실무 패턴</h2>
+
+                <h3 id="pat-presence"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 10.1 부품 유무 검사</h3>
+
+<pre><code>align
+→ expected ROI
+→ threshold
+→ connection
+→ select area
+→ existence decision</code></pre>
+
+                <h3 id="pat-foreign"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 10.2 이물 검사</h3>
+
+<pre><code>background correction
+→ local threshold
+→ morphology opening
+→ connection
+→ area/shape filtering
+→ defect decision</code></pre>
+
+                <h3 id="pat-hole"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 10.3 Hole 검사</h3>
+
+<pre><code>threshold
+→ fill_up
+→ difference
+→ hole region extraction
+→ circularity/area 판단</code></pre>
+
+                <h3 id="pat-scratch"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 10.4 Scratch 검사</h3>
+
+                <p>Blob만으로 어려운 경우가 많습니다.</p>
+
+<pre><code>line/edge enhancement
+→ threshold
+→ elongated feature selection
+→ length/anisometry 판단</code></pre>
+
+                <!-- 11. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 핵심 정리</h2>
+
+                <ul>
+                    <li>Blob Analysis는 HALCON의 기본이지만 segmentation 품질에 절대 의존합니다.</li>
+                    <li>threshold 값보다 gray 분포 margin이 중요합니다.</li>
+                    <li>morphology는 강력하지만 feature 왜곡 가능성을 항상 확인해야 합니다.</li>
+                    <li>area 하나만으로 판정하지 말고 shape/position/context feature를 함께 쓰는 것이 안정적입니다.</li>
+                    <li>Blob이 불안정하면 조명/광학/ROI부터 다시 봐야 합니다.</li>
+                </ul>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>설계 감각</strong>
+                        Blob은 "쉬운 만큼 가장 먼저 고장 나는" 처리이기도 합니다. 잘못된 segmentation을 후단 feature/rule로 보정하지 말고, 조명·광학·ROI 단계로 거슬러 올라가서 해결하는 습관이 안정적인 검사 시스템을 만듭니다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>MVTec — HALCON Solution Guide I</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-halcon');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+    renderPostNav('tech-halcon');
+</script>
+
+</body>
+</html>

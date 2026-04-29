@@ -1,0 +1,819 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Measuring / Edge / XLD Contour — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#big-picture" data-section="big-picture">큰 그림</a>
+        <a href="#measure-1d" data-section="measure-1d">1D Measuring</a>
+        <a href="#edge-profile" data-section="edge-profile">Edge Profile</a>
+        <a href="#edge-pair" data-section="edge-pair">Edge Pair</a>
+        <a href="#fuzzy" data-section="fuzzy">Fuzzy</a>
+        <a href="#edge-extract" data-section="edge-extract">Edge 추출</a>
+        <a href="#xld" data-section="xld">XLD Contour</a>
+        <a href="#fitting" data-section="fitting">Fitting</a>
+        <a href="#metrology" data-section="metrology">Metrology</a>
+        <a href="#choose" data-section="choose">선택 기준</a>
+        <a href="#calibration" data-section="calibration">Calibration</a>
+        <a href="#failures" data-section="failures">실패 케이스</a>
+        <a href="#patterns" data-section="patterns">설계 패턴</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">HALCON 비전 라이브러리</span>
+                </div>
+                <h1>Measuring / Edge / XLD Contour</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-29</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Region / 1D Measure / XLD·Metrology의 세 가지 측정 계통과 선택 기준</li>
+                        <li>1D Measure object의 핵심 parameter(sigma, threshold, transition, select)</li>
+                        <li>Edge profile과 subpixel 정확도가 만족해야 할 조건</li>
+                        <li>Edge pair 선택과 Fuzzy Measuring의 활용</li>
+                        <li>XLD contour 생성·선택·분할과 line/circle fitting의 함정</li>
+                        <li>2D Metrology model의 흐름과 alignment 연계</li>
+                        <li>Calibration과 world coordinate 변환의 필수성</li>
+                        <li>측정 실패 케이스 진단 표와 측정 시스템 설계 패턴</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#big-picture">측정 계열의 큰 그림</a></li>
+                        <li><a href="#measure-1d">1D Measuring</a></li>
+                        <li><a href="#edge-profile">Edge Profile 이해</a></li>
+                        <li><a href="#edge-pair">Edge Pair 측정</a></li>
+                        <li><a href="#fuzzy">Fuzzy Measuring</a></li>
+                        <li><a href="#edge-extract">Edge Extraction</a></li>
+                        <li><a href="#xld">XLD Contour Processing</a></li>
+                        <li><a href="#fitting">Geometric Fitting</a></li>
+                        <li><a href="#metrology">2D Metrology</a></li>
+                        <li><a href="#choose">Region vs Contour vs Metrology 선택</a></li>
+                        <li><a href="#calibration">Calibration과 World Coordinate</a></li>
+                        <li><a href="#failures">측정 실패 케이스</a></li>
+                        <li><a href="#patterns">측정 시스템 설계 패턴</a></li>
+                        <li><a href="#summary">핵심 정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 큰 그림 -->
+                <h2 id="big-picture"><i class="fa-solid fa-map"></i> 측정 계열의 큰 그림</h2>
+
+                <p>HALCON에서 측정은 크게 세 부류로 볼 수 있습니다.</p>
+
+                <ol>
+                    <li><strong>Region 기반 측정</strong><br>area, center, orientation, bounding box 등</li>
+                    <li><strong>Edge / 1D Measure 기반 측정</strong><br>선 또는 호 방향으로 edge 위치를 subpixel로 찾음</li>
+                    <li><strong>XLD / Contour / Metrology 기반 측정</strong><br>subpixel contour를 추출하고 기하 형상에 fitting</li>
+                </ol>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>실무 가이드</strong>
+                        실무에서 정밀 치수를 다루려면 region보다 edge/contour 기반 접근이 중요합니다.
+                    </div>
+                </div>
+
+                <!-- 2. 1D Measuring -->
+                <h2 id="measure-1d"><i class="fa-solid fa-ruler-horizontal"></i> 1D Measuring</h2>
+
+                <p>1D Measuring은 지정한 measurement rectangle 또는 arc 내부에서 gray profile을 분석해 edge 위치를 찾습니다.</p>
+
+                <h3 id="measure-flow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.1 기본 흐름</h3>
+
+<pre><code>measure object 생성
+→ image에서 edge 추출
+→ edge pair 또는 single edge 선택
+→ distance/position 계산
+→ measure object 재사용</code></pre>
+
+                <h3 id="measure-object"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.2 Measure Object</h3>
+
+                <p>Measure object는 측정 위치, 방향, 크기, interpolation 등을 포함하는 handle입니다. 반복 측정에서는 매번 새로 만들지 않고 <strong>재사용해야 합니다</strong>.</p>
+
+                <p>중요 parameter:</p>
+                <ul>
+                    <li>center row/column</li>
+                    <li>angle</li>
+                    <li>length1 / length2</li>
+                    <li>width</li>
+                    <li>interpolation</li>
+                    <li>sigma</li>
+                    <li>threshold</li>
+                    <li>transition</li>
+                    <li>select</li>
+                </ul>
+
+                <!-- 3. Edge Profile -->
+                <h2 id="edge-profile"><i class="fa-solid fa-wave-square"></i> Edge Profile 이해</h2>
+
+                <p>1D measure는 ROI 내부 gray profile에서 edge를 찾습니다.</p>
+
+                <h3 id="edge-direction"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.1 Edge 방향</h3>
+
+                <p>edge는 밝기 변화 방향에 따라 구분됩니다.</p>
+
+                <ul>
+                    <li>positive: dark → bright</li>
+                    <li>negative: bright → dark</li>
+                    <li>all: 양방향</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>transition 설정 주의</strong>
+                        transition 설정이 틀리면 반대 edge를 잡거나 edge를 놓칠 수 있습니다.
+                    </div>
+                </div>
+
+                <h3 id="sigma"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.2 Sigma</h3>
+
+                <p>Sigma는 smoothing 정도입니다.</p>
+
+                <ul>
+                    <li>작음: edge 위치 민감, noise에 취약</li>
+                    <li>큼: noise 감소, edge blur 증가</li>
+                </ul>
+
+                <p>실무적으로 sigma는 edge profile과 noise 수준에 맞춰야 합니다.</p>
+
+<pre><code>noise 큼 → sigma 증가
+작은 edge 간격 측정 → sigma 과대 금지</code></pre>
+
+                <h3 id="threshold-edge"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.3 Threshold</h3>
+
+                <p>edge amplitude 기준입니다.</p>
+
+                <ul>
+                    <li>너무 낮음: noise edge 검출</li>
+                    <li>너무 높음: 약한 edge 누락</li>
+                </ul>
+
+                <p>threshold는 원본 gray contrast와 조명 변동을 기준으로 margin 있게 설정해야 합니다.</p>
+
+                <!-- 4. Edge Pair -->
+                <h2 id="edge-pair"><i class="fa-solid fa-arrows-left-right"></i> Edge Pair 측정</h2>
+
+                <p>두 edge 사이 거리를 측정할 때 edge pair를 사용합니다.</p>
+
+                <p>예:</p>
+                <ul>
+                    <li>pin width</li>
+                    <li>hole diameter</li>
+                    <li>line width</li>
+                    <li>gap</li>
+                    <li>lead distance</li>
+                </ul>
+
+                <h3 id="pair-select"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.1 Pair Selection</h3>
+
+                <p>여러 edge가 ROI 안에 있으면 어떤 pair를 선택할지 정해야 합니다.</p>
+
+                <ul>
+                    <li>first</li>
+                    <li>last</li>
+                    <li>strongest</li>
+                    <li>all</li>
+                    <li>closest</li>
+                    <li>fuzzy measure</li>
+                </ul>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>치수 오검사의 대표 원인</strong>
+                        잘못된 edge pair 선택은 치수 오검사의 대표 원인입니다.
+                    </div>
+                </div>
+
+                <!-- 5. Fuzzy -->
+                <h2 id="fuzzy"><i class="fa-solid fa-cloud"></i> Fuzzy Measuring</h2>
+
+                <p>Fuzzy measure object는 edge 선택 조건을 더 정교하게 제어합니다.</p>
+
+                <p>사용 이유:</p>
+                <ul>
+                    <li>ROI 안에 edge가 여러 개 존재</li>
+                    <li>단순 strongest/first 선택이 불안정</li>
+                    <li>예상 위치, contrast, pair size를 함께 고려해야 함</li>
+                </ul>
+
+                <p>제어 가능한 feature 예:</p>
+                <ul>
+                    <li>contrast</li>
+                    <li>position</li>
+                    <li>pair position</li>
+                    <li>size</li>
+                    <li>size difference</li>
+                </ul>
+
+                <p>실무에서는 fuzzy measure가 다음 상황에서 강합니다.</p>
+                <ul>
+                    <li>IC lead 측정</li>
+                    <li>반복 패턴에서 특정 edge만 선택</li>
+                    <li>clutter가 있는 측정</li>
+                    <li>예상 치수 범위가 명확한 경우</li>
+                </ul>
+
+                <!-- 6. Edge Extraction -->
+                <h2 id="edge-extract"><i class="fa-solid fa-bezier-curve"></i> Edge Extraction</h2>
+
+                <p>Pixel-precise 또는 subpixel edge 추출은 contour 기반 분석의 시작입니다.</p>
+
+                <h3 id="edge-filter"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 6.1 Edge Filter</h3>
+
+                <p>대표적으로 Canny 계열 edge가 사용됩니다.</p>
+
+<pre><code>edges_sub_pix
+→ XLD contour 생성</code></pre>
+
+                <p>중요 parameter:</p>
+                <ul>
+                    <li>filter type</li>
+                    <li>alpha/sigma</li>
+                    <li>low threshold</li>
+                    <li>high threshold</li>
+                </ul>
+
+                <h3 id="subpixel"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 6.2 Subpixel Edge</h3>
+
+                <p>subpixel edge는 pixel grid보다 더 정밀한 위치를 추정합니다. 하지만 <strong>subpixel이라고 해서 실제 정확도가 자동으로 좋아지는 것은 아닙니다.</strong></p>
+
+                <p>정확도 조건:</p>
+                <ul>
+                    <li>edge contrast 충분</li>
+                    <li>blur 안정</li>
+                    <li>noise 낮음</li>
+                    <li>calibration 완료</li>
+                    <li>optical distortion 보정</li>
+                    <li>mechanical repeatability 확보</li>
+                </ul>
+
+                <!-- 7. XLD -->
+                <h2 id="xld"><i class="fa-solid fa-draw-polygon"></i> XLD Contour Processing</h2>
+
+                <p>XLD는 HALCON에서 subpixel contour를 표현하는 중요한 object입니다.</p>
+
+                <h3 id="xld-create"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 7.1 Contour 생성</h3>
+
+                <ul>
+                    <li>edges_sub_pix</li>
+                    <li>threshold 후 boundary extraction</li>
+                    <li>model contour</li>
+                    <li>transformed contour</li>
+                </ul>
+
+                <h3 id="xld-select"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 7.2 Contour 선택</h3>
+
+                <p>필요 없는 contour를 제거합니다.</p>
+
+                <p>기준:</p>
+                <ul>
+                    <li>length</li>
+                    <li>area</li>
+                    <li>position</li>
+                    <li>orientation</li>
+                    <li>closed/open</li>
+                    <li>shape</li>
+                </ul>
+
+                <h3 id="xld-split"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 7.3 Contour 분할</h3>
+
+                <p>복잡한 contour를 line, circle, arc 등으로 나눕니다.</p>
+
+                <p>사용 목적:</p>
+                <ul>
+                    <li>특정 edge segment만 측정</li>
+                    <li>line fitting</li>
+                    <li>circle fitting</li>
+                    <li>deviation 검사</li>
+                </ul>
+
+                <!-- 8. Fitting -->
+                <h2 id="fitting"><i class="fa-solid fa-shapes"></i> Geometric Fitting</h2>
+
+                <p>Contour 또는 point set에 기하 형상을 fitting합니다.</p>
+
+                <p>대표 형상:</p>
+                <ul>
+                    <li>line</li>
+                    <li>circle</li>
+                    <li>ellipse</li>
+                    <li>rectangle</li>
+                    <li>polygon</li>
+                </ul>
+
+                <h3 id="line-fit"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.1 Line Fitting</h3>
+
+                <p>사용 예:</p>
+                <ul>
+                    <li>직선도</li>
+                    <li>각도</li>
+                    <li>평행도</li>
+                    <li>edge 기준선</li>
+                </ul>
+
+                <p>주의:</p>
+                <ul>
+                    <li>outlier 제거 필요</li>
+                    <li>contour segment 선택 중요</li>
+                    <li>edge 방향/contrast가 안정적이어야 함</li>
+                </ul>
+
+                <h3 id="circle-fit"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.2 Circle Fitting</h3>
+
+                <p>사용 예:</p>
+                <ul>
+                    <li>hole diameter</li>
+                    <li>circular part</li>
+                    <li>roundness</li>
+                    <li>center position</li>
+                </ul>
+
+                <p>주의:</p>
+                <ul>
+                    <li>partial arc에서는 center 오차 증가</li>
+                    <li>arc 범위가 작으면 radius 추정 불안정</li>
+                    <li>burr/defect가 fitting에 영향</li>
+                </ul>
+
+                <!-- 9. Metrology -->
+                <h2 id="metrology"><i class="fa-solid fa-compass-drafting"></i> 2D Metrology</h2>
+
+                <p>HALCON의 2D metrology는 line, circle, ellipse, rectangle 등의 측정 object를 model로 관리하는 방식입니다.</p>
+
+                <p>기본 흐름:</p>
+
+<pre><code>create metrology model
+→ add metrology object
+→ set parameters
+→ apply metrology model
+→ get results</code></pre>
+
+                <p>장점:</p>
+                <ul>
+                    <li>여러 측정 object를 구조화 가능</li>
+                    <li>반복 검사에 적합</li>
+                    <li>alignment와 연결 가능</li>
+                    <li>결과 query가 체계적</li>
+                </ul>
+
+                <p>주의:</p>
+                <ul>
+                    <li>초기 설정이 복잡</li>
+                    <li>edge polarity/measure length/threshold 설정 필요</li>
+                    <li>clutter가 많은 경우 잘못된 edge 선택 가능</li>
+                </ul>
+
+                <!-- 10. 선택 -->
+                <h2 id="choose"><i class="fa-solid fa-arrows-split-up-and-left"></i> Region vs Contour vs Metrology 선택</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>목적</th>
+                            <th>추천</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">면적, 개수</td><td>Region</td></tr>
+                        <tr><td class="highlight">간단한 폭/간격</td><td>1D Measure</td></tr>
+                        <tr><td class="highlight">다수 치수 반복 측정</td><td>Metrology</td></tr>
+                        <tr><td class="highlight">복잡 윤곽 분석</td><td>XLD Contour</td></tr>
+                        <tr><td class="highlight">원/선 fitting</td><td>XLD + fitting 또는 Metrology</td></tr>
+                        <tr><td class="highlight">외관 불량</td><td>Filtering + Region/XLD 조합</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- 11. Calibration -->
+                <h2 id="calibration"><i class="fa-solid fa-camera-rotate"></i> Calibration과 World Coordinate</h2>
+
+                <p>정밀 측정에서 pixel distance는 최종값이 아닙니다.</p>
+
+                <p>필요한 과정:</p>
+
+<pre><code>camera calibration
+→ lens distortion compensation
+→ image coordinate to world coordinate
+→ physical unit 측정</code></pre>
+
+                <h3 id="why-calib"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 11.1 왜 calibration이 필요한가</h3>
+
+                <ul>
+                    <li>렌즈 왜곡</li>
+                    <li>perspective projection</li>
+                    <li>pixel aspect ratio</li>
+                    <li>카메라 설치 각도</li>
+                    <li>working distance 변화</li>
+                </ul>
+
+                <h3 id="calib-practice"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 11.2 실무 주의</h3>
+
+                <ul>
+                    <li>calibration plate와 실제 측정 plane이 일치해야 함</li>
+                    <li>Z 높이 차이가 있으면 scale error 발생</li>
+                    <li>telecentric lens가 아니면 높이 변화에 민감</li>
+                    <li>calibration 후 verification target으로 검증 필요</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>물리 치수의 대전제</strong>
+                        calibration 없이 물리 치수를 말하면 안 됩니다. pixel 거리와 mm 거리는 동일하지 않습니다.
+                    </div>
+                </div>
+
+                <!-- 12. 실패 케이스 -->
+                <h2 id="failures"><i class="fa-solid fa-magnifying-glass-chart"></i> 측정 실패 케이스</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>증상</th>
+                            <th>원인</th>
+                            <th>대응</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">edge 위치가 흔들림</td><td>noise/blur/contrast 부족</td><td>조명, sigma, threshold 조정</td></tr>
+                        <tr><td class="highlight">엉뚱한 edge 측정</td><td>ROI 과대, clutter</td><td>ROI 축소, fuzzy measure</td></tr>
+                        <tr><td class="highlight">치수 offset 발생</td><td>calibration/왜곡 문제</td><td>calibration 재검증</td></tr>
+                        <tr><td class="highlight">특정 방향만 오차</td><td>카메라 기울기, lens distortion</td><td>world transform 확인</td></tr>
+                        <tr><td class="highlight">반복성 낮음</td><td>기구/초점/노출 문제</td><td>HW 안정화</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- 13. 패턴 -->
+                <h2 id="patterns"><i class="fa-solid fa-diagram-project"></i> 측정 시스템 설계 패턴</h2>
+
+                <h3 id="pat-align"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 13.1 기준 정렬 후 측정</h3>
+
+<pre><code>shape matching
+→ pose 획득
+→ measure ROI transform
+→ edge pair 측정
+→ world coordinate 변환
+→ tolerance 판정</code></pre>
+
+                <h3 id="pat-multi-edge"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 13.2 다중 edge에서 특정 edge 선택</h3>
+
+<pre><code>expected edge position 정의
+→ measure ROI 설정
+→ fuzzy feature로 edge 선택
+→ distance 계산</code></pre>
+
+                <h3 id="pat-deviation"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 13.3 Contour 편차 검사</h3>
+
+<pre><code>edge extraction
+→ contour selection
+→ reference contour alignment
+→ distance/deviation 계산
+→ max/mean deviation 판정</code></pre>
+
+                <!-- 14. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 핵심 정리</h2>
+
+                <ul>
+                    <li>정밀 측정은 segmentation보다 edge profile 품질이 중요합니다.</li>
+                    <li>subpixel은 조건이 맞을 때만 의미가 있습니다.</li>
+                    <li>measure object는 재사용해야 성능과 구조가 좋아집니다.</li>
+                    <li>edge pair 선택 기준이 측정 안정성을 좌우합니다.</li>
+                    <li>calibration 없이 물리 치수를 말하면 안 됩니다.</li>
+                    <li>XLD contour와 metrology는 중상급 HALCON 활용의 핵심입니다.</li>
+                </ul>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>중상급으로 가는 길</strong>
+                        Region에서 XLD/Metrology로 옮겨갈 수 있는 시야가 생기면, 같은 검사 항목이라도 정밀도·반복성·유지보수성 모두에서 한 단계 위의 시스템을 설계할 수 있습니다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>MVTec — HALCON Solution Guide I</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-halcon');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+    renderPostNav('tech-halcon');
+</script>
+
+</body>
+</html>

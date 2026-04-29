@@ -1,0 +1,830 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>성능 / 디버깅 / 실무 설계 패턴 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#principles" data-section="principles">최적화 원칙</a>
+        <a href="#roi-opt" data-section="roi-opt">ROI 최적화</a>
+        <a href="#pyramid" data-section="pyramid">Pyramid</a>
+        <a href="#reuse" data-section="reuse">Handle 재사용</a>
+        <a href="#memory" data-section="memory">Memory</a>
+        <a href="#multithread" data-section="multithread">Multi-thread</a>
+        <a href="#debugging" data-section="debugging">Debugging</a>
+        <a href="#failure" data-section="failure">실패 원인</a>
+        <a href="#patterns" data-section="patterns">설계 패턴</a>
+        <a href="#parameter" data-section="parameter">Parameter</a>
+        <a href="#validation" data-section="validation">Validation</a>
+        <a href="#tuning-order" data-section="tuning-order">튜닝 순서</a>
+        <a href="#summary" data-section="summary">핵심 정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">HALCON 비전 라이브러리</span>
+                </div>
+                <h1>성능 / 디버깅 / 실무 설계 패턴</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-29</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>HALCON 시스템 성능을 결정하는 pipeline 구조와 실제 병목 지점</li>
+                        <li>ROI / Pyramid / Handle 재사용 / Memory copy / Multi-thread의 최적화 원칙</li>
+                        <li>중간 결과 저장을 기반으로 한 디버깅 순서</li>
+                        <li>Acquisition / ROI / Segmentation / Measuring / Matching 단계별 실패 원인 분류</li>
+                        <li>안정 검사형, 정밀 측정, 외관 검사, 다품종 Recipe 등 실무 설계 패턴</li>
+                        <li>Parameter, Validation, 현장 튜닝 순서까지 포함하는 운영 관점</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#principles">성능 최적화의 기본 원칙</a></li>
+                        <li><a href="#roi-opt">ROI 최적화</a></li>
+                        <li><a href="#pyramid">Pyramid / Resolution 전략</a></li>
+                        <li><a href="#reuse">Model / Handle 재사용</a></li>
+                        <li><a href="#memory">Memory와 Copy</a></li>
+                        <li><a href="#multithread">Multi-thread / Async Pipeline</a></li>
+                        <li><a href="#debugging">Debugging 원칙</a></li>
+                        <li><a href="#failure">실패 원인 분류</a></li>
+                        <li><a href="#patterns">실무 설계 패턴</a></li>
+                        <li><a href="#parameter">Parameter 관리</a></li>
+                        <li><a href="#validation">Validation</a></li>
+                        <li><a href="#tuning-order">현장 튜닝 순서</a></li>
+                        <li><a href="#summary">핵심 정리</a></li>
+                    </ol>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 챕터의 위치</strong>
+                        앞 챕터들이 "어떻게 검사할 것인가"였다면, 이 챕터는 "어떻게 안정적으로 운영할 것인가"입니다. 실무에서 시스템 수명을 결정하는 부분이 대부분 여기에 있습니다.
+                    </div>
+                </div>
+
+                <!-- 1. 원칙 -->
+                <h2 id="principles"><i class="fa-solid fa-gauge-high"></i> 성능 최적화의 기본 원칙</h2>
+
+                <p>HALCON 시스템 성능은 operator 하나만 바꿔서 해결되는 경우보다 pipeline 구조를 바꿔야 좋아지는 경우가 많습니다.</p>
+
+                <p>전체 처리 시간:</p>
+
+<pre><code>acquisition
++ transfer
++ preprocessing
++ ROI/matching
++ segmentation
++ feature extraction
++ decision
++ display/logging
++ communication</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>의외의 병목</strong>
+                        실제 현장에서는 display, image copy, logging, UI update가 병목인 경우도 많습니다.
+                    </div>
+                </div>
+
+                <!-- 2. ROI 최적화 -->
+                <h2 id="roi-opt"><i class="fa-solid fa-crop-simple"></i> ROI 최적화</h2>
+
+                <p>가장 먼저 봐야 할 최적화입니다.</p>
+
+                <h3 id="search-space"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.1 Search Space 줄이기</h3>
+
+                <ul>
+                    <li>matching search ROI 제한</li>
+                    <li>angle range 제한</li>
+                    <li>scale range 제한</li>
+                    <li>expected position 기반 ROI</li>
+                    <li>product recipe 기반 ROI</li>
+                </ul>
+
+                <h3 id="processing-domain"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.2 Processing Domain 줄이기</h3>
+
+                <ul>
+                    <li><code>reduce_domain</code></li>
+                    <li><code>crop_domain</code></li>
+                    <li>local ROI processing</li>
+                    <li>multi-stage coarse-to-fine</li>
+                </ul>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>이중 효과</strong>
+                        ROI 최적화는 속도뿐 아니라 false positive 감소에도 효과가 큽니다.
+                    </div>
+                </div>
+
+                <!-- 3. Pyramid -->
+                <h2 id="pyramid"><i class="fa-solid fa-layer-group"></i> Pyramid / Resolution 전략</h2>
+
+                <p>이미지 해상도는 정확도와 속도를 동시에 좌우합니다.</p>
+
+                <h3 id="downscale"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.1 Downscale이 가능한 경우</h3>
+
+                <ul>
+                    <li>존재 여부 검사</li>
+                    <li>대략 위치 검출</li>
+                    <li>큰 defect 검출</li>
+                    <li>coarse matching</li>
+                </ul>
+
+                <h3 id="full-res"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.2 원본 해상도가 필요한 경우</h3>
+
+                <ul>
+                    <li>정밀 edge 측정</li>
+                    <li>작은 defect</li>
+                    <li>OCR/code module</li>
+                    <li>subpixel fitting</li>
+                    <li>fine alignment</li>
+                </ul>
+
+                <p>실무 패턴:</p>
+
+<pre><code>저해상도에서 coarse detection
+→ 원본 해상도 ROI에서 fine measurement</code></pre>
+
+                <!-- 4. Reuse -->
+                <h2 id="reuse"><i class="fa-solid fa-recycle"></i> Model / Handle 재사용</h2>
+
+                <p>반복 생성하면 느리고 구조도 불안정해집니다.</p>
+
+                <p>재사용 대상:</p>
+
+                <ul>
+                    <li>shape model</li>
+                    <li>measure object</li>
+                    <li>metrology model</li>
+                    <li>data code model</li>
+                    <li>OCR classifier</li>
+                    <li>calibration map</li>
+                    <li>ROI template</li>
+                    <li>DL model</li>
+                </ul>
+
+                <p>Recipe 변경 시에만 다시 load/create하는 구조가 좋습니다.</p>
+
+                <!-- 5. Memory -->
+                <h2 id="memory"><i class="fa-solid fa-memory"></i> Memory와 Copy</h2>
+
+                <p>HALCON은 object 기반이지만 내부적으로 copy가 발생할 수 있습니다.</p>
+
+                <p>주의할 지점:</p>
+
+                <ul>
+                    <li>image format conversion</li>
+                    <li>crop/copy 반복</li>
+                    <li>color channel split 반복</li>
+                    <li>large tuple append</li>
+                    <li>display용 image 생성</li>
+                    <li>외부 SDK buffer 변환</li>
+                </ul>
+
+                <p>실시간 시스템에서는 image copy를 줄이는 것이 중요합니다.</p>
+
+                <!-- 6. Multi-thread -->
+                <h2 id="multithread"><i class="fa-solid fa-network-wired"></i> Multi-thread / Async Pipeline</h2>
+
+                <h3 id="pipeline-split"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 6.1 Pipeline 분리</h3>
+
+<pre><code>Thread 1: acquisition
+Thread 2: processing
+Thread 3: UI/display
+Thread 4: logging/communication</code></pre>
+
+                <p>주의:</p>
+
+                <ul>
+                    <li>frame order</li>
+                    <li>buffer lifetime</li>
+                    <li>race condition</li>
+                    <li>result-image matching</li>
+                    <li>thread-safe handle 사용 여부</li>
+                </ul>
+
+                <h3 id="async-acq"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 6.2 Async Acquisition</h3>
+
+                <p>비동기 acquisition은 처리량을 높이지만, 지연 frame 문제를 만들 수 있습니다.</p>
+
+                <p>관리해야 할 것:</p>
+
+                <ul>
+                    <li>frame ID</li>
+                    <li>timestamp</li>
+                    <li>trigger ID</li>
+                    <li>queue size</li>
+                    <li>dropped frame count</li>
+                    <li>latest frame policy</li>
+                </ul>
+
+                <!-- 7. Debugging -->
+                <h2 id="debugging"><i class="fa-solid fa-bug"></i> Debugging 원칙</h2>
+
+                <p>문제가 생겼을 때 최종 NG 결과만 보면 원인을 찾기 어렵습니다. 항상 pipeline 중간 결과를 저장해야 합니다.</p>
+
+                <h3 id="debug-order"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 7.1 기본 디버깅 순서</h3>
+
+<pre><code>Raw image
+→ ROI
+→ Preprocessed image
+→ Segmentation / Edge
+→ Candidate objects
+→ Feature values
+→ Decision</code></pre>
+
+                <h3 id="debug-save"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 7.2 저장해야 하는 정보</h3>
+
+                <ul>
+                    <li>raw image</li>
+                    <li>processed image</li>
+                    <li>overlay image</li>
+                    <li>parameter set</li>
+                    <li>model version</li>
+                    <li>recipe name</li>
+                    <li>acquisition metadata</li>
+                    <li>feature values</li>
+                    <li>final decision</li>
+                    <li>processing time</li>
+                </ul>
+
+                <!-- 8. 실패 원인 -->
+                <h2 id="failure"><i class="fa-solid fa-circle-exclamation"></i> 실패 원인 분류</h2>
+
+                <h3 id="fail-acq"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.1 Acquisition 문제</h3>
+
+                <p>증상:</p>
+
+                <ul>
+                    <li>전체 알고리즘이 가끔 흔들림</li>
+                    <li>밝기/contrast가 frame마다 다름</li>
+                    <li>blur 발생</li>
+                    <li>특정 위치에서만 불량</li>
+                </ul>
+
+                <p>원인:</p>
+
+                <ul>
+                    <li>exposure/gain</li>
+                    <li>trigger timing</li>
+                    <li>lighting</li>
+                    <li>focus</li>
+                    <li>vibration</li>
+                    <li>camera bandwidth</li>
+                </ul>
+
+                <h3 id="fail-roi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.2 ROI/Alignment 문제</h3>
+
+                <p>증상:</p>
+
+                <ul>
+                    <li>가끔 검사 대상이 ROI 밖으로 나감</li>
+                    <li>잘못된 부품을 검사</li>
+                    <li>위치 편차가 큰 sample에서 실패</li>
+                </ul>
+
+                <p>대응:</p>
+
+                <ul>
+                    <li>기준 matching 강화</li>
+                    <li>ROI margin 조정</li>
+                    <li>다중 기준점 사용</li>
+                    <li>fallback search ROI 추가</li>
+                </ul>
+
+                <h3 id="fail-seg"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.3 Segmentation 문제</h3>
+
+                <p>증상:</p>
+
+                <ul>
+                    <li>blob area가 흔들림</li>
+                    <li>defect가 붙거나 끊김</li>
+                    <li>threshold가 sample마다 맞지 않음</li>
+                </ul>
+
+                <p>대응:</p>
+
+                <ul>
+                    <li>조명 개선</li>
+                    <li>dynamic threshold</li>
+                    <li>background correction</li>
+                    <li>morphology 재검토</li>
+                    <li>color/texture feature 추가</li>
+                </ul>
+
+                <h3 id="fail-meas"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.4 Measuring 문제</h3>
+
+                <p>증상:</p>
+
+                <ul>
+                    <li>치수가 불안정</li>
+                    <li>특정 edge를 잘못 잡음</li>
+                    <li>offset이 일정하게 존재</li>
+                </ul>
+
+                <p>대응:</p>
+
+                <ul>
+                    <li>edge profile 확인</li>
+                    <li>measure ROI 축소</li>
+                    <li>transition/select 재설정</li>
+                    <li>fuzzy measure</li>
+                    <li>calibration 검증</li>
+                </ul>
+
+                <h3 id="fail-match"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.5 Matching 문제</h3>
+
+                <p>증상:</p>
+
+                <ul>
+                    <li>score 낮음</li>
+                    <li>false match</li>
+                    <li>위치가 튐</li>
+                    <li>특정 각도에서 실패</li>
+                </ul>
+
+                <p>대응:</p>
+
+                <ul>
+                    <li>model ROI 정제</li>
+                    <li>search range 제한</li>
+                    <li>pyramid level 조정</li>
+                    <li>min score 재설정</li>
+                    <li>contrast/polarity 확인</li>
+                </ul>
+
+                <!-- 9. 설계 패턴 -->
+                <h2 id="patterns"><i class="fa-solid fa-diagram-project"></i> 실무 설계 패턴</h2>
+
+                <h3 id="pattern-basic"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.1 안정적인 검사 기본형</h3>
+
+<pre><code>1. raw image acquisition
+2. global alignment
+3. local ROI transform
+4. local preprocessing
+5. segmentation/measurement
+6. feature extraction
+7. rule-based decision
+8. overlay/log 저장</code></pre>
+
+                <h3 id="pattern-shift"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.2 위치 편차가 큰 시스템</h3>
+
+<pre><code>coarse matching
+→ fine matching
+→ ROI transform
+→ inspection</code></pre>
+
+                <h3 id="pattern-precision"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.3 정밀 측정 시스템</h3>
+
+<pre><code>calibration load
+→ alignment
+→ measure ROI transform
+→ subpixel edge extraction
+→ world coordinate conversion
+→ tolerance decision</code></pre>
+
+                <h3 id="pattern-appearance"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.4 외관 검사 시스템</h3>
+
+<pre><code>illumination normalization
+→ defect enhancement
+→ candidate extraction
+→ feature filtering
+→ classifier/DL
+→ final rule</code></pre>
+
+                <h3 id="pattern-recipe"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.5 다품종 Recipe 시스템</h3>
+
+<pre><code>product ID
+→ recipe load
+→ camera parameter set
+→ model/ROI/threshold load
+→ inspection
+→ result with recipe version</code></pre>
+
+                <!-- 10. Parameter -->
+                <h2 id="parameter"><i class="fa-solid fa-sliders"></i> Parameter 관리</h2>
+
+                <p>중상급 시스템에서는 parameter가 코드에 하드코딩되면 유지보수가 어렵습니다.</p>
+
+                <p>관리할 parameter:</p>
+
+                <ul>
+                    <li>camera exposure/gain</li>
+                    <li>ROI geometry</li>
+                    <li>matching parameter</li>
+                    <li>threshold</li>
+                    <li>morphology size</li>
+                    <li>measure parameter</li>
+                    <li>calibration file</li>
+                    <li>tolerance</li>
+                    <li>output mapping</li>
+                </ul>
+
+                <p>권장:</p>
+
+                <ul>
+                    <li>recipe 파일</li>
+                    <li>version 관리</li>
+                    <li>parameter 변경 로그</li>
+                    <li>offline tuning tool</li>
+                    <li>golden sample dataset</li>
+                </ul>
+
+                <!-- 11. Validation -->
+                <h2 id="validation"><i class="fa-solid fa-clipboard-check"></i> Validation</h2>
+
+                <p>알고리즘 개발 후 반드시 validation set으로 확인해야 합니다.</p>
+
+                <p>필요 sample:</p>
+
+                <ul>
+                    <li>정상 양품</li>
+                    <li>한계 양품</li>
+                    <li>대표 불량</li>
+                    <li>조명 편차</li>
+                    <li>위치 편차</li>
+                    <li>회전 편차</li>
+                    <li>초점 편차</li>
+                    <li>표면 편차</li>
+                    <li>lot 편차</li>
+                </ul>
+
+                <p>평가 지표:</p>
+
+                <ul>
+                    <li>false reject</li>
+                    <li>false accept</li>
+                    <li>repeatability</li>
+                    <li>processing time</li>
+                    <li>score/feature margin</li>
+                    <li>robustness under variation</li>
+                </ul>
+
+                <!-- 12. 튜닝 순서 -->
+                <h2 id="tuning-order"><i class="fa-solid fa-list-ol"></i> 현장 튜닝 순서</h2>
+
+                <p>문제가 생겼을 때 무작정 threshold를 조정하지 말고 다음 순서로 봅니다.</p>
+
+                <ol>
+                    <li>원본 이미지 품질</li>
+                    <li>조명/노출/초점</li>
+                    <li>ROI/alignment</li>
+                    <li>preprocessing</li>
+                    <li>segmentation/edge</li>
+                    <li>feature 분포</li>
+                    <li>decision threshold</li>
+                    <li>예외 처리</li>
+                </ol>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>안 좋은 패턴</strong>
+                        이 순서를 지키면 SW parameter로 HW 문제를 덮는 상황을 줄일 수 있습니다. 반대로 하면 단기에는 통과돼도 lot이 바뀌는 순간 무너집니다.
+                    </div>
+                </div>
+
+                <!-- 13. 핵심 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 핵심 정리</h2>
+
+                <ul>
+                    <li>최적화는 ROI, search range, 재사용, pipeline 분리부터 봐야 합니다.</li>
+                    <li>디버깅은 최종 결과가 아니라 중간 결과를 저장해야 합니다.</li>
+                    <li>대부분의 불안정성은 acquisition, ROI, segmentation 단계에서 발생합니다.</li>
+                    <li>parameter는 recipe/version 기반으로 관리해야 합니다.</li>
+                    <li>validation dataset 없이 현장 감으로 threshold를 잡으면 장기 안정성이 떨어집니다.</li>
+                </ul>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>마무리</strong>
+                        Solution Guide I의 마지막 챕터는 "어떤 알고리즘이 더 좋은가"가 아니라 "어떻게 하면 시스템을 오래 안정적으로 운영할 수 있는가"에 대한 답입니다. 결국 실무 비전 시스템의 품질은 운영 단계의 설계로 결정됩니다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>MVTec — HALCON Solution Guide I</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-halcon');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+    renderPostNav('tech-halcon');
+</script>
+
+</body>
+</html>

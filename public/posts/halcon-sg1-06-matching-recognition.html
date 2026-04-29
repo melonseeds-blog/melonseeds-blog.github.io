@@ -1,0 +1,787 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matching과 Recognition — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#role" data-section="role">역할</a>
+        <a href="#approaches" data-section="approaches">접근 종류</a>
+        <a href="#model-prep" data-section="model-prep">Model 준비</a>
+        <a href="#search-param" data-section="search-param">Search Parameter</a>
+        <a href="#use-result" data-section="use-result">결과 활용</a>
+        <a href="#multiple" data-section="multiple">Multiple Matches</a>
+        <a href="#occlusion" data-section="occlusion">Occlusion / Clutter</a>
+        <a href="#debug" data-section="debug">실패 디버깅</a>
+        <a href="#patterns" data-section="patterns">설계 패턴</a>
+        <a href="#summary" data-section="summary">핵심 정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">HALCON 비전 라이브러리</span>
+                </div>
+                <h1>Matching과 Recognition</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-29</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Matching이 단순 객체 검출이 아니라 후속 ROI/검사 좌표계 정렬의 기준이 되는 이유</li>
+                        <li>NCC, Shape-based, Local/Perspective Deformable, Descriptor-based 등 접근법 비교</li>
+                        <li>Model ROI 품질이 matching 성능을 가르는 결정적 요소인 이유</li>
+                        <li>Angle/Scale/Score/Greediness/Pyramid 등 search parameter의 실무 튜닝 원칙</li>
+                        <li>Occlusion, clutter, 다중 매칭, 실패 디버깅 체크리스트</li>
+                        <li>실무 matching 설계 패턴(정렬용, 다품종, matching+measuring, matching+blob)</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#role">Matching의 역할</a></li>
+                        <li><a href="#approaches">Matching 접근 종류</a></li>
+                        <li><a href="#model-prep">Template / Model 준비</a></li>
+                        <li><a href="#search-param">Search Parameter</a></li>
+                        <li><a href="#use-result">Matching 결과 활용</a></li>
+                        <li><a href="#multiple">Multiple Matches</a></li>
+                        <li><a href="#occlusion">Occlusion / Clutter 대응</a></li>
+                        <li><a href="#debug">Matching 실패 디버깅</a></li>
+                        <li><a href="#patterns">실무 Matching 설계 패턴</a></li>
+                        <li><a href="#summary">핵심 정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 역할 -->
+                <h2 id="role"><i class="fa-solid fa-crosshairs"></i> Matching의 역할</h2>
+
+                <p>Matching은 이미지에서 기준 객체 또는 pattern을 찾아 위치, 각도, scale, pose 등을 얻는 방법입니다. HALCON에서 matching은 단순히 "객체를 찾는 기능"이 아니라, <strong>후속 ROI 정렬과 검사 좌표계 생성의 핵심</strong>으로 사용됩니다.</p>
+
+                <p>대표 흐름:</p>
+
+<pre><code>reference image 준비
+→ model ROI 선택
+→ model 생성
+→ search image에서 model 검색
+→ row/column/angle/scale/score 획득
+→ ROI/contour/measure object transform
+→ 후속 검사</code></pre>
+
+                <!-- 2. 접근 종류 -->
+                <h2 id="approaches"><i class="fa-solid fa-shapes"></i> Matching 접근 종류</h2>
+
+                <h3 id="ncc"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.1 Correlation-Based Matching / NCC</h3>
+
+                <p>gray value pattern의 상관성을 기반으로 찾습니다.</p>
+
+                <p><strong>장점:</strong></p>
+                <ul>
+                    <li>비교적 빠름</li>
+                    <li>texture가 안정적인 대상에 유리</li>
+                    <li>구현이 단순</li>
+                </ul>
+
+                <p><strong>한계:</strong></p>
+                <ul>
+                    <li>조명 변화에 취약</li>
+                    <li>회전/scale 변화에 제한</li>
+                    <li>occlusion에 약함</li>
+                    <li>배경 변화에 영향</li>
+                </ul>
+
+                <p><strong>적합한 경우:</strong></p>
+                <ul>
+                    <li>조명 고정</li>
+                    <li>대상 gray pattern이 안정적</li>
+                    <li>회전 변화 작음</li>
+                    <li>속도가 중요</li>
+                </ul>
+
+                <h3 id="shape-based"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.2 Shape-Based Matching</h3>
+
+                <p>edge/contour 기반으로 객체 형상을 찾습니다. 산업 머신비전에서 가장 자주 쓰이는 matching 방식 중 하나입니다.</p>
+
+                <p><strong>장점:</strong></p>
+                <ul>
+                    <li>조명 밝기 변화에 비교적 강함</li>
+                    <li>회전/scale 대응 가능</li>
+                    <li>texture보다 형상 안정성이 중요한 부품에 적합</li>
+                    <li>후속 alignment에 좋음</li>
+                </ul>
+
+                <p><strong>한계:</strong></p>
+                <ul>
+                    <li>edge가 약하면 불안정</li>
+                    <li>model에 배경 edge가 들어가면 오검출</li>
+                    <li>parameter 설정에 따라 속도 저하</li>
+                    <li>과도한 angle/scale 범위는 search cost 증가</li>
+                </ul>
+
+                <h3 id="local-deformable"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.3 Local Deformable Matching</h3>
+
+                <p>객체가 국소적으로 변형될 수 있을 때 사용합니다.</p>
+
+                <p><strong>적합한 경우:</strong></p>
+                <ul>
+                    <li>인쇄물 휨</li>
+                    <li>유연한 재질</li>
+                    <li>label 변형</li>
+                    <li>부분적인 local distortion</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>주의</strong>
+                        shape-based보다 계산량이 크고, 변형 허용 범위가 크면 false match가 증가합니다. 후속 측정에 변형 field를 어떻게 반영할지 고려해야 합니다.
+                    </div>
+                </div>
+
+                <h3 id="perspective-deformable"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.4 Perspective Deformable Matching</h3>
+
+                <p>평면 객체가 원근 변형을 받을 때 사용합니다.</p>
+
+                <p><strong>적합한 경우:</strong></p>
+                <ul>
+                    <li>카메라가 정면이 아님</li>
+                    <li>평면 label/mark가 기울어짐</li>
+                    <li>homography 기반 정렬 필요</li>
+                </ul>
+
+                <h3 id="descriptor"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.5 Descriptor-Based Matching</h3>
+
+                <p>feature descriptor 기반 matching입니다. texture feature나 local feature가 풍부한 대상에서 유리합니다.</p>
+
+                <p><strong>적합한 경우:</strong></p>
+                <ul>
+                    <li>perspective 변화</li>
+                    <li>scale 변화</li>
+                    <li>textured object</li>
+                    <li>point correspondence 필요</li>
+                </ul>
+
+                <p><strong>한계:</strong></p>
+                <ul>
+                    <li>texture가 없는 금속/단순 형상에는 약할 수 있음</li>
+                    <li>반복 패턴에서 ambiguity 발생 가능</li>
+                </ul>
+
+                <!-- 3. Model 준비 -->
+                <h2 id="model-prep"><i class="fa-solid fa-cube"></i> Template / Model 준비</h2>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Matching 성공의 절반은 model 준비에서 결정됩니다.</strong>
+                        파라미터 튜닝 전에 model ROI 품질부터 점검해야 합니다.
+                    </div>
+                </div>
+
+                <h3 id="model-roi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.1 Model ROI</h3>
+
+                <p>reference image에서 객체만 포함하도록 ROI를 선택해야 합니다.</p>
+
+                <p><strong>나쁜 model ROI:</strong></p>
+                <ul>
+                    <li>배경 edge 포함</li>
+                    <li>움직이는 부품 포함</li>
+                    <li>반사 highlight 포함</li>
+                    <li>제품마다 변하는 문자/label 포함</li>
+                    <li>불량 sample로 model 생성</li>
+                </ul>
+
+                <p><strong>좋은 model ROI:</strong></p>
+                <ul>
+                    <li>반복적으로 안정적인 형상 포함</li>
+                    <li>배경 제외</li>
+                    <li>충분한 edge/texture 포함</li>
+                    <li>object coordinate 기준이 명확함</li>
+                    <li>후속 ROI transform 기준으로 사용 가능</li>
+                </ul>
+
+                <h3 id="synthetic"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.2 Synthetic Model</h3>
+
+                <p>실제 이미지 대신 CAD/도형 기반 contour로 model을 만들 수 있습니다.</p>
+
+                <p><strong>장점:</strong></p>
+                <ul>
+                    <li>배경 noise 없음</li>
+                    <li>이상적인 형상</li>
+                    <li>제품 이미지가 없어도 가능</li>
+                </ul>
+
+                <p><strong>주의:</strong></p>
+                <ul>
+                    <li>실제 edge appearance와 차이</li>
+                    <li>chamfer/rounding/blur 반영 필요</li>
+                    <li>scale/camera projection 차이 고려</li>
+                </ul>
+
+                <!-- 4. Search Parameter -->
+                <h2 id="search-param"><i class="fa-solid fa-sliders"></i> Search Parameter</h2>
+
+                <h3 id="angle-range"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.1 Angle Range</h3>
+
+                <p>객체 회전 범위를 지정합니다.</p>
+
+                <ul>
+                    <li>범위가 좁을수록 빠르고 안정적</li>
+                    <li>범위가 넓을수록 계산량 증가 및 false match 가능성 증가</li>
+                </ul>
+
+                <p>실무 원칙:</p>
+
+<pre><code>기구적으로 가능한 회전 범위만 열기</code></pre>
+
+                <h3 id="scale-range"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.2 Scale Range</h3>
+
+                <p>scale 변화가 필요한 경우만 열어야 합니다.</p>
+
+                <p><strong>scale 변화 원인:</strong></p>
+                <ul>
+                    <li>working distance 변화</li>
+                    <li>제품 크기 편차</li>
+                    <li>zoom/focus 변경</li>
+                    <li>perspective 효과</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>정밀 검사에서의 주의</strong>
+                        scale을 자유롭게 두면 후속 측정 기준이 흔들릴 수 있습니다.
+                    </div>
+                </div>
+
+                <h3 id="score"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.3 Score</h3>
+
+                <p>Score는 match 품질 지표입니다.</p>
+
+                <p><strong>주의할 점:</strong></p>
+                <ul>
+                    <li>score가 높다고 항상 올바른 match는 아님</li>
+                    <li>score threshold가 너무 높으면 양품 miss</li>
+                    <li>너무 낮으면 false match</li>
+                    <li>occlusion을 허용하려면 score 기준 재설정 필요</li>
+                </ul>
+
+                <p>실무에서는 양품/불량/오검출 sample score 분포를 저장해 threshold를 잡아야 합니다.</p>
+
+                <h3 id="greediness"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.4 Greediness</h3>
+
+                <p>Search를 얼마나 공격적으로 가지치기할지 결정합니다.</p>
+
+                <ul>
+                    <li>높음: 빠름, miss 가능성 증가</li>
+                    <li>낮음: 느림, robust</li>
+                </ul>
+
+                <p>속도 이슈가 있을 때 greediness를 올리기 전에 먼저 다음을 확인합니다.</p>
+
+                <ol>
+                    <li>search ROI 제한</li>
+                    <li>angle range 제한</li>
+                    <li>scale range 제한</li>
+                    <li>pyramid level 조정</li>
+                    <li>model ROI 품질 개선</li>
+                </ol>
+
+                <h3 id="pyramid"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.5 Pyramid / NumLevels</h3>
+
+                <p>Image pyramid를 사용해 coarse-to-fine search를 수행합니다.</p>
+
+                <p><strong>장점:</strong></p>
+                <ul>
+                    <li>속도 개선</li>
+                    <li>큰 객체 search 효율 향상</li>
+                </ul>
+
+                <p><strong>주의:</strong></p>
+                <ul>
+                    <li>작은 feature가 높은 pyramid level에서 사라질 수 있음</li>
+                    <li>너무 많은 level은 작은 model에 불리</li>
+                    <li>model size와 feature thickness를 고려해야 함</li>
+                </ul>
+
+                <!-- 5. 결과 활용 -->
+                <h2 id="use-result"><i class="fa-solid fa-arrows-to-dot"></i> Matching 결과 활용</h2>
+
+                <p>Matching 결과는 보통 다음 값입니다.</p>
+
+                <ul>
+                    <li>row</li>
+                    <li>column</li>
+                    <li>angle</li>
+                    <li>scale</li>
+                    <li>score</li>
+                    <li>homography 또는 pose</li>
+                </ul>
+
+                <p>이 결과를 직접 표시하는 것보다 중요한 것은 <strong>후속 검사 좌표계를 정렬하는 것</strong>입니다.</p>
+
+                <h3 id="roi-transform"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.1 ROI Transform</h3>
+
+<pre><code>reference ROI
+→ match pose로 affine transform
+→ current ROI
+→ inspection</code></pre>
+
+                <h3 id="contour-transform"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.2 Contour Transform</h3>
+
+                <p>모델 contour를 현재 위치에 표시하거나 편차 검사에 사용합니다.</p>
+
+                <h3 id="measurement-roi-transform"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.3 Measurement ROI Transform</h3>
+
+                <p>정밀 측정에서 가장 중요합니다.</p>
+
+<pre><code>matching으로 기준 위치 확보
+→ measure rectangle 이동/회전
+→ edge 측정</code></pre>
+
+                <!-- 6. Multiple Matches -->
+                <h2 id="multiple"><i class="fa-solid fa-clone"></i> Multiple Matches</h2>
+
+                <p>여러 객체를 동시에 찾는 경우:</p>
+
+                <ul>
+                    <li>NumMatches 설정</li>
+                    <li>minimum distance / overlap 제어</li>
+                    <li>score sorting</li>
+                    <li>duplicate suppression</li>
+                    <li>object identity 관리</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>반복 패턴 주의</strong>
+                        반복 패턴에서는 서로 비슷한 위치가 많기 때문에 단순 score sorting만으로는 잘못된 순서를 선택할 수 있습니다. 예상 위치, index, grid 구조를 함께 써야 합니다.
+                    </div>
+                </div>
+
+                <!-- 7. Occlusion / Clutter -->
+                <h2 id="occlusion"><i class="fa-solid fa-puzzle-piece"></i> Occlusion / Clutter 대응</h2>
+
+                <h3 id="occlusion-resp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 7.1 Occlusion</h3>
+
+                <p>부분 가림이 있으면 score가 낮아집니다.</p>
+
+                <p><strong>대응:</strong></p>
+                <ul>
+                    <li>score threshold 조정</li>
+                    <li>model feature 분산</li>
+                    <li>중요하지 않은 영역 제외</li>
+                    <li>multiple model 사용</li>
+                    <li>deformable/local matching 고려</li>
+                </ul>
+
+                <h3 id="clutter"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 7.2 Clutter</h3>
+
+                <p>주변 edge가 많으면 오검출 가능성이 증가합니다.</p>
+
+                <p><strong>대응:</strong></p>
+                <ul>
+                    <li>search ROI 제한</li>
+                    <li>model ROI 정제</li>
+                    <li>polarity/contrast 조건 활용</li>
+                    <li>후속 geometric validation</li>
+                </ul>
+
+                <!-- 8. 디버깅 -->
+                <h2 id="debug"><i class="fa-solid fa-bug"></i> Matching 실패 디버깅</h2>
+
+                <h3 id="debug-model"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.1 Model 확인</h3>
+
+                <ul>
+                    <li>model contour가 의도한 object만 포함하는가?</li>
+                    <li>배경 edge가 포함되었는가?</li>
+                    <li>너무 작은 feature만 포함했는가?</li>
+                    <li>reference image가 blur되었는가?</li>
+                </ul>
+
+                <h3 id="debug-search"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.2 Search Image 확인</h3>
+
+                <ul>
+                    <li>edge contrast가 충분한가?</li>
+                    <li>조명 방향이 바뀌었는가?</li>
+                    <li>object가 model과 실제로 다른가?</li>
+                    <li>occlusion이 있는가?</li>
+                </ul>
+
+                <h3 id="debug-param"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.3 Parameter 확인</h3>
+
+                <ul>
+                    <li>angle range가 충분한가?</li>
+                    <li>scale range가 필요한가?</li>
+                    <li>min score가 너무 높은가?</li>
+                    <li>num levels가 과한가?</li>
+                    <li>search ROI가 object를 포함하는가?</li>
+                </ul>
+
+                <!-- 9. 설계 패턴 -->
+                <h2 id="patterns"><i class="fa-solid fa-diagram-project"></i> 실무 Matching 설계 패턴</h2>
+
+                <h3 id="pattern-align"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.1 기준 정렬용 Matching</h3>
+
+<pre><code>shape model 생성
+→ 매 frame model 찾기
+→ pose 저장
+→ 모든 검사 ROI transform</code></pre>
+
+                <h3 id="pattern-recipe"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.2 다품종 Model 관리</h3>
+
+<pre><code>recipe 선택
+→ model file load
+→ ROI/threshold/measure parameter load
+→ inspection</code></pre>
+
+                <h3 id="pattern-measure"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.3 Matching + Measuring</h3>
+
+<pre><code>find_shape_model
+→ affine transform measure ROI
+→ measure_pairs
+→ tolerance 판정</code></pre>
+
+                <h3 id="pattern-blob"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.4 Matching + Blob</h3>
+
+<pre><code>find model
+→ part coordinate 생성
+→ local ROI threshold
+→ blob feature 판단</code></pre>
+
+                <!-- 10. 핵심 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 핵심 정리</h2>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>Matching 설계 핵심</strong>
+                        <ul style="margin-top:6px; padding-left:18px;">
+                            <li>Matching은 단독 판정보다 ROI/alignment 기준 생성에 더 중요합니다.</li>
+                            <li>Shape-based matching은 산업 현장에서 가장 범용적인 기준 위치 검출 방법입니다.</li>
+                            <li>Model ROI 품질이 성능과 robust에 직접 영향을 줍니다.</li>
+                            <li>Search 범위는 기구적으로 가능한 범위만 열어야 합니다.</li>
+                            <li>Score는 절대 기준이 아니라 sample 분포 기반으로 해석해야 합니다.</li>
+                            <li>Matching 결과는 후속 ROI, measure, contour를 transform하는 데 사용해야 합니다.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>MVTec — HALCON Solution Guide I</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-halcon');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+    renderPostNav('tech-halcon');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,807 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D / Robot Vision / Calibration — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#overview" data-section="overview">개요</a>
+        <a href="#coordinate" data-section="coordinate">좌표계</a>
+        <a href="#camera-model" data-section="camera-model">카메라 모델</a>
+        <a href="#calibration" data-section="calibration">Calibration</a>
+        <a href="#image-to-world" data-section="image-to-world">Image→World</a>
+        <a href="#rectification" data-section="rectification">Rectification</a>
+        <a href="#stereo" data-section="stereo">Stereo</a>
+        <a href="#sheet-of-light" data-section="sheet-of-light">Sheet of Light</a>
+        <a href="#depth-from-focus" data-section="depth-from-focus">Depth from Focus</a>
+        <a href="#object-model" data-section="object-model">3D Object Model</a>
+        <a href="#robot-vision" data-section="robot-vision">Robot Vision</a>
+        <a href="#hand-eye" data-section="hand-eye">Hand-Eye</a>
+        <a href="#design-patterns" data-section="design-patterns">설계 패턴</a>
+        <a href="#summary" data-section="summary">핵심 정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">HALCON 비전 라이브러리</span>
+                </div>
+                <h1>3D / Robot Vision / Calibration</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-29</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>HALCON 3D Vision의 전체 범위와 좌표계 정의의 중요성</li>
+                        <li>Camera model, lens distortion, calibration의 흐름과 좋은/나쁜 calibration 조건</li>
+                        <li>Image to World 변환과 평면 측정의 조건</li>
+                        <li>Stereo, Sheet of Light, Depth from Focus의 비교와 한계</li>
+                        <li>3D object model, 3D matching, Robot Vision 구성</li>
+                        <li>Hand-eye calibration의 입력, 좋은 조건, 실패 원인 분류</li>
+                        <li>2D Pick / 3D Pick / Inspection feedback의 실무 설계 패턴</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#overview">3D Vision 개요</a></li>
+                        <li><a href="#coordinate">좌표계 이해</a></li>
+                        <li><a href="#camera-model">Camera Model</a></li>
+                        <li><a href="#calibration">Camera Calibration</a></li>
+                        <li><a href="#image-to-world">Image to World 변환</a></li>
+                        <li><a href="#rectification">Rectification</a></li>
+                        <li><a href="#stereo">Stereo Vision</a></li>
+                        <li><a href="#sheet-of-light">Sheet of Light / Laser Triangulation</a></li>
+                        <li><a href="#depth-from-focus">Depth from Focus</a></li>
+                        <li><a href="#object-model">3D Object Model</a></li>
+                        <li><a href="#robot-vision">Robot Vision</a></li>
+                        <li><a href="#hand-eye">Hand-Eye Calibration</a></li>
+                        <li><a href="#design-patterns">Robot Vision 설계 패턴</a></li>
+                        <li><a href="#summary">핵심 정리</a></li>
+                    </ol>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 챕터의 위치</strong>
+                        3D Vision은 2D 검사의 연장선이 아니라 좌표계를 다루는 별도의 사고 체계입니다. operator를 외우기 전에 좌표계, 변환 방향, 단위를 명확히 정의하는 습관이 가장 중요합니다.
+                    </div>
+                </div>
+
+                <!-- 1. 개요 -->
+                <h2 id="overview"><i class="fa-solid fa-cube"></i> 3D Vision 개요</h2>
+
+                <p>3D Vision은 이미지 평면의 pixel 좌표를 넘어 실제 world coordinate에서 위치, 자세, 거리, 형상을 다루는 영역입니다.</p>
+
+                <p>HALCON의 3D 관련 기능은 다음 문제를 다룹니다.</p>
+
+                <ul>
+                    <li>camera calibration</li>
+                    <li>image coordinate ↔ world coordinate 변환</li>
+                    <li>stereo reconstruction</li>
+                    <li>sheet-of-light / laser triangulation</li>
+                    <li>depth from focus</li>
+                    <li>3D object model</li>
+                    <li>3D matching</li>
+                    <li>robot hand-eye calibration</li>
+                    <li>calibrated mosaicking</li>
+                </ul>
+
+                <!-- 2. 좌표계 -->
+                <h2 id="coordinate"><i class="fa-solid fa-compass"></i> 좌표계 이해</h2>
+
+                <p>3D에서 가장 중요한 것은 좌표계입니다.</p>
+
+                <p>대표 좌표계:</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>좌표계</th>
+                            <th>의미</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">Image coordinate</td><td>row/column pixel 좌표</td></tr>
+                        <tr><td class="highlight">Camera coordinate</td><td>카메라 기준 3D 좌표</td></tr>
+                        <tr><td class="highlight">World coordinate</td><td>calibration object 또는 현장 기준 좌표</td></tr>
+                        <tr><td class="highlight">Object coordinate</td><td>객체 자체 기준 좌표</td></tr>
+                        <tr><td class="highlight">Robot base coordinate</td><td>로봇 base 기준</td></tr>
+                        <tr><td class="highlight">Tool coordinate</td><td>TCP 기준</td></tr>
+                        <tr><td class="highlight">Calibration plate coordinate</td><td>calibration target 기준</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>3D 오류의 출처</strong>
+                        실무에서 3D 오류의 대부분은 좌표계 정의, transform 방향, 단위 혼동에서 발생합니다.
+                    </div>
+                </div>
+
+                <!-- 3. Camera Model -->
+                <h2 id="camera-model"><i class="fa-solid fa-camera"></i> Camera Model</h2>
+
+                <p>카메라 모델은 3D world point가 image pixel에 어떻게 투영되는지 설명합니다.</p>
+
+                <p>고려 요소:</p>
+
+                <ul>
+                    <li>focal length</li>
+                    <li>principal point</li>
+                    <li>pixel size</li>
+                    <li>radial distortion</li>
+                    <li>tangential distortion</li>
+                    <li>lens type</li>
+                    <li>area scan / line scan</li>
+                    <li>telecentric / perspective</li>
+                    <li>tilt lens</li>
+                </ul>
+
+                <h3 id="lens-distortion"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.1 Lens Distortion</h3>
+
+                <p>렌즈 왜곡은 측정 오차를 만듭니다.</p>
+
+                <ul>
+                    <li>radial distortion</li>
+                    <li>tangential distortion</li>
+                    <li>perspective distortion</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>정밀 측정의 전제</strong>
+                        정밀 측정에서는 왜곡 보정 없이 pixel 좌표로 치수를 재면 안 됩니다.
+                    </div>
+                </div>
+
+                <!-- 4. Calibration -->
+                <h2 id="calibration"><i class="fa-solid fa-bullseye"></i> Camera Calibration</h2>
+
+                <p>Calibration은 camera parameter와 pose를 추정하는 과정입니다.</p>
+
+                <h3 id="calibration-flow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.1 기본 흐름</h3>
+
+<pre><code>calibration data model 생성
+→ camera parameter 초기화
+→ calibration object 정의
+→ 여러 pose에서 image 획득
+→ calibration mark 관측
+→ calibration 수행
+→ parameter 저장
+→ verification</code></pre>
+
+                <h3 id="calibration-good"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.2 좋은 Calibration Image 조건</h3>
+
+                <ul>
+                    <li>calibration plate가 image 전체 영역을 다양하게 커버</li>
+                    <li>다양한 회전/기울기</li>
+                    <li>초점이 맞음</li>
+                    <li>motion blur 없음</li>
+                    <li>mark detection 안정</li>
+                    <li>실제 작업 거리와 유사</li>
+                    <li>충분한 image 수</li>
+                    <li>corner/edge 영역 포함</li>
+                </ul>
+
+                <h3 id="calibration-bad"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.3 나쁜 Calibration</h3>
+
+                <ul>
+                    <li>모든 이미지가 비슷한 pose</li>
+                    <li>plate가 image 중앙에만 있음</li>
+                    <li>working distance와 다름</li>
+                    <li>plate가 휘었거나 오염됨</li>
+                    <li>초점이 흐림</li>
+                    <li>조명이 불균일</li>
+                    <li>mark detection error가 큼</li>
+                </ul>
+
+                <!-- 5. Image to World -->
+                <h2 id="image-to-world"><i class="fa-solid fa-globe"></i> Image to World 변환</h2>
+
+                <p>Calibration 후 image 좌표를 world coordinate로 변환할 수 있습니다.</p>
+
+                <p>중요한 조건:</p>
+
+                <ul>
+                    <li>측정 대상이 calibration plane에 있어야 함</li>
+                    <li>Z 높이 차이가 있으면 오차 발생</li>
+                    <li>camera pose와 plane pose가 정확해야 함</li>
+                </ul>
+
+                <h3 id="plane-measurement"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.1 평면 측정</h3>
+
+                <p>단일 카메라로도 특정 평면 위의 metric measurement는 가능합니다.</p>
+
+<pre><code>calibrated camera
++ known measurement plane
+→ pixel coordinate를 plane coordinate로 변환</code></pre>
+
+                <p>이 방식은 평판 부품, PCB, glass, film 검사에 많이 쓰입니다.</p>
+
+                <!-- 6. Rectification -->
+                <h2 id="rectification"><i class="fa-solid fa-vector-square"></i> Rectification</h2>
+
+                <p>Rectification은 이미지를 world coordinate 기준으로 보정/재투영하는 과정입니다.</p>
+
+                <p>사용 목적:</p>
+
+                <ul>
+                    <li>perspective 제거</li>
+                    <li>scale 균일화</li>
+                    <li>측정 단순화</li>
+                    <li>후속 2D processing 안정화</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>주의</strong>
+                        interpolation에 의한 blur 가능, rectified image resolution 선택 필요, 원본 좌표와 변환 좌표 mapping 관리 필요.
+                    </div>
+                </div>
+
+                <!-- 7. Stereo -->
+                <h2 id="stereo"><i class="fa-solid fa-eye"></i> Stereo Vision</h2>
+
+                <p>Stereo는 두 카메라의 시차를 이용해 depth를 계산합니다.</p>
+
+                <h3 id="stereo-flow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 7.1 기본 흐름</h3>
+
+<pre><code>stereo camera calibration
+→ stereo image acquisition
+→ rectification
+→ correspondence search
+→ disparity
+→ 3D reconstruction</code></pre>
+
+                <h3 id="stereo-factors"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 7.2 성능 영향 요소</h3>
+
+                <ul>
+                    <li>baseline</li>
+                    <li>focal length</li>
+                    <li>working distance</li>
+                    <li>texture</li>
+                    <li>illumination</li>
+                    <li>synchronization</li>
+                    <li>calibration accuracy</li>
+                    <li>rectification accuracy</li>
+                </ul>
+
+                <h3 id="stereo-limits"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 7.3 한계</h3>
+
+                <ul>
+                    <li>texture 없는 표면에서 correspondence 어려움</li>
+                    <li>반사체/투명체에 취약</li>
+                    <li>occlusion 영역 발생</li>
+                    <li>depth noise가 거리 증가에 따라 커짐</li>
+                </ul>
+
+                <!-- 8. Sheet of Light -->
+                <h2 id="sheet-of-light"><i class="fa-solid fa-bolt"></i> Sheet of Light / Laser Triangulation</h2>
+
+                <p>Laser line을 대상에 투영하고 카메라로 line profile을 관측해 3D 형상을 얻습니다.</p>
+
+                <h3 id="sol-pros"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.1 장점</h3>
+
+                <ul>
+                    <li>높이 profile 정밀</li>
+                    <li>산업 측정에 강함</li>
+                    <li>moving object와 결합 가능</li>
+                </ul>
+
+                <h3 id="sol-requirements"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.2 필요 요소</h3>
+
+                <ul>
+                    <li>laser plane calibration</li>
+                    <li>camera calibration</li>
+                    <li>motion/encoder 정보</li>
+                    <li>profile extraction</li>
+                    <li>intensity/score image 관리</li>
+                </ul>
+
+                <h3 id="sol-failures"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.3 실패 원인</h3>
+
+                <ul>
+                    <li>laser reflection saturation</li>
+                    <li>dark/absorbing surface</li>
+                    <li>specular reflection</li>
+                    <li>profile discontinuity</li>
+                    <li>calibration plane 오차</li>
+                    <li>motion encoder 불일치</li>
+                </ul>
+
+                <!-- 9. Depth from Focus -->
+                <h2 id="depth-from-focus"><i class="fa-solid fa-bullseye"></i> Depth from Focus</h2>
+
+                <p>초점 위치 변화에 따른 sharpness를 이용해 depth를 추정합니다.</p>
+
+                <p>적합한 경우:</p>
+
+                <ul>
+                    <li>미세 구조</li>
+                    <li>낮은 depth range</li>
+                    <li>stationary object</li>
+                    <li>focus stack 가능</li>
+                </ul>
+
+                <p>한계:</p>
+
+                <ul>
+                    <li>acquisition 시간이 김</li>
+                    <li>vibration에 취약</li>
+                    <li>texture가 필요</li>
+                    <li>조명 안정성 필요</li>
+                </ul>
+
+                <!-- 10. 3D Object Model -->
+                <h2 id="object-model"><i class="fa-solid fa-cubes"></i> 3D Object Model</h2>
+
+                <p>HALCON의 3D object model은 point cloud, mesh, primitive, normal 등 3D 정보를 담는 구조입니다.</p>
+
+                <p>주요 작업:</p>
+
+                <ul>
+                    <li>생성</li>
+                    <li>변환</li>
+                    <li>filtering</li>
+                    <li>sampling</li>
+                    <li>feature extraction</li>
+                    <li>matching</li>
+                    <li>visualization</li>
+                </ul>
+
+                <h3 id="3d-matching"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 10.1 3D Matching</h3>
+
+                <p>3D object를 scene에서 찾고 pose를 추정합니다.</p>
+
+                <ul>
+                    <li>surface-based matching</li>
+                    <li>shape-based 3D matching</li>
+                    <li>primitive fitting</li>
+                    <li>deformable surface-based matching</li>
+                </ul>
+
+                <p>적합한 경우:</p>
+
+                <ul>
+                    <li>6D pose estimation</li>
+                    <li>bin picking</li>
+                    <li>3D alignment</li>
+                    <li>robot grasping</li>
+                </ul>
+
+                <!-- 11. Robot Vision -->
+                <h2 id="robot-vision"><i class="fa-solid fa-robot"></i> Robot Vision</h2>
+
+                <p>Robot Vision은 vision coordinate와 robot coordinate를 연결합니다.</p>
+
+                <h3 id="robot-config"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 11.1 대표 구성</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>구성</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">Eye-in-hand</td><td>카메라가 로봇 손목에 장착</td></tr>
+                        <tr><td class="highlight">Eye-to-hand</td><td>카메라가 고정, 로봇이 이동</td></tr>
+                        <tr><td class="highlight">2D vision + plane</td><td>평면 위치 보정</td></tr>
+                        <tr><td class="highlight">3D vision</td><td>6D pose 사용</td></tr>
+                        <tr><td class="highlight">SCARA</td><td>Z/회전 구조 특수 고려</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- 12. Hand-Eye -->
+                <h2 id="hand-eye"><i class="fa-solid fa-hand"></i> Hand-Eye Calibration</h2>
+
+                <p>Hand-eye calibration은 카메라와 로봇 좌표계 사이의 transform을 구합니다.</p>
+
+                <h3 id="he-input"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 12.1 입력</h3>
+
+                <ul>
+                    <li>robot tool poses</li>
+                    <li>calibration object poses observed by camera</li>
+                    <li>camera calibration parameter</li>
+                    <li>configuration type</li>
+                </ul>
+
+                <h3 id="he-good"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 12.2 좋은 Hand-Eye Calibration 조건</h3>
+
+                <ul>
+                    <li>다양한 robot pose</li>
+                    <li>회전 변화 충분</li>
+                    <li>translation 변화 충분</li>
+                    <li>calibration target 안정 고정</li>
+                    <li>robot TCP 정확</li>
+                    <li>camera calibration 정확</li>
+                    <li>outlier pose 제거</li>
+                </ul>
+
+                <h3 id="he-failures"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 12.3 실패 원인</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>증상</th>
+                            <th>원인</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">일정 offset</td><td>TCP/tool 설정 오류</td></tr>
+                        <tr><td class="highlight">방향에 따라 오차</td><td>hand-eye transform 오류</td></tr>
+                        <tr><td class="highlight">Z 오차 큼</td><td>plane/height 설정 오류</td></tr>
+                        <tr><td class="highlight">pose마다 오차 다름</td><td>calibration image/robot pose mismatch</td></tr>
+                        <tr><td class="highlight">pick 실패</td><td>object pose와 grasp pose 정의 불일치</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- 13. 설계 패턴 -->
+                <h2 id="design-patterns"><i class="fa-solid fa-diagram-project"></i> Robot Vision 설계 패턴</h2>
+
+                <h3 id="pattern-2d-pick"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 13.1 2D Pick Alignment</h3>
+
+<pre><code>camera calibration
+→ hand-eye 또는 plane transform
+→ object 2D pose matching
+→ robot target x/y/theta 보정</code></pre>
+
+                <h3 id="pattern-3d-pick"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 13.2 3D Pick</h3>
+
+<pre><code>3D sensor acquisition
+→ point cloud 생성
+→ object pose estimation
+→ grasp pose 계산
+→ robot coordinate 변환
+→ pick</code></pre>
+
+                <h3 id="pattern-feedback"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 13.3 Inspection + Robot Feedback</h3>
+
+<pre><code>inspection result
+→ defect coordinate
+→ world/robot coordinate 변환
+→ robot reject 또는 marking</code></pre>
+
+                <!-- 14. 핵심 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 핵심 정리</h2>
+
+                <ul>
+                    <li>3D에서는 operator보다 좌표계 정의가 더 중요합니다.</li>
+                    <li>Calibration은 한 번 수행하는 이벤트가 아니라 검증/유지관리 대상입니다.</li>
+                    <li>단일 카메라도 평면 조건이 명확하면 metric measurement가 가능합니다.</li>
+                    <li>Stereo는 texture와 calibration 품질에 크게 의존합니다.</li>
+                    <li>Robot Vision은 camera calibration, hand-eye calibration, TCP 정의가 모두 맞아야 합니다.</li>
+                    <li>3D 오류는 반드시 transform chain을 표로 정리해 추적해야 합니다.</li>
+                </ul>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>실무 팁</strong>
+                        3D 시스템 디버깅 시에는 transform chain (camera → world → robot base → tool → object)을 표로 그려 단계별 단위·방향을 점검하면 원인 추적 시간이 크게 줄어듭니다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>MVTec — HALCON Solution Guide I</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-halcon');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+    renderPostNav('tech-halcon');
+</script>
+
+</body>
+</html>

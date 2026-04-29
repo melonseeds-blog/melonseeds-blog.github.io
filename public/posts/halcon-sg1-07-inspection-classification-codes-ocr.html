@@ -1,0 +1,854 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspection / Classification / Code / OCR — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#scope" data-section="scope">범위</a>
+        <a href="#print-inspection" data-section="print-inspection">Print Inspection</a>
+        <a href="#ocr" data-section="ocr">OCR / OCV</a>
+        <a href="#classification" data-section="classification">Classification</a>
+        <a href="#deep-learning" data-section="deep-learning">Deep Learning</a>
+        <a href="#data-codes" data-section="data-codes">2D Data Codes</a>
+        <a href="#code-fail" data-section="code-fail">Code 실패 원인</a>
+        <a href="#print-quality" data-section="print-quality">Print Quality</a>
+        <a href="#surface" data-section="surface">Surface Inspection</a>
+        <a href="#texture" data-section="texture">Texture Inspection</a>
+        <a href="#integration" data-section="integration">통합 설계 패턴</a>
+        <a href="#summary" data-section="summary">핵심 정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">HALCON 비전 라이브러리</span>
+                </div>
+                <h1>Inspection / Classification / Code / OCR</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-29</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Print/Surface/Texture Inspection, Classification, OCR, 1D/2D Code의 공통 흐름</li>
+                        <li>OCR보다 어려운 문자 segmentation 문제와 OCV에서의 constraint 활용</li>
+                        <li>전통 Classifier(k-NN/SVM/MLP/GMM/Hyperbox) 선택 관점과 데이터 품질의 중요성</li>
+                        <li>Deep Learning과 Rule 기반의 조합 설계</li>
+                        <li>2D code reading 영상 조건, 실패 원인, print quality grade 평가</li>
+                        <li>Surface 검사에서 조명이 SW보다 중요한 이유와 false reject 감소 전략</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#scope">이 장의 범위</a></li>
+                        <li><a href="#print-inspection">Print Inspection</a></li>
+                        <li><a href="#ocr">OCR / OCV</a></li>
+                        <li><a href="#classification">Classification</a></li>
+                        <li><a href="#deep-learning">Deep Learning 기반 접근</a></li>
+                        <li><a href="#data-codes">2D Data Codes</a></li>
+                        <li><a href="#code-fail">2D Code 실패 원인</a></li>
+                        <li><a href="#print-quality">Print Quality Verification</a></li>
+                        <li><a href="#surface">Surface Inspection</a></li>
+                        <li><a href="#texture">Texture Inspection</a></li>
+                        <li><a href="#integration">통합 설계 패턴</a></li>
+                        <li><a href="#summary">핵심 정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 범위 -->
+                <h2 id="scope"><i class="fa-solid fa-layer-group"></i> 이 장의 범위</h2>
+
+                <p>이 문서는 HALCON Solution Guide I의 여러 응용 영역 중 다음을 함께 정리합니다.</p>
+
+                <ul>
+                    <li>Print Inspection</li>
+                    <li>Surface Inspection</li>
+                    <li>Texture Inspection</li>
+                    <li>Classification</li>
+                    <li>OCR</li>
+                    <li>1D/2D code identification</li>
+                </ul>
+
+                <p>이 기능들은 서로 달라 보이지만 공통점이 있습니다.</p>
+
+<pre><code>영상 품질 확보
+→ 관심 영역 정렬
+→ 특징 또는 code/문자 후보 추출
+→ 인식/분류/품질 판단
+→ 실패 원인 분석</code></pre>
+
+                <!-- 2. Print Inspection -->
+                <h2 id="print-inspection"><i class="fa-solid fa-print"></i> Print Inspection</h2>
+
+                <p>Print Inspection은 인쇄된 문자, 패턴, 라벨, 마킹의 품질을 확인합니다.</p>
+
+                <h3 id="print-items"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.1 주요 검사 항목</h3>
+
+                <ul>
+                    <li>인쇄 누락</li>
+                    <li>번짐</li>
+                    <li>끊김</li>
+                    <li>위치 틀어짐</li>
+                    <li>회전</li>
+                    <li>contrast 부족</li>
+                    <li>문자 오인쇄</li>
+                    <li>오염/스크래치</li>
+                    <li>code 품질 저하</li>
+                </ul>
+
+                <h3 id="print-approach"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.2 접근 방식</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>문제</th>
+                            <th>접근</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">위치 틀어짐</td>
+                            <td>Matching / registration</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">인쇄 누락</td>
+                            <td>reference comparison / blob</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">문자 읽기</td>
+                            <td>OCR</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">code 읽기</td>
+                            <td>barcode / data code reader</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">품질 점수</td>
+                            <td>print quality verification</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 3. OCR / OCV -->
+                <h2 id="ocr"><i class="fa-solid fa-font"></i> OCR / OCV</h2>
+
+                <p>OCR은 문자를 읽는 것이고, OCV는 기대한 문자가 제대로 인쇄되었는지 검증하는 것입니다.</p>
+
+                <h3 id="ocr-flow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.1 OCR 기본 흐름</h3>
+
+<pre><code>ROI 정렬
+→ 문자 영역 segmentation
+→ 문자 region 분리
+→ feature extraction
+→ classifier로 문자 인식
+→ 문자열 후처리</code></pre>
+
+                <h3 id="ocr-difficult"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.2 OCR에서 가장 어려운 부분</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>알고리즘보다 segmentation</strong>
+                        알고리즘 자체보다 문자 segmentation이 더 어렵습니다.
+                    </div>
+                </div>
+
+                <p><strong>문제 예:</strong></p>
+                <ul>
+                    <li>문자끼리 붙음</li>
+                    <li>문자 일부 끊김</li>
+                    <li>배경과 contrast 낮음</li>
+                    <li>글자 크기 변화</li>
+                    <li>회전/기울어짐</li>
+                    <li>dot matrix font</li>
+                    <li>인쇄 번짐</li>
+                    <li>반사</li>
+                </ul>
+
+                <h3 id="ocv-design"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.3 OCV 설계</h3>
+
+                <p>OCV는 기대 문자열이 정해져 있으므로 OCR보다 constraint를 더 강하게 줄 수 있습니다.</p>
+
+                <ul>
+                    <li>기대 문자 set 제한</li>
+                    <li>위치별 허용 문자 제한</li>
+                    <li>string length 고정</li>
+                    <li>checksum 또는 format rule 적용</li>
+                    <li>low confidence 문자만 재검사</li>
+                </ul>
+
+                <!-- 4. Classification -->
+                <h2 id="classification"><i class="fa-solid fa-tags"></i> Classification</h2>
+
+                <p>Classification은 feature 또는 image를 기반으로 class를 결정합니다.</p>
+
+                <h3 id="cls-feature"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.1 전통적 Feature 기반 Classification</h3>
+
+                <p>흐름:</p>
+
+<pre><code>object/region 추출
+→ feature 계산
+→ classifier 학습
+→ class 판정</code></pre>
+
+                <p><strong>사용 feature:</strong></p>
+                <ul>
+                    <li>gray feature</li>
+                    <li>color feature</li>
+                    <li>shape feature</li>
+                    <li>texture feature</li>
+                    <li>region feature</li>
+                </ul>
+
+                <p><strong>Classifier 예:</strong></p>
+                <ul>
+                    <li>Euclidean</li>
+                    <li>Hyperbox</li>
+                    <li>MLP</li>
+                    <li>SVM</li>
+                    <li>GMM</li>
+                    <li>k-NN</li>
+                </ul>
+
+                <h3 id="cls-select"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.2 Classifier 선택 관점</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>Classifier</th>
+                            <th>특징</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">k-NN</td>
+                            <td>단순, 데이터 기반, 느릴 수 있음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">SVM</td>
+                            <td>feature space 구분에 강함</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">MLP</td>
+                            <td>비선형 분류 가능</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">GMM</td>
+                            <td>확률 분포 기반</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Hyperbox</td>
+                            <td>해석 쉬움</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="cls-practical"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4.3 중상급 실무 포인트</h3>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>알고리즘보다 데이터/feature</strong>
+                        Classifier 성능은 알고리즘 선택보다 데이터와 feature에 더 의존합니다.
+                    </div>
+                </div>
+
+                <p><strong>중요한 것:</strong></p>
+                <ul>
+                    <li>class 간 feature 분리도</li>
+                    <li>training sample 대표성</li>
+                    <li>조명/제품 편차 포함 여부</li>
+                    <li>outlier 처리</li>
+                    <li>class imbalance</li>
+                    <li>test set 분리</li>
+                    <li>false reject / false accept 비용</li>
+                </ul>
+
+                <!-- 5. Deep Learning -->
+                <h2 id="deep-learning"><i class="fa-solid fa-brain"></i> Deep Learning 기반 접근</h2>
+
+                <p>Deep Learning은 classification, detection, segmentation, anomaly detection 등에 사용됩니다.</p>
+
+                <h3 id="dl-fit"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.1 사용 적합한 경우</h3>
+
+                <ul>
+                    <li>rule 기반 feature 설계가 어려움</li>
+                    <li>defect 형태가 다양함</li>
+                    <li>texture/외관 검사</li>
+                    <li>복잡한 배경</li>
+                    <li>사람 눈은 구분하지만 threshold로 어려움</li>
+                </ul>
+
+                <h3 id="dl-caution"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.2 주의점</h3>
+
+                <ul>
+                    <li>데이터 수집/라벨링 비용</li>
+                    <li>현장 편차 반영 필요</li>
+                    <li>설명 가능성 낮음</li>
+                    <li>작은 데이터에서 overfitting</li>
+                    <li>조명/광학 바뀌면 재학습 필요</li>
+                    <li>inference time 고려</li>
+                </ul>
+
+                <h3 id="dl-rule-combo"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.3 Rule 기반과 DL 조합</h3>
+
+                <p>실무에서는 DL만 쓰기보다 rule 기반과 조합하는 경우가 많습니다.</p>
+
+<pre><code>matching으로 ROI 정렬
+→ DL로 defect 후보 검출
+→ blob/geometry로 후검증
+→ rule 기반 최종 판정</code></pre>
+
+                <!-- 6. 2D Data Codes -->
+                <h2 id="data-codes"><i class="fa-solid fa-qrcode"></i> 2D Data Codes</h2>
+
+                <p>HALCON은 Data Matrix ECC 200, QR Code, Micro QR, PDF417, Aztec, DotCode 등을 다룰 수 있습니다.</p>
+
+                <h3 id="code-flow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 6.1 기본 흐름</h3>
+
+<pre><code>create data code model
+→ find data code
+→ decode string
+→ result / quality access</code></pre>
+
+                <h3 id="code-image-cond"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 6.2 Code Reading에서 중요한 영상 조건</h3>
+
+                <ul>
+                    <li>module size</li>
+                    <li>contrast</li>
+                    <li>quiet zone</li>
+                    <li>focus</li>
+                    <li>perspective distortion</li>
+                    <li>print growth/shrink</li>
+                    <li>damage</li>
+                    <li>finder pattern visibility</li>
+                    <li>illumination uniformity</li>
+                </ul>
+
+                <h3 id="code-model-adapt"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 6.3 Model Adaptation</h3>
+
+                <p>비표준 code나 어려운 code를 읽기 위해 model parameter를 조정합니다.</p>
+
+                <p><strong>조정 예:</strong></p>
+                <ul>
+                    <li>code type</li>
+                    <li>polarity</li>
+                    <li>module size</li>
+                    <li>finder pattern tolerance</li>
+                    <li>contrast</li>
+                    <li>timeout</li>
+                    <li>symbol shape</li>
+                    <li>mirrored/rotated condition</li>
+                </ul>
+
+                <h3 id="code-training"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 6.4 Training</h3>
+
+                <p>여러 sample을 사용해 reader parameter를 학습/조정할 수 있습니다. 단, training sample이 실제 변동을 대표해야 합니다.</p>
+
+                <!-- 7. Code 실패 원인 -->
+                <h2 id="code-fail"><i class="fa-solid fa-circle-exclamation"></i> 2D Code 실패 원인</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>증상</th>
+                            <th>가능 원인</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">code 위치 못 찾음</td>
+                            <td>quiet zone 부족, contrast 부족</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">찾지만 decode 실패</td>
+                            <td>module damage, blur, print distortion</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">특정 방향만 실패</td>
+                            <td>조명 반사, perspective</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">속도 느림</td>
+                            <td>search range 과도, code type 미제한</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">양품인데 가끔 실패</td>
+                            <td>focus/trigger/exposure 흔들림</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 8. Print Quality -->
+                <h2 id="print-quality"><i class="fa-solid fa-award"></i> Print Quality Verification</h2>
+
+                <p>2D code는 단순히 읽히는지뿐 아니라 품질 grade를 평가할 수 있습니다.</p>
+
+                <p><strong>평가 항목 예:</strong></p>
+                <ul>
+                    <li>contrast</li>
+                    <li>modulation</li>
+                    <li>fixed pattern damage</li>
+                    <li>axial nonuniformity</li>
+                    <li>grid nonuniformity</li>
+                    <li>unused error correction</li>
+                    <li>print growth</li>
+                </ul>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"읽힘"과 "품질 양호"는 다릅니다</strong>
+                        라인에서는 지금 읽히더라도 고객/다른 reader에서 실패할 수 있으므로 품질 평가가 중요할 수 있습니다.
+                    </div>
+                </div>
+
+                <!-- 9. Surface Inspection -->
+                <h2 id="surface"><i class="fa-solid fa-magnifying-glass-chart"></i> Surface Inspection</h2>
+
+                <p>표면 검사는 scratch, stain, dent, particle, contamination 등을 찾습니다.</p>
+
+                <h3 id="surface-approach"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.1 기본 접근</h3>
+
+<pre><code>illumination 설계
+→ background normalization
+→ defect enhancement filter
+→ threshold/local threshold
+→ blob feature filtering
+→ defect classification</code></pre>
+
+                <h3 id="surface-core"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.2 표면 검사의 핵심</h3>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>핵심은 조명입니다</strong>
+                        SW로 안 되는 문제를 조명으로 해결해야 하는 경우가 많습니다.
+                    </div>
+                </div>
+
+                <ul>
+                    <li>bright field</li>
+                    <li>dark field</li>
+                    <li>coaxial</li>
+                    <li>dome</li>
+                    <li>line light</li>
+                    <li>polarized light</li>
+                    <li>multi-angle light</li>
+                </ul>
+
+                <h3 id="surface-false-reject"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 9.3 False Reject 감소</h3>
+
+                <ul>
+                    <li>defect 크기 기준</li>
+                    <li>위치별 threshold</li>
+                    <li>background texture model</li>
+                    <li>repeated frame confirmation</li>
+                    <li>morphology feature</li>
+                    <li>DL anomaly score + rule 후처리</li>
+                </ul>
+
+                <!-- 10. Texture Inspection -->
+                <h2 id="texture"><i class="fa-solid fa-grip"></i> Texture Inspection</h2>
+
+                <p>Texture는 반복 패턴, 섬유, 표면 질감 등에서 defect를 찾습니다.</p>
+
+                <p><strong>전통적 방법:</strong></p>
+                <ul>
+                    <li>frequency filter</li>
+                    <li>co-occurrence matrix</li>
+                    <li>local variance</li>
+                    <li>Gabor-like filtering</li>
+                    <li>gray difference</li>
+                    <li>texture feature classification</li>
+                </ul>
+
+                <p><strong>DL 방법:</strong></p>
+                <ul>
+                    <li>anomaly detection</li>
+                    <li>patch classification</li>
+                    <li>segmentation model</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>정상 sample 다양성이 핵심</strong>
+                        정상 texture variability가 크면 defect와 정상 편차를 구분하기 어렵습니다.
+                    </div>
+                </div>
+
+                <!-- 11. 통합 설계 패턴 -->
+                <h2 id="integration"><i class="fa-solid fa-diagram-project"></i> 통합 설계 패턴</h2>
+
+                <h3 id="int-ocr"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 11.1 OCR 검사</h3>
+
+<pre><code>mark 위치 matching
+→ OCR ROI transform
+→ 문자 segmentation
+→ OCR
+→ format rule 검증
+→ confidence 낮은 문자 처리</code></pre>
+
+                <h3 id="int-code"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 11.2 Code 검사</h3>
+
+<pre><code>code expected ROI
+→ preprocessing
+→ find_data_code_2d
+→ decode
+→ quality grade
+→ string validation</code></pre>
+
+                <h3 id="int-surface"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 11.3 표면 검사</h3>
+
+<pre><code>flat-field correction
+→ local defect enhancement
+→ candidate blob
+→ feature filtering
+→ classification
+→ defect map 저장</code></pre>
+
+                <h3 id="int-dl-rule"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 11.4 DL + Rule</h3>
+
+<pre><code>alignment
+→ DL inference
+→ candidate extraction
+→ geometry/size/position rule
+→ final decision</code></pre>
+
+                <!-- 12. 핵심 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 핵심 정리</h2>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>응용 검사 설계 핵심</strong>
+                        <ul style="margin-top:6px; padding-left:18px;">
+                            <li>OCR/Code는 acquisition 품질이 성능의 대부분을 결정합니다.</li>
+                            <li>Classification은 feature와 training data 품질이 알고리즘보다 중요합니다.</li>
+                            <li>Surface/Texture 검사는 조명 설계가 핵심입니다.</li>
+                            <li>Code는 읽힘 여부만 보지 말고 품질 grade도 고려해야 합니다.</li>
+                            <li>DL은 강력하지만 ROI, 조명, 후처리 rule과 결합해야 현장 안정성이 좋아집니다.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>MVTec — HALCON Solution Guide I</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-halcon');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+    renderPostNav('tech-halcon');
+</script>
+
+</body>
+</html>
