@@ -228,13 +228,31 @@ ORDERED_CATS에 등록된 카테고리는 date 대신 order로 정렬됨.
 | growth-lang-toeic | TOEIC | fa-language |
 | growth-cert | 자격증 | fa-award |
 | growth-cert-istqb | ISTQB FL | fa-award |
+| tech-halcon | HALCON 비전 라이브러리 | fa-microscope |
 | book | 책/강의 후기 | fa-book-open |
 
-### 새 카테고리 추가 시 수정할 파일
-1. `assets/js/sidebar.js` — publicCats 배열에 추가
-2. `assets/js/post-nav.js` — POST_NAV_DATA + CAT_LABELS에 추가
-3. `public/index.html` — CAT_NAMES + CAT_ICONS 객체에 추가
-4. 학습 순서 카테고리면 → public/index.html의 ORDERED_CATS 배열에도 추가
+### 새 카테고리 추가 시 수정할 파일 ⚠️ 4곳 모두 빠짐없이!
+
+> 한 곳이라도 누락되면 카테고리 페이지가 작동하지 않는다. 4곳 전부 수정 후 배포할 것.
+
+1. **`assets/js/sidebar.js`** — `publicCats` 배열의 해당 부모 카테고리 `subs`에 `{ id, label }` 추가
+   - 예: `subs: [..., { id: 'tech-halcon', label: 'HALCON 비전 라이브러리' }]`
+2. **`assets/js/post-nav.js`** — 두 곳 모두 추가
+   - `POST_NAV_DATA['새카테고리id']` = 글 목록 배열 (`{ file, title }`)
+   - `CAT_LABELS['새카테고리id']` = 짧은 라벨 (목록 버튼 표시용)
+3. **`public/index.html`** ⚠️ **두 곳 모두 추가**
+   - `CAT_NAMES['새카테고리id']` = 사이드바/페이지 타이틀에 쓰는 이름 → 누락 시 **filterAndSort에서 `!CAT_NAMES[cat]`이 true가 되어 카테고리 필터가 비활성화됨**. 즉, 해당 카테고리만 골라서 보여줘야 하는데 모든 카드를 다 보여주는 버그가 발생.
+   - `CAT_ICONS['새카테고리id']` = Font Awesome 아이콘 클래스 → 페이지 헤더 아이콘
+4. 학습 순서 카테고리면 → `public/index.html`의 `ORDERED_CATS` 배열에도 추가
+   - 카드에 `data-order="N"` 속성도 함께 부여해야 작동
+
+### 새 카테고리 검증 방법
+
+배포 후 `?cat=새카테고리id` URL에서 다음을 확인:
+- [ ] 페이지 타이틀이 카테고리 이름으로 바뀌었는가? (안 바뀌면 → CAT_NAMES 누락)
+- [ ] 다른 카테고리 글이 섞여 보이지 않는가? (섞여 보이면 → CAT_NAMES 누락)
+- [ ] 사이드바에서 해당 카테고리가 활성 표시되는가? (안 되면 → sidebar.js 누락)
+- [ ] 글 페이지 하단의 "이전 글/다음 글"이 작동하는가? (안 되면 → post-nav.js 누락)
 
 ---
 
@@ -243,7 +261,8 @@ ORDERED_CATS에 등록된 카테고리는 date 대신 order로 정렬됨.
 `public/index.html`의 filterAndSort() 함수:
 - 일반 카테고리: date 기준 정렬 (최신순/오래된순)
 - ORDERED_CATS 카테고리: data-order 기준 정렬 (최신순=역순, 오래된순=순서대로)
-- ORDERED_CATS = `['growth-cert', 'growth-cert-istqb', 'growth-lang', 'growth-lang-toeic']`
+- ORDERED_CATS = `['growth-cert', 'growth-cert-istqb', 'growth-lang', 'growth-lang-toeic', 'tech-halcon']`
+  (학습 순서대로 정렬할 시리즈 카테고리. 새로 추가하면 이 배열도 업데이트할 것.)
 
 ---
 
@@ -315,8 +334,9 @@ ORDERED_CATS에 등록된 카테고리는 date 대신 order로 정렬됨.
 
 ---
 
-## 8. 체크리스트 (새 글 추가 시)
+## 8. 체크리스트
 
+### 8-1. 새 글 추가 시
 - [ ] `public/posts/파일명.html` 생성 (UTF-8 BOM, 위 템플릿 구조 준수)
 - [ ] HTML 구조 확인: top-nav → floating-toc(바깥) → page-layout(sidebar+main)
 - [ ] `post-nav-bottom` 클래스 확인 (post-nav 아님!)
@@ -324,6 +344,19 @@ ORDERED_CATS에 등록된 카테고리는 date 대신 order로 정렬됨.
 - [ ] `public/index.html` 카드 추가 (data-cat, data-date, data-order)
 - [ ] `index.html` (홈) 카드 추가
 - [ ] `python deploy.py`로 배포
+- [ ] 배포 후 카테고리 페이지에서 새 글이 보이는지 확인
+
+### 8-2. 새 카테고리 추가 시 ⚠️ 누락 1건만 있어도 카테고리 페이지가 깨진다
+
+- [ ] `assets/js/sidebar.js` — publicCats의 subs 배열에 `{ id, label }` 추가
+- [ ] `assets/js/post-nav.js` — `POST_NAV_DATA['새id']` 배열 추가
+- [ ] `assets/js/post-nav.js` — `CAT_LABELS['새id']` 라벨 추가
+- [ ] `public/index.html` — **`CAT_NAMES['새id']` 추가** (필수! 누락 시 필터 비활성화)
+- [ ] `public/index.html` — **`CAT_ICONS['새id']` 추가** (페이지 헤더 아이콘)
+- [ ] 학습 순서 시리즈면 `ORDERED_CATS` 배열에도 추가
+- [ ] 카드 작성 시 `data-cat="부모 자식"` 형태 (예: `data-cat="tech tech-halcon"`)
+- [ ] 학습 순서 시리즈면 카드에 `data-order="N"` 부여
+- [ ] 배포 후 `?cat=새id`에서 페이지 타이틀이 카테고리명으로 바뀌었는지, 다른 글이 섞이지 않는지 확인
 
 ---
 
@@ -452,6 +485,27 @@ ORDERED_CATS에 등록된 카테고리(`growth-cert-istqb`, `growth-lang-toeic` 
 - 선택지가 5개(a~e)면 `<li>` 5개 전부 생성
 - 복수정답이면 해설에 "정답: A, E" 식으로 명확히 표시
 - 채점 JS에서 복수정답 처리 로직 추가 (data-correct="a,e" 같은 형태)
+
+---
+
+### 실수 8: 새 카테고리 추가 시 `CAT_NAMES`/`CAT_ICONS` 누락 → 카테고리 페이지가 작동 안 함
+
+**증상**:
+- `?cat=새카테고리id` URL로 들어갔는데 페이지 타이틀이 "Public Posts" 그대로 (카테고리명으로 안 바뀜)
+- 해당 카테고리만 보여야 하는데 다른 카테고리 글이 전부 섞여 보임 (또는 카드가 사라진 것처럼 보임)
+- 사이드바에서 카테고리 활성 표시는 정상이라 더 헷갈림
+
+**실제로 일어난 일** (HALCON 시리즈 게시 시):
+- `sidebar.js`, `post-nav.js`, `index.html` 카드, `ORDERED_CATS`까지는 모두 추가했으나
+- `public/index.html`의 `CAT_NAMES`/`CAT_ICONS` 객체에 `tech-halcon` 키 추가를 빠뜨림
+- 결과: filterAndSort()의 `const show = !cat || !CAT_NAMES[cat] || cats.includes(cat);` 라인에서 `!CAT_NAMES['tech-halcon']`이 true가 되어 모든 카드가 표시됨 (필터 비활성화)
+- 동시에 `if (cat && CAT_NAMES[cat])` 조건이 false라 페이지 타이틀이 안 바뀜
+
+**규칙**:
+- 새 카테고리는 **반드시 5곳** 모두 추가해야 한다: `sidebar.js`(1) + `post-nav.js`(POST_NAV_DATA, CAT_LABELS 2곳) + `index.html`(CAT_NAMES, CAT_ICONS 2곳)
+- ORDERED_CATS는 학습 순서 시리즈에만 추가 (선택)
+- 이게 가장 자주 까먹는 단계. **위 8-2 체크리스트를 반드시 한 번 훑고 배포할 것.**
+- 배포 후 검증: `?cat=새id`에서 ① 페이지 타이틀이 바뀌었는가 ② 다른 카테고리 글이 섞이지 않는가 — 둘 중 하나라도 NG면 CAT_NAMES 누락이다.
 
 ---
 
