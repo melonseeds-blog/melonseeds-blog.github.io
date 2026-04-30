@@ -1,0 +1,711 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL 알고리즘 활용 패턴 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#categories" data-section="categories">분류</a>
+        <a href="#patterns" data-section="patterns">조합 패턴</a>
+        <a href="#predicate" data-section="predicate">술어 함수</a>
+        <a href="#inserter" data-section="inserter">inserter</a>
+        <a href="#foreach" data-section="foreach">for_each</a>
+        <a href="#minmax" data-section="minmax">min/max</a>
+        <a href="#check" data-section="check">술어 검사</a>
+        <a href="#parallel" data-section="parallel">병렬</a>
+        <a href="#ranges" data-section="ranges">ranges</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++</span>
+                </div>
+                <h1>STL 알고리즘 활용 패턴</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>STL 알고리즘 분류 — 비변경/변경/정렬/탐색/수치</li>
+                        <li>실전에서 매일 쓰는 조합 패턴 — erase-remove, sort+unique, transform, accumulate</li>
+                        <li>이진 탐색과 집합 연산 (lower_bound, set_intersection)</li>
+                        <li>술어 함수와 inserter, 병렬 알고리즘, ranges 미리보기</li>
+                        <li>흔한 함정 — strict weak ordering 위반, remove 후 erase 누락 등</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#categories">알고리즘 분류</a></li>
+                        <li><a href="#patterns">자주 쓰는 조합 패턴</a></li>
+                        <li><a href="#predicate">술어 함수 작성 팁</a></li>
+                        <li><a href="#inserter">back_inserter / front_inserter / inserter</a></li>
+                        <li><a href="#foreach">for_each vs range-based for</a></li>
+                        <li><a href="#minmax">min_element / max_element / minmax_element</a></li>
+                        <li><a href="#check">count / all_of / any_of / none_of</a></li>
+                        <li><a href="#parallel">C++17 병렬 알고리즘</a></li>
+                        <li><a href="#ranges">C++20 ranges 미리보기</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 분류 -->
+                <h2 id="categories"><i class="fa-solid fa-folder-tree"></i> 알고리즘 분류</h2>
+                <p><code>&lt;algorithm&gt;</code> 헤더는 100여 개의 함수를 제공한다. 카테고리로 묶어 두면 필요한 함수를 빠르게 떠올릴 수 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>카테고리</th><th>역할</th><th>대표 함수</th></tr>
+                    <tr><td><strong>비변경(non-modifying)</strong></td><td>읽기만 함</td><td><code>find</code>, <code>count</code>, <code>all_of</code>, <code>equal</code></td></tr>
+                    <tr><td><strong>변경(modifying)</strong></td><td>요소를 수정/이동</td><td><code>copy</code>, <code>transform</code>, <code>replace</code>, <code>fill</code></td></tr>
+                    <tr><td><strong>정렬(sorting)</strong></td><td>순서 재배치</td><td><code>sort</code>, <code>stable_sort</code>, <code>partial_sort</code>, <code>nth_element</code></td></tr>
+                    <tr><td><strong>탐색(searching)</strong></td><td>정렬된 시퀀스 이진 탐색</td><td><code>lower_bound</code>, <code>upper_bound</code>, <code>binary_search</code></td></tr>
+                    <tr><td><strong>집합(set)</strong></td><td>정렬 시퀀스 집합 연산</td><td><code>set_intersection</code>, <code>set_union</code>, <code>set_difference</code></td></tr>
+                    <tr><td><strong>수치(numeric)</strong></td><td><code>&lt;numeric&gt;</code>에 별도 위치</td><td><code>accumulate</code>, <code>reduce</code>, <code>inner_product</code>, <code>iota</code></td></tr>
+                </table>
+
+                <!-- 2. 조합 패턴 -->
+                <h2 id="patterns"><i class="fa-solid fa-puzzle-piece"></i> 자주 쓰는 조합 패턴</h2>
+
+                <h3 id="erase-remove"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> erase-remove idiom</h3>
+                <p>STL의 <code>remove_if</code>는 이름과 달리 <strong>실제로 요소를 지우지 않는다</strong>. 조건에 맞지 않는 요소를 앞으로 옮기고, "새로운 끝" 반복자만 반환한다. 컨테이너 크기는 그대로다. 따라서 물리적으로 지우려면 <code>erase</code>를 함께 호출해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;vector&gt;
+#include &lt;algorithm&gt;
+
+std::vector&lt;int&gt; v = {1, 2, 3, 4, 5, 6};
+
+// 짝수만 제거
+v.erase(
+    std::remove_if(v.begin(), v.end(),
+        [](int x) { return x % 2 == 0; }),
+    v.end()
+);
+// v = {1, 3, 5}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>remove만 호출하면 버그다</strong>
+                        <code>std::remove_if(v.begin(), v.end(), pred);</code>만 쓰면 컨테이너 크기는 그대로고 뒤쪽에 쓰레기 값이 남는다. 반드시 <code>erase</code>로 마무리해야 한다.
+                    </div>
+                </div>
+
+                <p>C++20부터는 <code>std::erase_if</code>가 추가되어 한 줄로 끝낼 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// C++20
+std::erase_if(v, [](int x) { return x % 2 == 0; });</code></pre>
+
+                <h3 id="sort-unique"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> sort + unique — 중복 제거</h3>
+                <p><code>std::unique</code>는 <strong>인접한 중복</strong>만 제거한다. 따라서 먼저 <code>sort</code>로 같은 값을 모아 둔 뒤 호출해야 한다. 마무리는 erase-remove와 동일하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; v = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3};
+
+std::sort(v.begin(), v.end());
+v.erase(std::unique(v.begin(), v.end()), v.end());
+// v = {1, 2, 3, 4, 5, 6, 9}</code></pre>
+
+                <h3 id="transform"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> transform + back_inserter</h3>
+                <p>한 컨테이너의 모든 요소를 변환해 새 컨테이너로 옮길 때 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; src = {1, 2, 3, 4};
+std::vector&lt;int&gt; dst;
+dst.reserve(src.size());  // 재할당 방지
+
+std::transform(src.begin(), src.end(),
+               std::back_inserter(dst),
+               [](int x) { return x * x; });
+// dst = {1, 4, 9, 16}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>reserve를 잊지 말자</strong>
+                        <code>back_inserter</code>는 매 삽입마다 <code>push_back</code>을 호출한다. 미리 <code>reserve</code>하지 않으면 재할당이 여러 번 일어난다.
+                    </div>
+                </div>
+
+                <h3 id="accumulate"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> accumulate — 합/곱/문자열 연결</h3>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;numeric&gt;
+
+std::vector&lt;int&gt; v = {1, 2, 3, 4};
+
+int sum  = std::accumulate(v.begin(), v.end(), 0);          // 10
+int prod = std::accumulate(v.begin(), v.end(), 1,
+                           std::multiplies&lt;int&gt;());          // 24
+
+// 문자열 연결
+std::vector&lt;std::string&gt; words = {"hello", "stl", "world"};
+std::string joined = std::accumulate(
+    words.begin(), words.end(), std::string(),
+    [](const std::string&amp; a, const std::string&amp; b) {
+        return a.empty() ? b : a + ", " + b;
+    });
+// "hello, stl, world"</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>accumulate vs reduce (C++17)</strong>
+                        <code>accumulate</code>는 왼쪽부터 순차 적용을 보장한다. <code>std::reduce</code>는 결합 법칙을 가정하고 순서를 자유롭게 바꿀 수 있어 병렬화가 가능하다. 부동소수 합처럼 순서에 따라 결과가 달라지는 경우는 결과가 달라질 수 있다.
+                    </div>
+                </div>
+
+                <h3 id="copy-if"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> copy_if — 조건부 복사</h3>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; src = {1, 2, 3, 4, 5, 6};
+std::vector&lt;int&gt; even;
+
+std::copy_if(src.begin(), src.end(),
+             std::back_inserter(even),
+             [](int x) { return x % 2 == 0; });
+// even = {2, 4, 6}</code></pre>
+
+                <h3 id="partition"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> partition / stable_partition</h3>
+                <p>술어를 만족하는 요소를 앞으로, 나머지를 뒤로 보낸다. 분할 지점 반복자를 반환한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; v = {1, 2, 3, 4, 5, 6};
+
+auto mid = std::partition(v.begin(), v.end(),
+    [](int x) { return x % 2 == 0; });
+// 예: v = {6, 2, 4, 3, 5, 1}, mid는 3을 가리킴
+// 짝수는 [begin, mid), 홀수는 [mid, end)
+
+// 안정성이 필요하면 stable_partition
+// 짝수끼리, 홀수끼리 원래 순서를 유지한다.</code></pre>
+
+                <h3 id="bound"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> lower_bound / upper_bound / equal_range</h3>
+                <p><strong>정렬된</strong> 시퀀스에서만 정상 동작하는 이진 탐색이다. <code>O(log n)</code>.</p>
+
+                <table class="spec-table">
+                    <tr><th>함수</th><th>의미</th></tr>
+                    <tr><td><code>lower_bound(v)</code></td><td>v <strong>이상</strong>인 첫 위치</td></tr>
+                    <tr><td><code>upper_bound(v)</code></td><td>v <strong>초과</strong>인 첫 위치</td></tr>
+                    <tr><td><code>equal_range(v)</code></td><td>{lower_bound, upper_bound} pair</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; v = {1, 2, 4, 4, 4, 5, 9};
+
+auto lb = std::lower_bound(v.begin(), v.end(), 4);  // index 2
+auto ub = std::upper_bound(v.begin(), v.end(), 4);  // index 5
+int count4 = ub - lb;                                // 3
+
+auto [first, last] = std::equal_range(v.begin(), v.end(), 4);
+// 4가 등장하는 구간 [first, last)</code></pre>
+
+                <h3 id="set-ops"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> set_intersection / set_union / set_difference</h3>
+                <p>두 입력이 <strong>정렬되어 있어야</strong> 한다. 컨테이너가 <code>std::set</code>일 필요는 없고, 정렬된 <code>vector</code>도 가능하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; a = {1, 2, 3, 4, 5};
+std::vector&lt;int&gt; b = {3, 4, 5, 6, 7};
+std::vector&lt;int&gt; out;
+
+std::set_intersection(a.begin(), a.end(),
+                      b.begin(), b.end(),
+                      std::back_inserter(out));
+// out = {3, 4, 5}
+
+out.clear();
+std::set_difference(a.begin(), a.end(),
+                    b.begin(), b.end(),
+                    std::back_inserter(out));
+// out = {1, 2}  (a에 있고 b에 없는 것)</code></pre>
+
+                <!-- 3. 술어 함수 -->
+                <h2 id="predicate"><i class="fa-solid fa-filter"></i> 술어 함수 작성 팁</h2>
+                <p>알고리즘에 넘기는 조건 함수를 술어(predicate)라 부른다. 세 가지 형태를 비교한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>형태</th><th>특징</th><th>언제</th></tr>
+                    <tr><td>함수 객체 (functor)</td><td>상태 보유 가능, 인라인화 잘 됨</td><td>재사용, 상태 필요</td></tr>
+                    <tr><td>람다</td><td>현장에서 짧게 작성, 캡처 가능</td><td>대부분의 경우 (권장)</td></tr>
+                    <tr><td><code>std::function</code></td><td>타입 소거, 호출 시 간접 비용</td><td>다형 저장이 필요할 때만</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// 함수 객체
+struct GreaterThan
+{
+    int threshold;
+    bool operator()(int x) const { return x &gt; threshold; }
+};
+std::count_if(v.begin(), v.end(), GreaterThan{10});
+
+// 람다 — 가장 흔한 선택
+std::count_if(v.begin(), v.end(),
+              [t = 10](int x) { return x &gt; t; });
+
+// std::function — 호출 비용이 있어 핫 루프에는 비권장
+std::function&lt;bool(int)&gt; pred = [](int x) { return x &gt; 10; };
+std::count_if(v.begin(), v.end(), pred);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>술어는 부작용이 없어야 한다</strong>
+                        술어는 같은 입력에 대해 항상 같은 결과를 내야 한다. 카운터를 증가시키거나 외부 상태를 변경하면 알고리즘이 어떤 순서로 호출하는지에 따라 결과가 달라진다.
+                    </div>
+                </div>
+
+                <!-- 4. inserter -->
+                <h2 id="inserter"><i class="fa-solid fa-arrow-right-to-bracket"></i> back_inserter / front_inserter / inserter</h2>
+                <p>출력 반복자(output iterator) 어댑터다. 알고리즘이 결과를 쓸 때 컨테이너의 어느 위치에 어떻게 삽입할지를 정한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>어댑터</th><th>호출하는 함수</th><th>지원 컨테이너</th></tr>
+                    <tr><td><code>back_inserter(c)</code></td><td><code>push_back</code></td><td>vector, deque, list, string</td></tr>
+                    <tr><td><code>front_inserter(c)</code></td><td><code>push_front</code></td><td>deque, list, forward_list</td></tr>
+                    <tr><td><code>inserter(c, it)</code></td><td><code>insert(it, ...)</code></td><td>거의 모든 컨테이너 (set, map 포함)</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; src = {1, 2, 3};
+
+std::list&lt;int&gt; lst;
+std::copy(src.begin(), src.end(), std::front_inserter(lst));
+// lst = {3, 2, 1}  (앞에 하나씩 끼워 넣어 뒤집힘)
+
+std::set&lt;int&gt; s;
+std::copy(src.begin(), src.end(), std::inserter(s, s.end()));
+// s = {1, 2, 3}</code></pre>
+
+                <!-- 5. for_each -->
+                <h2 id="foreach"><i class="fa-solid fa-arrows-rotate"></i> for_each vs range-based for</h2>
+                <p>대부분의 경우 <strong>range-based for</strong>가 더 간결하고 가독성이 좋다. <code>std::for_each</code>를 굳이 쓸 만한 상황은 제한적이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// range-based for — 99%의 경우 이걸로 충분하다
+for (auto&amp; x : v)
+{
+    process(x);
+}
+
+// for_each — 일부 구간에만 적용하거나 병렬 정책을 쓸 때
+std::for_each(v.begin() + 2, v.begin() + 5,
+              [](int&amp; x) { x *= 2; });
+
+// 병렬 적용
+std::for_each(std::execution::par, v.begin(), v.end(),
+              [](int&amp; x) { x = heavy_compute(x); });</code></pre>
+
+                <!-- 6. min/max -->
+                <h2 id="minmax"><i class="fa-solid fa-arrows-up-down"></i> min_element / max_element / minmax_element</h2>
+                <p>반복자를 반환한다. 값이 필요하면 역참조해야 한다. 비교자를 넘겨 커스텀 기준으로 찾을 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; v = {3, 1, 4, 1, 5, 9, 2, 6};
+
+auto itMin = std::min_element(v.begin(), v.end());  // → 1
+auto itMax = std::max_element(v.begin(), v.end());  // → 9
+
+// 한 번에 둘 다 — 비교 횟수가 절반에 가깝다
+auto [itLo, itHi] = std::minmax_element(v.begin(), v.end());
+
+// 절대값 기준 최댓값
+struct Point { int x, y; };
+std::vector&lt;Point&gt; pts = { {1, 2}, {-5, 3}, {2, 4} };
+auto farthest = std::max_element(pts.begin(), pts.end(),
+    [](const Point&amp; a, const Point&amp; b) {
+        return (a.x*a.x + a.y*a.y) &lt; (b.x*b.x + b.y*b.y);
+    });</code></pre>
+
+                <!-- 7. count / all_of -->
+                <h2 id="check"><i class="fa-solid fa-square-check"></i> count / count_if / all_of / any_of / none_of</h2>
+                <p>술어를 적용해 컨테이너의 상태를 한 줄로 검사한다. 명시적 루프보다 의도가 분명하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; v = {1, 2, 3, 4, 5};
+
+int n3 = std::count(v.begin(), v.end(), 3);                // 1
+int nEven = std::count_if(v.begin(), v.end(),
+                          [](int x) { return x % 2 == 0; }); // 2
+
+bool allPos  = std::all_of (v.begin(), v.end(),
+                            [](int x) { return x &gt; 0; });   // true
+bool anyEven = std::any_of (v.begin(), v.end(),
+                            [](int x) { return x % 2 == 0; }); // true
+bool noneNeg = std::none_of(v.begin(), v.end(),
+                            [](int x) { return x &lt; 0; });   // true</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>빈 컨테이너에서의 동작</strong>
+                        <code>all_of</code>와 <code>none_of</code>는 빈 범위에서 <strong>true</strong>를 반환한다(공허한 참, vacuous truth). <code>any_of</code>는 <strong>false</strong>다. 의도와 다른 결과를 만나면 빈 범위 처리부터 의심해 보자.
+                    </div>
+                </div>
+
+                <!-- 8. 병렬 알고리즘 -->
+                <h2 id="parallel"><i class="fa-solid fa-bolt"></i> C++17 병렬 알고리즘</h2>
+                <p>대부분의 알고리즘은 첫 인자로 <strong>실행 정책</strong>을 받을 수 있게 확장됐다. <code>&lt;execution&gt;</code>을 포함하면 한 줄 추가로 병렬화된다.</p>
+
+                <table class="spec-table">
+                    <tr><th>정책</th><th>의미</th></tr>
+                    <tr><td><code>std::execution::seq</code></td><td>순차 (기본)</td></tr>
+                    <tr><td><code>std::execution::par</code></td><td>병렬 (스레드 분배)</td></tr>
+                    <tr><td><code>std::execution::par_unseq</code></td><td>병렬 + 벡터화 (SIMD)</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;execution&gt;
+#include &lt;algorithm&gt;
+
+std::vector&lt;int&gt; v(1'000'000);
+// ... 채우기 ...
+
+// 한 줄 변경으로 병렬 정렬
+std::sort(std::execution::par, v.begin(), v.end());
+
+// 병렬 변환
+std::transform(std::execution::par_unseq,
+               v.begin(), v.end(), v.begin(),
+               [](int x) { return x * x + 1; });</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>한 줄로 멀티스레드</strong>
+                        직접 <code>std::thread</code>나 작업 큐를 만들 필요가 없다. 단, 술어가 데이터 경합 없이 동작해야 하고(부작용 없음), 작업량이 충분히 커야 스레드 분배 비용을 회수한다. 작은 컨테이너에는 오히려 느리다.
+                    </div>
+                </div>
+
+                <!-- 9. ranges -->
+                <h2 id="ranges"><i class="fa-solid fa-stream"></i> C++20 ranges 미리보기</h2>
+                <p>C++20부터 <code>std::ranges</code> 네임스페이스에 동일한 알고리즘이 다시 정의됐다. 핵심 차이는 두 가지다.</p>
+                <ul>
+                    <li><strong>begin/end 한 쌍 대신 컨테이너 자체를 넘긴다</strong> — 호출이 짧아진다.</li>
+                    <li><strong>projection 인자 지원</strong> — 멤버 추출이 깔끔해진다.</li>
+                </ul>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;ranges&gt;
+#include &lt;algorithm&gt;
+
+struct Person { std::string name; int age; };
+std::vector&lt;Person&gt; people = { /* ... */ };
+
+// C++17 — 비교자 안에서 멤버 접근
+std::sort(people.begin(), people.end(),
+    [](const Person&amp; a, const Person&amp; b) { return a.age &lt; b.age; });
+
+// C++20 ranges — projection으로 멤버를 직접 지정
+std::ranges::sort(people, {}, &amp;Person::age);
+
+// 파이프라인과 결합 (views)
+auto adults = people
+    | std::views::filter([](const Person&amp; p) { return p.age &gt;= 18; })
+    | std::views::transform(&amp;Person::name);
+for (const auto&amp; name : adults) { /* ... */ }</code></pre>
+
+                <!-- 10. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-skull-crossbones"></i> 흔한 함정</h2>
+
+                <h3 id="pit-remove"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> remove만 호출하고 erase 안 하기</h3>
+                <p>가장 흔한 실수다. 컨테이너 크기는 그대로고 뒤쪽에 미정의 값이 남는다. 항상 <code>erase</code> 또는 C++20 <code>erase_if</code>로 마무리하자.</p>
+
+                <h3 id="pit-swo"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> strict weak ordering 위반</h3>
+                <p><code>sort</code>의 비교자는 <strong>엄격 약 순서(strict weak ordering)</strong>를 만족해야 한다. 핵심 규칙은 "<code>cmp(a, a)</code>는 항상 false"다. <code>&lt;=</code>를 쓰면 <code>cmp(a, a)</code>가 true가 되어 정렬이 미정의 동작에 빠진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 잘못된 예 — UB
+std::sort(v.begin(), v.end(),
+    [](int a, int b) { return a &lt;= b; });  // 위반!
+
+// 올바른 예
+std::sort(v.begin(), v.end(),
+    [](int a, int b) { return a &lt; b; });</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>비교자는 strict less, 절대 less-or-equal이 아니다</strong>
+                        구현체에 따라 무한 루프, 크래시, 메모리 손상까지 일어날 수 있다. 디버그 모드에서는 발견되지만 릴리스 빌드에서 묻혀 가는 경우가 많다.
+                    </div>
+                </div>
+
+                <h3 id="pit-binsearch"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정렬 안 된 컨테이너에 binary_search</h3>
+                <p><code>binary_search</code>, <code>lower_bound</code>, <code>upper_bound</code>는 정렬을 전제로 한다. 정렬되지 않은 컨테이너에 쓰면 잘못된 결과를 조용히 반환한다. 컴파일러는 경고하지 않는다.</p>
+
+                <h3 id="pit-realloc"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> reserve 없이 transform + back_inserter</h3>
+                <p>출력 컨테이너가 비어 있는 채로 <code>back_inserter</code>를 쓰면 매 push_back마다 재할당이 일어날 수 있다. 입력 크기를 알면 <code>reserve</code>를 먼저 호출해 한 번에 메모리를 잡아 두자.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; dst;
+dst.reserve(src.size());  // 이 한 줄로 재할당이 사라진다
+std::transform(src.begin(), src.end(),
+               std::back_inserter(dst),
+               [](int x) { return x * 2; });</code></pre>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — <code>&lt;algorithm&gt;</code>, <code>&lt;numeric&gt;</code>, <code>&lt;execution&gt;</code>, <code>&lt;ranges&gt;</code></li>
+                        <li>Scott Meyers — <em>Effective STL</em> (50가지 STL 활용 가이드라인)</li>
+                        <li>ISO C++ Core Guidelines — STL 사용 권장 항목</li>
+                        <li>Jonathan Boccara — <em>The World Map of C++ STL Algorithms</em></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

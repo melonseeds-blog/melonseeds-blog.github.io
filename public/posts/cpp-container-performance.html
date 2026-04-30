@@ -1,0 +1,663 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL 컨테이너 성능 비교 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 메모리 다이어그램 */
+        .mem-diagram {
+            background: #0f172a; color: #cbd5e1; border-radius: 10px;
+            padding: 18px 22px; margin: 12px 0 18px;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.82rem;
+            line-height: 1.6; border: 1px solid #1e293b; overflow-x: auto;
+            white-space: pre;
+        }
+        .mem-diagram .mem-label {
+            color: #64748b; font-size: 0.72rem; font-weight: 600;
+            margin-bottom: 8px; display: block; font-family: 'Pretendard', sans-serif;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#layout" data-section="layout">메모리 레이아웃</a>
+        <a href="#complexity" data-section="complexity">시간 복잡도</a>
+        <a href="#cache" data-section="cache">캐시 친화도</a>
+        <a href="#benchmark" data-section="benchmark">벤치마크</a>
+        <a href="#small-vector" data-section="small-vector">small vector</a>
+        <a href="#assoc" data-section="assoc">연관 컨테이너</a>
+        <a href="#decision" data-section="decision">선택 결정 트리</a>
+        <a href="#tips" data-section="tips">최적화 팁</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>STL 컨테이너 성능 비교 — vector / deque / list / array</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>시퀀스 컨테이너의 메모리 레이아웃 비교 (vector, deque, list, forward_list, array)</li>
+                        <li>연산별 시간 복잡도 매트릭스</li>
+                        <li>캐시 친화도가 실제 성능에 미치는 영향</li>
+                        <li>실무 벤치마크 시나리오와 작은 N에서의 vector 우세</li>
+                        <li>small vector / flat_map 등 현대적 대안</li>
+                        <li>상황별 컨테이너 선택 결정 트리</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#layout">시퀀스 컨테이너 메모리 레이아웃</a></li>
+                        <li><a href="#complexity">연산별 시간 복잡도 매트릭스</a></li>
+                        <li><a href="#cache">캐시 친화도 — 왜 vector가 빠른가</a></li>
+                        <li><a href="#benchmark">실무 벤치마크 시나리오</a></li>
+                        <li><a href="#small-vector">small vector 최적화</a></li>
+                        <li><a href="#assoc">연관 컨테이너 — map / unordered_map / flat_map</a></li>
+                        <li><a href="#decision">컨테이너 선택 결정 트리</a></li>
+                        <li><a href="#tips">reserve / shrink_to_fit 활용 팁</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 메모리 레이아웃 -->
+                <h2 id="layout"><i class="fa-solid fa-boxes-stacked"></i> 시퀀스 컨테이너 메모리 레이아웃</h2>
+                <p>컨테이너의 성능은 결국 <strong>메모리 어디에 어떻게 놓이는가</strong>로 결정된다. 같은 O(n) 순회라도 메모리 레이아웃에 따라 실측 성능은 10배 이상 갈린다. 먼저 각 컨테이너가 어떻게 데이터를 저장하는지 그림으로 살펴본다.</p>
+
+                <h3 id="layout-vector"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> vector — 단일 연속 버퍼</h3>
+                <p>힙에 단 하나의 연속된 배열을 잡고, 용량(capacity)이 부족하면 더 큰 버퍼를 새로 할당해 옮긴다. 이 재할당이 일어날 때마다 모든 요소가 복사·이동되지만, 1.5배 또는 2배씩 늘리는 정책 덕분에 push_back은 <strong>amortized O(1)</strong>이 된다.</p>
+
+                <div class="mem-diagram"><span class="mem-label">vector&lt;int&gt; v = {10, 20, 30, 40};  // capacity=8</span>
+힙:  ┌──┬──┬──┬──┬──┬──┬──┬──┐
+     │10│20│30│40│  │  │  │  │
+     └──┴──┴──┴──┴──┴──┴──┴──┘
+     └─── size=4 ───┘└capacity 여유 4┘
+     ↑
+     data() 시작 주소 — 모두 인접</div>
+
+                <h3 id="layout-deque"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> deque — 청크(블록) 단위</h3>
+                <p>고정 크기 청크 여러 개를 가리키는 포인터 배열(map)을 가진다. 양 끝에 공간이 부족하면 새 청크만 할당하면 되므로 <strong>push_front / push_back 모두 O(1)</strong>이다. 다만 임의 위치 삽입은 청크 경계까지 밀어야 하므로 비싸다.</p>
+
+                <div class="mem-diagram"><span class="mem-label">deque&lt;int&gt; — 청크 크기 4 가정</span>
+포인터 맵:
+┌──────┬──────┬──────┬──────┐
+│ ptr0 │ ptr1 │ ptr2 │ ptr3 │
+└──┬───┴──┬───┴──┬───┴──────┘
+   ↓      ↓      ↓
+ [_,_,    [10,20,  [40,50,
+  _,5]    30,_]    _,_]
+ 청크A    청크B    청크C
+ (앞)     (중간)   (뒤)</div>
+
+                <h3 id="layout-list"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> list — 이중 연결 리스트</h3>
+                <p>각 노드를 힙에 따로 할당한다. 노드는 <code>{prev, value, next}</code>를 가지므로 int 하나를 저장하는 데도 포인터 2개(64비트에서 16바이트)가 추가로 든다. 노드끼리의 메모리 위치는 전혀 인접하지 않다.</p>
+
+                <div class="mem-diagram"><span class="mem-label">list&lt;int&gt; l = {10, 20, 30};  // 노드는 힙에 산재</span>
+주소 0x1000:  [prev=null │ 10 │ next=0x4080]
+주소 0x4080:  [prev=0x1000 │ 20 │ next=0x2A10]
+주소 0x2A10:  [prev=0x4080 │ 30 │ next=null]
+
+각 노드는 메모리 어디에든 흩어져 있음 (캐시 비친화)</div>
+
+                <h3 id="layout-forward-list"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> forward_list — 단일 연결 리스트</h3>
+                <p>다음 노드 포인터만 가진다. list 대비 노드당 8바이트(64비트)를 절약한다. 역방향 순회와 size()가 없어 메모리에 민감한 임베디드 환경 정도에서나 의미 있다.</p>
+
+                <h3 id="layout-array"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> array — 컴파일 타임 고정 크기</h3>
+                <p>크기가 템플릿 파라미터로 박혀 있고 힙 할당이 전혀 없다. <strong>스택에 통째로</strong> 올릴 수 있어 가장 빠르다. 단, 크기가 컴파일 타임에 결정되어야 한다.</p>
+
+                <div class="mem-diagram"><span class="mem-label">std::array&lt;int, 4&gt; a = {10, 20, 30, 40};</span>
+스택 프레임:
+┌──┬──┬──┬──┐
+│10│20│30│40│   ← 함수 호출 시 자동 정리
+└──┴──┴──┴──┘
+힙 할당 0회, 메타데이터 0바이트</div>
+
+                <!-- 2. 시간 복잡도 -->
+                <h2 id="complexity"><i class="fa-solid fa-gauge-high"></i> 연산별 시간 복잡도 매트릭스</h2>
+                <p>이론적 복잡도다. 실측 성능과 다를 수 있다는 점을 미리 강조한다 (다음 절에서 다룬다).</p>
+
+                <table class="spec-table">
+                    <tr>
+                        <th>연산</th>
+                        <th>vector</th>
+                        <th>deque</th>
+                        <th>list</th>
+                        <th>forward_list</th>
+                        <th>array</th>
+                    </tr>
+                    <tr><td>push_back</td><td>amortized O(1)</td><td>O(1)</td><td>O(1)</td><td>—</td><td>—</td></tr>
+                    <tr><td>push_front</td><td>O(n)</td><td>O(1)</td><td>O(1)</td><td>O(1)</td><td>—</td></tr>
+                    <tr><td>insert (중간)</td><td>O(n)</td><td>O(n)</td><td>O(1)*</td><td>O(1)*</td><td>—</td></tr>
+                    <tr><td>erase (중간)</td><td>O(n)</td><td>O(n)</td><td>O(1)*</td><td>O(1)*</td><td>—</td></tr>
+                    <tr><td>random access [i]</td><td>O(1)</td><td>O(1)</td><td>O(n)</td><td>O(n)</td><td>O(1)</td></tr>
+                    <tr><td>find (선형)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td></tr>
+                    <tr><td>sort</td><td>O(n log n)</td><td>O(n log n)</td><td>O(n log n) 멤버</td><td>O(n log n) 멤버</td><td>O(n log n)</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>* 표시의 의미</strong>
+                        list/forward_list의 insert/erase가 O(1)인 것은 <em>이미 그 위치 iterator를 가지고 있을 때</em>의 이야기다. 위치를 찾는 데는 O(n)이 든다. 즉 "n번째 요소를 지운다"는 작업은 list에서도 O(n)이다.
+                    </div>
+                </div>
+
+                <!-- 3. 캐시 친화도 -->
+                <h2 id="cache"><i class="fa-solid fa-memory"></i> 캐시 친화도 — 왜 vector가 빠른가</h2>
+                <p>현대 CPU는 메모리에서 1바이트만 가져오지 않는다. 한 번에 <strong>캐시 라인(보통 64바이트)</strong> 단위로 읽어온다. 게다가 하드웨어 prefetcher가 "다음 캐시 라인도 어차피 읽겠지"라고 예측해 미리 가져와 둔다.</p>
+
+                <h3 id="cache-line"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캐시 라인과 prefetch</h3>
+                <p>vector는 모든 요소가 인접해 있다. <code>v[0]</code>을 읽을 때 <code>v[1]~v[15]</code>(int 기준)가 같이 캐시에 올라온다. 다음 반복에서 <code>v[1]</code>은 이미 캐시 안에 있다. L1 hit는 ~1ns, 메인 메모리 접근은 ~100ns. <strong>100배 차이</strong>다.</p>
+
+                <p>list는 노드가 메모리에 흩어져 있다. 각 노드 접근마다 캐시 미스가 발생할 수 있고, prefetcher는 다음 노드 주소를 예측할 수 없다. 결과적으로 같은 O(n) 순회라도 list가 vector보다 5~20배 느린 경우가 흔하다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>cache miss는 복잡도 표에 없는 비용이다</strong>
+                        big-O 분석은 모든 메모리 접근 비용을 동일하게 본다. 실제로는 L1 hit ↔ DRAM 접근의 차이가 100배가 넘는다. "list가 중간 삽입 O(1)이라 vector보다 빠를 것"이라는 추론이 자주 빗나가는 이유다.
+                    </div>
+                </div>
+
+                <h3 id="cache-seq-vs-rand"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> sequential vs random access</h3>
+                <p>같은 양의 데이터를 읽더라도 접근 패턴에 따라 처리량이 크게 갈린다.</p>
+
+                <table class="spec-table">
+                    <tr><th>접근 패턴</th><th>예시</th><th>특징</th></tr>
+                    <tr><td>Sequential</td><td>vector 순회</td><td>prefetch 효과 최대, 거의 L1 속도</td></tr>
+                    <tr><td>Strided</td><td>2차원 배열 열 방향</td><td>stride가 캐시 라인보다 크면 미스 폭증</td></tr>
+                    <tr><td>Random / pointer chasing</td><td>list 순회</td><td>매 접근마다 미스 가능성, prefetch 무력</td></tr>
+                </table>
+
+                <!-- 4. 벤치마크 시나리오 -->
+                <h2 id="benchmark"><i class="fa-solid fa-flask"></i> 실무 벤치마크 시나리오</h2>
+                <p>아래는 실제 코드와 의사 측정 결과다. 수치는 환경에 따라 달라지므로 절대값보다 <strong>상대 비율</strong>에 주목한다.</p>
+
+                <h3 id="bench-pushback"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 시나리오 1 — 100만 개 정수 push_back</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 핵심 루프 (의사 코드)
+constexpr int kCount = 1'000'000;
+
+vector&lt;int&gt; v;
+v.reserve(kCount);                  // 재할당 0회
+for (int i = 0; i &lt; kCount; ++i) v.push_back(i);
+
+deque&lt;int&gt; dq;
+for (int i = 0; i &lt; kCount; ++i) dq.push_back(i);
+
+list&lt;int&gt; lst;
+for (int i = 0; i &lt; kCount; ++i) lst.push_back(i);</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 측정 결과 (대략적, MSVC release x64)</div>
+vector (reserve)     :   2 ms
+vector (no reserve)  :   8 ms   ← 재할당 ~20회
+deque                :  18 ms
+list                 :  62 ms   ← 노드 100만 개 힙 할당</div>
+
+                <p><code>reserve()</code> 한 줄이 4배 빨라지게 만든다. list가 느린 결정적 이유는 <strong>매 push_back이 힙 할당</strong>이라는 점이다.</p>
+
+                <h3 id="bench-insert"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 시나리오 2 — 중간 삽입 1만 번 (vector vs list 역전 지점)</h3>
+                <p>"중간 삽입은 list가 빠르다"는 통념을 깨는 부분이다. list는 삽입 자체는 O(1)이지만 <strong>위치를 찾는 비용</strong>이 크고, 캐시 미스로 순회 자체가 느리다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 정렬 상태 유지하며 무작위 값 삽입
+template &lt;typename Container&gt;
+void insertSorted(Container&amp; c, int value)
+{
+    auto it = std::lower_bound(c.begin(), c.end(), value);  // list는 random access 불가 → 선형
+    c.insert(it, value);
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 측정 결과 — N개 컨테이너에 1만 회 삽입</div>
+N=100        vector:  0.4 ms    list:  1.8 ms
+N=1,000      vector:  3 ms      list:  9 ms
+N=10,000     vector: 38 ms      list: 96 ms
+N=100,000    vector: 410 ms     list: 1100 ms</div>
+
+                <p>대부분의 실무 N(수만 이하)에서는 <strong>vector가 list보다 일관되게 빠르다</strong>. 캐시 친화적인 메모리 이동(memmove)이 포인터 추적보다 싸기 때문이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>list가 이기는 조건은 좁다</strong>
+                        (1) 삽입 위치 iterator를 이미 가지고 있고, (2) 요소 타입이 매우 크고(복사 비용 ↑), (3) 컨테이너가 아주 클 때. 이 셋을 동시에 만족하지 못하면 vector를 쓰자.
+                    </div>
+                </div>
+
+                <h3 id="bench-traverse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 시나리오 3 — 순회 후 합산</h3>
+
+<pre class="language-cpp"><code class="language-cpp">long long sum = 0;
+for (int x : v)   sum += x;   // vector
+for (int x : lst) sum += x;   // list, 동일 요소 수</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> N = 1,000,000 합산</div>
+vector :  0.6 ms
+list   :  6.4 ms     ← 약 10배, 전부 캐시 미스 비용</div>
+
+                <!-- 5. small vector -->
+                <h2 id="small-vector"><i class="fa-solid fa-cube"></i> small vector 최적화</h2>
+                <p>std::vector는 <em>항상</em> 힙에 데이터 버퍼를 잡는다. 컨테이너에 보통 몇 개밖에 안 들어가는 경우(예: 함수 인자 목록, 짧은 경로) 매번 힙 할당이 낭비다.</p>
+
+                <p><strong>small vector(small buffer optimization, SBO)</strong>는 객체 안에 작은 인라인 버퍼를 두고, 용량이 그걸 넘을 때만 힙으로 빠진다. <code>llvm::SmallVector</code>, <code>boost::container::small_vector</code>, <code>folly::small_vector</code>가 대표적이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 개념적 구조
+template &lt;typename T, size_t N&gt;
+class small_vector
+{
+    union
+    {
+        T m_inline[N];     // 인라인 버퍼 (스택 또는 객체 내부)
+        T* m_heap;         // 힙으로 넘어간 후의 포인터
+    };
+    size_t m_size;
+    size_t m_capacity;
+};
+
+// 사용 예 — 보통 4개 이하인 경우 힙 할당 0회
+small_vector&lt;int, 4&gt; sv;
+sv.push_back(1);
+sv.push_back(2);          // 아직 인라인 버퍼
+sv.push_back(3);
+sv.push_back(4);
+sv.push_back(5);          // 이때 처음 힙으로 넘어감</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>std::string은 이미 SBO를 한다</strong>
+                        대부분의 표준 라이브러리는 짧은 문자열을 객체 안에 직접 저장한다(SSO). short string은 힙 할당이 일어나지 않는다. <code>std::vector</code>는 표준이 SBO를 강제하지 않아 직접 안 한다.
+                    </div>
+                </div>
+
+                <!-- 6. 연관 컨테이너 -->
+                <h2 id="assoc"><i class="fa-solid fa-sitemap"></i> 연관 컨테이너 — map / unordered_map / flat_map</h2>
+
+                <table class="spec-table">
+                    <tr>
+                        <th>구분</th>
+                        <th>std::map</th>
+                        <th>std::unordered_map</th>
+                        <th>std::flat_map (C++23)</th>
+                    </tr>
+                    <tr><td>내부 구조</td><td>Red-Black Tree</td><td>Hash Table + 버킷</td><td>정렬된 두 vector</td></tr>
+                    <tr><td>메모리 레이아웃</td><td>노드별 힙 할당</td><td>버킷 + 노드 힙 할당</td><td>연속 버퍼 2개</td></tr>
+                    <tr><td>탐색</td><td>O(log n)</td><td>O(1) 평균, O(n) 최악</td><td>O(log n)</td></tr>
+                    <tr><td>삽입/삭제</td><td>O(log n)</td><td>O(1) 평균</td><td>O(n) (이동 발생)</td></tr>
+                    <tr><td>순회 캐시 친화도</td><td>나쁨</td><td>나쁨</td><td>매우 좋음</td></tr>
+                    <tr><td>키 정렬 순회</td><td>가능</td><td>불가</td><td>가능</td></tr>
+                </table>
+
+                <p><strong>flat_map</strong>은 자주 조회하지만 거의 변하지 않는 데이터에 이상적이다. 룩업 테이블, 설정값 맵, 작은 사전 등이 후보다. 삽입이 비싸도 한번 채워두면 그 뒤의 조회·순회가 캐시 덕에 매우 빠르다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>set 계열도 동일</strong>
+                        set / unordered_set / flat_set이 같은 트레이드오프로 짝을 이룬다. 키만 필요하면 set 계열, 키-값이 필요하면 map 계열.
+                    </div>
+                </div>
+
+                <!-- 7. 결정 트리 -->
+                <h2 id="decision"><i class="fa-solid fa-code-branch"></i> 컨테이너 선택 결정 트리</h2>
+                <p>실무에서 90%의 경우 vector가 정답이다. 그럼에도 다음 분기는 알아두면 좋다.</p>
+
+                <div class="mem-diagram"><span class="mem-label">상황별 추천</span>
+컨테이너가 필요한가?
+│
+├─ 키-값 매핑이 필요?
+│  ├─ 키 정렬 순회 필요 ──────────► std::map
+│  ├─ 빠른 조회만 필요 ──────────► std::unordered_map
+│  └─ 거의 변하지 않고 조회 위주 ► std::flat_map (C++23) / boost::flat_map
+│
+├─ 시퀀스 컨테이너
+│  ├─ 크기가 컴파일 타임 고정 ───► std::array
+│  ├─ 임의 접근(인덱싱) 필요 ────► std::vector  ← 기본 선택
+│  ├─ 양 끝 삽입/제거 빈번 ──────► std::deque
+│  ├─ 중간 삽입/제거 빈번
+│  │  + 임의 접근 불필요
+│  │  + iterator 유지 중요 ──────► std::list
+│  └─ 항목 수 보통 매우 적음 ────► small_vector (외부 라이브러리)
+│
+└─ 중복 없는 집합 ───────────────► std::set / std::unordered_set</div>
+
+                <!-- 8. 팁 -->
+                <h2 id="tips"><i class="fa-solid fa-screwdriver-wrench"></i> reserve / shrink_to_fit 활용 팁</h2>
+
+                <h3 id="tip-reserve"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> reserve — 재할당 제거</h3>
+                <p>최종 크기를 알거나 추정 가능하면 반드시 미리 잡는다. 시나리오 1에서 봤듯 4배까지 빨라진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 안 좋은 예 — 재할당이 log2(n)번 일어남
+vector&lt;Pixel&gt; pixels;
+for (int i = 0; i &lt; width * height; ++i)
+    pixels.push_back(loadPixel(i));
+
+// 좋은 예 — 단 한 번 할당
+vector&lt;Pixel&gt; pixels;
+pixels.reserve(width * height);
+for (int i = 0; i &lt; width * height; ++i)
+    pixels.push_back(loadPixel(i));</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>reserve와 resize는 다르다</strong>
+                        <code>reserve(n)</code>은 capacity만 늘리고 size는 그대로다. <code>resize(n)</code>은 size 자체를 n으로 만들고 기본 생성된 요소로 채운다. push_back과 함께 쓸 때는 reserve가 맞다.
+                    </div>
+                </div>
+
+                <h3 id="tip-shrink"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> shrink_to_fit — 메모리 회수</h3>
+                <p>벡터는 capacity를 자동으로 줄여주지 않는다. 큰 데이터를 처리한 뒤 size가 작아져도 capacity는 그대로다. 명시적으로 회수해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">vector&lt;double&gt; buffer;
+buffer.reserve(10'000'000);
+// ... 대량 처리 ...
+buffer.clear();              // size=0이지만 capacity는 그대로
+buffer.shrink_to_fit();      // 가능하면 capacity도 0으로
+
+// 강제로 비우는 관용구 (swap trick, C++03 시절)
+vector&lt;double&gt;().swap(buffer);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>shrink_to_fit는 강제가 아니다</strong>
+                        표준은 "비구속적 요청(non-binding request)"이라고 명시한다. 구현이 무시할 수 있다. 정말 메모리를 해제하고 싶다면 swap 관용구를 쓰는 편이 확실하다.
+                    </div>
+                </div>
+
+                <h3 id="tip-iter-invalid"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> iterator 무효화 규칙</h3>
+                <p>재할당이 일어나면 vector의 모든 iterator·포인터·참조가 무효화된다. 반복 중 push_back은 위험하다.</p>
+
+                <table class="spec-table">
+                    <tr><th>컨테이너</th><th>insert 시 무효화</th><th>erase 시 무효화</th></tr>
+                    <tr><td>vector</td><td>재할당 시 전부</td><td>지운 위치 이후 전부</td></tr>
+                    <tr><td>deque</td><td>모든 iterator (참조는 살아남는 경우 있음)</td><td>모든 iterator</td></tr>
+                    <tr><td>list / forward_list</td><td>없음</td><td>지운 노드 자신만</td></tr>
+                </table>
+
+                <p>iterator·참조 안정성이 절대적으로 필요하면 list를 고려할 만한 거의 유일한 이유가 된다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — Containers library 공식 레퍼런스</li>
+                        <li>Effective STL — Scott Meyers</li>
+                        <li>What Every Programmer Should Know About Memory — Ulrich Drepper</li>
+                        <li>Bjarne Stroustrup, "Are lists evil?" (vector vs list 벤치마크 토론)</li>
+                        <li>LLVM SmallVector / Boost.Container small_vector 문서</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

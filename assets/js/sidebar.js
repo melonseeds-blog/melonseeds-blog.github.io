@@ -5,7 +5,11 @@ function renderSidebar(currentCat) {
     const publicCats = [
         { id: 'dev', icon: 'fa-solid fa-code', label: '개발 공부', color: 'dev', desc: '알고리즘, OS, 언어',
           subs: [
-              { id: 'dev-lang',   label: '언어 (C++, Python 등)' },
+              { id: 'dev-lang',   label: '언어 (C++, Python 등)',
+                subs: [
+                    { id: 'dev-lang-cpp', label: 'C++ 시리즈' },
+                ]
+              },
               { id: 'dev-cv',     label: 'CV (Computer Vision)' },
               { id: 'dev-theory', label: '프로그래밍 이론' },
           ]

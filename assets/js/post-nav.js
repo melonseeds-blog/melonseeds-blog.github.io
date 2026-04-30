@@ -37,6 +37,12 @@ const POST_NAV_DATA = {
         { file: 'point-cloud-basics.html', title: '포인트 클라우드 처리 기초' },
         { file: '3d-inspection-cases.html', title: '산업용 3D 검사 적용 사례' },
     ],
+    'dev-lang-cpp': [
+        { file: 'cpp-stl-basics.html', title: 'C++ STL 핵심 정리' },
+        { file: 'cpp-iterator-categories.html', title: '이터레이터 카테고리와 무효화 규칙' },
+        { file: 'cpp-container-performance.html', title: 'STL 컨테이너 성능 비교' },
+        { file: 'cpp-stl-algorithms.html', title: 'STL 알고리즘 활용 패턴' },
+    ],
     'tech-halcon': [
         { file: 'halcon-sg1-00-overview.html', title: 'HALCON Solution Guide I 개요와 학습법' },
         { file: 'halcon-sg1-01-methods-map.html', title: 'HALCON 방법론 전체 지도' },
@@ -92,6 +98,7 @@ const CAT_LABELS = {
     'tech-comm': '통신/인터페이스',
     'tech-stereo': '3D 스테레오 비전',
     'tech-halcon': 'HALCON 비전 라이브러리',
+    'dev-lang-cpp': 'C++ 시리즈',
     'tool': '도구/환경 설정',
     'growth-cert': '자격증',
     'growth-cert-istqb': 'ISTQB FL',
