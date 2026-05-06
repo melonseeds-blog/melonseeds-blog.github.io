@@ -1,0 +1,700 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스레드 풀 직접 만들기 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 다이어그램 */
+        .diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px; margin: 16px 0; text-align: center;
+        }
+        .diagram svg { max-width: 100%; height: auto; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why-pool" data-section="why-pool">왜 스레드 풀</a>
+        <a href="#components" data-section="components">구성 요소</a>
+        <a href="#producer-consumer" data-section="producer-consumer">Producer-Consumer</a>
+        <a href="#impl" data-section="impl">ThreadPool 구현</a>
+        <a href="#advanced" data-section="advanced">고급 기능</a>
+        <a href="#sizing" data-section="sizing">풀 크기</a>
+        <a href="#pipeline" data-section="pipeline">이미지 파이프라인</a>
+        <a href="#modern" data-section="modern">C++17/20 도구</a>
+        <a href="#libraries" data-section="libraries">외부 라이브러리</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++</span>
+                </div>
+                <h1>스레드 풀 직접 만들기 — Producer-Consumer 패턴과 이미지 파이프라인</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>스레드 풀이 필요한 이유와 풀 크기 결정 기준</li>
+                        <li>Producer-Consumer 패턴 — mutex와 condition_variable로 큐 동기화</li>
+                        <li>제네릭 <code>submit()</code>을 가진 ThreadPool 클래스 직접 구현</li>
+                        <li>카메라 grab → 워커 처리 → display 파이프라인 적용 사례</li>
+                        <li>std::jthread, std::stop_token, BS::thread_pool 등 현대적 대안</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-pool">왜 스레드 풀인가</a></li>
+                        <li><a href="#components">스레드 풀의 구성 요소</a></li>
+                        <li><a href="#producer-consumer">Producer-Consumer 패턴</a></li>
+                        <li><a href="#impl">ThreadPool 클래스 구현</a></li>
+                        <li><a href="#advanced">고급 기능 — work stealing, priority</a></li>
+                        <li><a href="#sizing">풀 크기 가이드라인</a></li>
+                        <li><a href="#pipeline">이미지 acquisition 파이프라인</a></li>
+                        <li><a href="#modern">C++17/20 도구로 단순화</a></li>
+                        <li><a href="#libraries">외부 라이브러리 대안</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 스레드 풀 -->
+                <h2 id="why-pool"><i class="fa-solid fa-network-wired"></i> 왜 스레드 풀인가</h2>
+                <p>매번 작업이 들어올 때마다 <code>std::thread</code>를 새로 만드는 건 비싸다. OS 시스템 콜로 커널 스레드를 생성하고, 스택(보통 1MB)을 할당하고, 스케줄러에 등록하고, 끝나면 다시 join 비용을 치러야 한다. 짧은 작업 1000개를 처리한다고 매번 thread를 만들면, 정작 작업 시간보다 생성/소멸 비용이 더 커지기 쉽다.</p>
+
+                <p>스레드 풀은 <strong>워커 스레드 N개를 미리 만들어 두고 재사용</strong>한다. 작업은 큐에 넣기만 하면 되고, 노는 워커가 알아서 꺼내 처리한다. 핵심은 두 가지다.</p>
+
+                <ul>
+                    <li><strong>스레드 생성 비용 분할상환</strong> — 한 번 만든 워커가 수많은 작업을 처리한다.</li>
+                    <li><strong>동시 실행 수 제어</strong> — 코어 수에 맞춘 N개로 context switch 부하를 줄인다.</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>하드웨어 코어 수와 워커 수의 균형</strong>
+                        <code>std::thread::hardware_concurrency()</code>로 논리 코어 수를 얻을 수 있다. CPU 바운드 작업이면 코어 수만큼, I/O 대기가 많은 작업이면 코어 수보다 더 많이 두는 편이 처리량이 높다. 두 경우의 최적값은 다르다.
+                    </div>
+                </div>
+
+                <!-- 2. 구성 요소 -->
+                <h2 id="components"><i class="fa-solid fa-microchip"></i> 스레드 풀의 구성 요소</h2>
+                <p>최소한의 스레드 풀을 만든다면 다음 4가지가 필요하다.</p>
+
+                <table class="spec-table">
+                    <tr><th>구성 요소</th><th>역할</th></tr>
+                    <tr><td><strong>워커 스레드 N개</strong></td><td>큐에서 작업을 꺼내 실행하는 무한 루프 스레드</td></tr>
+                    <tr><td><strong>작업 큐</strong></td><td><code>std::queue&lt;std::function&lt;void()&gt;&gt;</code> 같은 FIFO 컨테이너</td></tr>
+                    <tr><td><strong>mutex + condition_variable</strong></td><td>큐 동시 접근 보호 + 작업 도착 알림</td></tr>
+                    <tr><td><strong>종료 플래그</strong></td><td>풀 소멸 시 워커들에게 루프 탈출을 지시</td></tr>
+                </table>
+
+                <!-- 3. Producer-Consumer -->
+                <h2 id="producer-consumer"><i class="fa-solid fa-arrows-left-right"></i> Producer-Consumer 패턴</h2>
+                <p>스레드 풀은 본질적으로 Producer-Consumer 패턴이다. 작업을 큐에 넣는 쪽이 Producer, 꺼내 실행하는 쪽이 Consumer다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Producer -->
+                        <rect x="20" y="70" width="120" height="60" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                        <text x="80" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#78350f">Producer</text>
+                        <text x="80" y="115" text-anchor="middle" font-size="11" fill="#78350f">submit(task)</text>
+
+                        <!-- arrow -->
+                        <line x1="145" y1="100" x2="200" y2="100" stroke="#666" stroke-width="2" marker-end="url(#a)"/>
+
+                        <!-- Queue -->
+                        <rect x="205" y="75" width="180" height="50" rx="6" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/>
+                        <text x="295" y="60" text-anchor="middle" font-size="11" fill="#0369a1" font-weight="700">Task Queue (FIFO)</text>
+                        <rect x="215" y="85" width="30" height="30" fill="#bae6fd" stroke="#0369a1"/>
+                        <rect x="250" y="85" width="30" height="30" fill="#bae6fd" stroke="#0369a1"/>
+                        <rect x="285" y="85" width="30" height="30" fill="#bae6fd" stroke="#0369a1"/>
+                        <rect x="320" y="85" width="30" height="30" fill="#bae6fd" stroke="#0369a1"/>
+                        <text x="295" y="145" text-anchor="middle" font-size="10" fill="#0369a1">mutex + cv</text>
+
+                        <!-- arrows to workers -->
+                        <line x1="390" y1="90" x2="450" y2="40" stroke="#666" stroke-width="2" marker-end="url(#a)"/>
+                        <line x1="390" y1="100" x2="450" y2="100" stroke="#666" stroke-width="2" marker-end="url(#a)"/>
+                        <line x1="390" y1="110" x2="450" y2="160" stroke="#666" stroke-width="2" marker-end="url(#a)"/>
+
+                        <!-- Workers -->
+                        <rect x="455" y="15" width="160" height="40" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                        <text x="535" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="#14532d">Worker 1 (Consumer)</text>
+                        <rect x="455" y="80" width="160" height="40" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                        <text x="535" y="105" text-anchor="middle" font-size="12" font-weight="700" fill="#14532d">Worker 2 (Consumer)</text>
+                        <rect x="455" y="145" width="160" height="40" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                        <text x="535" y="170" text-anchor="middle" font-size="12" font-weight="700" fill="#14532d">Worker N (Consumer)</text>
+
+                        <defs>
+                            <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#666"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+
+                <p>큐가 비어 있을 때 워커는 <code>condition_variable::wait()</code>로 잠들어 있다가, Producer가 작업을 넣고 <code>notify_one()</code>을 호출하면 깨어나 작업을 꺼낸다. 바쁜 대기(busy-wait) 없이 효율적으로 동기화된다.</p>
+
+                <!-- 4. 구현 -->
+                <h2 id="impl"><i class="fa-solid fa-code"></i> ThreadPool 클래스 구현</h2>
+                <p>핵심 기능만 담은 단순한 ThreadPool. <code>submit()</code>은 어떤 호출 가능 객체든 받아 <code>std::future</code>로 결과를 돌려준다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;vector&gt;
+#include &lt;queue&gt;
+#include &lt;thread&gt;
+#include &lt;mutex&gt;
+#include &lt;condition_variable&gt;
+#include &lt;future&gt;
+#include &lt;functional&gt;
+#include &lt;memory&gt;
+
+class ThreadPool {
+    std::vector&lt;std::thread&gt; workers_;
+    std::queue&lt;std::function&lt;void()&gt;&gt; tasks_;
+    std::mutex mtx_;
+    std::condition_variable cv_;
+    bool stop_ = false;
+
+public:
+    explicit ThreadPool(size_t n = std::thread::hardware_concurrency())
+    {
+        if (n == 0) n = 1;  // hardware_concurrency()가 0을 반환할 수 있음
+        for (size_t i = 0; i &lt; n; ++i)
+        {
+            workers_.emplace_back([this] { workerLoop(); });
+        }
+    }
+
+    ~ThreadPool()
+    {
+        {
+            std::lock_guard&lt;std::mutex&gt; lock(mtx_);
+            stop_ = true;
+        }
+        cv_.notify_all();
+        for (auto&amp; w : workers_) w.join();
+    }
+
+    // 임의의 호출 가능 객체를 받아 future로 결과 반환
+    template&lt;class F, class... Args&gt;
+    auto submit(F&amp;&amp; f, Args&amp;&amp;... args)
+        -&gt; std::future&lt;std::invoke_result_t&lt;F, Args...&gt;&gt;
+    {
+        using R = std::invoke_result_t&lt;F, Args...&gt;;
+        auto task = std::make_shared&lt;std::packaged_task&lt;R()&gt;&gt;(
+            std::bind(std::forward&lt;F&gt;(f), std::forward&lt;Args&gt;(args)...));
+        std::future&lt;R&gt; fut = task-&gt;get_future();
+        {
+            std::lock_guard&lt;std::mutex&gt; lock(mtx_);
+            if (stop_) throw std::runtime_error("submit on stopped pool");
+            tasks_.emplace([task] { (*task)(); });
+        }
+        cv_.notify_one();
+        return fut;
+    }
+
+private:
+    void workerLoop()
+    {
+        for (;;)
+        {
+            std::function&lt;void()&gt; job;
+            {
+                std::unique_lock&lt;std::mutex&gt; lock(mtx_);
+                cv_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
+                if (stop_ &amp;&amp; tasks_.empty()) return;
+                job = std::move(tasks_.front());
+                tasks_.pop();
+            }
+            job();  // 락을 풀고 실행
+        }
+    }
+};</code></pre>
+
+                <p>구현의 핵심 포인트.</p>
+                <ul>
+                    <li><code>packaged_task</code>를 <code>shared_ptr</code>로 감싸는 이유는 <code>std::function</code>이 복사 가능 호출 객체를 요구하기 때문이다 (packaged_task는 move-only).</li>
+                    <li><code>cv_.wait()</code>의 술어는 spurious wakeup을 막는다. <code>stop_</code>이 true이거나 큐에 작업이 있을 때만 깨어난다.</li>
+                    <li>소멸자에서 <code>stop_ = true</code> 후 <code>notify_all()</code> — 모든 워커가 깨어나 큐가 빌 때까지 처리하고 종료한다 (graceful shutdown).</li>
+                    <li><code>job()</code>은 락을 푼 뒤 실행한다. 실행 중에 락을 잡고 있으면 워커들이 줄 서서 기다린다.</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>graceful vs immediate shutdown</strong>
+                        위 구현은 큐에 남은 작업까지 모두 처리하고 종료한다. 즉시 중단이 필요하면 <code>stop_</code> 체크를 더 자주 하거나, 별도의 <code>cancel</code> 플래그를 두고 워커가 중간에 빠져나가도록 설계해야 한다.
+                    </div>
+                </div>
+
+                <!-- 5. 고급 기능 -->
+                <h2 id="advanced"><i class="fa-solid fa-layer-group"></i> 고급 기능 옵션</h2>
+
+                <h3 id="work-stealing"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Work stealing</h3>
+                <p>워커마다 자기 큐를 두고, 자기 큐가 비면 다른 워커의 큐에서 작업을 훔쳐 온다. 단일 글로벌 큐의 mutex 경합을 줄인다. Intel TBB가 대표적이며, Java의 ForkJoinPool도 같은 방식이다. 구현 자체는 lock-free deque가 필요해 단순한 풀보다 훨씬 복잡하다.</p>
+
+                <h3 id="priority"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Priority queue</h3>
+                <p>작업에 우선순위를 부여해 중요한 일을 먼저 처리한다. <code>std::queue</code> 대신 <code>std::priority_queue</code>를 쓰고, 작업과 priority를 함께 저장하면 된다. 다만 starvation(낮은 우선순위 작업이 영영 실행되지 않음)에 주의해야 한다.</p>
+
+                <h3 id="bulk-wait"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 결과 일괄 모으기</h3>
+
+<pre class="language-cpp"><code class="language-cpp">ThreadPool pool(4);
+std::vector&lt;std::future&lt;int&gt;&gt; futures;
+
+for (int i = 0; i &lt; 100; ++i)
+{
+    futures.push_back(pool.submit([i] { return i * i; }));
+}
+
+int total = 0;
+for (auto&amp; f : futures) total += f.get();  // 순서대로 대기</code></pre>
+
+                <!-- 6. 풀 크기 -->
+                <h2 id="sizing"><i class="fa-solid fa-gauge-high"></i> 풀 크기 가이드라인</h2>
+
+                <table class="spec-table">
+                    <tr><th>작업 종류</th><th>권장 워커 수</th><th>이유</th></tr>
+                    <tr><td>CPU 바운드</td><td>코어 수 또는 코어 수 - 1</td><td>너무 많으면 context switch 오버헤드. 메인 스레드용 1개 양보</td></tr>
+                    <tr><td>I/O 바운드</td><td>코어 수의 2~10배</td><td>대기 중인 워커 동안 다른 워커가 일함</td></tr>
+                    <tr><td>혼합</td><td>측정해서 결정</td><td>rule of thumb은 출발점일 뿐</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>최종은 측정으로 결정한다</strong>
+                        실제 작업 부하와 시스템에서 throughput과 latency를 측정해 정해야 한다. 책상 계산은 출발점일 뿐이고, 같은 코드도 머신과 OS, 캐시 상태에 따라 최적값이 달라진다.
+                    </div>
+                </div>
+
+                <!-- 7. 파이프라인 -->
+                <h2 id="pipeline"><i class="fa-solid fa-camera"></i> 이미지 acquisition 파이프라인 적용</h2>
+                <p>산업 비전 SDK에서 흔한 구조다. 카메라가 프레임을 grab하고, 워커들이 처리(필터, 측정, 결함 검출 등)하고, 결과는 display 스레드가 화면에 그린다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 700 160" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Camera -->
+                        <rect x="10" y="55" width="130" height="50" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                        <text x="75" y="78" text-anchor="middle" font-size="12" font-weight="700" fill="#78350f">Camera Grab</text>
+                        <text x="75" y="95" text-anchor="middle" font-size="10" fill="#78350f">(Producer)</text>
+
+                        <line x1="145" y1="80" x2="195" y2="80" stroke="#666" stroke-width="2" marker-end="url(#b)"/>
+                        <text x="170" y="73" text-anchor="middle" font-size="9" fill="#666">frame</text>
+
+                        <!-- ThreadPool -->
+                        <rect x="200" y="35" width="220" height="90" rx="8" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/>
+                        <text x="310" y="55" text-anchor="middle" font-size="12" font-weight="700" fill="#0369a1">ThreadPool (N workers)</text>
+                        <rect x="215" y="65" width="60" height="22" rx="3" fill="#bae6fd"/>
+                        <text x="245" y="80" text-anchor="middle" font-size="10" fill="#0c4a6e">filter</text>
+                        <rect x="285" y="65" width="60" height="22" rx="3" fill="#bae6fd"/>
+                        <text x="315" y="80" text-anchor="middle" font-size="10" fill="#0c4a6e">measure</text>
+                        <rect x="355" y="65" width="60" height="22" rx="3" fill="#bae6fd"/>
+                        <text x="385" y="80" text-anchor="middle" font-size="10" fill="#0c4a6e">detect</text>
+                        <text x="310" y="110" text-anchor="middle" font-size="10" fill="#0369a1">bounded queue</text>
+
+                        <line x1="425" y1="80" x2="475" y2="80" stroke="#666" stroke-width="2" marker-end="url(#b)"/>
+                        <text x="450" y="73" text-anchor="middle" font-size="9" fill="#666">result</text>
+
+                        <!-- Display -->
+                        <rect x="480" y="55" width="130" height="50" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                        <text x="545" y="78" text-anchor="middle" font-size="12" font-weight="700" fill="#14532d">Display</text>
+                        <text x="545" y="95" text-anchor="middle" font-size="10" fill="#14532d">(Consumer)</text>
+
+                        <defs>
+                            <marker id="b" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#666"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+
+                <p>여기서 중요한 건 <strong>backpressure</strong>다. 카메라가 30fps로 프레임을 던지는데 처리가 50ms 걸리면, 큐가 무한정 쌓여 메모리가 터진다. 해결책은 <strong>bounded queue</strong>(최대 크기 제한)다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 큐가 가득 차면 가장 오래된 프레임 버리기 (실시간 우선)
+ErrorCode EnqueueFrame(std::shared_ptr&lt;Image&gt; frame)
+{
+    std::lock_guard&lt;std::mutex&gt; lock(mtx_);
+    if (tasks_.size() &gt;= kMaxQueueSize)
+    {
+        tasks_.pop();  // oldest drop
+    }
+    tasks_.push([frame] { ProcessFrame(*frame); });
+    cv_.notify_one();
+    return ErrorCode::Success;
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>drop oldest vs producer block</strong>
+                        실시간 화면 표시는 oldest drop이 맞다 (오래된 프레임은 의미 없음). 검사 결과를 모두 저장해야 하는 inspection이라면 producer를 막아 grab 속도를 늦추거나, 별도 디스크 버퍼로 빼야 한다.
+                    </div>
+                </div>
+
+                <!-- 8. 모던 도구 -->
+                <h2 id="modern"><i class="fa-solid fa-rocket"></i> C++17/20 도구로 단순화</h2>
+
+                <h3 id="scoped-lock"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> std::scoped_lock (C++17)</h3>
+                <p>여러 mutex를 동시에 잠글 때 deadlock 없이 처리한다. 단일 mutex에도 사용 가능하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::scoped_lock lock(mtx1_, mtx2_);  // 두 락 동시 획득, 순서 자동 조정</code></pre>
+
+                <h3 id="jthread"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> std::jthread + std::stop_token (C++20)</h3>
+                <p>소멸 시 자동 join + 협력적 취소 토큰. 풀 구현이 훨씬 깔끔해진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;std::jthread&gt; workers_;
+
+workers_.emplace_back([this](std::stop_token st) {
+    while (!st.stop_requested())
+    {
+        // 작업 처리...
+    }
+});
+
+// 소멸자에서 자동으로 stop_requested()=true 후 join
+// 별도의 stop_ 플래그와 join 루프가 필요 없음</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>std::jthread는 C++20</strong>
+                        Visual Studio 2022 (MSVC v143) 기준으로 <code>/std:c++20</code> 옵션에서 사용 가능하다. C++23에서는 <code>std::move_only_function</code>이 추가되어 <code>std::function</code>의 "복사 가능 요구" 제약을 풀어준다 — packaged_task를 더 자연스럽게 큐에 넣을 수 있다.
+                    </div>
+                </div>
+
+                <!-- 9. 외부 라이브러리 -->
+                <h2 id="libraries"><i class="fa-solid fa-cube"></i> 표준 라이브러리/외부 라이브러리 대안</h2>
+                <p>C++ 표준에는 아직 thread pool이 없다 (C++26 후보로 논의 중). 큰 프로젝트라면 검증된 라이브러리를 쓰는 편이 안전하다.</p>
+
+                <table class="spec-table">
+                    <tr><th>라이브러리</th><th>특징</th><th>적합 상황</th></tr>
+                    <tr><td>Intel TBB</td><td>work stealing, parallel_for, flow graph</td><td>고성능 데이터 병렬, 의존성 그래프</td></tr>
+                    <tr><td>Microsoft PPL</td><td>Concurrency Runtime, Windows 친화적</td><td>Windows 전용 프로젝트</td></tr>
+                    <tr><td>Boost.Asio thread_pool</td><td>네트워크 I/O와 통합</td><td>비동기 I/O 위주</td></tr>
+                    <tr><td>BS::thread_pool</td><td>헤더 단독, 가벼움, MIT</td><td>외부 의존 최소화하면서 검증된 풀이 필요할 때</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>BS::thread_pool 추천</strong>
+                        헤더 한 개만 추가하면 되고 (<code>BS_thread_pool.hpp</code>), API가 직관적이다. 학습용으로 직접 만들어 보고, 실제 제품에는 BS::thread_pool이나 TBB를 쓰는 식의 선택이 합리적이다.
+                    </div>
+                </div>
+
+                <!-- 10. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>중첩 submit 데드락</strong>
+                        워커 안에서 다시 같은 풀에 <code>submit()</code>하고 그 결과를 <code>future.get()</code>으로 기다리면 데드락 위험이 있다. 모든 워커가 자식 작업의 완료를 기다리는데, 자식 작업을 실행할 워커가 남아있지 않으면 영원히 멈춘다. 의존성이 있으면 별도 풀을 쓰거나 continuation 패턴을 사용하자.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>공유 자원에 대한 data race</strong>
+                        스레드 안전하지 않은 자원(전역 변수, OpenCV의 일부 함수, 파일 핸들 등)에 여러 워커가 동시 접근하면 정의되지 않은 동작이다. 자원별로 mutex로 보호하거나, 워커마다 자기 사본을 두자.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>풀 소멸 시 잔여 작업 누락</strong>
+                        소멸자에서 <code>stop_</code>만 세우고 큐를 비우지 않으면, 큐에 남은 작업의 promise가 영영 fulfill되지 않아 <code>future.get()</code>이 영원히 대기한다. 소멸 정책(잔여 작업 모두 처리 vs 즉시 중단 + 예외로 future broken)을 명확히 하자.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>submit한 future 무시하면 결과 폐기</strong>
+                        반환된 <code>std::future</code>를 받지 않으면 결과는 그냥 사라진다 (예외도 함께 사라진다). "결과는 필요 없고 실행만 하고 싶다"면 의도적으로 무시하되, 워커 안에서 던진 예외는 어디로도 가지 않으니 주의하자.
+                    </div>
+                </div>
+
+                <p>워커 스레드 안에서 작업이 예외를 던져도 <code>packaged_task</code>가 잡아 <code>future</code>의 예외 상태로 저장한다. 풀 자체는 영향을 받지 않으므로, 호출자가 <code>future.get()</code>에서 예외를 받아 처리하면 된다. 단, <code>future</code>를 무시했다면 예외도 함께 무시된다는 점은 위에 언급한 그대로다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — std::thread, std::condition_variable, std::packaged_task</li>
+                        <li>Anthony Williams, "C++ Concurrency in Action" 2nd Ed. — 9장 Advanced thread management</li>
+                        <li>BS::thread_pool — github.com/bshoshany/thread-pool</li>
+                        <li>Intel oneTBB 공식 문서 — task_arena, parallel_for</li>
+                        <li>P2300 std::execution (C++26 후보) — 표준 비동기 실행 모델 제안</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

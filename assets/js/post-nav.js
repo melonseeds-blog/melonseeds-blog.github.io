@@ -51,6 +51,9 @@ const POST_NAV_DATA = {
         { file: 'cpp-raii.html', title: 'RAII 패턴과 리소스 관리' },
         { file: 'cpp-constexpr.html', title: 'constexpr와 컴파일 타임 계산' },
         { file: 'cpp-thread-basics.html', title: 'C++ 스레드 기초' },
+        { file: 'cpp-async-future.html', title: 'std::async / std::future / std::promise' },
+        { file: 'cpp-packaged-task.html', title: 'std::packaged_task와 태스크 큐' },
+        { file: 'cpp-thread-pool.html', title: '스레드 풀 직접 만들기' },
     ],
     'tech-halcon': [
         { file: 'halcon-sg1-00-overview.html', title: 'HALCON Solution Guide I 개요와 학습법' },

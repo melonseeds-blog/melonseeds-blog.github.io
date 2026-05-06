@@ -1,0 +1,671 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>std::async / std::future / std::promise — 비동기 기초 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#async-intro" data-section="async-intro">비동기란</a>
+        <a href="#tools-overview" data-section="tools-overview">4도구 관계</a>
+        <a href="#future" data-section="future">future</a>
+        <a href="#async" data-section="async">async</a>
+        <a href="#promise" data-section="promise">promise</a>
+        <a href="#shared-future" data-section="shared-future">shared_future</a>
+        <a href="#exception" data-section="exception">예외 전파</a>
+        <a href="#vs-thread" data-section="vs-thread">async vs thread</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#stop-token" data-section="stop-token">stop_token</a>
+        <a href="#when-to-use" data-section="when-to-use">언제 쓸까</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++</span>
+                </div>
+                <h1>std::async / std::future / std::promise — 비동기 기초</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>비동기(async)의 의미와 동기 호출과의 차이</li>
+                        <li>future / promise / packaged_task / async 4개 도구의 관계</li>
+                        <li><code>std::async</code>의 launch policy와 임시 future 함정</li>
+                        <li><code>std::promise</code>로 워커 스레드 결과 보고하기</li>
+                        <li><code>std::shared_future</code>로 결과 공유</li>
+                        <li>예외 전파 패턴, async vs thread 비교, C++20 stop_token 미리보기</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#async-intro">비동기(async)란</a></li>
+                        <li><a href="#tools-overview">4개 도구 한눈에 보기</a></li>
+                        <li><a href="#future">std::future</a></li>
+                        <li><a href="#async">std::async와 launch policy</a></li>
+                        <li><a href="#promise">std::promise</a></li>
+                        <li><a href="#shared-future">std::shared_future</a></li>
+                        <li><a href="#exception">예외 전파</a></li>
+                        <li><a href="#vs-thread">std::async vs std::thread</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#stop-token">C++20 stop_token / jthread</a></li>
+                        <li><a href="#when-to-use">언제 std::async를 쓸까</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 비동기란 -->
+                <h2 id="async-intro"><i class="fa-solid fa-hourglass-half"></i> 비동기(async)란</h2>
+                <p><strong>지금 호출하지만 결과는 나중에 받는다</strong>. 이게 비동기의 한 줄 정의다. 호출과 결과 수신이 시간적으로 분리된다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방식</th><th>호출자 동작</th><th>결과 수신 시점</th></tr>
+                    <tr><td>동기 (sync)</td><td>호출 후 결과 나올 때까지 멈춤</td><td>호출이 반환되는 즉시</td></tr>
+                    <tr><td>비동기 (async)</td><td>호출 후 즉시 다음 코드 진행</td><td>나중에 핸들로 조회</td></tr>
+                </table>
+
+                <p>전통적인 방법은 <code>std::thread</code>를 직접 만들고 <code>join()</code>으로 끝나길 기다린 뒤, 공유 변수에서 결과를 꺼내는 것이다. 이 패턴은 동기화 코드(뮤텍스, 조건 변수)가 너무 많이 필요하다. <code>future</code>/<code>promise</code>는 이 패턴을 한 줄로 줄여준다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 동기 호출 — 30초 동안 멈춤
+int result = heavyComputation();
+useResult(result);
+
+// 비동기 호출 — 즉시 반환
+auto fut = std::async(std::launch::async, heavyComputation);
+doOtherWork();          // 계산이 도는 동안 다른 일 진행
+int result = fut.get(); // 필요할 때 결과 받기 (필요시 대기)</code></pre>
+
+                <!-- 2. 4개 도구 -->
+                <h2 id="tools-overview"><i class="fa-solid fa-diagram-project"></i> 4개 도구 한눈에 보기</h2>
+                <p>C++ 표준 비동기 도구는 4개로 구성된다. 모두 <code>&lt;future&gt;</code> 헤더에 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>도구</th><th>역할</th><th>한 줄 요약</th></tr>
+                    <tr><td><code>std::future&lt;T&gt;</code></td><td>결과를 받는 쪽</td><td>비동기 작업의 결과 핸들</td></tr>
+                    <tr><td><code>std::promise&lt;T&gt;</code></td><td>결과를 넣는 쪽</td><td>수동으로 future에 값 전달</td></tr>
+                    <tr><td><code>std::packaged_task&lt;F&gt;</code></td><td>함수 + future 묶음</td><td>호출 가능 객체를 future로 감쌈 (다음 글)</td></tr>
+                    <tr><td><code>std::async</code></td><td>모든 걸 한 방에</td><td>함수 호출 → future 자동 생성</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>관계 요약</strong>
+                        <code>future</code>는 결과 수신 핸들이고, 그걸 만드는 방법이 세 가지(<code>promise</code>, <code>packaged_task</code>, <code>async</code>)다. 이 글은 <code>future</code>, <code>async</code>, <code>promise</code>를 다루고 <code>packaged_task</code>는 다음 글에서 자세히 살펴본다.
+                    </div>
+                </div>
+
+                <!-- 3. future -->
+                <h2 id="future"><i class="fa-solid fa-share-from-square"></i> std::future&lt;T&gt;</h2>
+                <p>비동기 작업의 결과를 받는 핸들이다. 결과는 아직 없을 수도 있고, 이미 준비됐을 수도 있다.</p>
+
+                <h3 id="future-api"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 주요 멤버 함수</h3>
+
+<pre class="language-cpp"><code class="language-cpp">std::future&lt;int&gt; fut = std::async(std::launch::async, []{ return 42; });
+
+// 결과를 가져온다 (필요시 대기). 한 번만 호출 가능.
+int v = fut.get();
+
+// 대기만 하고 결과는 안 가져간다
+fut.wait();
+
+// 시간 제한 대기
+auto status = fut.wait_for(std::chrono::milliseconds(500));
+auto status2 = fut.wait_until(std::chrono::system_clock::now() + std::chrono::seconds(1));
+
+// future가 유효한 상태인지 (get() 호출 후엔 false)
+if (fut.valid()) { /* ... */ }</code></pre>
+
+                <h3 id="future-status"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> future_status</h3>
+
+                <table class="spec-table">
+                    <tr><th>값</th><th>의미</th></tr>
+                    <tr><td><code>future_status::ready</code></td><td>결과가 준비됨. <code>get()</code> 즉시 반환</td></tr>
+                    <tr><td><code>future_status::timeout</code></td><td>대기 시간 안에 준비 못 됨</td></tr>
+                    <tr><td><code>future_status::deferred</code></td><td>아직 실행 안 됨 (deferred policy)</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">auto status = fut.wait_for(std::chrono::milliseconds(100));
+if (status == std::future_status::ready)
+{
+    int v = fut.get();
+}
+else if (status == std::future_status::timeout)
+{
+    // 아직 실행 중. 나중에 다시 시도
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>같은 future에 get()을 두 번 호출하면 UB</strong>
+                        <code>get()</code>은 결과를 "옮겨"가기 때문에 한 번만 호출할 수 있다. 두 번째 호출은 미정의 동작이다. 여러 곳에서 결과를 받아야 한다면 <code>std::shared_future</code>를 사용한다.
+                    </div>
+                </div>
+
+                <!-- 4. async -->
+                <h2 id="async"><i class="fa-solid fa-bolt"></i> std::async와 launch policy</h2>
+                <p>가장 쉬운 비동기 실행 도구다. 함수와 인자를 넘기면 <code>future</code>를 돌려준다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int compute(int a, int b) { return a + b; }
+
+auto fut = std::async(std::launch::async, compute, 3, 4);
+int result = fut.get();  // 7</code></pre>
+
+                <h3 id="launch-policy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> launch policy 비교</h3>
+
+                <table class="spec-table">
+                    <tr><th>정책</th><th>동작</th><th>실행 스레드</th></tr>
+                    <tr><td><code>std::launch::async</code></td><td>호출 즉시 새 스레드에서 실행</td><td>새 스레드</td></tr>
+                    <tr><td><code>std::launch::deferred</code></td><td><code>get()</code>/<code>wait()</code> 호출까지 미룸 (lazy)</td><td>호출자 스레드</td></tr>
+                    <tr><td>둘 다 (기본값)</td><td>구현이 알아서 결정</td><td>구현 의존</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>launch policy 기본값을 쓰지 말자</strong>
+                        <code>std::async(func)</code>는 <code>async | deferred</code>가 기본이라 새 스레드를 만들 수도, 안 만들 수도 있다. 동작이 구현에 의존하므로 항상 명시적으로 <code>std::launch::async</code> 또는 <code>std::launch::deferred</code>를 지정하자.
+                    </div>
+                </div>
+
+                <h3 id="temp-future-trap"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 임시 future 함정</h3>
+                <p><code>std::async</code>가 반환한 future는 특별 규칙을 따른다. 소멸자에서 <strong>비동기 작업이 끝날 때까지 블로킹 join</strong>한다. 즉 future를 변수로 받지 않으면 즉시 join이 일어나 사실상 동기 호출이 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 실수: 임시 future. 한 줄이 끝나면 소멸자에서 join 대기.
+std::async(std::launch::async, longTask);  // ← 동기 호출과 같음!
+std::async(std::launch::async, anotherTask); // longTask 끝난 뒤에야 시작
+
+// 올바름: future를 변수로 받기
+auto f1 = std::async(std::launch::async, longTask);
+auto f2 = std::async(std::launch::async, anotherTask);
+// 두 작업이 병렬 실행</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>std::async의 future는 소멸자에서 블로킹된다</strong>
+                        일반 <code>future</code>(promise나 packaged_task에서 얻은)는 소멸자가 블로킹하지 않는다. 오직 <code>std::async</code>가 만든 future만 이 특별 규칙이 있다. 표준이 <code>std::async</code>를 위해 만든 예외다.
+                    </div>
+                </div>
+
+                <!-- 5. promise -->
+                <h2 id="promise"><i class="fa-solid fa-handshake"></i> std::promise&lt;T&gt;</h2>
+                <p>한쪽에서 값/예외를 <code>set</code>하고, 다른 쪽에서 <code>future</code>로 받는다. <code>std::async</code>가 함수 결과를 자동으로 future에 넣어준다면, <code>promise</code>는 사용자가 직접 넣는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;future&gt;
+#include &lt;thread&gt;
+
+int compute() { return 42; }
+
+std::promise&lt;int&gt; p;
+std::future&lt;int&gt; f = p.get_future();  // future를 먼저 꺼낸다
+
+std::thread t([&amp;p]{
+    int v = compute();
+    p.set_value(v);  // 결과 전달
+});
+
+int result = f.get();  // 워커가 set_value할 때까지 대기
+t.join();</code></pre>
+
+                <h3 id="promise-api"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 주요 멤버 함수</h3>
+
+                <table class="spec-table">
+                    <tr><th>함수</th><th>역할</th></tr>
+                    <tr><td><code>get_future()</code></td><td>대응되는 future 반환 (한 번만)</td></tr>
+                    <tr><td><code>set_value(v)</code></td><td>결과 값 설정</td></tr>
+                    <tr><td><code>set_exception(eptr)</code></td><td>예외 설정. <code>get()</code> 시 다시 throw됨</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>언제 promise를 쓸까</strong>
+                        결과 전달 시점이 함수 반환과 일치하지 않을 때다. 예: 콜백 기반 라이브러리, 이벤트 루프, 작업이 여러 단계에 나뉘어 있을 때 등.
+                    </div>
+                </div>
+
+                <!-- 6. shared_future -->
+                <h2 id="shared-future"><i class="fa-solid fa-people-group"></i> std::shared_future&lt;T&gt;</h2>
+                <p>여러 곳에서 같은 결과를 받고 싶을 때 사용한다. <code>get()</code>을 여러 번 호출할 수 있고, 여러 스레드에서 안전하게 읽을 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::promise&lt;int&gt; p;
+std::shared_future&lt;int&gt; sf = p.get_future().share();  // future → shared_future
+
+// 여러 워커가 같은 결과를 사용
+std::thread w1([sf]{ std::cout &lt;&lt; "worker1: " &lt;&lt; sf.get() &lt;&lt; "\n"; });
+std::thread w2([sf]{ std::cout &lt;&lt; "worker2: " &lt;&lt; sf.get() &lt;&lt; "\n"; });
+
+p.set_value(100);
+w1.join();
+w2.join();</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>fan-out 패턴에 유용</strong>
+                        한 번 계산한 결과를 N개의 워커가 각자 사용해야 할 때 <code>shared_future</code>가 깔끔하다. 한 번 share()하면 복사가 자유로워진다.
+                    </div>
+                </div>
+
+                <!-- 7. 예외 -->
+                <h2 id="exception"><i class="fa-solid fa-bug"></i> 예외 전파</h2>
+                <p>비동기 함수에서 throw된 예외는 future에 저장됐다가 <code>get()</code> 호출 시 다시 throw된다. 멀티스레드 예외 처리가 한결 깔끔해진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">auto fut = std::async(std::launch::async, []{
+    throw std::runtime_error("worker failed");
+    return 0;
+});
+
+try
+{
+    int v = fut.get();  // 여기서 runtime_error가 다시 throw됨
+}
+catch (const std::exception&amp; e)
+{
+    std::cerr &lt;&lt; "caught: " &lt;&lt; e.what() &lt;&lt; "\n";
+}</code></pre>
+
+                <p><code>promise</code>에서는 <code>set_exception</code>으로 명시적으로 예외를 전달한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::promise&lt;int&gt; p;
+auto f = p.get_future();
+
+std::thread t([&amp;p]{
+    try
+    {
+        if (badInput()) throw std::runtime_error("bad input");
+        p.set_value(compute());
+    }
+    catch (...)
+    {
+        p.set_exception(std::current_exception());
+    }
+});
+
+try { int v = f.get(); }
+catch (const std::exception&amp; e) { /* ... */ }
+t.join();</code></pre>
+
+                <!-- 8. vs thread -->
+                <h2 id="vs-thread"><i class="fa-solid fa-scale-balanced"></i> std::async vs std::thread</h2>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th><code>std::async</code></th><th><code>std::thread</code></th></tr>
+                    <tr><td>결과 받기</td><td>future로 자동</td><td>수동 (공유 변수 + 동기화)</td></tr>
+                    <tr><td>예외 전파</td><td>future가 자동 전달</td><td>수동 (놓치면 std::terminate)</td></tr>
+                    <tr><td>자동 join</td><td>future 소멸자에서 (특별 규칙)</td><td>없음. 명시적 join/detach 필수</td></tr>
+                    <tr><td>스레드 생성 비용</td><td>구현이 풀링할 수 있음</td><td>매번 새 스레드 생성</td></tr>
+                    <tr><td>제어 수준</td><td>낮음 (위임)</td><td>높음 (직접 제어)</td></tr>
+                    <tr><td>적합한 용도</td><td>결과 받는 단발성 작업</td><td>장기 실행, 세밀한 제어</td></tr>
+                </table>
+
+                <!-- 9. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <h3 id="pit-1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1. 임시 future 무시 → 동기 호출</h3>
+                <p>앞서 다룬 함정. <code>std::async</code> 결과를 변수로 안 받으면 즉시 블로킹된다.</p>
+
+                <h3 id="pit-2"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2. 같은 future에 get() 두 번 → UB</h3>
+
+<pre class="language-cpp"><code class="language-cpp">int v1 = fut.get();
+int v2 = fut.get();  // UB! valid()는 false가 됨</code></pre>
+
+                <h3 id="pit-3"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3. deferred일 때 wait_for가 영원히 timeout 아님</h3>
+                <p><code>deferred</code> 정책의 future는 <code>get()</code>/<code>wait()</code> 호출 전엔 실행되지 않으므로 <code>wait_for</code>가 즉시 <code>deferred</code> 상태를 반환한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">auto fut = std::async(std::launch::deferred, longTask);
+
+// 잘못된 폴링 — 영원히 ready가 안 됨!
+while (fut.wait_for(std::chrono::milliseconds(10)) != std::future_status::ready)
+{
+    // 무한 루프
+}
+
+// 올바른 처리 — deferred 먼저 체크
+auto status = fut.wait_for(std::chrono::seconds(0));
+if (status == std::future_status::deferred)
+{
+    fut.get();  // 여기서 실행됨
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>wait_for 폴링 전엔 항상 deferred 체크</strong>
+                        deferred future는 호출자가 깨워주지 않으면 영원히 잠들어 있다. 폴링 루프를 돌리기 전에 반드시 status를 확인하자.
+                    </div>
+                </div>
+
+                <h3 id="pit-4"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4. launch policy 기본값 사용</h3>
+                <p><code>std::async(func)</code>는 표준이 <code>async | deferred</code>를 허용하므로 동작이 구현마다 다르다. 항상 명시적으로 정책을 지정한다.</p>
+
+                <h3 id="pit-5"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5. future를 두 곳에서 get</h3>
+                <p><code>std::future</code>는 복사 불가, 이동만 가능하다. 두 스레드에서 같은 결과를 받아야 한다면 <code>shared_future</code>로 변환한다.</p>
+
+                <!-- 10. stop_token -->
+                <h2 id="stop-token"><i class="fa-solid fa-circle-stop"></i> C++20 stop_token / jthread (미리보기)</h2>
+                <p>C++20부터 <strong>협력적 취소</strong>를 위한 <code>std::stop_token</code>과 <strong>자동 join</strong>되는 <code>std::jthread</code>가 추가됐다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;thread&gt;
+#include &lt;stop_token&gt;
+
+std::jthread worker([](std::stop_token st){
+    while (!st.stop_requested())
+    {
+        doWork();
+    }
+});
+
+// ... 어딘가에서 ...
+worker.request_stop();  // 협력적 취소 요청
+// jthread 소멸자에서 자동 join</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>jthread는 thread의 안전판</strong>
+                        <code>std::thread</code>는 join을 잊으면 <code>std::terminate</code>가 호출된다. <code>jthread</code>는 소멸자에서 자동 stop + join하므로 RAII 안전성이 높다. 새 코드에선 가능한 <code>jthread</code>를 쓰자. 다음 글에선 thread pool 구현으로 이어진다.
+                    </div>
+                </div>
+
+                <!-- 11. 언제 -->
+                <h2 id="when-to-use"><i class="fa-solid fa-compass"></i> 언제 std::async를 쓸까</h2>
+
+                <table class="spec-table">
+                    <tr><th>적합한 경우</th><th>피해야 할 경우</th></tr>
+                    <tr><td>한 번성 짧은 비동기 작업</td><td>대량의 작업 분배 (스레드 풀이 낫다)</td></tr>
+                    <tr><td>결과를 받아야 하는 백그라운드 계산</td><td>장기 실행 워커 (jthread가 낫다)</td></tr>
+                    <tr><td>예외 전파가 필요한 병렬 호출</td><td>스레드 수를 정밀 제어해야 할 때</td></tr>
+                    <tr><td>동기 코드를 빠르게 비동기로 전환</td><td>실시간 우선순위 제어가 필요할 때</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>본격적인 작업 분배는 thread pool</strong>
+                        <code>std::async</code>는 매번 스레드를 만들 수 있어(구현 의존) 수백~수천 작업엔 부적합하다. 다음 글에서 <code>std::packaged_task</code>로 thread pool을 만드는 방법을 다룬다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — &lt;future&gt; 헤더 공식 레퍼런스</li>
+                        <li>"C++ Concurrency in Action" by Anthony Williams (2nd ed.) — 4장 future/promise 상세</li>
+                        <li>Scott Meyers, "Effective Modern C++" — Item 35~39 (concurrency API)</li>
+                        <li>Herb Sutter, "async and ~future" 블로그 시리즈 — 임시 future 함정 해설</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
