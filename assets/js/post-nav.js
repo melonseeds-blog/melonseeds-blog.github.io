@@ -45,6 +45,9 @@ const POST_NAV_DATA = {
         { file: 'cpp-functors-lambdas.html', title: 'STL 함수 객체와 람다' },
         { file: 'cpp-ranges.html', title: 'C++20 ranges 라이브러리 입문' },
         { file: 'cpp17-essentials.html', title: 'C++17 핵심 기능 정리' },
+        { file: 'cpp-optional-variant-any.html', title: 'std::optional / std::variant / std::any' },
+        { file: 'cpp-smart-pointers.html', title: '스마트 포인터 깊이 보기' },
+        { file: 'cpp-move-semantics.html', title: '이동 의미론(Move semantics)' },
     ],
     'tech-halcon': [
         { file: 'halcon-sg1-00-overview.html', title: 'HALCON Solution Guide I 개요와 학습법' },

@@ -1,0 +1,764 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스마트 포인터 깊이 보기 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* spec-table */
+        table.spec-table {
+            width: 100%; border-collapse: collapse; margin: 16px 0;
+            font-size: 0.88rem;
+        }
+        table.spec-table th, table.spec-table td {
+            border: 1px solid var(--border); padding: 8px 12px; text-align: left;
+            vertical-align: top;
+        }
+        table.spec-table th {
+            background: var(--primary-50); font-weight: 700; color: var(--primary-dark);
+        }
+        table.spec-table tr:nth-child(even) td { background: #fafafa; }
+
+        /* 제어 블록 다이어그램 */
+        .ctrl-block-diagram {
+            background: #0f172a; color: #cbd5e1; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; font-family: 'Consolas', 'D2Coding', monospace;
+            font-size: 0.82rem; line-height: 1.7; overflow-x: auto;
+            border: 1px solid #1e293b; white-space: pre;
+        }
+        .ctrl-block-diagram .ctrl-label { color: #fbbf24; }
+        .ctrl-block-diagram .ctrl-arrow { color: #60a5fa; }
+        .ctrl-block-diagram .ctrl-comment { color: #6b7280; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why" data-section="why">왜</a>
+        <a href="#ownership" data-section="ownership">소유권</a>
+        <a href="#unique" data-section="unique">unique_ptr</a>
+        <a href="#shared" data-section="shared">shared_ptr</a>
+        <a href="#weak" data-section="weak">weak_ptr</a>
+        <a href="#decision" data-section="decision">선택 트리</a>
+        <a href="#params" data-section="params">매개변수</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#imaging" data-section="imaging">이미지 적용</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>스마트 포인터 깊이 보기 — unique_ptr / shared_ptr / weak_ptr</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>raw new/delete의 문제와 RAII 기반 스마트 포인터의 필요성</li>
+                        <li>소유권(ownership) 의미론 — 단독 / 공유 / 비소유</li>
+                        <li><code>unique_ptr</code> 비용 0의 단독 소유, custom deleter</li>
+                        <li><code>shared_ptr</code> 제어 블록 구조와 <code>make_shared</code>의 장단점</li>
+                        <li><code>weak_ptr</code>로 순환 참조 끊기</li>
+                        <li>함수 매개변수에 어떻게 넘길지 (Herb Sutter 가이드라인)</li>
+                        <li>이미지 라이브러리 컨텍스트에서의 적용 예</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">왜 스마트 포인터인가</a></li>
+                        <li><a href="#ownership">소유권 개념</a></li>
+                        <li><a href="#unique">std::unique_ptr</a></li>
+                        <li><a href="#shared">std::shared_ptr</a></li>
+                        <li><a href="#weak">std::weak_ptr</a></li>
+                        <li><a href="#decision">선택 결정 트리</a></li>
+                        <li><a href="#params">함수 매개변수 가이드</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#imaging">이미지 라이브러리 적용 예</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 -->
+                <h2 id="why"><i class="fa-solid fa-circle-question"></i> 왜 스마트 포인터인가</h2>
+                <p>raw <code>new</code>/<code>delete</code>는 세 가지 고질병을 가진다. 메모리 누수, 이중 해제, 그리고 예외 안전성 문제다. 다음 코드는 모두 위험하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 1. 누수 — 예외가 던져지면 delete 호출 안 됨
+void Process()
+{
+    Image* img = new Image();
+    DoSomething(img);   // 여기서 throw 되면 누수
+    delete img;
+}
+
+// 2. 이중 해제 — 두 번 delete
+Image* a = new Image();
+Image* b = a;
+delete a;
+delete b;   // UB
+
+// 3. 소유권 모호 — 누가 delete 해야 하나?
+Image* CreateImage();   // 호출자가 delete? 아니면?</code></pre>
+
+                <p>스마트 포인터는 <strong>RAII</strong>로 이 문제를 해결한다. 객체의 수명이 스코프와 묶이고, 소유권이 타입으로 명시된다. 비용은 사실상 0이거나 (<code>unique_ptr</code>) 작은 참조 카운트 (<code>shared_ptr</code>)다.</p>
+
+                <!-- 2. 소유권 -->
+                <h2 id="ownership"><i class="fa-solid fa-key"></i> 소유권 개념</h2>
+                <p>스마트 포인터를 이해하는 핵심은 "누가 객체를 해제할 책임이 있는가"라는 질문이다. C++은 세 가지 의미론을 타입으로 표현한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>의미론</th><th>타입</th><th>설명</th></tr>
+                    <tr><td>단독 소유</td><td><code>unique_ptr&lt;T&gt;</code></td><td>한 시점에 한 명만 소유. 소멸 시 자동 해제.</td></tr>
+                    <tr><td>공유 소유</td><td><code>shared_ptr&lt;T&gt;</code></td><td>여러 곳에서 공유. 마지막 하나가 사라질 때 해제.</td></tr>
+                    <tr><td>비소유 관찰</td><td><code>weak_ptr&lt;T&gt;</code> / <code>T*</code> / <code>T&amp;</code></td><td>참조만 함. 해제 책임 없음.</td></tr>
+                </table>
+
+                <!-- 3. unique_ptr -->
+                <h2 id="unique"><i class="fa-solid fa-1"></i> std::unique_ptr&lt;T&gt;</h2>
+                <p>가장 많이 써야 하는 스마트 포인터다. 단독 소유이며 복사가 불가능하고 이동(move)만 가능하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;memory&gt;
+
+auto img = std::make_unique&lt;Image&gt;(1920, 1080);   // C++14 권장
+// std::unique_ptr&lt;Image&gt; img(new Image(1920, 1080)); // 가능하지만 권장 X
+
+auto img2 = img;             // 컴파일 에러 — 복사 불가
+auto img3 = std::move(img);  // OK — 소유권 이전 (img는 nullptr)
+
+// 함수에서 반환 — 자연스러운 factory 패턴
+std::unique_ptr&lt;Image&gt; CreateImage()
+{
+    return std::make_unique&lt;Image&gt;();
+}</code></pre>
+
+                <h3 id="unique-cost"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 비용은 0이다</h3>
+                <p><code>unique_ptr</code>은 raw 포인터와 동일한 크기다. 런타임 오버헤드도 없다. "안전한 raw 포인터"라고 생각하면 된다.</p>
+
+                <h3 id="unique-array"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 배열 특수화</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 단일 객체
+auto p = std::make_unique&lt;int&gt;(42);
+
+// 배열 — T[] 형태로 명시해야 delete[] 호출됨
+auto arr = std::make_unique&lt;int[]&gt;(100);
+arr[0] = 1;
+arr[99] = 100;</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>배열에 unique_ptr&lt;T&gt; (T[] 아님)을 쓰면 UB</strong>
+                        <code>std::unique_ptr&lt;int&gt; p(new int[10])</code> 같은 코드는 소멸 시 <code>delete</code>가 호출된다. <code>delete[]</code>가 아니다. 미정의 동작이다. 반드시 <code>std::unique_ptr&lt;int[]&gt;</code>를 쓰자.
+                    </div>
+                </div>
+
+                <h3 id="unique-deleter"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Custom deleter — C 리소스 RAII</h3>
+                <p><code>unique_ptr</code>의 deleter는 <strong>타입의 일부</strong>다. C 스타일 리소스를 RAII로 감싸는 데 매우 유용하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// FILE* RAII
+auto fileDeleter = [](FILE* f) { if (f) std::fclose(f); };
+std::unique_ptr&lt;FILE, decltype(fileDeleter)&gt; file(
+    std::fopen("data.bin", "rb"), fileDeleter);
+
+// Win32 HANDLE RAII
+auto handleDeleter = [](HANDLE h) { if (h) CloseHandle(h); };
+std::unique_ptr&lt;void, decltype(handleDeleter)&gt; handle(
+    CreateFileW(L"a.txt", GENERIC_READ, 0, nullptr,
+                OPEN_EXISTING, 0, nullptr),
+    handleDeleter);
+
+// 구식 OpenCV IplImage* RAII
+auto iplDeleter = [](IplImage* p) { if (p) cvReleaseImage(&amp;p); };
+std::unique_ptr&lt;IplImage, decltype(iplDeleter)&gt; ipl(
+    cvCreateImage(cvSize(640, 480), IPL_DEPTH_8U, 1), iplDeleter);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>pImpl 이디엄에도 unique_ptr이 정석</strong>
+                        헤더에서 구현 세부를 숨기는 pImpl 패턴은 <code>std::unique_ptr&lt;Impl&gt; m_impl;</code>로 표현한다. 단, 소멸자는 cpp 파일에서 정의해야 한다 (Impl이 incomplete type일 수 없으므로).
+                    </div>
+                </div>
+
+                <!-- 4. shared_ptr -->
+                <h2 id="shared"><i class="fa-solid fa-2"></i> std::shared_ptr&lt;T&gt;</h2>
+                <p>참조 카운트 기반의 공유 소유 포인터다. 여러 <code>shared_ptr</code>이 같은 객체를 가리킬 수 있고, 마지막 하나가 사라지면 객체가 해제된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">auto a = std::make_shared&lt;Image&gt;(1920, 1080);   // 카운트 = 1
+auto b = a;   // 복사 OK — 카운트 = 2
+{
+    auto c = a;   // 카운트 = 3
+}                 // c 소멸 — 카운트 = 2
+// b, a 소멸 시 카운트 0 → 객체 해제
+
+a.use_count();   // 현재 카운트 확인 (디버그용)</code></pre>
+
+                <h3 id="shared-control"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 제어 블록(control block) 구조</h3>
+                <p><code>shared_ptr</code>은 두 가지 메모리를 가리킨다. 객체 자체와, 객체 옆에 떠 있는 <strong>제어 블록</strong>이다. 제어 블록 안에는 strong count, weak count, deleter, allocator가 들어 있다.</p>
+
+<div class="ctrl-block-diagram">    <span class="ctrl-comment">// shared_ptr&lt;Image&gt;(new Image)  ─ 두 번 할당</span>
+
+    shared_ptr  ┌──────────────┐         ┌──────────────┐
+    ┌────────┐  │ <span class="ctrl-label">strong cnt</span>   │         │              │
+    │  ptr   │──┤ <span class="ctrl-label">weak cnt</span>     │  <span class="ctrl-arrow">────►</span>  │   Image      │
+    │  ctrl  │──┤ deleter      │         │   (객체)     │
+    └────────┘  │ allocator    │         │              │
+                └──────────────┘         └──────────────┘
+                <span class="ctrl-comment">제어 블록 (heap)</span>          <span class="ctrl-comment">객체 (heap, 별도 할당)</span>
+
+
+    <span class="ctrl-comment">// make_shared&lt;Image&gt;()  ─ 한 번 할당</span>
+
+    shared_ptr  ┌─────────────────────────────────┐
+    ┌────────┐  │ <span class="ctrl-label">strong cnt</span> │ <span class="ctrl-label">weak cnt</span> │ deleter │
+    │  ptr   │──┤─────────────────────────────────┤
+    │  ctrl  │──┤        Image (객체)             │
+    └────────┘  └─────────────────────────────────┘
+                <span class="ctrl-comment">제어 블록 + 객체가 하나의 메모리 덩어리</span></div>
+
+                <h3 id="shared-make"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> make_shared vs new</h3>
+
+                <table class="spec-table">
+                    <tr><th>비교</th><th><code>std::make_shared&lt;T&gt;()</code></th><th><code>std::shared_ptr&lt;T&gt;(new T)</code></th></tr>
+                    <tr><td>할당 횟수</td><td>1번 (객체 + 제어 블록 한꺼번에)</td><td>2번 (객체 따로, 제어 블록 따로)</td></tr>
+                    <tr><td>캐시 친화성</td><td>좋음 (인접한 메모리)</td><td>낮음 (분리된 위치)</td></tr>
+                    <tr><td>예외 안전성</td><td>안전</td><td>특정 상황에서 누수 가능</td></tr>
+                    <tr><td>weak_ptr 메모리</td><td>객체 메모리도 weak가 살아있는 한 못 풀음</td><td>strong=0이면 객체 즉시 해제</td></tr>
+                    <tr><td>custom deleter</td><td>지원 X</td><td>지원 O</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>make_shared의 숨은 단점</strong>
+                        제어 블록과 객체가 한 덩어리이므로, strong count가 0이 되어도 weak count가 남아 있으면 <strong>객체 메모리도 풀리지 않는다</strong>. 큰 객체에 weak_ptr이 오래 살아남으면 의도치 않은 메모리 점유가 발생한다.
+                    </div>
+                </div>
+
+                <h3 id="shared-cost"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 비용</h3>
+                <ul>
+                    <li>크기: raw 포인터 2개 (객체 ptr + 제어 블록 ptr)</li>
+                    <li>복사/소멸 시: <strong>atomic</strong> 참조 카운트 증감 (멀티스레드 안전)</li>
+                    <li>atomic 연산은 일반 ++보다 비싸다 — 핫 루프에서 무분별한 복사는 피하자</li>
+                </ul>
+
+                <h3 id="shared-from-this"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> enable_shared_from_this</h3>
+                <p>객체 내부에서 자기 자신의 <code>shared_ptr</code>을 얻고 싶을 때 쓴다. <code>this</code>로 새 <code>shared_ptr</code>을 만들면 제어 블록이 따로 생겨 이중 해제가 일어난다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class Worker : public std::enable_shared_from_this&lt;Worker&gt;
+{
+public:
+    void Schedule()
+    {
+        // this를 직접 shared_ptr로 감싸면 안 됨!
+        auto self = shared_from_this();   // 제어 블록 공유
+        thread_pool.Post([self]() { self-&gt;Run(); });
+    }
+
+    void Run() { /* ... */ }
+};
+
+// 반드시 shared_ptr로 생성해야 함
+auto w = std::make_shared&lt;Worker&gt;();
+w-&gt;Schedule();</code></pre>
+
+                <h3 id="shared-aliasing"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Aliasing constructor</h3>
+                <p>"객체 X의 수명을 따르지만, 실제로는 X의 멤버 Y를 가리키고 싶다"는 경우를 위한 생성자다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct Header { /* ... */ };
+struct Packet { Header header; /* ... */ };
+
+auto pkt = std::make_shared&lt;Packet&gt;();
+
+// pkt의 수명에 묶여 있지만, header를 가리키는 shared_ptr
+std::shared_ptr&lt;Header&gt; hdr(pkt, &amp;pkt-&gt;header);</code></pre>
+
+                <!-- 5. weak_ptr -->
+                <h2 id="weak"><i class="fa-solid fa-3"></i> std::weak_ptr&lt;T&gt;</h2>
+                <p>비소유 관찰자다. <code>shared_ptr</code>에서 만들어지지만 참조 카운트(strong)에는 영향을 주지 않는다. 객체가 살아있는지 확인하고, 살아있으면 임시로 <code>shared_ptr</code>을 얻는 용도다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">auto sp = std::make_shared&lt;Image&gt;();
+std::weak_ptr&lt;Image&gt; wp = sp;
+
+if (wp.expired())
+{
+    // 객체가 이미 해제됨
+}
+
+if (auto locked = wp.lock())   // strong shared_ptr 임시 획득
+{
+    locked-&gt;Process();   // 안전하게 사용
+}                              // locked 소멸 — 카운트 원복</code></pre>
+
+                <h3 id="weak-cycle"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 순환 참조 끊기</h3>
+                <p><code>shared_ptr</code>의 가장 흔한 함정은 순환 참조다. Parent와 Child가 서로를 <code>shared_ptr</code>로 가리키면 카운트가 절대 0이 되지 않아 영원히 누수된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 잘못된 예 — 순환 참조로 누수
+struct Child;
+struct Parent
+{
+    std::shared_ptr&lt;Child&gt; child;
+};
+struct Child
+{
+    std::shared_ptr&lt;Parent&gt; parent;   // 문제!
+};
+
+// 올바른 예 — 자식 → 부모는 weak_ptr
+struct Parent
+{
+    std::shared_ptr&lt;Child&gt; child;
+};
+struct Child
+{
+    std::weak_ptr&lt;Parent&gt; parent;     // 끊는다
+};</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>일반 규칙</strong>
+                        부모 → 자식은 strong, 자식 → 부모는 weak. 트리/그래프 구조에서 "위로 가는" 링크는 거의 항상 <code>weak_ptr</code>이다.
+                    </div>
+                </div>
+
+                <!-- 6. 결정 트리 -->
+                <h2 id="decision"><i class="fa-solid fa-code-branch"></i> 선택 결정 트리</h2>
+
+                <table class="spec-table">
+                    <tr><th>상황</th><th>선택</th></tr>
+                    <tr><td>한 명만 소유한다</td><td><code>std::unique_ptr&lt;T&gt;</code></td></tr>
+                    <tr><td>여러 곳에서 진짜로 공유 소유한다</td><td><code>std::shared_ptr&lt;T&gt;</code></td></tr>
+                    <tr><td>관찰만 한다, 수명에 책임 없음</td><td><code>std::weak_ptr&lt;T&gt;</code> 또는 raw <code>T*</code></td></tr>
+                    <tr><td>함수에 잠깐 빌려준다 (소유권 이전 X)</td><td><code>T&amp;</code> 또는 <code>const T&amp;</code></td></tr>
+                </table>
+
+                <p>세 포인터를 한눈에 비교하면 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <tr><th>특성</th><th>unique_ptr</th><th>shared_ptr</th><th>weak_ptr</th></tr>
+                    <tr><td>소유권</td><td>단독</td><td>공유</td><td>비소유</td></tr>
+                    <tr><td>참조 카운트 영향</td><td>없음</td><td>strong 증감</td><td>weak 증감 (객체 수명에는 영향 X)</td></tr>
+                    <tr><td>복사</td><td>불가 (move only)</td><td>가능 (atomic)</td><td>가능</td></tr>
+                    <tr><td>크기 (일반)</td><td>raw 포인터 크기</td><td>raw 포인터 × 2</td><td>raw 포인터 × 2</td></tr>
+                    <tr><td>런타임 오버헤드</td><td>0</td><td>atomic 연산</td><td>atomic 연산 (lock 시)</td></tr>
+                    <tr><td>역참조 (*, -&gt;)</td><td>가능</td><td>가능</td><td>불가 (lock 필요)</td></tr>
+                    <tr><td>주 용도</td><td>RAII, factory, pImpl</td><td>그래프, 캐시, 콜백 등록</td><td>순환 끊기, 관찰</td></tr>
+                </table>
+
+                <!-- 7. 매개변수 -->
+                <h2 id="params"><i class="fa-solid fa-arrow-right-arrow-left"></i> 함수 매개변수 가이드 (Herb Sutter)</h2>
+                <p>"스마트 포인터 함수에 어떻게 넘기지?"는 신입이 가장 자주 헤매는 부분이다. Herb Sutter의 가이드라인이 사실상 표준이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 1. sink — 소유권을 가져간다 (이전)
+void Take(std::unique_ptr&lt;Image&gt; img);
+// 호출: Take(std::move(myUnique));
+
+// 2. share — 소유권을 함께 가진다 (참조 카운트 증가)
+void Share(std::shared_ptr&lt;Image&gt; img);
+// 호출: Share(myShared);
+
+// 3. 그냥 사용 — 소유권 무관, 단지 빌려서 본다
+void Inspect(const Image&amp; img);     // null 가능성 없음
+void InspectMaybe(const Image* img); // nullptr 가능
+
+// 4. shared_ptr 생명주기를 안 늘려도 된다면
+void Use(const Image&amp; img);          // ← 정답
+// 다음은 모두 안티패턴
+// void Use(const std::shared_ptr&lt;Image&gt;&amp; img);   불필요한 복잡성
+// void Use(std::shared_ptr&lt;Image&gt; img);          불필요한 atomic 비용</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>shared_ptr&amp;는 거의 쓰지 마라</strong>
+                        함수가 단순히 객체를 사용만 한다면 <code>const T&amp;</code>이면 충분하다. 인자로 <code>shared_ptr</code> 자체가 필요한 경우는 정말로 카운트를 늘려야 할 때 (저장, 비동기 캡처) 뿐이다.
+                    </div>
+                </div>
+
+                <!-- 8. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="pit-double"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 같은 raw 포인터로 shared_ptr 두 개 만들기</h3>
+
+<pre class="language-cpp"><code class="language-cpp">Image* raw = new Image();
+std::shared_ptr&lt;Image&gt; a(raw);
+std::shared_ptr&lt;Image&gt; b(raw);   // 위험!
+
+// a와 b는 서로 다른 제어 블록을 가짐
+// 둘 다 strong cnt = 1
+// a 소멸 → delete raw
+// b 소멸 → delete raw 다시 → 이중 해제 (UB)</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>이중 해제 — 절대 raw 포인터로 두 번 감싸지 마라</strong>
+                        이미 <code>shared_ptr</code>이 있으면 그것을 <strong>복사</strong>하라. raw로부터 새로 만드는 것이 아니다. 이 실수를 원천 차단하려면 <code>std::make_shared</code>를 항상 쓰는 것이 가장 안전하다.
+                    </div>
+                </div>
+
+                <h3 id="pit-thread"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 멀티스레드에서 같은 shared_ptr 동시 read/write</h3>
+
+<pre class="language-cpp"><code class="language-cpp">std::shared_ptr&lt;Image&gt; g_image;   // 전역
+
+// Thread A
+g_image = std::make_shared&lt;Image&gt;();   // write
+
+// Thread B
+auto local = g_image;                  // read — 데이터 레이스!</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>참조 카운트는 atomic이지만, shared_ptr 객체 자체는 아니다</strong>
+                        같은 <code>shared_ptr</code> 변수를 여러 스레드가 동시에 읽고 쓰면 데이터 레이스가 발생한다. 보호하려면 <code>std::atomic&lt;std::shared_ptr&lt;T&gt;&gt;</code> (C++20) 또는 mutex를 써야 한다. 각 스레드가 <strong>자신만의 복사본</strong>을 가지고 그 위에서 읽기만 한다면 안전하다.
+                    </div>
+                </div>
+
+                <h3 id="pit-make-weak"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> make_shared + 큰 객체 + 오래 사는 weak_ptr</h3>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>큰 객체는 make_shared 대신 new를 고려하라</strong>
+                        <code>make_shared</code>는 객체와 제어 블록을 한 덩어리로 할당하기 때문에, weak_ptr이 살아있는 한 객체 메모리도 회수되지 않는다. 100MB짜리 이미지를 <code>make_shared</code>로 만들고 어디선가 <code>weak_ptr</code>이 남아 있으면 100MB가 못 풀린다. 이런 경우는 <code>std::shared_ptr&lt;T&gt;(new T)</code>가 낫다.
+                    </div>
+                </div>
+
+                <h3 id="pit-arr"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> unique_ptr&lt;T&gt;에 배열 담기</h3>
+                <p>위에서 다뤘듯 <code>std::unique_ptr&lt;int&gt; p(new int[10])</code>은 UB다. 배열은 반드시 <code>std::unique_ptr&lt;int[]&gt;</code>를 써야 한다. 또는 그냥 <code>std::vector</code>를 쓰자 — 거의 모든 경우 더 낫다.</p>
+
+                <!-- 9. 이미지 라이브러리 -->
+                <h2 id="imaging"><i class="fa-solid fa-image"></i> 이미지 라이브러리 적용 예</h2>
+                <p>실무에서 어떻게 적용되는지 ImagingLib 컨텍스트에서 짧게 본다.</p>
+
+                <h3 id="img-mat"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> cv::Mat — 자체 참조 카운트</h3>
+                <p><code>cv::Mat</code>은 내부에 자체 참조 카운트를 가진다. 픽셀 데이터가 공유되며 복사가 얕은(shallow) 복사다. 따라서 <code>shared_ptr&lt;cv::Mat&gt;</code> 같은 래핑은 거의 의미 없고 오히려 카운트를 두 번 관리하게 된다. <code>cv::Mat</code>은 그대로 값으로 다루면 된다.</p>
+
+                <h3 id="img-handle"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 카메라 핸들 — unique_ptr + custom deleter</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// Vieworks SDK 핸들 RAII
+struct CameraDeleter
+{
+    void operator()(VWK_HANDLE h) const noexcept
+    {
+        if (h) VWK_CloseDevice(h);
+    }
+};
+
+using CameraHandle = std::unique_ptr&lt;
+    std::remove_pointer_t&lt;VWK_HANDLE&gt;,
+    CameraDeleter&gt;;
+
+CameraHandle OpenCamera(int index)
+{
+    VWK_HANDLE h = nullptr;
+    if (VWK_OpenDevice(index, &amp;h) != VWK_OK)
+    {
+        return nullptr;
+    }
+    return CameraHandle(h);
+}</code></pre>
+
+                <h3 id="img-gpu"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> GPU 메모리 — unique_ptr + cudaFree</h3>
+
+<pre class="language-cpp"><code class="language-cpp">struct CudaDeleter
+{
+    void operator()(void* p) const noexcept { cudaFree(p); }
+};
+
+using CudaPtr = std::unique_ptr&lt;void, CudaDeleter&gt;;
+
+CudaPtr AllocateDeviceMemory(size_t bytes)
+{
+    void* devPtr = nullptr;
+    cudaMalloc(&amp;devPtr, bytes);
+    return CudaPtr(devPtr);
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실전 결론</strong>
+                        대부분의 경우 <code>std::unique_ptr</code>로 충분하다. 데이터 플로우 블록의 출력을 여러 후속 블록이 공유한다거나, 비동기 작업이 객체 수명을 잡고 있어야 할 때만 <code>std::shared_ptr</code>을 쓰자. <code>weak_ptr</code>은 옵저버 패턴과 순환 끊기 두 가지 용도가 거의 전부다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — <code>&lt;memory&gt;</code> 헤더 (unique_ptr, shared_ptr, weak_ptr)</li>
+                        <li>Effective Modern C++ — Scott Meyers (Item 18~22)</li>
+                        <li>C++ Core Guidelines — R.20 ~ R.34 (Resource management rules)</li>
+                        <li>Herb Sutter, "GotW #91: Smart Pointer Parameters"</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
