@@ -1,0 +1,795 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ 스레드 기초 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#intro" data-section="intro">배경</a>
+        <a href="#std-thread" data-section="std-thread">std::thread</a>
+        <a href="#args" data-section="args">인자 전달</a>
+        <a href="#race" data-section="race">데이터 레이스</a>
+        <a href="#mutex" data-section="mutex">mutex</a>
+        <a href="#lock-guards" data-section="lock-guards">락 가드</a>
+        <a href="#deadlock" data-section="deadlock">데드락</a>
+        <a href="#mutex-kinds" data-section="mutex-kinds">뮤텍스 종류</a>
+        <a href="#cv" data-section="cv">condition_variable</a>
+        <a href="#this-thread" data-section="this-thread">this_thread</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+        <a href="#pipeline" data-section="pipeline">실전 예</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>C++ 스레드 기초 — std::thread, mutex, condition_variable</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>C++11부터 표준화된 <code>&lt;thread&gt;</code>, <code>&lt;mutex&gt;</code>의 기본</li>
+                        <li><code>std::thread</code> 생성/소멸 규칙과 인자 전달 시 주의점</li>
+                        <li>데이터 레이스, 뮤텍스, RAII 락 가드(<code>lock_guard</code>, <code>unique_lock</code>, <code>scoped_lock</code>)</li>
+                        <li>데드락 회피, <code>shared_mutex</code>, <code>condition_variable</code>의 올바른 사용 패턴</li>
+                        <li>이미지 acquisition 파이프라인에 적용한 producer-consumer 예</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">C++11 이전 vs 이후</a></li>
+                        <li><a href="#std-thread">std::thread 기본</a></li>
+                        <li><a href="#args">인자 전달 시 주의</a></li>
+                        <li><a href="#race">데이터 레이스와 동기화</a></li>
+                        <li><a href="#mutex">std::mutex</a></li>
+                        <li><a href="#lock-guards">RAII 락 가드</a></li>
+                        <li><a href="#deadlock">데드락과 회피</a></li>
+                        <li><a href="#mutex-kinds">recursive_mutex, shared_mutex</a></li>
+                        <li><a href="#cv">std::condition_variable</a></li>
+                        <li><a href="#this-thread">std::this_thread 유틸리티</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#pipeline">실전: 이미지 파이프라인</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 배경 -->
+                <h2 id="intro"><i class="fa-solid fa-microchip"></i> C++11 이전 vs 이후</h2>
+                <p>C++11 이전에는 표준 스레드 API가 없었다. POSIX 환경에서는 <code>pthread</code>, Windows에서는 <code>CreateThread</code> 같은 OS별 API를 직접 호출해야 했다. 같은 로직을 플랫폼마다 다르게 작성하거나 Boost.Thread 같은 외부 라이브러리에 의존해야 했다.</p>
+                <p>C++11부터 <code>&lt;thread&gt;</code>, <code>&lt;mutex&gt;</code>, <code>&lt;condition_variable&gt;</code>, <code>&lt;atomic&gt;</code>, <code>&lt;future&gt;</code> 헤더가 표준에 들어왔다. 이제 한 번 작성한 동시성 코드가 모든 플랫폼에서 동일하게 동작한다.</p>
+
+                <table>
+                    <tr><th>시기</th><th>스레드</th><th>동기화</th></tr>
+                    <tr><td>~ C++03</td><td>OS별 API (pthread, WinAPI)</td><td>OS별 mutex/critical section</td></tr>
+                    <tr><td>C++11</td><td><code>std::thread</code></td><td><code>std::mutex</code>, <code>condition_variable</code></td></tr>
+                    <tr><td>C++17</td><td>—</td><td><code>scoped_lock</code>, <code>shared_mutex</code></td></tr>
+                    <tr><td>C++20</td><td><code>std::jthread</code>, <code>stop_token</code></td><td><code>std::latch</code>, <code>barrier</code>, <code>semaphore</code></td></tr>
+                </table>
+
+                <!-- 2. std::thread -->
+                <h2 id="std-thread"><i class="fa-solid fa-code-branch"></i> std::thread 기본</h2>
+                <p>스레드 생성은 호출 가능한 객체와 그 인자를 생성자에 넘기는 방식이다. 함수, 함수 객체, 람다, 멤버 함수 모두 가능하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;thread&gt;
+#include &lt;iostream&gt;
+
+void worker(int id, const std::string&amp; name)
+{
+    std::cout &lt;&lt; "thread " &lt;&lt; id &lt;&lt; " : " &lt;&lt; name &lt;&lt; std::endl;
+}
+
+struct Functor
+{
+    void operator()(int x) const { /* ... */ }
+};
+
+class Camera
+{
+public:
+    void Grab() { /* ... */ }
+};
+
+int main()
+{
+    // 일반 함수
+    std::thread t1(worker, 1, "alpha");
+
+    // 함수 객체
+    std::thread t2(Functor{}, 42);
+
+    // 람다
+    std::thread t3([]{ std::cout &lt;&lt; "lambda" &lt;&lt; std::endl; });
+
+    // 멤버 함수 (첫 인자는 객체 포인터)
+    Camera cam;
+    std::thread t4(&amp;Camera::Grab, &amp;cam);
+
+    t1.join(); t2.join(); t3.join(); t4.join();
+}</code></pre>
+
+                <h3 id="join-detach"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> join 또는 detach는 필수다</h3>
+                <p><code>std::thread</code> 객체가 소멸될 때 <code>joinable()</code> 상태이면 <code>std::terminate</code>가 호출되어 프로그램이 즉시 종료된다. 반드시 소멸 전에 <code>join()</code> 또는 <code>detach()</code>를 호출해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::thread t([]{ /* work */ });
+
+if (t.joinable())
+{
+    t.join();   // 종료 대기 (대부분 이걸 쓴다)
+    // t.detach();  // 분리 — 부모와 무관하게 실행
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>join/detach 누락 = 즉시 terminate</strong>
+                        예외 경로까지 포함해 모든 흐름에서 join이 보장되어야 한다. 수동 관리는 RAII 래퍼나 C++20 <code>std::jthread</code>로 대체하는 것이 안전하다.
+                    </div>
+                </div>
+
+                <h3 id="thread-utils"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스레드 식별과 코어 수</h3>
+
+<pre class="language-cpp"><code class="language-cpp">std::thread t([]{
+    std::cout &lt;&lt; "id = " &lt;&lt; std::this_thread::get_id() &lt;&lt; std::endl;
+});
+
+std::thread::id tid = t.get_id();
+unsigned n = std::thread::hardware_concurrency();  // 논리 코어 수 (힌트, 0 가능)
+
+t.join();</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>C++20 std::jthread</strong>
+                        소멸자에서 자동으로 <code>request_stop()</code>과 <code>join()</code>을 호출한다. <code>stop_token</code>을 인자로 받아 협력적 취소(cooperative cancellation)도 지원한다. C++20을 쓸 수 있다면 <code>std::thread</code> 대신 거의 항상 <code>std::jthread</code>가 정답이다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;thread&gt;
+
+// jthread는 소멸 시 자동 join
+std::jthread jt([](std::stop_token st)
+{
+    while (!st.stop_requested())
+    {
+        // do work
+    }
+});
+// 스코프 끝에서 stop 요청 + join 자동 수행</code></pre>
+
+                <!-- 3. 인자 전달 -->
+                <h2 id="args"><i class="fa-solid fa-share-from-square"></i> 인자 전달 시 주의</h2>
+                <p>스레드 생성자에 넘긴 인자는 <strong>기본적으로 값 복사</strong>된다. 함수가 참조로 받더라도 마찬가지다. 이 동작은 안전하지만 종종 의도와 다르다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">void process(Image&amp; img);          // 참조로 받는 함수
+void consume(std::unique_ptr&lt;Buffer&gt; b);
+
+Image img;
+
+// 잘못된 예 — 컴파일 에러 (참조에 복사본이 바인딩 못함)
+// std::thread t(process, img);
+
+// 올바른 예 — std::ref로 참조 전달
+std::thread t1(process, std::ref(img));
+
+// 이동 전용 객체는 std::move
+auto buf = std::make_unique&lt;Buffer&gt;();
+std::thread t2(consume, std::move(buf));
+
+t1.join(); t2.join();</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>참조 전달의 수명에 주의</strong>
+                        <code>std::ref</code>로 넘긴 객체가 스레드보다 먼저 파괴되면 dangling 참조가 된다. 부모 함수가 끝나도 스레드가 살아 있을 수 있는 <code>detach</code> 패턴에서 특히 위험하다.
+                    </div>
+                </div>
+
+                <!-- 4. 데이터 레이스 -->
+                <h2 id="race"><i class="fa-solid fa-bolt"></i> 데이터 레이스와 동기화</h2>
+                <p>두 개 이상의 스레드가 동시에 같은 메모리 위치에 접근하고, 그 중 적어도 하나가 쓰기이며, 동기화가 없다면 <strong>데이터 레이스</strong>다. C++ 표준은 데이터 레이스를 정의되지 않은 동작(UB)으로 규정한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int counter = 0;
+
+auto inc = []
+{
+    for (int i = 0; i &lt; 100000; ++i)
+        ++counter;   // 데이터 레이스!
+};
+
+std::thread a(inc), b(inc);
+a.join(); b.join();
+
+std::cout &lt;&lt; counter &lt;&lt; std::endl;  // 200000이 아닐 가능성 높음</code></pre>
+
+                <p><code>++counter</code>는 read-modify-write로 분해되며, 두 스레드의 단계가 섞이면서 일부 증가가 사라진다. 해결책은 뮤텍스로 보호하거나 <code>std::atomic&lt;int&gt;</code>를 사용하는 것이다.</p>
+
+                <!-- 5. mutex -->
+                <h2 id="mutex"><i class="fa-solid fa-lock"></i> std::mutex</h2>
+                <p>가장 기본적인 상호 배제(mutual exclusion) 도구다. 한 시점에 하나의 스레드만 잠글 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;mutex&gt;
+
+std::mutex m;
+int counter = 0;
+
+void inc()
+{
+    m.lock();
+    ++counter;
+    m.unlock();
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>직접 lock/unlock은 금지</strong>
+                        중간에 예외가 던져지면 <code>unlock</code>이 호출되지 않아 영구 데드락이 된다. 항상 RAII 래퍼를 사용한다.
+                    </div>
+                </div>
+
+                <!-- 6. RAII 락 가드 -->
+                <h2 id="lock-guards"><i class="fa-solid fa-shield-halved"></i> RAII 락 가드</h2>
+
+<pre class="language-cpp"><code class="language-cpp">std::mutex m;
+
+void safeInc()
+{
+    std::lock_guard&lt;std::mutex&gt; lock(m);   // C++11
+    ++counter;
+}                                          // 스코프 끝에서 자동 unlock
+
+// C++17 CTAD로 타입 생략 가능
+void safeInc17()
+{
+    std::lock_guard lock(m);
+    ++counter;
+}</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>락 가드</th><th>도입</th><th>특징</th><th>사용 시점</th></tr>
+                    <tr><td><code>lock_guard</code></td><td>C++11</td><td>가장 가볍다. 잠금만, 해제 불가</td><td>단순 보호 구간</td></tr>
+                    <tr><td><code>unique_lock</code></td><td>C++11</td><td>defer/try/timed lock, 중간 unlock 가능</td><td>condition_variable, 유연한 제어</td></tr>
+                    <tr><td><code>scoped_lock</code></td><td>C++17</td><td>여러 뮤텍스를 데드락 없이 한 번에</td><td>2개 이상의 뮤텍스</td></tr>
+                    <tr><td><code>shared_lock</code></td><td>C++14</td><td>shared_mutex의 read 잠금</td><td>reader-writer의 reader 측</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>여러 뮤텍스가 필요하면 무조건 scoped_lock</strong>
+                        <code>std::scoped_lock lock(m1, m2);</code> 한 줄이면 데드락 방지 알고리즘으로 두 뮤텍스를 안전하게 잠근다. 직접 순서를 맞추려는 시도보다 안전하고 명확하다.
+                    </div>
+                </div>
+
+                <!-- 7. 데드락 -->
+                <h2 id="deadlock"><i class="fa-solid fa-hand-paper"></i> 데드락과 회피</h2>
+                <p>두 스레드가 서로가 가진 자원을 기다리면 영원히 멈춘다. 가장 흔한 형태는 두 뮤텍스를 다른 순서로 잠그는 경우다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::mutex m1, m2;
+
+// 위험한 패턴
+void threadA()
+{
+    std::lock_guard l1(m1);
+    std::lock_guard l2(m2);  // m2 대기 중...
+}
+void threadB()
+{
+    std::lock_guard l1(m2);
+    std::lock_guard l2(m1);  // m1 대기 중... 데드락!
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>여러 뮤텍스를 잡을 때는 항상 동일한 순서로</strong>
+                        규약으로 강제하기 어렵다면 <code>std::scoped_lock</code> 또는 <code>std::lock(m1, m2)</code>로 한 번에 잠가야 한다. 둘 다 데드락 회피 알고리즘을 내부적으로 사용한다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// C++17 — 가장 깔끔
+void threadSafe()
+{
+    std::scoped_lock lock(m1, m2);
+    // critical section
+}
+
+// C++11 호환 방식
+void threadSafe11()
+{
+    std::unique_lock l1(m1, std::defer_lock);
+    std::unique_lock l2(m2, std::defer_lock);
+    std::lock(l1, l2);   // 데드락 없이 동시 잠금
+}</code></pre>
+
+                <!-- 8. 뮤텍스 종류 -->
+                <h2 id="mutex-kinds"><i class="fa-solid fa-layer-group"></i> recursive_mutex, shared_mutex</h2>
+
+                <h3 id="recursive"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> recursive_mutex</h3>
+                <p>같은 스레드가 여러 번 잠글 수 있다. 잠근 횟수만큼 풀어야 해제된다. 보통 잠긴 함수 안에서 같은 객체의 다른 잠긴 함수를 호출해야 할 때 쓴다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>recursive_mutex가 필요한 상황은 대부분 설계 문제</strong>
+                        public 메서드와 내부 헬퍼를 분리해서 헬퍼 쪽은 잠금 없이 호출하도록 리팩토링하는 편이 깔끔하다.
+                    </div>
+                </div>
+
+                <h3 id="shared"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> shared_mutex (C++17)</h3>
+                <p>reader-writer 락이다. 여러 reader가 동시에 들어갈 수 있고, writer는 단독으로 잠근다. 읽기가 압도적으로 많고 쓰기가 드문 자료구조(설정 캐시, 조회 테이블 등)에 유용하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;shared_mutex&gt;
+
+std::shared_mutex sm;
+std::map&lt;int, std::string&gt; cache;
+
+std::string Read(int key)
+{
+    std::shared_lock lock(sm);    // 다중 reader 허용
+    return cache.at(key);
+}
+
+void Write(int key, std::string val)
+{
+    std::unique_lock lock(sm);    // 단독 writer
+    cache[key] = std::move(val);
+}</code></pre>
+
+                <!-- 9. condition_variable -->
+                <h2 id="cv"><i class="fa-solid fa-comments"></i> std::condition_variable</h2>
+                <p>"어떤 조건이 만족될 때까지 대기"를 표현하는 도구다. 단순한 sleep과 달리 다른 스레드의 통지(<code>notify</code>)에 즉시 깨어난다. 반드시 <code>std::unique_lock&lt;std::mutex&gt;</code>과 함께 써야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;condition_variable&gt;
+#include &lt;queue&gt;
+
+std::mutex m;
+std::condition_variable cv;
+std::queue&lt;int&gt; q;
+bool done = false;
+
+// Producer
+void produce(int v)
+{
+    {
+        std::lock_guard lock(m);
+        q.push(v);
+    }
+    cv.notify_one();   // 대기자 한 명 깨움
+}
+
+// Consumer
+void consume()
+{
+    std::unique_lock lock(m);
+    cv.wait(lock, []{ return !q.empty() || done; });
+
+    if (!q.empty())
+    {
+        int v = q.front(); q.pop();
+        lock.unlock();
+        // process v ...
+    }
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>wait는 반드시 predicate 형태로</strong>
+                        <code>cv.wait(lock, predicate)</code>는 spurious wakeup(이유 없이 깨어나는 현상)을 자동으로 방어한다. 술어가 false면 다시 대기에 들어간다. 인자 없는 <code>wait(lock)</code>은 거의 쓸 일이 없다.
+                    </div>
+                </div>
+
+                <table>
+                    <tr><th>메서드</th><th>동작</th><th>사용 시점</th></tr>
+                    <tr><td><code>notify_one</code></td><td>대기자 중 한 명 깨움</td><td>큐에 항목 1개 푸시 등</td></tr>
+                    <tr><td><code>notify_all</code></td><td>모든 대기자 깨움</td><td>종료 신호, 상태 일괄 변경</td></tr>
+                </table>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>condition_variable은 mutex 없이 쓰면 UB</strong>
+                        <code>wait</code> 호출 시점에 mutex가 잠긴 상태여야 하고, 술어가 검사하는 변수도 같은 mutex로 보호되어야 한다. 그렇지 않으면 통지를 놓치거나 race가 발생한다.
+                    </div>
+                </div>
+
+                <!-- 10. this_thread -->
+                <h2 id="this-thread"><i class="fa-solid fa-clock"></i> std::this_thread 유틸리티</h2>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;thread&gt;
+#include &lt;chrono&gt;
+
+using namespace std::chrono_literals;
+
+std::this_thread::sleep_for(100ms);                    // 상대 시간
+std::this_thread::sleep_until(
+    std::chrono::steady_clock::now() + 1s);            // 절대 시간
+std::this_thread::yield();                             // 스케줄러에 양보
+auto id = std::this_thread::get_id();                  // 현재 스레드 id</code></pre>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <table class="spec-table">
+                    <tr><th>함정</th><th>결과</th><th>해결</th></tr>
+                    <tr><td>join/detach 누락</td><td>소멸자에서 terminate</td><td><code>jthread</code> 또는 RAII 래퍼</td></tr>
+                    <tr><td>mutex 없이 공유 변수 접근</td><td>데이터 레이스 (UB)</td><td>모든 접근을 같은 mutex로 보호</td></tr>
+                    <tr><td>cv를 mutex 없이 wait</td><td>UB</td><td><code>unique_lock</code>과 함께 사용</td></tr>
+                    <tr><td>cv를 단순 sleep 대용</td><td>비효율, 의도 불명확</td><td><code>sleep_for</code> 사용</td></tr>
+                    <tr><td>shared_ptr 동시 변경</td><td>객체 자체는 race</td><td>객체 접근도 동기화 필요</td></tr>
+                    <tr><td>여러 mutex 순서 불일치</td><td>데드락</td><td><code>scoped_lock</code></td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>shared_ptr의 thread-safety 오해</strong>
+                        제어 블록의 참조 카운트는 atomic이지만, <code>shared_ptr</code> 인스턴스 자체나 가리키는 객체에 대한 접근은 보호되지 않는다. 같은 <code>shared_ptr</code>을 여러 스레드에서 동시에 <code>reset</code>/<code>=</code> 하면 race다.
+                    </div>
+                </div>
+
+                <!-- 12. 실전 예 -->
+                <h2 id="pipeline"><i class="fa-solid fa-camera"></i> 실전: 이미지 acquisition 파이프라인</h2>
+                <p>카메라가 프레임을 grab하는 producer 스레드와, 프레임을 처리하는 consumer 스레드를 큐로 연결한 구조다. <code>condition_variable</code>로 빈 큐 대기를 효율적으로 처리한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;thread&gt;
+#include &lt;mutex&gt;
+#include &lt;condition_variable&gt;
+#include &lt;queue&gt;
+
+class FrameQueue
+{
+public:
+    void Push(Image f)
+    {
+        {
+            std::lock_guard lock(m_mutex);
+            m_queue.push(std::move(f));
+        }
+        m_cv.notify_one();
+    }
+
+    bool Pop(Image&amp; out)
+    {
+        std::unique_lock lock(m_mutex);
+        m_cv.wait(lock, [this]{ return !m_queue.empty() || m_done; });
+
+        if (m_queue.empty())
+            return false;   // done 신호로 깨어남
+
+        out = std::move(m_queue.front());
+        m_queue.pop();
+        return true;
+    }
+
+    void Stop()
+    {
+        {
+            std::lock_guard lock(m_mutex);
+            m_done = true;
+        }
+        m_cv.notify_all();
+    }
+
+private:
+    std::mutex m_mutex;
+    std::condition_variable m_cv;
+    std::queue&lt;Image&gt; m_queue;
+    bool m_done = false;
+};
+
+void RunPipeline(Camera&amp; cam, Processor&amp; proc)
+{
+    FrameQueue queue;
+
+    std::jthread producer([&amp;](std::stop_token st)
+    {
+        while (!st.stop_requested())
+        {
+            Image frame;
+            if (cam.Grab(frame) == ErrorCode::Ok)
+                queue.Push(std::move(frame));
+        }
+        queue.Stop();
+    });
+
+    std::jthread consumer([&amp;]
+    {
+        Image f;
+        while (queue.Pop(f))
+            proc.Process(f);
+    });
+    // 스코프 종료 시 producer에 stop 요청, 둘 다 자동 join
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다음 글로 이어진다</strong>
+                        프레임마다 스레드를 새로 만들면 비용이 크다. 고정된 워커들이 작업을 가져가는 <strong>스레드 풀</strong>로 발전시키는 것이 다음 주제다. <code>std::async</code>, <code>std::future</code>, <code>std::packaged_task</code>도 함께 살펴본다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — <code>&lt;thread&gt;</code>, <code>&lt;mutex&gt;</code>, <code>&lt;condition_variable&gt;</code></li>
+                        <li>C++ Concurrency in Action (2nd ed.) — Anthony Williams</li>
+                        <li>Effective Modern C++ — Scott Meyers (Item 35~42, 동시성)</li>
+                        <li>ISO C++ Core Guidelines — CP(Concurrency) 섹션</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

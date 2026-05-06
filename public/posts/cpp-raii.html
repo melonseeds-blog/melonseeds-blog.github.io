@@ -1,0 +1,779 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAII 패턴과 리소스 관리 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#raii-intro" data-section="raii-intro">RAII란</a>
+        <a href="#why-raii" data-section="why-raii">왜 RAII인가</a>
+        <a href="#stdlib-raii" data-section="stdlib-raii">표준 라이브러리</a>
+        <a href="#custom-raii" data-section="custom-raii">사용자 정의</a>
+        <a href="#wrap-c" data-section="wrap-c">C 리소스 감싸기</a>
+        <a href="#scope-guard" data-section="scope-guard">scope guard</a>
+        <a href="#exception-safety" data-section="exception-safety">예외 안전성</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#imaginglib" data-section="imaginglib">ImagingLib 적용</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++</span>
+                </div>
+                <h1>RAII 패턴과 리소스 관리</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>RAII의 정의와 C++의 결정론적 소멸이 만드는 패턴</li>
+                        <li>표준 라이브러리가 제공하는 RAII 도구 정리</li>
+                        <li>사용자 정의 RAII 클래스의 핵심 5가지 (Rule of 5)</li>
+                        <li>C 스타일 리소스(카메라/CUDA/HANDLE)를 unique_ptr로 빠르게 감싸기</li>
+                        <li>scope guard, 예외 안전성, 흔한 함정과 ImagingLib 적용 예</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#raii-intro">RAII란?</a></li>
+                        <li><a href="#why-raii">왜 RAII인가</a></li>
+                        <li><a href="#stdlib-raii">표준 라이브러리의 RAII 예</a></li>
+                        <li><a href="#custom-raii">사용자 정의 RAII 클래스</a></li>
+                        <li><a href="#wrap-c">C 스타일 리소스 감싸기</a></li>
+                        <li><a href="#scope-guard">scope guard 패턴</a></li>
+                        <li><a href="#exception-safety">예외 안전성 보장 수준</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#imaginglib">ImagingLib 적용 예</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. RAII란 -->
+                <h2 id="raii-intro"><i class="fa-solid fa-shield-halved"></i> RAII란?</h2>
+                <p><strong>Resource Acquisition Is Initialization</strong>의 약자다. "리소스 획득은 곧 초기화"라는 뜻으로, <strong>객체의 생성자에서 리소스를 획득하고 소멸자에서 해제</strong>하는 패턴이다. Bjarne Stroustrup이 C++ 초기에 제안했고, 이제는 C++ Core Guidelines의 가장 핵심적인 원칙이 됐다.</p>
+
+                <p>이 패턴이 가능한 이유는 C++가 <strong>결정론적 소멸(deterministic destruction)</strong>을 보장하기 때문이다. 스택 객체는 스코프를 벗어나는 그 순간 반드시 소멸자가 호출된다. 예외가 발생해 스택이 풀려도(stack unwinding) 마찬가지다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">void Foo()
+{
+    std::vector&lt;int&gt; v(1000);  // 생성자: 메모리 할당
+    DoSomething(v);             // 예외가 발생하더라도...
+}                               // 소멸자: 메모리 자동 해제 (보장됨)</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>가비지 컬렉션 언어와의 차이</strong>
+                        Java/C#은 GC가 비결정적 시점에 메모리만 회수한다. 파일/락/소켓 같은 비메모리 리소스는 <code>try-finally</code>나 <code>using</code>으로 따로 처리해야 한다. C++는 RAII 하나로 모든 리소스를 통일한다.
+                    </div>
+                </div>
+
+                <!-- 2. 왜 RAII -->
+                <h2 id="why-raii"><i class="fa-solid fa-circle-exclamation"></i> 왜 RAII인가</h2>
+                <p>수동 해제(<code>new/delete</code>, <code>fopen/fclose</code>) 코드의 문제점을 보자.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 안티 패턴 — 수동 해제
+ErrorCode ProcessFile(const char* path)
+{
+    FILE* fp = std::fopen(path, "rb");
+    if (!fp) return ErrorCode::FileOpenFailed;
+
+    char* buffer = new char[1024];
+
+    if (std::fread(buffer, 1, 1024, fp) != 1024)
+    {
+        delete[] buffer;     // 잊기 쉬움
+        std::fclose(fp);     // 잊기 쉬움
+        return ErrorCode::ReadFailed;
+    }
+
+    DoSomething(buffer);     // 여기서 예외가 던져지면 누수!
+
+    delete[] buffer;
+    std::fclose(fp);
+    return ErrorCode::Ok;
+}</code></pre>
+
+                <p>문제는 세 가지다.</p>
+                <ul>
+                    <li><strong>예외 누수</strong> — <code>DoSomething</code>이 예외를 던지면 <code>delete[]</code>와 <code>fclose</code>가 호출되지 않는다.</li>
+                    <li><strong>분기 누락</strong> — early return, break, goto가 늘어날 때마다 해제 코드를 매번 복제해야 한다.</li>
+                    <li><strong>가독성 저하</strong> — 본질 로직보다 정리 코드가 더 길어진다. <code>try/catch + finally</code> 흉내는 코드를 더럽힌다.</li>
+                </ul>
+
+                <p>RAII로 다시 쓰면 이렇다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">ErrorCode ProcessFile(const std::string&amp; path)
+{
+    std::ifstream file(path, std::ios::binary);  // 생성자가 open
+    if (!file) return ErrorCode::FileOpenFailed;
+
+    std::vector&lt;char&gt; buffer(1024);              // 자동 메모리 관리
+    file.read(buffer.data(), buffer.size());
+
+    DoSomething(buffer);  // 예외? 상관없다. 둘 다 알아서 정리됨.
+    return ErrorCode::Ok;
+}                          // 스코프 끝 — file, buffer 모두 자동 해제</code></pre>
+
+                <!-- 3. 표준 라이브러리 -->
+                <h2 id="stdlib-raii"><i class="fa-solid fa-book"></i> 표준 라이브러리의 RAII 예</h2>
+                <p>표준 라이브러리 자체가 RAII로 가득 차 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>도구</th><th>관리 리소스</th><th>비고</th></tr>
+                    <tr><td><code>std::unique_ptr</code></td><td>힙 메모리 (단독 소유)</td><td>이동 전용, 오버헤드 0</td></tr>
+                    <tr><td><code>std::shared_ptr</code></td><td>힙 메모리 (공유 소유)</td><td>참조 카운트 (원자적)</td></tr>
+                    <tr><td><code>std::lock_guard</code></td><td>뮤텍스</td><td>가장 단순, 이동 불가</td></tr>
+                    <tr><td><code>std::unique_lock</code></td><td>뮤텍스</td><td>지연 락/조건변수와 사용</td></tr>
+                    <tr><td><code>std::scoped_lock</code> (C++17)</td><td>뮤텍스 여러 개</td><td>데드락 방지 락 순서</td></tr>
+                    <tr><td><code>std::ifstream</code> / <code>ofstream</code></td><td>파일 핸들</td><td>소멸자에서 close</td></tr>
+                    <tr><td><code>std::thread</code></td><td>OS 스레드</td><td>join 안 하면 terminate (RAII 위반)</td></tr>
+                    <tr><td><code>std::jthread</code> (C++20)</td><td>OS 스레드</td><td>소멸자에서 자동 join + 협력 취소</td></tr>
+                    <tr><td><code>std::vector</code> / <code>string</code></td><td>힙 메모리</td><td>모든 STL 컨테이너가 RAII</td></tr>
+                </table>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>std::thread는 RAII 위반의 대표 사례</strong>
+                        스레드 객체가 소멸될 때 <code>join()</code>이나 <code>detach()</code>가 호출되지 않은 상태면 <code>std::terminate()</code>로 프로그램이 즉시 종료된다. C++20부터는 <code>std::jthread</code>를 쓰자. 소멸자에서 자동 join을 보장한다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 락 RAII — 가장 흔한 사용 예
+std::mutex mtx;
+
+void ThreadSafeIncrement(int&amp; counter)
+{
+    std::lock_guard&lt;std::mutex&gt; lock(mtx);  // 생성자: lock
+    ++counter;
+}                                            // 소멸자: unlock (예외 안전)</code></pre>
+
+                <!-- 4. 사용자 정의 -->
+                <h2 id="custom-raii"><i class="fa-solid fa-file"></i> 사용자 정의 RAII 클래스 만들기</h2>
+                <p>표준 라이브러리에 없는 리소스를 다룰 때는 직접 RAII 클래스를 만든다. 핵심 5가지를 모두 챙겨야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class FileHandle
+{
+public:
+    // 1. 생성자에서 리소스 획득
+    explicit FileHandle(const char* path, const char* mode)
+        : m_fp(std::fopen(path, mode))
+    {
+        if (!m_fp)
+        {
+            throw std::runtime_error("file open failed");
+        }
+    }
+
+    // 2. 소멸자에서 리소스 해제 (절대 throw 금지)
+    ~FileHandle()
+    {
+        if (m_fp)
+        {
+            std::fclose(m_fp);
+        }
+    }
+
+    // 3. 복사 금지 — 이중 close 방지
+    FileHandle(const FileHandle&amp;) = delete;
+    FileHandle&amp; operator=(const FileHandle&amp;) = delete;
+
+    // 4. 이동 지원 — 소유권 이전
+    FileHandle(FileHandle&amp;&amp; other) noexcept
+        : m_fp(other.m_fp)
+    {
+        other.m_fp = nullptr;
+    }
+
+    FileHandle&amp; operator=(FileHandle&amp;&amp; other) noexcept
+    {
+        if (this != &amp;other)
+        {
+            if (m_fp) std::fclose(m_fp);
+            m_fp = other.m_fp;
+            other.m_fp = nullptr;
+        }
+        return *this;
+    }
+
+    // 5. 원시 핸들 접근 (필요할 때만)
+    FILE* Get() const { return m_fp; }
+
+private:
+    FILE* m_fp;
+};</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>Rule of Zero / Rule of Five</strong>
+                        가능하면 멤버 전체를 RAII 타입으로 만들어 특수 멤버 함수를 하나도 정의하지 않는 게 최선이다(Rule of Zero). 직접 리소스를 들고 있어야 한다면 5개(소멸자, 복사 생성/대입, 이동 생성/대입)를 모두 정의하거나 명시적으로 <code>= delete</code>한다.
+                    </div>
+                </div>
+
+                <!-- 5. C 리소스 감싸기 -->
+                <h2 id="wrap-c"><i class="fa-solid fa-plug"></i> C 스타일 리소스 RAII로 감싸기</h2>
+                <p>산업 SDK는 거의 다 C API다. 카메라 핸들, GPU 메모리, OS 핸들 같은 것들을 RAII로 감싸야 한다.</p>
+
+                <h3 id="custom-deleter"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 빠른 방법: unique_ptr + custom deleter</h3>
+                <p>전용 클래스를 만들기 귀찮을 때, <code>std::unique_ptr</code>의 두 번째 템플릿 인자에 deleter를 지정하면 한 줄로 RAII가 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// FILE* 감싸기
+auto fileDeleter = [](FILE* fp) { if (fp) std::fclose(fp); };
+std::unique_ptr&lt;FILE, decltype(fileDeleter)&gt; file(
+    std::fopen("data.bin", "rb"), fileDeleter);
+
+// CUDA 메모리
+auto cudaDeleter = [](void* p) { if (p) cudaFree(p); };
+std::unique_ptr&lt;float, decltype(cudaDeleter)&gt; gpuBuf(
+    [] { float* p; cudaMalloc(&amp;p, 1024 * sizeof(float)); return p; }(),
+    cudaDeleter);
+
+// Windows HANDLE
+auto handleDeleter = [](HANDLE h)
+{
+    if (h &amp;&amp; h != INVALID_HANDLE_VALUE) CloseHandle(h);
+};
+std::unique_ptr&lt;void, decltype(handleDeleter)&gt; hFile(
+    CreateFile(L"file.txt", GENERIC_READ, 0, nullptr,
+               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr),
+    handleDeleter);</code></pre>
+
+                <h3 id="alias-template"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 카메라 핸들 예 (산업 SDK 컨텍스트)</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// Vieworks SDK 가정 — HCAM_OpenDevice / HCAM_Close
+struct CameraDeleter
+{
+    void operator()(CameraHandle* h) const noexcept
+    {
+        if (h) HCAM_Close(h);
+    }
+};
+
+using CameraPtr = std::unique_ptr&lt;CameraHandle, CameraDeleter&gt;;
+
+CameraPtr OpenCamera(int deviceId)
+{
+    CameraHandle* raw = nullptr;
+    if (HCAM_OpenDevice(deviceId, &amp;raw) != HCAM_OK)
+    {
+        return nullptr;
+    }
+    return CameraPtr(raw);  // 자동 close 보장
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>OpenCV 구버전 IplImage*</strong>
+                        legacy <code>IplImage*</code>를 다뤄야 한다면 <code>std::unique_ptr&lt;IplImage, decltype(&amp;cvReleaseImage)&gt;</code> 패턴을 쓰면 된다. 신규 코드는 <code>cv::Mat</code>이 이미 RAII이므로 신경 쓸 필요 없다.
+                    </div>
+                </div>
+
+                <!-- 6. scope guard -->
+                <h2 id="scope-guard"><i class="fa-solid fa-rotate-left"></i> scope guard 패턴</h2>
+                <p>매번 클래스를 만들기엔 과한 일회성 정리 작업이 있다. 이때 <strong>scope guard</strong>를 쓴다. 람다를 들고 있다가 소멸자에서 호출하는 임시 RAII 객체다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">template&lt;typename F&gt;
+class ScopeExit
+{
+public:
+    explicit ScopeExit(F&amp;&amp; f) : m_func(std::move(f)), m_active(true) {}
+    ~ScopeExit() { if (m_active) m_func(); }
+
+    ScopeExit(const ScopeExit&amp;) = delete;
+    ScopeExit&amp; operator=(const ScopeExit&amp;) = delete;
+
+    void Dismiss() noexcept { m_active = false; }
+
+private:
+    F m_func;
+    bool m_active;
+};
+
+template&lt;typename F&gt;
+ScopeExit&lt;F&gt; MakeScopeExit(F&amp;&amp; f)
+{
+    return ScopeExit&lt;F&gt;(std::forward&lt;F&gt;(f));
+}</code></pre>
+
+                <p>사용 예.</p>
+
+<pre class="language-cpp"><code class="language-cpp">void GrabFrame(CameraHandle* cam)
+{
+    HCAM_StartAcquisition(cam);
+    auto guard = MakeScopeExit([cam] { HCAM_StopAcquisition(cam); });
+
+    // 이후 어떤 경로로 빠져나가든 StopAcquisition 보장
+    if (!ReadFrame(cam)) return;
+    Process(cam);
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>표준화 동향</strong>
+                        Andrei Alexandrescu가 2000년에 처음 소개한 패턴이 표준 위원회까지 들어왔다. <code>std::experimental::scope_exit</code>(LFTS v3) 또는 Boost.Scope를 쓸 수 있다. 한 줄짜리 정리 작업에 매우 유용하다.
+                    </div>
+                </div>
+
+                <!-- 7. 예외 안전성 -->
+                <h2 id="exception-safety"><i class="fa-solid fa-shield"></i> 예외 안전성 보장 수준</h2>
+                <p>Abrahams가 정리한 세 가지 보장 수준이 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>수준</th><th>의미</th><th>달성 방법</th></tr>
+                    <tr><td><strong>basic</strong></td><td>예외 발생 시 누수 없음, 객체는 유효하지만 상태는 불명</td><td>RAII 사용 (출발점)</td></tr>
+                    <tr><td><strong>strong</strong></td><td>실패 시 호출 전 상태로 롤백 (트랜잭션 의미)</td><td>copy-and-swap idiom</td></tr>
+                    <tr><td><strong>no-throw</strong></td><td>절대 예외를 던지지 않음</td><td><code>noexcept</code> 함수, swap, 소멸자</td></tr>
+                </table>
+
+                <p>RAII는 <strong>basic 보장의 출발점</strong>이다. RAII 없이는 누수를 막을 수 없으므로 basic 보장조차 어렵다. strong 보장이 필요하면 copy-and-swap 패턴을 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// copy-and-swap idiom — strong 보장
+class Image
+{
+public:
+    Image&amp; operator=(Image other) noexcept  // 값으로 받음 → 복사 생성
+    {
+        Swap(*this, other);  // no-throw swap
+        return *this;
+    }                        // other 소멸자가 옛 리소스 정리
+
+    friend void Swap(Image&amp; a, Image&amp; b) noexcept
+    {
+        using std::swap;
+        swap(a.m_data, b.m_data);
+        swap(a.m_width, b.m_width);
+        swap(a.m_height, b.m_height);
+    }
+private:
+    std::unique_ptr&lt;uint8_t[]&gt; m_data;
+    int m_width;
+    int m_height;
+};</code></pre>
+
+                <!-- 8. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="dtor-throw"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 소멸자에서 예외 던지기</h3>
+                <p>C++11부터 소멸자는 기본적으로 <code>noexcept(true)</code>다. 소멸자에서 예외가 새어 나오면 <code>std::terminate()</code>가 호출돼 프로그램이 죽는다. 특히 stack unwinding 중에 또 예외가 던져지면 정의 동작이 보장되지 않는다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>소멸자에서 throw 금지</strong>
+                        실패할 수 있는 정리 작업이 있다면, 별도 <code>Close()</code> / <code>Commit()</code> 메서드를 두어 사용자가 명시적으로 호출하게 한다. 소멸자는 fallback으로 동작하되 예외를 잡아서 로깅만 하고 끝낸다.
+                    </div>
+                </div>
+
+                <h3 id="ctor-throw"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 생성자 도중 예외</h3>
+                <p>생성자가 도중에 예외를 던지면 <strong>해당 객체의 소멸자는 호출되지 않는다</strong>. 단, 이미 생성이 완료된 멤버들의 소멸자는 호출된다. 따라서 멤버 자체를 RAII 타입으로 두면 안전하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class Bad
+{
+    int* m_a;
+    int* m_b;
+public:
+    Bad()
+        : m_a(new int[100])
+        , m_b(new int[100])  // 여기서 throw → m_a 누수!
+    {}
+    ~Bad() { delete[] m_a; delete[] m_b; }
+};
+
+class Good
+{
+    std::vector&lt;int&gt; m_a;
+    std::vector&lt;int&gt; m_b;  // 여기서 throw → m_a는 자동 정리
+public:
+    Good() : m_a(100), m_b(100) {}
+};</code></pre>
+
+                <h3 id="thread-join"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> std::thread join 누락</h3>
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>스코프를 벗어나기 전에 반드시 join 또는 detach</strong>
+                        잊으면 소멸자에서 <code>terminate</code>다. C++20에서는 <code>std::jthread</code>로 해결됐으니 가능하면 그걸 쓰자.
+                    </div>
+                </div>
+
+                <h3 id="shallow-copy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 얕은 복사로 인한 이중 해제</h3>
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>RAII 클래스의 복사 정책을 명시하라</strong>
+                        포인터 멤버를 단순 복사하면 두 객체가 같은 리소스를 가리키고, 둘 다 소멸자에서 해제하려다 이중 해제로 크래시 난다. 복사를 막거나(<code>= delete</code>), 깊은 복사를 구현하거나, <code>shared_ptr</code>로 공유하라.
+                    </div>
+                </div>
+
+                <h3 id="static-order"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정적/전역 객체의 소멸 순서</h3>
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Static Initialization Order Fiasco</strong>
+                        번역 단위가 다른 전역 객체끼리는 생성/소멸 순서가 정의되지 않는다. 전역 Logger를 전역 Camera 소멸자에서 호출하면 이미 죽은 Logger를 만질 수 있다. Meyers의 함수 정적 객체(Construct on First Use)로 해결하자.
+                    </div>
+                </div>
+
+                <!-- 9. ImagingLib -->
+                <h2 id="imaginglib"><i class="fa-solid fa-camera"></i> ImagingLib 컨텍스트 적용 예</h2>
+                <p>ImagingLib에서 RAII가 어떻게 녹아드는지 간단히 보자.</p>
+
+                <h3 id="image-class"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Image 클래스 — CPU/GPU 메모리</h3>
+
+<pre class="language-cpp"><code class="language-cpp">class Image
+{
+public:
+    Image(int width, int height, PixelFormat fmt);
+    ~Image();  // CPU/GPU 메모리 모두 자동 해제
+
+    Image(const Image&amp;) = delete;             // 큰 이미지 실수 복사 방지
+    Image&amp; operator=(const Image&amp;) = delete;
+    Image(Image&amp;&amp;) noexcept;
+    Image&amp; operator=(Image&amp;&amp;) noexcept;
+
+    ErrorCode EnsureCpu();
+    ErrorCode EnsureGpu();
+    ErrorCode Clone(Image&amp; outImage) const;    // 명시적 복사
+
+private:
+    std::unique_ptr&lt;uint8_t[]&gt; m_cpuData;
+    void* m_gpuData;  // CUDA 메모리 — 소멸자에서 cudaFree
+    int m_width;
+    int m_height;
+};</code></pre>
+
+                <h3 id="camera-session"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CameraSession — Acquisition RAII</h3>
+
+<pre class="language-cpp"><code class="language-cpp">class CameraSession
+{
+public:
+    explicit CameraSession(Camera&amp; cam) : m_cam(cam)
+    {
+        m_cam.StartAcquisition();
+    }
+    ~CameraSession()
+    {
+        try { m_cam.StopAcquisition(); }
+        catch (...) { /* 로깅만, swallow */ }
+    }
+    CameraSession(const CameraSession&amp;) = delete;
+    CameraSession&amp; operator=(const CameraSession&amp;) = delete;
+private:
+    Camera&amp; m_cam;
+};
+
+// 사용 — 어떤 경로로 빠져나가도 StopAcquisition 보장
+void Capture(Camera&amp; cam)
+{
+    CameraSession session(cam);
+    cam.GrabFrame();
+}</code></pre>
+
+                <h3 id="callback-raii"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 에러 콜백 등록/해제 RAII</h3>
+
+<pre class="language-cpp"><code class="language-cpp">class ErrorCallbackScope
+{
+public:
+    ErrorCallbackScope(ErrorBus&amp; bus, ErrorCallback cb)
+        : m_bus(bus)
+        , m_token(bus.Register(std::move(cb)))
+    {}
+    ~ErrorCallbackScope() { m_bus.Unregister(m_token); }
+    ErrorCallbackScope(const ErrorCallbackScope&amp;) = delete;
+    ErrorCallbackScope&amp; operator=(const ErrorCallbackScope&amp;) = delete;
+private:
+    ErrorBus&amp; m_bus;
+    CallbackToken m_token;
+};</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>RAII 체크리스트</strong>
+                        새 리소스를 만질 때 자문하자. (1) 이 리소스를 들고 있는 객체의 소멸자는 자동으로 정리되는가? (2) 복사 정책은 명확한가? (3) 이동은 가능한가? (4) 생성 도중 실패해도 누수 없는가? 네 가지에 모두 "예"라고 답할 수 있으면 RAII가 제대로 적용된 것이다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — RAII, std::unique_ptr, std::lock_guard</li>
+                        <li>C++ Core Guidelines — R.1, R.5, R.11 (Resource management)</li>
+                        <li>Scott Meyers, "Effective C++" — Item 13: Use objects to manage resources</li>
+                        <li>Andrei Alexandrescu, "Modern C++ Design" — ScopeGuard 원형 패턴</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

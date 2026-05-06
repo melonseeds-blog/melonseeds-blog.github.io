@@ -48,6 +48,9 @@ const POST_NAV_DATA = {
         { file: 'cpp-optional-variant-any.html', title: 'std::optional / std::variant / std::any' },
         { file: 'cpp-smart-pointers.html', title: '스마트 포인터 깊이 보기' },
         { file: 'cpp-move-semantics.html', title: '이동 의미론(Move semantics)' },
+        { file: 'cpp-raii.html', title: 'RAII 패턴과 리소스 관리' },
+        { file: 'cpp-constexpr.html', title: 'constexpr와 컴파일 타임 계산' },
+        { file: 'cpp-thread-basics.html', title: 'C++ 스레드 기초' },
     ],
     'tech-halcon': [
         { file: 'halcon-sg1-00-overview.html', title: 'HALCON Solution Guide I 개요와 학습법' },

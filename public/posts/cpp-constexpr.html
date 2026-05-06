@@ -1,0 +1,587 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>constexpr와 컴파일 타임 계산 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why" data-section="why">왜 컴파일 타임</a>
+        <a href="#const-vs" data-section="const-vs">const vs constexpr</a>
+        <a href="#variables" data-section="variables">constexpr 변수</a>
+        <a href="#functions" data-section="functions">constexpr 함수</a>
+        <a href="#if-constexpr" data-section="if-constexpr">if constexpr</a>
+        <a href="#consteval" data-section="consteval">consteval</a>
+        <a href="#constinit" data-section="constinit">constinit</a>
+        <a href="#examples" data-section="examples">실용 예시</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#when" data-section="when">언제 쓸까</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++</span>
+                </div>
+                <h1>constexpr와 컴파일 타임 계산</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>컴파일 타임 계산이 주는 이점과 const/constexpr/consteval/constinit의 차이</li>
+                        <li>C++11부터 C++20까지 constexpr 함수의 발전 과정</li>
+                        <li>if constexpr로 템플릿 분기, consteval/constinit의 새로운 역할</li>
+                        <li>컴파일 타임 lookup table, 문자열 해싱 등 실전 예시</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">컴파일 타임 vs 런타임</a></li>
+                        <li><a href="#const-vs">const vs constexpr</a></li>
+                        <li><a href="#variables">constexpr 변수</a></li>
+                        <li><a href="#functions">constexpr 함수의 발전사</a></li>
+                        <li><a href="#if-constexpr">if constexpr — 컴파일 타임 분기</a></li>
+                        <li><a href="#consteval">consteval — 무조건 컴파일 타임</a></li>
+                        <li><a href="#constinit">constinit — 정적 초기화 강제</a></li>
+                        <li><a href="#examples">실용 예시</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#when">언제 constexpr를 추가할까</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 컴파일 타임 -->
+                <h2 id="why"><i class="fa-solid fa-clock-rotate-left"></i> 컴파일 타임 vs 런타임</h2>
+                <p>대부분의 코드는 런타임에 실행된다. 그런데 값이 이미 소스에 박혀 있다면 굳이 실행 시점에 계산할 필요가 없다. <strong>컴파일 시점에 미리 계산</strong>해 두면 다음과 같은 이점이 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>이점</th><th>설명</th></tr>
+                    <tr><td>런타임 비용 0</td><td>실행 파일에 결과 값만 박힌다. CPU 사이클을 쓰지 않는다.</td></tr>
+                    <tr><td>상수 표현식 문맥 사용</td><td>배열 크기, 템플릿 인자, <code>switch case</code>, <code>static_assert</code> 등 컴파일 타임 값이 필요한 곳에 쓸 수 있다.</td></tr>
+                    <tr><td>컴파일러 진단 강화</td><td>잘못된 입력은 빌드 에러로 잡힌다. 런타임 디버깅이 줄어든다.</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">constexpr int Square(int x) { return x * x; }
+
+int arr[Square(4)];                 // OK — 16짜리 배열
+static_assert(Square(5) == 25);     // 컴파일 타임 검증</code></pre>
+
+                <!-- 2. const vs constexpr -->
+                <h2 id="const-vs"><i class="fa-solid fa-code-compare"></i> const vs constexpr 차이</h2>
+                <p>둘 다 "변하지 않는다"는 뜻으로 보이지만 의미는 전혀 다르다.</p>
+
+                <table class="spec-table">
+                    <tr><th>키워드</th><th>의미</th><th>초기화 시점</th></tr>
+                    <tr><td><code>const</code></td><td>변수 값을 변경하지 못함</td><td>런타임 또는 컴파일 타임 모두 가능</td></tr>
+                    <tr><td><code>constexpr</code></td><td>컴파일 타임에 평가 가능</td><td>반드시 컴파일 타임에 결정</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">int GetValue();              // 런타임 함수
+
+const int a = GetValue();    // OK — 런타임 상수
+constexpr int b = GetValue(); // 에러 — 컴파일 타임에 알 수 없음
+
+const int c = 10;            // OK
+constexpr int d = 10;        // OK — 둘 다 컴파일 타임 상수</code></pre>
+
+                <p>함수에 붙는 의미도 다르다. <code>const</code>는 멤버 함수가 객체 상태를 바꾸지 않음을 뜻하지만, <code>constexpr</code>은 그 함수를 컴파일 타임에 호출할 수 있다는 뜻이다.</p>
+
+                <!-- 3. constexpr 변수 -->
+                <h2 id="variables"><i class="fa-solid fa-cube"></i> constexpr 변수</h2>
+                <p><code>constexpr</code> 변수는 반드시 컴파일 타임에 평가 가능한 값으로 초기화해야 한다. 한번 초기화되면 변경할 수 없다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">constexpr int kMaxImageWidth = 4096;
+constexpr double kPi = 3.14159265358979;
+constexpr const char* kAppName = "ImagingLib";</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>C++17부터 inline constexpr</strong>
+                        <code>constexpr</code> 변수는 암묵적으로 <code>inline</code> 속성을 가진다. 헤더에 정의해도 ODR 위반이 발생하지 않으므로, 헤더 only 라이브러리의 상수로 안심하고 사용할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 4. constexpr 함수 발전사 -->
+                <h2 id="functions"><i class="fa-solid fa-code-branch"></i> constexpr 함수의 발전사</h2>
+                <p><code>constexpr</code> 함수는 표준 개정마다 점점 더 많은 것을 허용해 왔다.</p>
+
+                <table class="spec-table">
+                    <tr><th>표준</th><th>허용 사항</th></tr>
+                    <tr><td>C++11</td><td>단 한 줄의 <code>return</code>문만. 지역 변수, <code>if</code>, 반복문 모두 금지.</td></tr>
+                    <tr><td>C++14</td><td>지역 변수, <code>if</code>/<code>switch</code>, <code>for</code>/<code>while</code> 모두 허용. 사실상 일반 함수처럼 작성 가능.</td></tr>
+                    <tr><td>C++17</td><td><code>constexpr</code> 람다, <code>if constexpr</code> 추가.</td></tr>
+                    <tr><td>C++20</td><td><code>virtual constexpr</code>, <code>try-catch</code>, 컴파일 타임 동적 할당, <code>std::vector</code>/<code>std::string</code> constexpr 지원.</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// C++11 — 재귀로만 가능
+constexpr int Factorial11(int n) {
+    return n &lt;= 1 ? 1 : n * Factorial11(n - 1);
+}
+
+// C++14 이후 — 자연스러운 반복문
+constexpr int Factorial14(int n) {
+    int result = 1;
+    for (int i = 2; i &lt;= n; ++i) {
+        result *= i;
+    }
+    return result;
+}</code></pre>
+
+                <!-- 5. if constexpr -->
+                <h2 id="if-constexpr"><i class="fa-solid fa-code-fork"></i> if constexpr — 컴파일 타임 분기</h2>
+                <p><code>if constexpr</code>는 조건이 컴파일 타임에 평가되며, 거짓인 가지는 <strong>컴파일조차 되지 않는다</strong>. 덕분에 한 함수 안에서 서로 다른 타입에 대해 호환되지 않는 코드를 사용할 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;type_traits&gt;
+#include &lt;iostream&gt;
+
+template&lt;class T&gt;
+void Print(T v)
+{
+    if constexpr (std::is_integral_v&lt;T&gt;)
+    {
+        std::cout &lt;&lt; "int: " &lt;&lt; v;
+    }
+    else if constexpr (std::is_floating_point_v&lt;T&gt;)
+    {
+        std::cout &lt;&lt; "float: " &lt;&lt; v;
+    }
+    else
+    {
+        std::cout &lt;&lt; "other";
+    }
+}</code></pre>
+
+                <p>C++17 이전에는 SFINAE나 함수 오버로드로 같은 효과를 내야 했지만, <code>if constexpr</code> 덕분에 코드가 훨씬 직관적이 된다.</p>
+
+                <!-- 6. consteval -->
+                <h2 id="consteval"><i class="fa-solid fa-bolt"></i> consteval — 무조건 컴파일 타임</h2>
+                <p><code>constexpr</code> 함수는 <strong>가능하면</strong> 컴파일 타임에 평가되고, 그렇지 않으면 런타임에 실행된다. 반면 C++20의 <code>consteval</code>은 반드시 컴파일 타임에 호출되어야 하며, 런타임에 호출하면 컴파일 에러가 난다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">consteval int Cube(int x) { return x * x * x; }
+
+constexpr int a = Cube(3);   // OK — 27
+
+int n = 4;
+int b = Cube(n);             // 에러 — 런타임 인자는 불가</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>consteval은 "즉시 함수(immediate function)"</strong>
+                        매크로의 타입 안전한 대체로 자주 쓴다. 전처리기 없이도 "반드시 컴파일 타임에 결과가 나오는" 동작을 강제할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 7. constinit -->
+                <h2 id="constinit"><i class="fa-solid fa-power-off"></i> constinit — 정적 초기화 강제</h2>
+                <p>C++20의 <code>constinit</code>은 정적/스레드 저장 기간 변수의 초기화를 컴파일 타임에 강제한다. <strong>static initialization order fiasco</strong>(여러 번역 단위 간 정적 변수 초기화 순서가 정의되지 않아 발생하는 버그)를 막는 도구다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">constexpr int ComputeFlag() { return 0xDEAD; }
+
+constinit int g_flag = ComputeFlag();  // 컴파일 타임 초기화 보장
+
+void Update()
+{
+    g_flag = 0xBEEF;   // OK — 런타임에 변경 가능
+}</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>키워드</th><th>컴파일 타임 평가</th><th>이후 변경</th></tr>
+                    <tr><td><code>const</code></td><td>선택</td><td>불가</td></tr>
+                    <tr><td><code>constexpr</code></td><td>강제</td><td>불가</td></tr>
+                    <tr><td><code>consteval</code></td><td>강제 (함수)</td><td>—</td></tr>
+                    <tr><td><code>constinit</code></td><td>초기화만 강제</td><td>가능</td></tr>
+                </table>
+
+                <!-- 8. 실용 예시 -->
+                <h2 id="examples"><i class="fa-solid fa-calculator"></i> 실용 예시</h2>
+
+                <h3 id="ex-fib"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 컴파일 타임 피보나치</h3>
+
+<pre class="language-cpp"><code class="language-cpp">constexpr long long Fib(int n)
+{
+    long long a = 0, b = 1;
+    for (int i = 0; i &lt; n; ++i)
+    {
+        long long t = a + b;
+        a = b;
+        b = t;
+    }
+    return a;
+}
+
+static_assert(Fib(10) == 55);
+static_assert(Fib(20) == 6765);</code></pre>
+
+                <h3 id="ex-lut"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 컴파일 타임 lookup table</h3>
+                <p>이미지 처리에서 자주 쓰는 감마 보정 테이블을 빌드 시점에 만들어 두면, 런타임 초기화 코드가 사라진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;array&gt;
+#include &lt;cmath&gt;
+
+constexpr std::array&lt;uint8_t, 256&gt; MakeGammaLut(double gamma)
+{
+    std::array&lt;uint8_t, 256&gt; lut{};
+    for (int i = 0; i &lt; 256; ++i)
+    {
+        // C++26 전까지 std::pow는 constexpr이 아니라 직접 구현 필요
+        double v = static_cast&lt;double&gt;(i) / 255.0;
+        double p = 1.0;
+        for (int k = 0; k &lt; 10; ++k) { p *= v; }   // 단순 근사
+        lut[i] = static_cast&lt;uint8_t&gt;(p * 255.0);
+    }
+    return lut;
+}
+
+constexpr auto kGammaLut = MakeGammaLut(2.2);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>lookup table은 constexpr의 단골 사용처</strong>
+                        픽셀 변환, CRC 테이블, 비트 카운트, 사인/코사인 근사 등 "처음 한 번만 만들면 되는" 데이터는 빌드 시점에 만들어 두면 메모리는 그대로 쓰면서 시작 시간을 줄일 수 있다.
+                    </div>
+                </div>
+
+                <h3 id="ex-hash"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 컴파일 타임 문자열 해싱 (FNV-1a)</h3>
+
+<pre class="language-cpp"><code class="language-cpp">constexpr uint32_t Fnv1a(const char* s)
+{
+    uint32_t h = 2166136261u;
+    while (*s)
+    {
+        h ^= static_cast&lt;uint8_t&gt;(*s++);
+        h *= 16777619u;
+    }
+    return h;
+}
+
+constexpr uint32_t kBlurId = Fnv1a("GaussianBlur");
+
+void Dispatch(uint32_t id)
+{
+    switch (id)
+    {
+        case Fnv1a("GaussianBlur"): /* ... */ break;
+        case Fnv1a("MedianFilter"): /* ... */ break;
+    }
+}</code></pre>
+
+                <!-- 9. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>constexpr 함수가 런타임 호출되는 것을 못 알아챈다</strong>
+                        <code>constexpr</code> 함수는 가능하면 컴파일 타임에 평가되지만, 인자가 런타임 값이면 조용히 런타임 함수로 동작한다. 반드시 컴파일 타임 평가를 보장하고 싶다면 결과를 <code>constexpr</code> 변수에 받거나 <code>consteval</code>로 선언한다.
+                    </div>
+                </div>
+
+                <ul>
+                    <li><code>constexpr</code> 함수 안에서 호출하는 모든 함수도 <code>constexpr</code>이어야 한다. 일반 라이브러리 함수를 무심코 부르면 컴파일 타임 평가가 깨진다.</li>
+                    <li><code>if (constexpr_var)</code>는 일반 런타임 분기다. <code>if constexpr (cond)</code>(공백 위치)와 혼동하면 의미가 완전히 달라진다.</li>
+                    <li><code>consteval</code> 함수는 함수 포인터로 받을 수 없다. 항상 즉시 호출되어야 한다.</li>
+                    <li>C++20부터 <code>std::vector</code>를 <code>constexpr</code> 컨텍스트에서 쓸 수 있지만, 결과 컨테이너 자체를 <code>constexpr</code> 변수로 보존할 수는 없다(런타임 힙으로 풀어줘야 한다).</li>
+                </ul>
+
+                <!-- 10. 언제 쓸까 -->
+                <h2 id="when"><i class="fa-solid fa-compass"></i> 언제 constexpr를 추가할까</h2>
+
+                <table class="spec-table">
+                    <tr><th>상황</th><th>권장</th></tr>
+                    <tr><td>헤더 only 라이브러리의 상수</td><td><code>inline constexpr</code> 변수</td></tr>
+                    <tr><td>입력이 종종 컴파일 타임에 알려진 수학 함수</td><td><code>constexpr</code> 함수</td></tr>
+                    <tr><td>매크로 대체 (반드시 컴파일 타임)</td><td><code>consteval</code> 함수</td></tr>
+                    <tr><td>전역 객체 초기화 순서가 걱정될 때</td><td><code>constinit</code></td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>모든 함수에 constexpr를 붙이지는 말자</strong>
+                        무분별한 <code>constexpr</code> 남용은 헤더 의존성을 늘리고 컴파일 시간을 증가시킨다. "컴파일 타임에 호출될 가능성이 실제로 있는" 함수에만 붙이는 것이 좋다.
+                    </div>
+                </div>
+
+                <p>요약하면 <code>constexpr</code>는 "런타임 비용을 빌드 시점으로 옮기는 도구"다. 잘 쓰면 성능과 안전성을 동시에 얻고, 잘못 쓰면 빌드만 느려진다. 새 코드에서는 상수와 순수 함수에 우선 적용하고, 필요할 때 <code>consteval</code>/<code>constinit</code>으로 의도를 더 강하게 표현하는 식으로 단계적으로 도입하면 된다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — constexpr specifier, consteval, constinit</li>
+                        <li>"C++ Templates: The Complete Guide" (Vandevoorde, Josuttis, Gregor)</li>
+                        <li>"Effective Modern C++" (Scott Meyers) — Item 15: constexpr</li>
+                        <li>ISO C++ Proposals: P1073 (consteval), P1143 (constinit), P0784 (constexpr containers)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
