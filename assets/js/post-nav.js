@@ -54,6 +54,9 @@ const POST_NAV_DATA = {
         { file: 'cpp-async-future.html', title: 'std::async / std::future / std::promise' },
         { file: 'cpp-packaged-task.html', title: 'std::packaged_task와 태스크 큐' },
         { file: 'cpp-thread-pool.html', title: '스레드 풀 직접 만들기' },
+        { file: 'cpp-coroutines.html', title: 'C++20 코루틴 입문' },
+        { file: 'cpp-atomic-memory-model.html', title: 'std::atomic과 C++ 메모리 모델' },
+        { file: 'cpp-false-sharing.html', title: 'false sharing과 캐시 라인' },
     ],
     'tech-halcon': [
         { file: 'halcon-sg1-00-overview.html', title: 'HALCON Solution Guide I 개요와 학습법' },

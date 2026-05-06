@@ -1,0 +1,697 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>std::atomic과 C++ 메모리 모델 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 동기화 다이어그램 */
+        .sync-diagram {
+            background: #0f172a; color: #cbd5e1; border-radius: 10px;
+            padding: 18px 22px; margin: 16px 0; font-size: 0.82rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.7;
+            border: 1px solid #1e293b; overflow-x: auto;
+        }
+        .sync-diagram .lbl { color: #94a3b8; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .sync-diagram .rel { color: #fb923c; }
+        .sync-diagram .acq { color: #34d399; }
+        .sync-diagram .arr { color: #f472b6; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why-atomic" data-section="why-atomic">왜 atomic인가</a>
+        <a href="#atomic-basic" data-section="atomic-basic">기본 사용법</a>
+        <a href="#memory-model" data-section="memory-model">메모리 모델</a>
+        <a href="#memory-order" data-section="memory-order">memory_order</a>
+        <a href="#acq-rel" data-section="acq-rel">acquire-release</a>
+        <a href="#cas" data-section="cas">CAS</a>
+        <a href="#lockfree" data-section="lockfree">lock-free</a>
+        <a href="#fence" data-section="fence">fence</a>
+        <a href="#guide" data-section="guide">선택 가이드</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#cpp20" data-section="cpp20">C++20</a>
+        <a href="#hardware" data-section="hardware">하드웨어</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>std::atomic과 C++ 메모리 모델</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>왜 단순 변수 대신 <code>std::atomic</code>이 필요한가 — 데이터 레이스의 본질</li>
+                        <li>C++11 메모리 모델: happens-before, synchronizes-with</li>
+                        <li><code>memory_order</code> 6종류와 acquire-release 페어 동기화 패턴</li>
+                        <li>Compare-And-Swap(CAS)와 lock-free 자료구조 맛보기</li>
+                        <li>C++20 추가 기능과 x86 vs ARM 하드웨어 메모리 모델</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-atomic">왜 atomic인가</a></li>
+                        <li><a href="#atomic-basic">std::atomic 기본 사용법</a></li>
+                        <li><a href="#memory-model">데이터 레이스와 메모리 모델</a></li>
+                        <li><a href="#memory-order">memory_order 6종류</a></li>
+                        <li><a href="#acq-rel">acquire-release 페어 동기화</a></li>
+                        <li><a href="#cas">Compare-And-Swap (CAS)</a></li>
+                        <li><a href="#lockfree">lock-free 자료구조 맛보기</a></li>
+                        <li><a href="#fence">memory fence</a></li>
+                        <li><a href="#guide">언제 어떤 memory_order를 쓸까</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#cpp20">C++20 추가 기능</a></li>
+                        <li><a href="#hardware">하드웨어 관점</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 atomic인가 -->
+                <h2 id="why-atomic"><i class="fa-solid fa-atom"></i> 왜 atomic인가</h2>
+                <p>두 스레드가 같은 변수 <code>counter</code>를 동시에 증가시키면 어떤 일이 벌어질까. 단순한 <code>counter++</code>도 사실은 <strong>읽기 → 더하기 → 쓰기</strong>의 세 단계로 쪼개진다. 두 스레드가 같은 시점에 같은 값을 읽고 똑같이 +1 하면 결과는 +2가 아니라 +1이 된다. 이것이 <strong>데이터 레이스(data race)</strong>다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int counter = 0;
+
+// 스레드 A, B가 동시에 실행
+void Worker()
+{
+    for (int i = 0; i &lt; 100000; ++i)
+        counter++;  // read-modify-write, 데이터 레이스
+}
+// 기대값: 200000, 실제 결과: 매번 다름</code></pre>
+
+                <p>해결책은 두 가지다. 첫째는 <code>std::mutex</code>로 감싸는 것이고, 둘째는 <code>std::atomic</code>을 쓰는 것이다. 단일 변수에 대한 단순 연산이라면 mutex는 과한 비용이다. 일반적으로 mutex 락/언락은 수십 ns에서 수백 ns가 들지만, atomic은 하드웨어 명령 한두 개로 끝나 수 ns 수준이다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방식</th><th>비용</th><th>적용 범위</th></tr>
+                    <tr><td>std::mutex</td><td>수십~수백 ns</td><td>여러 변수, 복잡한 임계 영역</td></tr>
+                    <tr><td>std::atomic</td><td>수 ns</td><td>단일 변수의 원자적 연산</td></tr>
+                    <tr><td>아무것도 안 함</td><td>0 ns</td><td>UB (정의되지 않은 동작)</td></tr>
+                </table>
+
+                <!-- 2. atomic 기본 -->
+                <h2 id="atomic-basic"><i class="fa-solid fa-cube"></i> std::atomic 기본 사용법</h2>
+                <p><code>&lt;atomic&gt;</code> 헤더에 정의되어 있고 임의의 trivially-copyable 타입을 감쌀 수 있다. 정수/포인터 같은 기본 타입은 하드웨어 atomic 명령으로 구현된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;atomic&gt;
+
+std::atomic&lt;int&gt; counter{0};
+
+counter.fetch_add(1);             // +1, 이전 값 반환
+counter.fetch_sub(1);             // -1
+counter.load();                   // 읽기
+counter.store(42);                // 쓰기
+counter.exchange(100);            // 교체, 이전 값 반환
+
+int expected = 100;
+counter.compare_exchange_weak(expected, 200);  // CAS
+
+// 연산자 오버로드도 가능
+++counter;
+counter += 1;
+int x = counter;  // 암묵적 load</code></pre>
+
+                <h3 id="lock-free-check"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> lock-free 여부 확인</h3>
+                <p>모든 <code>std::atomic&lt;T&gt;</code>가 진짜 락 없이 구현되는 것은 아니다. 큰 구조체를 감싸면 내부에서 mutex를 쓸 수도 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::atomic&lt;int&gt; a;
+std::atomic&lt;LargeStruct&gt; b;
+
+a.is_lock_free();                                  // 런타임 체크 (보통 true)
+std::atomic&lt;int&gt;::is_always_lock_free;             // 컴파일타임 상수 (true/false)
+std::atomic&lt;LargeStruct&gt;::is_always_lock_free;     // 보통 false</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>is_always_lock_free를 우선 확인하자</strong>
+                        <code>static_assert(std::atomic&lt;T&gt;::is_always_lock_free)</code>로 컴파일 시점에 보장할 수 있다. lock-free가 아니면 atomic의 의미가 퇴색된다.
+                    </div>
+                </div>
+
+                <!-- 3. 메모리 모델 -->
+                <h2 id="memory-model"><i class="fa-solid fa-scale-balanced"></i> 데이터 레이스와 메모리 모델</h2>
+                <p>C++11부터 표준은 <strong>메모리 모델</strong>을 명시적으로 정의한다. 핵심 두 관계만 이해하면 된다.</p>
+
+                <h3 id="happens-before"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> happens-before</h3>
+                <p>연산 A가 연산 B보다 happens-before 관계라면, A의 효과가 B에서 반드시 보인다. 같은 스레드 안에서 코드 순서는 그대로 happens-before다(프로그램 순서). 스레드 사이에서는 <strong>동기화 지점</strong>을 거쳐야만 happens-before가 성립한다.</p>
+
+                <h3 id="synchronizes-with"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> synchronizes-with</h3>
+                <p>한 스레드의 release 연산이 다른 스레드의 acquire 연산과 짝을 이루면 <strong>synchronizes-with</strong> 관계가 성립한다. 이 지점을 통해 스레드 간 happens-before가 전파된다. mutex의 unlock-lock도, atomic의 release-acquire도 모두 이 메커니즘이다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>데이터 레이스는 곧 UB다 — 예외 없음</strong>
+                        한 스레드가 비-atomic 변수에 쓰는 동안 다른 스레드가 그 변수를 읽거나 쓰면 <strong>Undefined Behavior</strong>다. "운 좋게 되는 경우"란 없다. 컴파일러는 데이터 레이스가 없다고 가정하고 최적화하므로, 결과가 어떻게 망가질지 예측할 수 없다.
+                    </div>
+                </div>
+
+                <!-- 4. memory_order -->
+                <h2 id="memory-order"><i class="fa-solid fa-arrows-up-down"></i> memory_order 6종류</h2>
+                <p>모든 atomic 연산은 두 번째 인자로 <code>std::memory_order</code>를 받는다. 생략하면 가장 강한 <code>seq_cst</code>가 기본값이다.</p>
+
+                <table class="spec-table">
+                    <tr><th>memory_order</th><th>의미</th><th>비용</th></tr>
+                    <tr><td><code>seq_cst</code></td><td>모든 스레드가 동일한 전역 순서 관찰</td><td>가장 비쌈</td></tr>
+                    <tr><td><code>acquire</code></td><td>이 load 이후 코드가 위로 올라가지 못함</td><td>중간</td></tr>
+                    <tr><td><code>release</code></td><td>이 store 이전 코드가 아래로 내려가지 못함</td><td>중간</td></tr>
+                    <tr><td><code>acq_rel</code></td><td>RMW 연산용 — acquire + release</td><td>중간</td></tr>
+                    <tr><td><code>consume</code></td><td>데이터 의존성 기반 acquire (사실상 폐기)</td><td>이론상 저렴</td></tr>
+                    <tr><td><code>relaxed</code></td><td>원자성만 보장, 순서 제약 없음</td><td>가장 저렴</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>memory_order_consume은 쓰지 말자</strong>
+                        의도와 달리 모든 주류 컴파일러가 내부적으로 acquire로 처리한다. 표준위원회도 재정의를 논의 중이다. 명시적으로 <code>acquire</code>를 사용하자.
+                    </div>
+                </div>
+
+                <!-- 5. acquire-release -->
+                <h2 id="acq-rel"><i class="fa-solid fa-arrows-left-right"></i> acquire-release 페어 동기화</h2>
+                <p>이 패턴이 atomic 학습의 절반이다. producer가 데이터를 준비한 뒤 플래그를 <strong>release</strong>로 켜면, 그 플래그를 <strong>acquire</strong>로 본 consumer는 producer가 플래그 이전에 한 모든 쓰기를 볼 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::atomic&lt;bool&gt; ready{false};
+int data = 0;  // 비-atomic이지만 안전
+
+// Producer 스레드
+void Produce()
+{
+    data = 42;                                       // (1)
+    ready.store(true, std::memory_order_release);    // (2)
+}
+
+// Consumer 스레드
+void Consume()
+{
+    while (!ready.load(std::memory_order_acquire))   // (3)
+        ;
+    std::cout &lt;&lt; data;                              // (4) 반드시 42
+}</code></pre>
+
+                <div class="sync-diagram">
+<span class="lbl">Producer</span>                          <span class="lbl">Consumer</span>
+data = 42         <span class="arr">(1)</span>
+                                          while (!ready.load(<span class="acq">acquire</span>))  <span class="arr">(3)</span>
+ready.store(<span class="rel">release</span>) <span class="arr">(2)</span>  <span class="arr">~~~~~&gt;</span>
+                                          read data         <span class="arr">(4)</span>  ← 42 보장
+
+<span class="lbl">관계:</span> (1) <span class="arr">happens-before</span> (2) <span class="arr">synchronizes-with</span> (3) <span class="arr">happens-before</span> (4)
+                </div>
+
+                <p>핵심은 (2)의 release가 (3)의 acquire와 페어를 이뤄 (1)의 결과가 (4)까지 전파되는 것이다. 이 다리가 없으면 (4)에서 <code>data</code>가 0으로 보일 수도 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>release는 "위쪽 쓰기를 모두 발행", acquire는 "아래쪽 읽기를 모두 수령"</strong>
+                        외향(outgoing)/내향(incoming) 데이터의 봉인 같은 비유로 기억하면 편하다. release 위의 쓰기들이 봉인되어 흘러가고, acquire 아래에서 풀린다.
+                    </div>
+                </div>
+
+                <!-- 6. CAS -->
+                <h2 id="cas"><i class="fa-solid fa-rotate"></i> Compare-And-Swap (CAS)</h2>
+                <p>CAS는 lock-free 알고리즘의 가장 중요한 빌딩 블록이다. "값이 expected와 같으면 desired로 바꾸고, 아니면 expected에 현재 값을 채워준다"는 한 번의 원자 연산이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::atomic&lt;int&gt; value{0};
+
+int expected = 0;
+bool ok = value.compare_exchange_weak(expected, 10);
+// value == 0 이었으면: value=10, expected 그대로 0, ok=true
+// value != 0 이었으면: value 그대로, expected에 현재값 들어감, ok=false</code></pre>
+
+                <h3 id="cas-loop"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CAS 루프 — 사용자 정의 RMW</h3>
+                <p>CAS는 보통 루프로 쓴다. fetch_add처럼 단순 연산이 아닌, 복잡한 갱신 로직을 원자적으로 수행할 때 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 현재 값을 읽어 두 배로 만드는 원자 연산
+std::atomic&lt;int&gt; v{1};
+
+int cur = v.load(std::memory_order_relaxed);
+while (!v.compare_exchange_weak(
+           cur, cur * 2,
+           std::memory_order_acq_rel,
+           std::memory_order_relaxed))
+{
+    // 실패 시 cur에 현재 값이 자동으로 들어와 있음
+}</code></pre>
+
+                <h3 id="weak-strong"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> weak vs strong</h3>
+                <table class="spec-table">
+                    <tr><th>버전</th><th>특징</th><th>권장 사용처</th></tr>
+                    <tr><td><code>compare_exchange_weak</code></td><td>spurious failure 허용 (값이 같아도 실패할 수 있음)</td><td>CAS 루프 — 어차피 다시 돔</td></tr>
+                    <tr><td><code>compare_exchange_strong</code></td><td>spurious failure 없음</td><td>단발성 CAS — 한 번 성공/실패 판단</td></tr>
+                </table>
+
+                <!-- 7. lock-free -->
+                <h2 id="lockfree"><i class="fa-solid fa-bolt"></i> lock-free 자료구조 맛보기</h2>
+
+                <h3 id="lf-counter"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> lock-free 카운터</h3>
+                <p>다른 스레드와 데이터 동기화가 필요 없는 단순 카운터라면 <code>relaxed</code>로 충분하다. 누적된 총합만 정확하면 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::atomic&lt;uint64_t&gt; hitCount{0};
+
+void OnRequest()
+{
+    hitCount.fetch_add(1, std::memory_order_relaxed);
+}
+
+uint64_t Read()
+{
+    return hitCount.load(std::memory_order_relaxed);
+}</code></pre>
+
+                <h3 id="lf-flag"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> lock-free 플래그 (스피너)</h3>
+                <p>한 스레드가 다른 스레드에 "준비됨" 신호를 보내려면 release/acquire가 필요하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::atomic_flag started = ATOMIC_FLAG_INIT;
+
+// 시작 알림
+started.test_and_set(std::memory_order_release);
+
+// 시작 대기
+while (!started.test(std::memory_order_acquire))
+    ;</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>본격적인 lock-free 큐/스택은 매우 어렵다</strong>
+                        ABA 문제, 메모리 회수(hazard pointer, RCU), false sharing 등 복합적인 문제가 얽힌다. 검증된 라이브러리(<code>boost::lockfree</code>, <code>moodycamel::ConcurrentQueue</code>) 사용을 권장한다. 직접 구현은 충분한 학습과 검증 후에 시도하자.
+                    </div>
+                </div>
+
+                <!-- 8. fence -->
+                <h2 id="fence"><i class="fa-solid fa-bars-staggered"></i> memory fence</h2>
+                <p><code>std::atomic_thread_fence</code>는 변수에 묶이지 않은 순수 순서 제약이다. 여러 비-atomic 쓰기를 한꺼번에 게이트로 감싸고 싶을 때 사용한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int a = 0, b = 0;
+std::atomic&lt;bool&gt; flag{false};
+
+// Producer
+a = 1;
+b = 2;
+std::atomic_thread_fence(std::memory_order_release);
+flag.store(true, std::memory_order_relaxed);
+
+// Consumer
+while (!flag.load(std::memory_order_relaxed))
+    ;
+std::atomic_thread_fence(std::memory_order_acquire);
+// 이 시점에 a=1, b=2 확정</code></pre>
+
+                <p>실무에서는 atomic 연산 자체에 memory_order를 붙이는 편이 더 명확하다. fence는 라이브러리 내부 구현이나 특수 패턴에서만 등장한다.</p>
+
+                <!-- 9. 가이드 -->
+                <h2 id="guide"><i class="fa-solid fa-compass"></i> 언제 어떤 memory_order를 쓸까</h2>
+
+                <table class="spec-table">
+                    <tr><th>상황</th><th>권장 order</th><th>비고</th></tr>
+                    <tr><td>잘 모르겠음</td><td><code>seq_cst</code></td><td>기본값, 가장 안전</td></tr>
+                    <tr><td>단순 카운터/통계</td><td><code>relaxed</code></td><td>합계만 정확하면 됨</td></tr>
+                    <tr><td>producer 데이터 준비 → consumer 확인</td><td><code>release</code> / <code>acquire</code></td><td>가장 흔한 패턴</td></tr>
+                    <tr><td>CAS 루프 (lock-free RMW)</td><td><code>acq_rel</code> / <code>relaxed</code> (실패)</td><td>성공 시 acq_rel, 실패 시 relaxed</td></tr>
+                    <tr><td>참조 카운트 감소</td><td><code>acq_rel</code> 또는 <code>release</code> + fence</td><td>shared_ptr 패턴</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>의심스러우면 seq_cst</strong>
+                        Herb Sutter의 조언이다. <code>relaxed</code>로 성능을 짜내는 건 프로파일링 후에 해도 늦지 않다. 잘못된 <code>relaxed</code>는 디버깅이 거의 불가능하다.
+                    </div>
+                </div>
+
+                <!-- 10. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>큰 구조체의 atomic은 lock-free가 아니다</strong>
+                        <code>std::atomic&lt;LargeStruct&gt;</code>는 내부적으로 mutex를 쓸 수 있다. <code>is_always_lock_free</code>로 반드시 확인하자.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>relaxed 남용은 데이터 손실을 부른다</strong>
+                        producer가 데이터를 쓰고 플래그를 <code>relaxed</code>로 store하면, consumer가 플래그를 본 뒤에도 데이터가 안 보일 수 있다. 동기화 의도가 있다면 반드시 release/acquire를 쓰자.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>volatile ≠ atomic</strong>
+                        <code>volatile</code>은 컴파일러 최적화를 막을 뿐이다. 멀티스레드 동기화 보장은 전혀 없다. 메모리 매핑 I/O용이지 스레드용이 아니다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>shared_ptr의 <em>참조 카운트</em>는 atomic, <em>포인터 자체</em>는 atomic이 아니다</strong>
+                        여러 스레드가 같은 <code>shared_ptr</code> 객체에 동시에 reset/대입하면 데이터 레이스다. 각자 복사본을 가지면 안전하지만, <strong>공유된 한 인스턴스를 동시에 수정</strong>하는 건 위험하다. C++20 이전에는 <code>std::atomic_load(&amp;sp)</code> 자유함수를, C++20부터는 <code>std::atomic&lt;std::shared_ptr&lt;T&gt;&gt;</code>를 쓰자.
+                    </div>
+                </div>
+
+                <!-- 11. C++20 -->
+                <h2 id="cpp20"><i class="fa-solid fa-star"></i> C++20 추가 기능</h2>
+
+                <h3 id="atomic-ref"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> std::atomic_ref</h3>
+                <p>일반 변수에 임시로 atomic 인터페이스를 부여한다. 기존 자료구조를 바꾸지 않고 일부 시점에만 atomic 접근이 필요할 때 유용하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int rawCounter = 0;
+
+void Worker()
+{
+    std::atomic_ref&lt;int&gt; ref(rawCounter);
+    ref.fetch_add(1, std::memory_order_relaxed);
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>atomic_ref가 가리키는 동안엔 비-atomic 접근 금지</strong>
+                        같은 객체를 한쪽에선 raw로, 한쪽에선 atomic_ref로 접근하면 데이터 레이스다. 모든 동시 접근이 atomic_ref를 거쳐야 한다.
+                    </div>
+                </div>
+
+                <h3 id="atomic-shared-ptr"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> std::atomic&lt;std::shared_ptr&lt;T&gt;&gt;</h3>
+                <p>표준이 atomic shared_ptr을 직접 지원한다. 내부적으로 split reference count 같은 기법을 쓰며, lock-free일 수도 있고 아닐 수도 있다.</p>
+
+                <h3 id="wait-notify"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> wait/notify</h3>
+                <p>atomic도 condition variable처럼 동작한다. 내부적으로 OS의 futex 같은 메커니즘을 사용하므로 스피닝보다 효율적이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::atomic&lt;bool&gt; ready{false};
+
+// 대기 스레드
+ready.wait(false);  // ready != false가 될 때까지 블록
+
+// 알림 스레드
+ready.store(true);
+ready.notify_one();</code></pre>
+
+                <!-- 12. 하드웨어 -->
+                <h2 id="hardware"><i class="fa-solid fa-microchip"></i> 하드웨어 관점</h2>
+                <p>같은 <code>memory_order</code> 코드라도 CPU 아키텍처에 따라 생성되는 명령어가 완전히 다르다.</p>
+
+                <table class="spec-table">
+                    <tr><th>아키텍처</th><th>메모리 모델</th><th>acquire/release 비용</th></tr>
+                    <tr><td>x86 / x64</td><td>강함 (TSO)</td><td>relaxed와 거의 같음 (대부분 무료)</td></tr>
+                    <tr><td>ARM / AArch64</td><td>약함</td><td>실제로 메모리 배리어 명령 추가</td></tr>
+                    <tr><td>PowerPC</td><td>매우 약함</td><td>더 무거운 배리어 필요</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>x86에서 잘 돌아도 ARM에서 깨질 수 있다</strong>
+                        x86은 release/acquire 시맨틱을 거의 공짜로 제공하므로 잘못된 <code>relaxed</code>도 운 좋게 돌아간다. 같은 코드를 ARM 서버나 Apple Silicon에 옮기면 엉뚱하게 동작한다. <strong>코드는 표준이 보장하는 메모리 모델 기준으로</strong> 작성하자. 실제 배리어가 박힌 ARM에서도 정확해야 한다.
+                    </div>
+                </div>
+
+                <p>정리하면, atomic은 단순한 "락 없는 변수"가 아니라 <strong>메모리 모델 위에서 동작하는 동기화 프리미티브</strong>다. 단일 변수 카운터로 시작해서 release/acquire 페어로 데이터 전달, CAS 루프로 lock-free RMW까지 단계적으로 익히면 된다. 그 너머의 본격 lock-free 자료구조는 다음 글에서 다룰 주제다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — std::atomic, std::memory_order</li>
+                        <li>Anthony Williams, <em>C++ Concurrency in Action</em> — Ch.5 The C++ memory model and operations on atomic types</li>
+                        <li>Herb Sutter, <em>atomic&lt;&gt; Weapons: The C++ Memory Model and Modern Hardware</em> (C++ and Beyond 2012 강의)</li>
+                        <li>Preshing on Programming — preshing.com (메모리 모델 시리즈)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,620 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>false sharing과 캐시 라인 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* spec-table */
+        table.spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        table.spec-table th, table.spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+        table.spec-table th { background: var(--primary-50); font-weight: 700; color: var(--primary-dark); }
+
+        /* 캐시 라인 다이어그램 */
+        .cache-diagram {
+            background: #f8fafc; border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px; margin: 16px 0; font-family: 'Consolas', 'D2Coding', monospace;
+            font-size: 0.85rem; line-height: 1.7; color: #334155; overflow-x: auto;
+        }
+        .cache-diagram .cl-row { display: flex; gap: 0; margin: 8px 0; }
+        .cache-diagram .cl-cell {
+            flex: 1; padding: 12px 8px; text-align: center;
+            border: 2px solid #94a3b8; background: #fff;
+            font-weight: 600;
+        }
+        .cache-diagram .cl-cell.dirty { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
+        .cache-diagram .cl-cell.invalid { background: #fef3c7; border-color: #d97706; color: #92400e; }
+        .cache-diagram .cl-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
+        .cache-diagram .cl-caption { font-size: 0.8rem; color: #475569; margin-top: 6px; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#cache-basics" data-section="cache-basics">CPU 캐시</a>
+        <a href="#what-is-fs" data-section="what-is-fs">false sharing</a>
+        <a href="#patterns" data-section="patterns">발생 패턴</a>
+        <a href="#diagnose" data-section="diagnose">진단</a>
+        <a href="#avoid" data-section="avoid">회피</a>
+        <a href="#true-sharing" data-section="true-sharing">true sharing</a>
+        <a href="#benchmark" data-section="benchmark">벤치마크</a>
+        <a href="#imaging" data-section="imaging">이미지 처리 적용</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+        <a href="#beyond" data-section="beyond">캐시 친화 기법</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>false sharing과 캐시 라인 — 멀티스레드 성능 함정</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>CPU 캐시 계층과 캐시 라인(64 byte) 단위 동작</li>
+                        <li>false sharing의 원리 — 데이터 의존성 없이 캐시 일관성 트래픽으로 폭사</li>
+                        <li>패딩, <code>alignas</code>, 스레드 지역 변수로 회피하는 방법</li>
+                        <li>true sharing과의 차이, 이미지 처리에서의 적용 패턴</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#cache-basics">CPU 캐시 기본</a></li>
+                        <li><a href="#what-is-fs">false sharing이란</a></li>
+                        <li><a href="#patterns">전형적 발생 패턴</a></li>
+                        <li><a href="#diagnose">진단 방법</a></li>
+                        <li><a href="#avoid">회피 방법</a></li>
+                        <li><a href="#true-sharing">true sharing과 cache friendly</a></li>
+                        <li><a href="#benchmark">벤치마크 예시</a></li>
+                        <li><a href="#imaging">이미지 처리 적용</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#beyond">다른 캐시 친화 기법</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. CPU 캐시 -->
+                <h2 id="cache-basics"><i class="fa-solid fa-microchip"></i> CPU 캐시 기본</h2>
+                <p>현대 CPU는 메인 메모리(RAM)가 너무 느리기 때문에 코어 안에 작고 빠른 메모리를 두고 데이터를 임시로 보관한다. 이게 캐시다. 보통 L1 / L2 / L3 세 단계로 계층화되어 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>계층</th><th>크기 (대략)</th><th>접근 비용 (사이클)</th><th>특징</th></tr>
+                    <tr><td>레지스터</td><td>수십 byte</td><td>0</td><td>코어 내부, 즉시 사용</td></tr>
+                    <tr><td>L1 캐시</td><td>32~64 KB</td><td>3~5</td><td>코어별 전용</td></tr>
+                    <tr><td>L2 캐시</td><td>256 KB ~ 1 MB</td><td>10~15</td><td>코어별 또는 소수 코어 공유</td></tr>
+                    <tr><td>L3 캐시</td><td>수~수십 MB</td><td>30~50</td><td>모든 코어 공유</td></tr>
+                    <tr><td>메인 메모리</td><td>수 GB</td><td>200~300</td><td>매우 느림</td></tr>
+                </table>
+
+                <p>핵심은 캐시가 <strong>캐시 라인(cache line)</strong>이라는 단위로 메모리를 읽고 쓴다는 점이다. 보통 64 byte다. 단 1 byte를 읽어도 그 byte가 속한 64 byte 라인 전체가 캐시에 올라온다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>캐시 일관성 — MESI 프로토콜</strong>
+                        멀티코어 시스템에서 같은 메모리 영역이 여러 코어 캐시에 동시에 존재할 수 있다. MESI는 각 캐시 라인의 상태를 Modified / Exclusive / Shared / Invalid 네 가지로 추적해 일관성을 유지한다. 한 코어가 라인을 수정하면 다른 코어가 가진 같은 라인은 Invalid로 떨어지고, 다음 접근 시 다시 가져와야 한다.
+                    </div>
+                </div>
+
+                <!-- 2. false sharing이란 -->
+                <h2 id="what-is-fs"><i class="fa-solid fa-memory"></i> false sharing이란</h2>
+                <p>서로 다른 스레드가 <strong>서로 다른 변수</strong>를 수정하는데, 그 변수들이 우연히 <strong>같은 캐시 라인</strong>에 있어 발생하는 성능 함정이다. 데이터 의존성이 전혀 없는데도 캐시 일관성 프로토콜이 그 라인을 계속 코어 사이로 옮기느라 폭주한다.</p>
+
+                <p>흐름은 이렇게 된다.</p>
+                <ol>
+                    <li>스레드 1이 코어 A에서 변수 X를 수정 → 라인이 A의 캐시에 Modified 상태로 들어간다.</li>
+                    <li>스레드 2가 코어 B에서 같은 라인의 변수 Y를 수정하려 함 → A의 라인은 Invalid가 되고, B가 라인을 가져간다.</li>
+                    <li>다시 스레드 1이 X를 수정 → B의 라인이 Invalid가 되고 A가 다시 가져온다.</li>
+                    <li>이 핑퐁이 반복되면서 사실상 매번 캐시 미스가 발생한다.</li>
+                </ol>
+
+                <div class="cache-diagram">
+                    <div class="cl-label">캐시 라인 64 byte (int 4개, 16 byte 정렬 가정 시 c[0]~c[3])</div>
+                    <div class="cl-row">
+                        <div class="cl-cell dirty">c[0]<br><span style="font-size:0.7rem; font-weight:400;">스레드 1 수정</span></div>
+                        <div class="cl-cell invalid">c[1]<br><span style="font-size:0.7rem; font-weight:400;">스레드 2 읽기 → invalid</span></div>
+                        <div class="cl-cell">c[2]</div>
+                        <div class="cl-cell">c[3]</div>
+                    </div>
+                    <div class="cl-caption">스레드 1이 c[0]을 수정하면 라인 전체가 dirty가 된다. 스레드 2가 자기 변수 c[1]만 읽으려 해도 같은 라인이라 invalid 상태에서 다시 가져와야 한다.</div>
+                </div>
+
+                <p>결과적으로 스레드 수를 늘리면 빨라져야 할 작업이 오히려 느려진다. 수십 배 차이가 나는 경우도 흔하다.</p>
+
+                <!-- 3. 발생 패턴 -->
+                <h2 id="patterns"><i class="fa-solid fa-bug"></i> 전형적 발생 패턴</h2>
+                <p>가장 흔한 패턴은 스레드별 카운터를 배열로 인접하게 배치하는 경우다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁜 예 — 인접한 카운터들이 같은 캐시 라인에 들어간다
+struct Counters
+{
+    int c[8];  // int 8개 = 32 byte → 같은 64 byte 라인 안에 모두 들어감
+};
+
+Counters g_counters;
+
+void Worker(int tid)
+{
+    for (int i = 0; i &lt; 1'000'000; ++i)
+    {
+        g_counters.c[tid] += 1;  // 각 스레드가 자기 인덱스만 증가
+    }
+}</code></pre>
+
+                <p>겉보기에는 각 스레드가 완전히 독립된 변수를 다루지만, <code>c[0]</code>부터 <code>c[7]</code>까지 모두 같은 캐시 라인에 있어 스레드끼리 라인을 핑퐁하게 된다.</p>
+
+                <!-- 4. 진단 방법 -->
+                <h2 id="diagnose"><i class="fa-solid fa-magnifying-glass-chart"></i> 진단 방법</h2>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>의심 단서 — 스레드 수 늘렸는데 안 빨라진다</strong>
+                        병렬화 가능한 작업인데 스레드 1개로 돌렸을 때보다 8개로 돌렸을 때가 오히려 느리거나 비슷하면 false sharing을 강하게 의심해야 한다. CPU 사용률은 높은데 throughput이 안 나온다면 거의 확실하다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>측정 도구</strong>
+                        Linux의 <code>perf c2c</code>는 캐시 라인 핑퐁을 직접 추적해주는 가장 강력한 도구다. Intel VTune의 Memory Access 분석에는 false sharing 전용 항목이 있다. Windows에서는 VTune 또는 AMD uProf를 쓴다.
+                    </div>
+                </div>
+
+                <!-- 5. 회피 방법 -->
+                <h2 id="avoid"><i class="fa-solid fa-shield-halved"></i> 회피 방법</h2>
+
+                <h3 id="padding"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 패딩(padding)</h3>
+                <p>변수마다 캐시 라인 크기만큼 채워서 서로 다른 라인에 들어가도록 강제한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct alignas(64) PaddedCounter
+{
+    int value;
+    char pad[64 - sizeof(int)];  // 라인 끝까지 채움
+};
+
+std::array&lt;PaddedCounter, 8&gt; counters;
+
+void Worker(int tid)
+{
+    for (int i = 0; i &lt; 1'000'000; ++i)
+    {
+        counters[tid].value += 1;  // 각 카운터가 별개 라인
+    }
+}</code></pre>
+
+                <h3 id="hardware-interference"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> std::hardware_destructive_interference_size (C++17)</h3>
+                <p>플랫폼별 캐시 라인 크기를 컴파일 타임에 알려준다. 64라고 하드코딩하지 않아도 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;new&gt;
+
+struct alignas(std::hardware_destructive_interference_size) Counter
+{
+    int value;
+};
+
+Counter counters[8];  // 각 원소가 별개 캐시 라인</code></pre>
+
+                <h3 id="thread-local"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스레드별 지역 변수 (가장 권장)</h3>
+                <p>가장 깔끔한 방법은 애초에 공유하지 않는 것이다. 각 워커가 스택에 지역 변수를 두고 누적한 뒤, 작업 끝에 한 번만 공유 변수에 합산한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::atomic&lt;long long&gt; g_total{0};
+
+void Worker(int tid, int iterations)
+{
+    long long localSum = 0;  // 스레드 스택에 존재 — 캐시 공유 없음
+    for (int i = 0; i &lt; iterations; ++i)
+    {
+        localSum += DoWork(i);
+    }
+    g_total += localSum;  // 마지막에 한 번만 동기화
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>패딩보다 지역 변수가 우선이다</strong>
+                        패딩은 어쩔 수 없이 공유해야 할 때의 차선책이다. "워커 안에서 누적, 끝에 합산" 패턴으로 풀 수 있는 문제라면 그쪽이 더 빠르고, 코드도 단순하다.
+                    </div>
+                </div>
+
+                <!-- 6. true sharing -->
+                <h2 id="true-sharing"><i class="fa-solid fa-arrows-to-circle"></i> true sharing과 cache friendly</h2>
+                <p><strong>true sharing</strong>은 같은 변수를 여러 스레드가 의도적으로 접근하는 경우다. 동기화가 필요한 진짜 공유다. 작은 데이터를 자주 수정하면 어쩔 수 없이 비용이 발생한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>구분</th><th>false sharing</th><th>true sharing</th></tr>
+                    <tr><td>실제 공유 데이터</td><td>없음 (서로 다른 변수)</td><td>있음 (같은 변수)</td></tr>
+                    <tr><td>의도</td><td>공유 의도 없음</td><td>의도적 공유</td></tr>
+                    <tr><td>해결</td><td>패딩, 분리</td><td>배치 처리, 락 단위 키우기</td></tr>
+                    <tr><td>비용</td><td>피할 수 있는 비용</td><td>본질적 비용</td></tr>
+                </table>
+
+                <p>true sharing은 더 큰 단위로 작업을 묶어 동기화 횟수를 줄이는 식으로 완화한다. 한편 <code>std::hardware_constructive_interference_size</code>는 그 반대로 <strong>같이 두면 좋은</strong> 데이터의 권장 크기를 알려준다. 자주 함께 접근되는 멤버는 같은 라인에 두는 편이 캐시에 유리하다.</p>
+
+                <!-- 7. 벤치마크 -->
+                <h2 id="benchmark"><i class="fa-solid fa-gauge-high"></i> 벤치마크 예시</h2>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁜 예 — 같은 라인에 8개 카운터
+struct BadCounters
+{
+    int c[8];
+};
+
+// 좋은 예 — 각 카운터가 자기 라인 차지
+struct alignas(64) GoodCounter
+{
+    int value;
+};
+GoodCounter counters[8];</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 측정 결과 (4코어, 각 스레드 1천만 회 증가)</div>
+BadCounters    : 1820 ms
+GoodCounter[]  :  240 ms
+speedup        : 7.6x</div>
+
+                <p>4코어 머신에서 3~10배 차이는 흔하다. 코어 수가 많을수록 라인 핑퐁 비용이 더 커지므로 차이가 더 벌어진다.</p>
+
+                <!-- 8. 이미지 처리 -->
+                <h2 id="imaging"><i class="fa-solid fa-image"></i> 이미지 처리 컨텍스트 적용</h2>
+                <p>이미지 처리에서는 큰 이미지를 영역으로 나눠 여러 스레드가 동시에 처리하는 패턴이 흔하다. 이때 각 스레드의 결과를 누적하는 변수가 같은 캐시 라인에 있으면 성능이 무너진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁜 예 — histogramSums가 같은 라인에 빽빽하게 배치
+double histogramSums[NumThreads];
+
+ParallelFor(0, image.GetHeight(), [&amp;](int row, int tid)
+{
+    for (int col = 0; col &lt; image.GetWidth(); ++col)
+    {
+        histogramSums[tid] += image.At(row, col);  // false sharing
+    }
+});</code></pre>
+
+<pre class="language-cpp"><code class="language-cpp">// 좋은 예 — 로컬 변수에 누적, 끝에 합산
+std::atomic&lt;double&gt; totalSum{0.0};
+
+ParallelFor(0, image.GetHeight(), [&amp;](int row, int /*tid*/)
+{
+    double localSum = 0.0;  // 스레드 스택
+    for (int col = 0; col &lt; image.GetWidth(); ++col)
+    {
+        localSum += image.At(row, col);
+    }
+    totalSum += localSum;
+});</code></pre>
+
+                <p>밝기 합, 히스토그램, 결함 카운팅, 통계 측정 — 이미지 처리에서 reduction 패턴은 어디에나 있다. 모두 같은 원칙이 적용된다.</p>
+
+                <!-- 9. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>data-oriented design 의도라도 멀티스레드에선 역효과</strong>
+                        작은 멤버를 빽빽하게 배치한 구조체는 단일 스레드 캐시 효율에는 좋지만, 여러 스레드가 인접 원소를 수정하면 false sharing의 온상이 된다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>std::vector&lt;int&gt;를 인접 인덱스로 쓰는 패턴</strong>
+                        N개 스레드가 <code>v[tid]</code>를 빈번히 수정하면 <code>BadCounters</code>와 똑같이 false sharing이 발생한다. 결과 누적은 별도 구조로 빼야 한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>모든 변수에 패딩을 박지 말 것</strong>
+                        false sharing 회피한답시고 작은 변수마다 64 byte를 채우면 메모리 사용량이 폭증하고 단일 스레드 캐시 히트율이 떨어진다. 진짜 핫스팟에만 적용한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>컴파일러는 자동으로 라인 정렬을 안 해준다</strong>
+                        멀티스레드 시나리오를 컴파일러는 모른다. <code>alignas</code>와 패딩을 명시적으로 지정해야 한다.
+                    </div>
+                </div>
+
+                <!-- 10. 다른 캐시 친화 기법 -->
+                <h2 id="beyond"><i class="fa-solid fa-ruler-combined"></i> 다른 캐시 친화 기법</h2>
+                <p>false sharing은 캐시와 성능 이야기의 한 부분일 뿐이다. 실무에서는 다음 주제들도 함께 다룬다.</p>
+
+                <ul>
+                    <li><strong>Data-Oriented Design</strong> — 데이터 접근 패턴을 우선해 자료구조를 설계</li>
+                    <li><strong>SoA vs AoS</strong> — Struct of Arrays / Array of Structs. 어떤 필드를 같이 쓰느냐에 따라 선택</li>
+                    <li><strong>메모리 접근 패턴</strong> — 순차(sequential) 접근이 무작위 접근보다 압도적으로 빠르다</li>
+                    <li><strong>Prefetching</strong> — 다음에 쓸 데이터를 CPU에 미리 알려주기 (<code>__builtin_prefetch</code>)</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 시리즈에서는 깊이 들어가지 않는다</strong>
+                        각 주제는 책 한 권 분량이다. 이 글에서는 false sharing이 캐시 친화 코드의 한 조각이라는 점만 짚어두고, 다른 글들에서 자연스럽게 연결한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — <code>std::hardware_destructive_interference_size</code> / <code>std::hardware_constructive_interference_size</code></li>
+                        <li>Ulrich Drepper — "What Every Programmer Should Know About Memory" (2007)</li>
+                        <li>Intel 64 and IA-32 Architectures Optimization Reference Manual</li>
+                        <li>Linux <code>perf c2c</code> 문서 — false sharing 분석 도구</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
