@@ -1,0 +1,686 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL 함수 객체와 람다 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#functor" data-section="functor">함수 객체</a>
+        <a href="#stl-functors" data-section="stl-functors">표준 함수 객체</a>
+        <a href="#lambda" data-section="lambda">람다</a>
+        <a href="#std-function" data-section="std-function">std::function</a>
+        <a href="#bind-vs-lambda" data-section="bind-vs-lambda">bind vs 람다</a>
+        <a href="#predicates" data-section="predicates">알고리즘 술어</a>
+        <a href="#modern" data-section="modern">C++17/20</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++</span>
+                </div>
+                <h1>STL 함수 객체와 람다</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>함수 객체(functor)의 정의와 함수 포인터와의 차이</li>
+                        <li>STL 표준 함수 객체와 C++14 transparent functor</li>
+                        <li>람다 표현식의 캡처 종류와 mutable, 이동 캡처</li>
+                        <li>std::function의 타입 소거와 비용</li>
+                        <li>std::bind보다 람다를 쓰는 이유</li>
+                        <li>알고리즘 술어로 람다 활용, C++17/20 추가 기능</li>
+                        <li>dangling reference 등 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#functor">함수 객체란?</a></li>
+                        <li><a href="#stl-functors">STL 표준 함수 객체</a></li>
+                        <li><a href="#lambda">람다 표현식</a></li>
+                        <li><a href="#std-function">std::function</a></li>
+                        <li><a href="#bind-vs-lambda">std::bind vs 람다</a></li>
+                        <li><a href="#predicates">알고리즘 술어로 활용</a></li>
+                        <li><a href="#modern">C++17/20 추가 기능</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 함수 객체 -->
+                <h2 id="functor"><i class="fa-solid fa-cube"></i> 함수 객체란?</h2>
+                <p><strong>함수 객체(functor)</strong>는 <code>operator()</code>를 오버로드하여 함수처럼 호출할 수 있는 클래스 인스턴스다. 일반 함수처럼 <code>obj(args)</code> 형태로 호출되지만 객체이기 때문에 <strong>상태(멤버 변수)</strong>를 보유할 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct Adder
+{
+    int m_base;
+    Adder(int base) : m_base(base) {}
+
+    int operator()(int x) const
+    {
+        return m_base + x;
+    }
+};
+
+Adder add10(10);
+int result = add10(5);   // 15</code></pre>
+
+                <h3 id="vs-funcptr"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함수 포인터와의 차이</h3>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>함수 포인터</th><th>함수 객체</th></tr>
+                    <tr><td>상태 보유</td><td>불가</td><td>가능 (멤버 변수)</td></tr>
+                    <tr><td>인라인 최적화</td><td>어려움</td><td>가능 (타입이 컴파일 타임에 확정)</td></tr>
+                    <tr><td>타입 정보</td><td>시그니처만</td><td>고유 타입</td></tr>
+                    <tr><td>오버헤드</td><td>간접 호출 비용</td><td>대부분 zero-cost</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>왜 STL 알고리즘이 함수 객체를 선호하는가</strong>
+                        <code>std::sort</code>는 비교자 타입을 템플릿 파라미터로 받기 때문에 함수 객체의 <code>operator()</code>가 인라인되어 함수 포인터보다 빠르다.
+                    </div>
+                </div>
+
+                <!-- 2. STL 표준 함수 객체 -->
+                <h2 id="stl-functors"><i class="fa-solid fa-toolbox"></i> STL 표준 함수 객체</h2>
+                <p><code>&lt;functional&gt;</code> 헤더에 자주 쓰는 연산이 미리 정의되어 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>분류</th><th>함수 객체</th><th>의미</th></tr>
+                    <tr><td rowspan="2">산술</td><td><code>std::plus&lt;T&gt;</code>, <code>std::minus&lt;T&gt;</code></td><td>+, -</td></tr>
+                    <tr><td><code>std::multiplies&lt;T&gt;</code>, <code>std::negate&lt;T&gt;</code></td><td>*, 단항 -</td></tr>
+                    <tr><td>비교</td><td><code>std::less&lt;T&gt;</code>, <code>std::greater&lt;T&gt;</code>, <code>std::equal_to&lt;T&gt;</code></td><td>&lt;, &gt;, ==</td></tr>
+                    <tr><td>논리</td><td><code>std::logical_and&lt;T&gt;</code>, <code>std::logical_or&lt;T&gt;</code>, <code>std::logical_not&lt;T&gt;</code></td><td>&amp;&amp;, ||, !</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;functional&gt;
+#include &lt;algorithm&gt;
+#include &lt;vector&gt;
+
+std::vector&lt;int&gt; v = {3, 1, 4, 1, 5};
+std::sort(v.begin(), v.end(), std::greater&lt;int&gt;());  // 내림차순
+
+int sum = std::accumulate(v.begin(), v.end(), 0, std::plus&lt;int&gt;());</code></pre>
+
+                <h3 id="transparent"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Transparent 함수 객체 (C++14)</h3>
+                <p>템플릿 인자를 비워두면 인자 타입을 자동 추론한다. heterogeneous lookup이 가능해 효율적이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// C++11
+std::sort(v.begin(), v.end(), std::greater&lt;int&gt;());
+
+// C++14 transparent — 타입 추론
+std::sort(v.begin(), v.end(), std::greater&lt;&gt;());
+
+// std::set&lt;std::string, std::less&lt;&gt;&gt;는 const char* 키로도 find 가능
+std::set&lt;std::string, std::less&lt;&gt;&gt; s;
+s.find("hello");  // string 임시객체 생성 안 함</code></pre>
+
+                <!-- 3. 람다 -->
+                <h2 id="lambda"><i class="fa-solid fa-bolt"></i> 람다 표현식</h2>
+                <p>람다는 <strong>익명 함수 객체</strong>를 그 자리에서 만드는 문법이다. 컴파일러는 람다를 고유한 익명 클래스로 변환한다.</p>
+
+                <h3 id="lambda-syntax"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본 문법</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// [캡처](파라미터) -> 반환타입 { 본문 }
+auto square = [](int x) -> int { return x * x; };
+int n = square(5);  // 25
+
+// 반환 타입 생략 (자동 추론)
+auto add = [](int a, int b) { return a + b; };</code></pre>
+
+                <h3 id="captures"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캡처 종류</h3>
+
+                <table class="spec-table">
+                    <tr><th>캡처</th><th>의미</th></tr>
+                    <tr><td><code>[]</code></td><td>아무것도 캡처 안 함</td></tr>
+                    <tr><td><code>[=]</code></td><td>외부 변수 모두 값으로 캡처</td></tr>
+                    <tr><td><code>[&amp;]</code></td><td>외부 변수 모두 참조로 캡처</td></tr>
+                    <tr><td><code>[var]</code></td><td>특정 변수 값 캡처</td></tr>
+                    <tr><td><code>[&amp;var]</code></td><td>특정 변수 참조 캡처</td></tr>
+                    <tr><td><code>[=, &amp;x]</code></td><td>x만 참조, 나머지 값</td></tr>
+                    <tr><td><code>[&amp;, x]</code></td><td>x만 값, 나머지 참조</td></tr>
+                    <tr><td><code>[this]</code></td><td>멤버 함수 안에서 객체 포인터 캡처</td></tr>
+                    <tr><td><code>[*this]</code></td><td>객체 자체를 값으로 복사 (C++17)</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">int x = 10, y = 20;
+
+auto byVal = [x, y]() { return x + y; };           // 값
+auto byRef = [&amp;x, &amp;y]() { x++; y++; };            // 참조
+auto mixed = [=, &amp;y]() { y += x; };                // x 값, y 참조
+
+class Foo
+{
+    int m_value = 42;
+public:
+    auto getLambda() { return [this]() { return m_value; }; }
+};</code></pre>
+
+                <h3 id="move-capture"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 이동 캡처 (C++14)</h3>
+                <p>C++14의 init capture로 <code>std::unique_ptr</code> 같은 이동 전용 타입도 캡처할 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">auto p = std::make_unique&lt;int&gt;(42);
+
+// C++11에서는 unique_ptr 캡처 불가능
+// C++14 init capture로 이동 캡처
+auto lambda = [ptr = std::move(p)]()
+{
+    return *ptr;
+};</code></pre>
+
+                <h3 id="mutable"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> mutable 람다</h3>
+                <p>값으로 캡처한 변수는 람다 안에서 기본적으로 const다. <code>mutable</code> 키워드로 수정 가능하게 만든다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int counter = 0;
+
+auto next = [counter]() mutable
+{
+    return ++counter;  // mutable 없으면 컴파일 에러
+};
+
+next();  // 1
+next();  // 2 — 람다 내부 복사본이 유지됨
+// 외부 counter는 여전히 0</code></pre>
+
+                <h3 id="lambda-class"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 람다는 익명 클래스</h3>
+                <p>컴파일러는 다음 람다를 대략 이렇게 변환한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 람다
+auto add = [base = 10](int x) { return base + x; };
+
+// 컴파일러가 생성하는 코드 (개념적)
+class __Lambda_Anon
+{
+    int base;
+public:
+    __Lambda_Anon(int b) : base(b) {}
+    int operator()(int x) const { return base + x; }
+};</code></pre>
+
+                <!-- 4. std::function -->
+                <h2 id="std-function"><i class="fa-solid fa-eraser"></i> std::function</h2>
+                <p><code>std::function</code>은 호출 가능한 모든 것(함수 포인터, 람다, 함수 객체, 멤버 함수)을 같은 타입으로 저장하는 <strong>타입 소거(type erasure)</strong> 래퍼다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;functional&gt;
+
+std::function&lt;int(int, int)&gt; op;
+
+op = [](int a, int b) { return a + b; };  // 람다
+op = std::plus&lt;int&gt;();                    // 함수 객체
+op = &amp;someFunction;                        // 함수 포인터
+
+int r = op(3, 4);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>std::function의 비용</strong>
+                        내부적으로 가상 호출과 비슷한 간접 호출이 일어나며, 캡처가 작은 버퍼(SBO)를 넘으면 <strong>힙 할당</strong>이 발생한다. 인라인이 거의 안 된다.
+                    </div>
+                </div>
+
+                <h3 id="when-function"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 언제 쓰고 언제 피해야 하나</h3>
+                <table class="spec-table">
+                    <tr><th>상황</th><th>권장</th></tr>
+                    <tr><td>콜백을 멤버에 저장 (다양한 callable 받음)</td><td><code>std::function</code></td></tr>
+                    <tr><td>이벤트 핸들러 컨테이너에 보관</td><td><code>std::function</code></td></tr>
+                    <tr><td>알고리즘 술어로 한 번만 전달</td><td>람다 직접 (또는 템플릿)</td></tr>
+                    <tr><td>성능이 중요한 핫 패스</td><td>템플릿 파라미터로 받기</td></tr>
+                </table>
+
+                <!-- 5. bind vs 람다 -->
+                <h2 id="bind-vs-lambda"><i class="fa-solid fa-arrows-left-right"></i> std::bind vs 람다</h2>
+                <p><code>std::bind</code>는 C++11에서 함수와 인자를 부분 적용하기 위해 도입되었다. 하지만 모던 C++에서는 거의 모든 경우 <strong>람다가 더 낫다</strong>.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;functional&gt;
+using namespace std::placeholders;
+
+int multiply(int a, int b) { return a * b; }
+
+// std::bind — _1은 첫 번째 호출 인자
+auto times3 = std::bind(multiply, _1, 3);
+times3(5);  // 15
+
+// 같은 동작을 람다로
+auto times3Lambda = [](int x) { return multiply(x, 3); };
+times3Lambda(5);  // 15</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>람다를 쓰는 이유</strong>
+                        가독성이 뛰어나고, 컴파일러가 인라인 최적화하기 쉽다. <code>std::bind</code>는 placeholder 의미를 추적해야 해서 코드가 어렵고 디버깅이 까다롭다. Scott Meyers도 <em>Effective Modern C++</em>에서 람다를 권장한다.
+                    </div>
+                </div>
+
+                <!-- 6. 알고리즘 술어 -->
+                <h2 id="predicates"><i class="fa-solid fa-magnifying-glass"></i> 알고리즘 술어로 활용</h2>
+                <p>STL 알고리즘은 비교자/술어를 함수 객체로 받는다. 람다가 가장 자연스러운 짝이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;algorithm&gt;
+#include &lt;vector&gt;
+
+std::vector&lt;int&gt; v = {5, -3, 8, -1, 4};
+
+// 절대값 기준 정렬
+std::sort(v.begin(), v.end(), [](int a, int b)
+{
+    return std::abs(a) &lt; std::abs(b);
+});
+
+// 첫 번째 음수 찾기
+auto it = std::find_if(v.begin(), v.end(), [](int x)
+{
+    return x &lt; 0;
+});
+
+// 양수 개수
+int positives = std::count_if(v.begin(), v.end(), [](int x)
+{
+    return x &gt; 0;
+});
+
+// 짝수 제거 (erase-remove 관용구)
+v.erase(std::remove_if(v.begin(), v.end(), [](int x)
+{
+    return x % 2 == 0;
+}), v.end());</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>비교자는 strict weak ordering을 만족해야 한다</strong>
+                        <code>a &lt;= b</code>처럼 같음을 포함하면 동치 관계가 깨진다. <code>sort</code>는 등가성 검사 시 <code>!comp(a,b) &amp;&amp; !comp(b,a)</code>를 사용하므로 반드시 <strong>엄격한 미만(&lt;)</strong>만 사용해야 한다. 위반 시 정의되지 않은 동작이다.
+                    </div>
+                </div>
+
+                <!-- 7. 모던 C++ -->
+                <h2 id="modern"><i class="fa-solid fa-rocket"></i> C++17/20 추가 기능</h2>
+
+                <h3 id="generic-lambda"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Generic 람다 (C++14)</h3>
+                <p>파라미터 타입을 <code>auto</code>로 받는다. 컴파일러는 <code>operator()</code>를 템플릿으로 만든다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">auto print = [](const auto&amp; x)
+{
+    std::cout &lt;&lt; x &lt;&lt; std::endl;
+};
+
+print(42);          // int
+print("hello");     // const char*
+print(3.14);        // double</code></pre>
+
+                <h3 id="constexpr-lambda"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> constexpr 람다 (C++17)</h3>
+
+<pre class="language-cpp"><code class="language-cpp">constexpr auto square = [](int x) { return x * x; };
+
+constexpr int v = square(5);  // 컴파일 타임 평가
+static_assert(v == 25);</code></pre>
+
+                <h3 id="template-lambda"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 템플릿 파라미터 람다 (C++20)</h3>
+                <p>generic 람다보다 명시적으로 타입 파라미터를 다룬다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">auto getSize = []&lt;typename T&gt;(const std::vector&lt;T&gt;&amp; v)
+{
+    return v.size();
+};
+
+std::vector&lt;int&gt; vi = {1, 2, 3};
+auto n = getSize(vi);</code></pre>
+
+                <!-- 8. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="dangling"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1. Dangling reference</h3>
+
+<pre class="language-cpp"><code class="language-cpp">std::function&lt;int()&gt; makeBad()
+{
+    int local = 42;
+    return [&amp;local]() { return local; };  // 위험!
+}
+
+auto f = makeBad();
+int x = f();  // UB — local은 이미 소멸</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>람다 수명이 캡처 대상보다 길어지면 UB</strong>
+                        함수에서 람다를 반환하거나 비동기로 넘길 때 참조 캡처는 위험하다. 이런 경우는 <strong>값 캡처</strong>나 <code>shared_ptr</code> 캡처를 사용해야 한다.
+                    </div>
+                </div>
+
+                <h3 id="mutable-error"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2. mutable 누락 컴파일 에러</h3>
+
+<pre class="language-cpp"><code class="language-cpp">int n = 0;
+auto bad = [n]() { n++; return n; };       // 컴파일 에러
+auto good = [n]() mutable { n++; return n; };  // OK</code></pre>
+
+                <h3 id="this-dangling"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3. this 캡처 후 객체 소멸</h3>
+
+<pre class="language-cpp"><code class="language-cpp">class Worker
+{
+    int m_id = 1;
+public:
+    auto makeTask()
+    {
+        // this 캡처 — Worker가 죽으면 UB
+        return [this]() { return m_id; };
+
+        // C++17: *this로 객체를 값 복사 (안전)
+        // return [*this]() { return m_id; };
+    }
+};</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>비동기 콜백에서는 [*this]를 고려하라</strong>
+                        멤버 함수 안에서 람다를 만들어 다른 스레드/이벤트 루프로 넘길 때, 객체 수명을 보장할 수 없다면 <code>[*this]</code> 또는 <code>shared_from_this()</code>를 활용한다.
+                    </div>
+                </div>
+
+                <h3 id="function-overuse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4. std::function 남용</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁨 — sort 호출마다 type erasure 비용
+std::sort(v.begin(), v.end(),
+    std::function&lt;bool(int,int)&gt;([](int a, int b) { return a &lt; b; }));
+
+// 좋음 — 람다를 직접 전달, 인라인 됨
+std::sort(v.begin(), v.end(),
+    [](int a, int b) { return a &lt; b; });
+
+// 콜백을 받는 함수도 가능하면 템플릿으로
+template&lt;typename F&gt;
+void process(F&amp;&amp; callback) { callback(); }</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>정리</strong>
+                        한 곳에서만 호출/전달되면 <strong>람다 그대로</strong>, 다양한 callable을 변수에 저장해야 하면 <strong>std::function</strong>, 성능이 중요하면 <strong>템플릿 파라미터</strong>로 받는다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — Lambda expressions, std::function, std::bind</li>
+                        <li>Scott Meyers, <em>Effective Modern C++</em> — Items 31~34 (람다와 bind)</li>
+                        <li>ISO C++ Core Guidelines — F.50, F.52, F.53 (람다 사용 지침)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

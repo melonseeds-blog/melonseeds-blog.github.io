@@ -1,0 +1,644 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++20 ranges 라이브러리 입문 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#background" data-section="background">배경</a>
+        <a href="#range-concept" data-section="range-concept">range 개념</a>
+        <a href="#view" data-section="view">view</a>
+        <a href="#pipe" data-section="pipe">pipe 문법</a>
+        <a href="#adapters" data-section="adapters">view 어댑터</a>
+        <a href="#ranges-algo" data-section="ranges-algo">ranges 알고리즘</a>
+        <a href="#to-container" data-section="to-container">컨테이너 변환</a>
+        <a href="#examples" data-section="examples">실용 예제</a>
+        <a href="#pitfalls" data-section="pitfalls">성능과 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>C++20 ranges 라이브러리 입문</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>iterator 쌍을 매번 넘기는 기존 STL의 불편함과 ranges의 등장 배경</li>
+                        <li>range concept과 view의 lazy 평가 모델</li>
+                        <li>pipe(<code>|</code>) 문법으로 알고리즘을 합성하는 함수형 스타일</li>
+                        <li>자주 쓰는 view 어댑터와 ranges 알고리즘 + projection</li>
+                        <li>dangling view, 컴파일러 호환 등 실전 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#background">왜 ranges가 등장했나</a></li>
+                        <li><a href="#range-concept">range 개념(concept)</a></li>
+                        <li><a href="#view">view의 핵심 — lazy evaluation</a></li>
+                        <li><a href="#pipe">pipe(<code>|</code>) 문법</a></li>
+                        <li><a href="#adapters">자주 쓰는 view 어댑터</a></li>
+                        <li><a href="#ranges-algo">ranges 알고리즘과 projection</a></li>
+                        <li><a href="#to-container">컨테이너로 변환하기</a></li>
+                        <li><a href="#examples">기존 STL vs ranges 비교 예제</a></li>
+                        <li><a href="#pitfalls">성능과 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 배경 -->
+                <h2 id="background"><i class="fa-solid fa-filter"></i> 왜 ranges가 등장했나</h2>
+                <p>기존 STL 알고리즘은 강력하지만 사용성에서 몇 가지 고질적인 단점이 있다. C++20 ranges 라이브러리는 이 문제를 정면으로 해결한다.</p>
+
+                <h3 id="bg-iter"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> iterator 쌍을 매번 넘겨야 한다</h3>
+                <p>거의 모든 알고리즘에 <code>begin()</code>, <code>end()</code>를 직접 적어야 한다. 컨테이너 전체가 대상인데도 같은 코드를 반복한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; v = {3, 1, 4, 1, 5, 9, 2, 6};
+
+// 기존 STL — 반복자 쌍 필수
+std::sort(v.begin(), v.end());
+
+// ranges — 컨테이너만 넘기면 된다
+std::ranges::sort(v);</code></pre>
+
+                <h3 id="bg-compose"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 알고리즘 합성이 어렵다</h3>
+                <p>"필터링한 뒤 변환하고 그중 앞 5개만" 같은 흐름을 표현하려면 중간 컨테이너가 필요했다. 메모리 낭비와 코드 가독성 모두 손해다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 기존 방식 — 임시 컨테이너 두 번 생성
+std::vector&lt;int&gt; even;
+std::copy_if(v.begin(), v.end(), std::back_inserter(even),
+             [](int x) { return x % 2 == 0; });
+
+std::vector&lt;int&gt; squared;
+std::transform(even.begin(), even.end(), std::back_inserter(squared),
+               [](int x) { return x * x; });</code></pre>
+
+                <p>ranges는 이런 흐름을 한 줄의 파이프라인으로 표현한다. 게다가 중간 컨테이너를 만들지 않는다.</p>
+
+                <!-- 2. range concept -->
+                <h2 id="range-concept"><i class="fa-solid fa-shapes"></i> range 개념(concept)</h2>
+                <p>range는 <strong><code>begin()</code>과 <code>end()</code>를 호출할 수 있는 모든 것</strong>이다. C++20 concepts로 정식 정의되어 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 개념적 정의 (단순화)
+template&lt;class T&gt;
+concept range = requires(T&amp; t) {
+    std::ranges::begin(t);
+    std::ranges::end(t);
+};</code></pre>
+
+                <p>이 정의 덕분에 컨테이너, view, subrange, C 배열까지 모두 동일하게 다룰 수 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>분류</th><th>예시</th><th>특징</th></tr>
+                    <tr><td>컨테이너</td><td><code>vector</code>, <code>list</code>, <code>map</code></td><td>데이터 소유</td></tr>
+                    <tr><td>view</td><td><code>views::filter</code>, <code>views::transform</code></td><td>참조만, lazy 평가</td></tr>
+                    <tr><td>subrange</td><td><code>std::ranges::subrange</code></td><td>iterator 쌍 래핑</td></tr>
+                    <tr><td>C 배열</td><td><code>int arr[10]</code></td><td>begin/end 자동 추론</td></tr>
+                </table>
+
+                <!-- 3. view -->
+                <h2 id="view"><i class="fa-solid fa-layer-group"></i> view의 핵심 — lazy evaluation</h2>
+                <p>view는 <strong>데이터를 보유하지 않는다</strong>. 원본 range를 참조하면서, 순회하는 시점에 비로소 변환을 수행한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; v = {1, 2, 3, 4, 5};
+
+// 이 시점에는 아무 계산도 하지 않는다 — O(1)
+auto doubled = v | std::views::transform([](int x) { return x * 2; });
+
+// 실제 순회할 때 비로소 한 원소씩 계산된다
+for (int x : doubled) {
+    std::cout &lt;&lt; x &lt;&lt; ' ';   // 2 4 6 8 10
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>lazy 평가의 의미</strong>
+                        view를 만드는 순간에는 어떤 작업도 일어나지 않는다. 중간 결과를 위한 컨테이너 할당도 없다. 이 덕분에 무한 시퀀스(<code>views::iota(0)</code>)도 표현할 수 있다.
+                    </div>
+                </div>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>컨테이너</th><th>view</th></tr>
+                    <tr><td>데이터 소유</td><td>O</td><td>X (원본 참조)</td></tr>
+                    <tr><td>생성 비용</td><td>요소 수에 비례</td><td>O(1)</td></tr>
+                    <tr><td>평가 시점</td><td>즉시</td><td>순회 시점 (lazy)</td></tr>
+                    <tr><td>복사 의미</td><td>깊은 복사</td><td>얕은 복사 (cheap)</td></tr>
+                    <tr><td>수명 관리</td><td>스스로 관리</td><td>원본 수명에 의존</td></tr>
+                </table>
+
+                <!-- 4. pipe 문법 -->
+                <h2 id="pipe"><i class="fa-solid fa-code-branch"></i> pipe(<code>|</code>) 문법</h2>
+                <p>view 어댑터는 <code>|</code> 연산자로 연결된다. 왼쪽에서 오른쪽으로 데이터가 흘러가는 모습이 자연스럽게 읽힌다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;ranges&gt;
+#include &lt;vector&gt;
+
+std::vector&lt;int&gt; v = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+auto pipeline = v
+    | std::views::filter([](int x) { return x % 2 == 0; })   // 짝수만
+    | std::views::transform([](int x) { return x * x; })     // 제곱
+    | std::views::take(3);                                    // 앞 3개
+
+for (int x : pipeline) std::cout &lt;&lt; x &lt;&lt; ' ';</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+4 16 36</div>
+
+                <p>각 단계는 <strong>독립적으로 lazy</strong>하다. <code>take(3)</code>가 3개를 가져가는 순간 파이프라인이 멈춘다. 10개 모두를 필터링/변환하지 않는다.</p>
+
+                <!-- 5. view 어댑터 -->
+                <h2 id="adapters"><i class="fa-solid fa-puzzle-piece"></i> 자주 쓰는 view 어댑터</h2>
+
+                <h3 id="filter-transform"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> filter / transform</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 조건부 필터
+auto positives = v | std::views::filter([](int x) { return x &gt; 0; });
+
+// 매핑 (모든 요소 변환)
+auto strs = v | std::views::transform([](int x) { return std::to_string(x); });</code></pre>
+
+                <h3 id="take-drop"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> take / drop / take_while / drop_while</h3>
+
+<pre class="language-cpp"><code class="language-cpp">auto first5     = v | std::views::take(5);            // 앞 5개
+auto skip3      = v | std::views::drop(3);            // 앞 3개 건너뜀
+auto whileSmall = v | std::views::take_while([](int x) { return x &lt; 5; });
+auto afterSmall = v | std::views::drop_while([](int x) { return x &lt; 5; });</code></pre>
+
+                <h3 id="reverse-iota"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> reverse / iota</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 역순 view
+auto rev = v | std::views::reverse;
+
+// 정수 시퀀스 생성 (유한)
+for (int i : std::views::iota(1, 6)) std::cout &lt;&lt; i;  // 1 2 3 4 5
+
+// 무한 시퀀스 + take
+auto first10 = std::views::iota(0) | std::views::take(10);  // 0..9</code></pre>
+
+                <h3 id="join-split"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> join / split</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 중첩 시퀀스 평탄화
+std::vector&lt;std::vector&lt;int&gt;&gt; nested = {{1, 2}, {3, 4}, {5}};
+for (int x : nested | std::views::join) std::cout &lt;&lt; x;  // 1 2 3 4 5
+
+// 구분자로 분할
+std::string s = "a,b,c,d";
+for (auto part : s | std::views::split(',')) {
+    std::cout &lt;&lt; std::string_view(part) &lt;&lt; '\n';
+}</code></pre>
+
+                <h3 id="keys-values"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> keys / values / elements</h3>
+
+<pre class="language-cpp"><code class="language-cpp">std::map&lt;std::string, int&gt; m = {{"a", 1}, {"b", 2}};
+
+for (const auto&amp; k : m | std::views::keys)   std::cout &lt;&lt; k;   // a b
+for (int v        : m | std::views::values) std::cout &lt;&lt; v;   // 1 2
+
+// tuple/pair의 N번째 원소만
+std::vector&lt;std::tuple&lt;int, std::string, double&gt;&gt; data;
+auto names = data | std::views::elements&lt;1&gt;;</code></pre>
+
+                <h3 id="cpp23"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> C++23: zip / enumerate</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// zip — 여러 range를 묶어 tuple 시퀀스로
+std::vector&lt;int&gt; a = {1, 2, 3};
+std::vector&lt;std::string&gt; b = {"one", "two", "three"};
+for (auto [n, s] : std::views::zip(a, b)) { /*...*/ }
+
+// enumerate — (index, value) 쌍
+for (auto [i, x] : v | std::views::enumerate) { /*...*/ }</code></pre>
+
+                <!-- 6. ranges 알고리즘 -->
+                <h2 id="ranges-algo"><i class="fa-solid fa-wand-magic-sparkles"></i> ranges 알고리즘과 projection</h2>
+                <p><code>std::ranges</code> 네임스페이스에는 기존 알고리즘의 ranges 버전이 거의 모두 들어 있다. 가장 큰 차이는 <strong>iterator 쌍 대신 range를 직접 받는다는 점</strong>과 <strong>projection 인자</strong>다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct Person {
+    std::string name;
+    int age;
+};
+
+std::vector&lt;Person&gt; people = {
+    {"Alice", 30}, {"Bob", 25}, {"Carol", 35}
+};
+
+// 기존 STL — 매번 비교 람다를 적어야 한다
+std::sort(people.begin(), people.end(),
+          [](const Person&amp; a, const Person&amp; b) { return a.age &lt; b.age; });
+
+// ranges + projection — 비교 키만 추출해서 넘긴다
+std::ranges::sort(people, {}, &amp;Person::age);
+//                         ^   ^
+//                         |   projection: 각 원소에서 비교 키 추출
+//                         comparator (기본: std::ranges::less)</code></pre>
+
+                <p>projection은 멤버 포인터, 람다, 호출 가능한 모든 것을 받는다. <code>find_if</code>, <code>min_element</code>, <code>count_if</code> 등 거의 모든 ranges 알고리즘에서 동일하게 쓸 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 이름이 "Bob"인 사람 찾기 — projection으로 name만 비교
+auto it = std::ranges::find(people, "Bob", &amp;Person::name);
+
+// 가장 어린 사람 — age를 키로
+auto youngest = std::ranges::min_element(people, {}, &amp;Person::age);</code></pre>
+
+                <!-- 7. 컨테이너 변환 -->
+                <h2 id="to-container"><i class="fa-solid fa-arrow-right-arrow-left"></i> 컨테이너로 변환하기</h2>
+                <p>view는 결국 <strong>view일 뿐</strong>이다. 결과를 다시 컨테이너에 담고 싶을 때가 많은데, C++20에는 표준 변환 함수가 없어서 수동으로 처리해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">auto view = v | std::views::filter([](int x) { return x % 2 == 0; });
+
+// C++20 — 수동 변환
+std::vector&lt;int&gt; result(view.begin(), view.end());
+
+// 또는 ranges::copy
+std::vector&lt;int&gt; result2;
+std::ranges::copy(view, std::back_inserter(result2));</code></pre>
+
+                <p>C++23부터는 <code>std::ranges::to</code>가 추가되어 훨씬 깔끔해진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// C++23
+auto result = v
+    | std::views::filter([](int x) { return x % 2 == 0; })
+    | std::views::transform([](int x) { return x * x; })
+    | std::ranges::to&lt;std::vector&gt;();</code></pre>
+
+                <!-- 8. 실용 예제 -->
+                <h2 id="examples"><i class="fa-solid fa-code"></i> 기존 STL vs ranges 비교 예제</h2>
+
+                <h3 id="ex1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 짝수만 골라 제곱한 후 합 구하기</h3>
+
+                <p>기존 STL:</p>
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;int&gt; v = {1, 2, 3, 4, 5, 6};
+
+std::vector&lt;int&gt; even;
+std::copy_if(v.begin(), v.end(), std::back_inserter(even),
+             [](int x) { return x % 2 == 0; });
+
+std::vector&lt;int&gt; squared;
+std::transform(even.begin(), even.end(), std::back_inserter(squared),
+               [](int x) { return x * x; });
+
+int sum = std::accumulate(squared.begin(), squared.end(), 0);
+// sum = 4 + 16 + 36 = 56</code></pre>
+
+                <p>ranges:</p>
+<pre class="language-cpp"><code class="language-cpp">auto squared = v
+    | std::views::filter([](int x) { return x % 2 == 0; })
+    | std::views::transform([](int x) { return x * x; });
+
+int sum = std::accumulate(squared.begin(), squared.end(), 0);
+// 중간 컨테이너 0개</code></pre>
+
+                <h3 id="ex2"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 학생 점수 70점 이상만 이름 추출</h3>
+
+<pre class="language-cpp"><code class="language-cpp">struct Student { std::string name; int score; };
+std::vector&lt;Student&gt; students;
+
+// 기존 STL
+std::vector&lt;std::string&gt; passed;
+for (const auto&amp; s : students) {
+    if (s.score &gt;= 70) passed.push_back(s.name);
+}
+
+// ranges
+auto passed_view = students
+    | std::views::filter([](const Student&amp; s) { return s.score &gt;= 70; })
+    | std::views::transform(&amp;Student::name);
+
+for (const auto&amp; name : passed_view) std::cout &lt;&lt; name &lt;&lt; '\n';</code></pre>
+
+                <!-- 9. 성능과 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-gauge-high"></i> 성능과 함정</h2>
+
+                <h3 id="perf"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 항상 빠르지는 않다</h3>
+                <p>lazy 평가가 항상 이득은 아니다. 어댑터 체인은 컴파일러가 인라인하기 어려운 추상화 계층을 만들고, 메모리 접근 패턴이 cache locality를 깨뜨릴 수 있다. 단순 루프 한 번이면 끝나는 작업에 무리하게 파이프라인을 적용하면 오히려 느려진다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>벤치마크 후 도입하자</strong>
+                        ranges는 가독성과 합성성이 강점이지 성능 만능약이 아니다. 핫 루프에서는 기존 raw 루프와 직접 비교한 뒤 도입하는 편이 안전하다.
+                    </div>
+                </div>
+
+                <h3 id="dangling"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> dangling view — 가장 흔한 함정</h3>
+                <p>view는 원본을 <strong>참조만</strong> 한다. 원본이 임시 객체라면 view는 즉시 무효화된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 위험! getVector()가 반환한 임시는 그 줄에서 파괴된다
+auto bad = getVector() | std::views::filter(/*...*/);
+for (int x : bad) { /* UB — 이미 파괴된 메모리 참조 */ }
+
+// 안전 — 원본을 변수에 묶어 수명을 늘린다
+auto v = getVector();
+auto good = v | std::views::filter(/*...*/);
+for (int x : good) { /* OK */ }</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>dangling view는 컴파일러가 잡아주지 못한다</strong>
+                        임시 객체에 대한 view는 정의되지 않은 동작이다. ranges 알고리즘 일부는 <code>std::ranges::dangling</code> 타입을 반환해 정적으로 막아주지만, 일반 view 어댑터는 그렇지 않다. 항상 원본의 수명을 명시적으로 보장해야 한다.
+                    </div>
+                </div>
+
+                <h3 id="compilers"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 컴파일러 지원 현황</h3>
+
+                <table class="spec-table">
+                    <tr><th>컴파일러</th><th>C++20 ranges</th><th>C++23 추가분 (zip, to, enumerate)</th></tr>
+                    <tr><td>GCC</td><td>10 이상 (실용적으로는 11+)</td><td>13 이상</td></tr>
+                    <tr><td>Clang</td><td>13 이상 (libc++ 15+)</td><td>17 이상</td></tr>
+                    <tr><td>MSVC</td><td>19.29 (VS 2019 16.10) 이상</td><td>VS 2022 17.5 이상</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>C++20 ranges 지원은 의외로 늦었다</strong>
+                        헤더 이름(<code>&lt;ranges&gt;</code>), 컴파일 옵션(<code>/std:c++20</code> 또는 <code>/std:c++latest</code>), 표준 라이브러리 버전을 함께 확인하자. C++23 어댑터는 더 까다롭다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — <code>&lt;ranges&gt;</code>, <code>std::ranges</code> 알고리즘</li>
+                        <li>Eric Niebler — Ranges proposal (P0789, range-v3 라이브러리)</li>
+                        <li>ISO C++ 표준 N4861 — Ranges Library</li>
+                        <li>Hannes Hauswedell — "A beginner's guide to C++ Ranges and Views"</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

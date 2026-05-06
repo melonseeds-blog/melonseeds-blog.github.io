@@ -42,6 +42,9 @@ const POST_NAV_DATA = {
         { file: 'cpp-iterator-categories.html', title: '이터레이터 카테고리와 무효화 규칙' },
         { file: 'cpp-container-performance.html', title: 'STL 컨테이너 성능 비교' },
         { file: 'cpp-stl-algorithms.html', title: 'STL 알고리즘 활용 패턴' },
+        { file: 'cpp-functors-lambdas.html', title: 'STL 함수 객체와 람다' },
+        { file: 'cpp-ranges.html', title: 'C++20 ranges 라이브러리 입문' },
+        { file: 'cpp17-essentials.html', title: 'C++17 핵심 기능 정리' },
     ],
     'tech-halcon': [
         { file: 'halcon-sg1-00-overview.html', title: 'HALCON Solution Guide I 개요와 학습법' },
