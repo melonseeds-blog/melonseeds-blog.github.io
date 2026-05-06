@@ -1,0 +1,691 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>인터페이스 설계 패턴 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#abc" data-section="abc">추상 클래스</a>
+        <a href="#basic" data-section="basic">기본 작성</a>
+        <a href="#nvi" data-section="nvi">NVI</a>
+        <a href="#strategy" data-section="strategy">Strategy</a>
+        <a href="#crtp" data-section="crtp">CRTP</a>
+        <a href="#variant" data-section="variant">variant</a>
+        <a href="#type-erasure" data-section="type-erasure">타입 소거</a>
+        <a href="#isp" data-section="isp">ISP</a>
+        <a href="#dll" data-section="dll">DLL 경계</a>
+        <a href="#plugin" data-section="plugin">플러그인</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>인터페이스 설계 패턴 — 추상 클래스 / NVI / Strategy / Plugin</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>C++의 인터페이스: 순수 가상 함수와 가상 소멸자</li>
+                        <li>NVI(Non-Virtual Interface)와 Template Method 패턴</li>
+                        <li>Strategy, CRTP, std::variant, 타입 소거의 비교</li>
+                        <li>DLL 경계에서의 인터페이스 설계와 플러그인 구조</li>
+                        <li>가상 소멸자 누락, 슬라이싱 등 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#abc">C++의 인터페이스 — 추상 클래스</a></li>
+                        <li><a href="#basic">기본 인터페이스 작성</a></li>
+                        <li><a href="#nvi">NVI 패턴</a></li>
+                        <li><a href="#strategy">Strategy 패턴</a></li>
+                        <li><a href="#crtp">CRTP — 정적 다형성</a></li>
+                        <li><a href="#variant">std::variant + std::visit</a></li>
+                        <li><a href="#type-erasure">타입 소거(Type Erasure)</a></li>
+                        <li><a href="#isp">인터페이스 분리 원칙</a></li>
+                        <li><a href="#dll">DLL 경계의 인터페이스</a></li>
+                        <li><a href="#plugin">플러그인 가능 구조</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 추상 클래스 -->
+                <h2 id="abc"><i class="fa-solid fa-puzzle-piece"></i> C++의 인터페이스 — 추상 클래스</h2>
+                <p>C++에는 Java나 C#의 <code>interface</code> 키워드가 없다. 대신 <strong>모든 멤버 함수가 순수 가상 함수(pure virtual)</strong>인 추상 클래스(ABC, Abstract Base Class)로 같은 목적을 이룬다.</p>
+
+                <table class="spec-table">
+                    <tr><th>언어</th><th>인터페이스 표현</th></tr>
+                    <tr><td>Java / C#</td><td><code>interface IFoo { ... }</code></td></tr>
+                    <tr><td>C++</td><td>순수 가상 함수만 가진 추상 클래스</td></tr>
+                </table>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>가상 소멸자는 필수다</strong>
+                        다형 객체를 베이스 포인터로 <code>delete</code>할 때 가상 소멸자가 없으면 <strong>정의되지 않은 동작(UB)</strong>이 된다. 인터페이스에는 반드시 <code>virtual ~Base() = default;</code>를 선언한다.
+                    </div>
+                </div>
+
+                <!-- 2. 기본 작성 -->
+                <h2 id="basic"><i class="fa-solid fa-pen-ruler"></i> 기본 인터페이스 작성</h2>
+                <p>이미징 라이브러리의 <code>IProcessBlock</code>을 예로 든다. 모든 처리 블록은 이 인터페이스를 구현한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// IProcessBlock.h
+class IProcessBlock
+{
+public:
+    virtual ~IProcessBlock() = default;  // 필수
+    virtual ErrorCode Process(const Image&amp; in, Image&amp; out) = 0;
+    virtual std::string Name() const = 0;
+};
+
+// GaussianBlur.h
+class GaussianBlur : public IProcessBlock
+{
+public:
+    ErrorCode Process(const Image&amp; in, Image&amp; out) override;
+    std::string Name() const override { return "GaussianBlur"; }
+    void SetKernelSize(int k) { m_kernelSize = k; }
+
+private:
+    int m_kernelSize = 3;
+};</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>override 키워드를 항상 쓰자</strong>
+                        시그니처를 잘못 적어도 컴파일러가 잡아준다. 더 이상 재정의를 막고 싶으면 <code>final</code>을 붙인다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">class FastBlur final : public IProcessBlock { ... };  // 더 이상 상속 불가
+
+class Base
+{
+public:
+    virtual void Foo() final;  // 자식은 Foo 재정의 불가
+};</code></pre>
+
+                <!-- 3. NVI -->
+                <h2 id="nvi"><i class="fa-solid fa-sitemap"></i> NVI 패턴</h2>
+                <p><strong>Non-Virtual Interface</strong>. public 함수는 non-virtual로 두고, 그 안에서 private virtual을 호출한다. 부모가 사전 검증·로깅·락 같은 공통 로직을 강제할 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class IProcessBlock
+{
+public:
+    virtual ~IProcessBlock() = default;
+
+    // public — non-virtual. 공통 로직을 부모가 통제한다.
+    ErrorCode Process(const Image&amp; in, Image&amp; out)
+    {
+        if (in.IsEmpty()) return ErrorCode::InvalidImage;
+        SPDLOG_DEBUG("Process begin: {}", Name());
+
+        const auto rc = DoProcess(in, out);
+
+        SPDLOG_DEBUG("Process end: {} -&gt; {}", Name(), (int)rc);
+        return rc;
+    }
+
+    virtual std::string Name() const = 0;
+
+private:
+    // 자식은 이것만 구현한다.
+    virtual ErrorCode DoProcess(const Image&amp; in, Image&amp; out) = 0;
+};</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>NVI를 권하는 이유</strong>
+                        Herb Sutter와 Scott Meyers가 권장하는 표준 관용구다. 자식이 검증을 빠뜨려도 부모가 막아주고, 나중에 측정·로깅·재시도 같은 공통 로직을 한 곳에 추가할 수 있다.
+                    </div>
+                </div>
+
+                <table class="spec-table">
+                    <tr><th>구분</th><th>장점</th><th>단점</th></tr>
+                    <tr><td>일반 가상 함수</td><td>단순, 직관적</td><td>공통 로직을 자식이 잊을 수 있음</td></tr>
+                    <tr><td>NVI</td><td>공통 로직 강제, 테스트 용이</td><td>래퍼 한 단계가 추가됨</td></tr>
+                </table>
+
+                <!-- 4. Strategy -->
+                <h2 id="strategy"><i class="fa-solid fa-code-branch"></i> Strategy 패턴</h2>
+                <p>알고리즘을 인터페이스로 분리해 <strong>런타임에 교체</strong>할 수 있게 한다. 데이터 플로우 블록 에디터처럼 사용자가 알고리즘을 고르는 구조에 자연스럽게 어울린다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class IThresholdStrategy
+{
+public:
+    virtual ~IThresholdStrategy() = default;
+    virtual ErrorCode Apply(const Image&amp; in, Image&amp; out) = 0;
+};
+
+class OtsuThreshold : public IThresholdStrategy { ... };
+class AdaptiveThreshold : public IThresholdStrategy { ... };
+
+class ThresholdBlock : public IProcessBlock
+{
+public:
+    void SetStrategy(std::unique_ptr&lt;IThresholdStrategy&gt; s)
+    {
+        m_strategy = std::move(s);
+    }
+
+private:
+    ErrorCode DoProcess(const Image&amp; in, Image&amp; out) override
+    {
+        return m_strategy-&gt;Apply(in, out);
+    }
+    std::unique_ptr&lt;IThresholdStrategy&gt; m_strategy;
+};</code></pre>
+
+                <p>Template Method 패턴은 NVI와 같은 구조다. 부모가 알고리즘의 큰 골격을 잡고, 자식이 세부 단계만 구현한다.</p>
+
+                <!-- 5. CRTP -->
+                <h2 id="crtp"><i class="fa-solid fa-layer-group"></i> CRTP — 정적 다형성</h2>
+                <p>Curiously Recurring Template Pattern. 자식 타입을 부모 템플릿 인자로 전달해 <strong>컴파일 타임에 디스패치</strong>한다. virtual 호출 비용이 없다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">template &lt;class Derived&gt;
+class ProcessBase
+{
+public:
+    void Run(const Image&amp; in, Image&amp; out)
+    {
+        // virtual 없이 자식의 RunImpl 호출
+        static_cast&lt;Derived*&gt;(this)-&gt;RunImpl(in, out);
+    }
+};
+
+class FastSobel : public ProcessBase&lt;FastSobel&gt;
+{
+public:
+    void RunImpl(const Image&amp; in, Image&amp; out) { /* ... */ }
+};</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>CRTP의 트레이드오프</strong>
+                        가상 호출 오버헤드가 사라지고 인라인 최적화가 잘 된다. 대신 다형성이 컴파일 타임에 고정되어 <strong>런타임 교체가 불가능</strong>하다. hot path나 매우 짧은 함수에 어울리고, 데이터 플로우 블록처럼 동적 교체가 필요한 곳에는 부적합하다.
+                    </div>
+                </div>
+
+                <table class="spec-table">
+                    <tr><th>비교</th><th>virtual</th><th>CRTP</th><th>std::variant</th></tr>
+                    <tr><td>다형성 시점</td><td>런타임</td><td>컴파일 타임</td><td>런타임 (닫힌 집합)</td></tr>
+                    <tr><td>호출 비용</td><td>vtable 간접 호출</td><td>거의 0 (인라인)</td><td>점프 테이블</td></tr>
+                    <tr><td>런타임 교체</td><td>가능</td><td>불가</td><td>가능 (정해진 타입 내)</td></tr>
+                    <tr><td>플러그인 확장</td><td>가능</td><td>불가</td><td>불가 (타입 추가 시 재컴파일)</td></tr>
+                    <tr><td>적합한 곳</td><td>플러그인, 큰 함수</td><td>hot path, 작은 함수</td><td>닫힌 메시지 집합</td></tr>
+                </table>
+
+                <!-- 6. variant -->
+                <h2 id="variant"><i class="fa-solid fa-shuffle"></i> std::variant + std::visit</h2>
+                <p>C++17의 <code>std::variant</code>는 정해진 몇 개 타입 중 하나를 담는다. <strong>닫힌 집합</strong>일 때 가상 함수의 대안이 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;variant&gt;
+
+struct Resize { int w; int h; };
+struct Crop   { int x; int y; int w; int h; };
+struct Rotate { double angleDeg; };
+
+using Op = std::variant&lt;Resize, Crop, Rotate&gt;;
+
+ErrorCode Apply(const Op&amp; op, Image&amp; img)
+{
+    return std::visit([&amp;](auto&amp;&amp; o) -&gt; ErrorCode {
+        using T = std::decay_t&lt;decltype(o)&gt;;
+        if constexpr (std::is_same_v&lt;T, Resize&gt;) return DoResize(img, o.w, o.h);
+        else if constexpr (std::is_same_v&lt;T, Crop&gt;) return DoCrop(img, o);
+        else return DoRotate(img, o.angleDeg);
+    }, op);
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>variant가 빛나는 경우</strong>
+                        타입이 추가될 일이 거의 없는 닫힌 집합(파일 포맷의 토큰, 메시지 종류 등)에 효과적이다. 힙 할당이 없고, 컴파일러가 모든 케이스를 알아 최적화도 잘 된다.
+                    </div>
+                </div>
+
+                <!-- 7. 타입 소거 -->
+                <h2 id="type-erasure"><i class="fa-solid fa-mask"></i> 타입 소거(Type Erasure)</h2>
+                <p>인터페이스를 <strong>상속하지 않은 객체들도 같은 타입으로</strong> 다룰 수 있게 한다. <code>std::function</code>이 대표 예시다. Sean Parent의 토크 "Inheritance is the Base Class of Evil"에서 다듬어진 패턴이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class AnyDrawable
+{
+public:
+    template &lt;class T&gt;
+    AnyDrawable(T x) : m_self(std::make_shared&lt;Model&lt;T&gt;&gt;(std::move(x))) {}
+
+    void Draw(Canvas&amp; c) const { m_self-&gt;Draw(c); }
+
+private:
+    struct Concept
+    {
+        virtual ~Concept() = default;
+        virtual void Draw(Canvas&amp;) const = 0;
+    };
+    template &lt;class T&gt;
+    struct Model : Concept
+    {
+        T data;
+        Model(T x) : data(std::move(x)) {}
+        void Draw(Canvas&amp; c) const override { data.Draw(c); }  // 덕 타이핑
+    };
+    std::shared_ptr&lt;const Concept&gt; m_self;
+};</code></pre>
+
+                <p>비용은 <strong>가상 호출 + 힙 할당</strong>으로 일반 인터페이스와 비슷하다. 대신 외부 타입(예: 서드파티 라이브러리)을 수정하지 않고도 같은 컨테이너에 담을 수 있다.</p>
+
+                <!-- 8. ISP -->
+                <h2 id="isp"><i class="fa-solid fa-scissors"></i> 인터페이스 분리 원칙(ISP)</h2>
+                <p>한 인터페이스가 너무 많은 책임을 갖지 않도록 잘게 나눈다. 클라이언트가 사용하지 않는 메서드에 의존하지 않게 만든다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 별로다 — 모든 책임이 한 곳에
+class IProcessBlock
+{
+public:
+    virtual ErrorCode Process(...) = 0;
+    virtual std::string Name() const = 0;
+    virtual nlohmann::json Serialize() const = 0;
+    virtual void SetParameter(const std::string&amp;, ...) = 0;
+};
+
+// 좋다 — 작은 인터페이스로 분리
+class INameable    { public: virtual std::string Name() const = 0; ... };
+class IConfigurable { public: virtual void SetParameter(...) = 0; ... };
+class ISerializable { public: virtual nlohmann::json Serialize() const = 0; ... };
+
+class IProcessBlock : public INameable
+{
+public:
+    virtual ErrorCode Process(const Image&amp;, Image&amp;) = 0;
+};</code></pre>
+
+                <!-- 9. DLL 경계 -->
+                <h2 id="dll"><i class="fa-solid fa-plug"></i> DLL 경계의 인터페이스</h2>
+                <p>C++ ABI는 <strong>표준이 없다</strong>. 컴파일러 버전·런타임이 다르면 가상 함수 테이블의 구조도 달라질 수 있다. DLL 경계에서 C++ 추상 클래스를 그대로 노출하면 클라이언트가 같은 컴파일러로 빌드해야 한다는 제약이 생긴다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방식</th><th>장점</th><th>단점</th></tr>
+                    <tr><td>C++ 추상 클래스 export</td><td>편리</td><td>컴파일러/STL 버전 일치 필요</td></tr>
+                    <tr><td>C ABI (extern "C" 함수)</td><td>호환성 최고</td><td>객체지향 표현 직접 구현</td></tr>
+                    <tr><td>COM 스타일 (IUnknown 유사)</td><td>버전 호환, 인터페이스 추가 가능</td><td>설계 부담</td></tr>
+                    <tr><td>함수 포인터 테이블 구조체</td><td>단순, C 호환</td><td>vtable을 손으로 만드는 격</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>산업용 SDK의 관행</strong>
+                        대부분의 상용 SDK(Vieworks, Cognex, MIL 등)는 <strong>C 인터페이스를 export</strong>하고 그 위에 C++ 래퍼를 같이 제공한다. 사용자는 어떤 컴파일러로든 링크할 수 있고, 라이브러리 측은 ABI 안정성을 보장한다.
+                    </div>
+                </div>
+
+                <!-- 10. 플러그인 -->
+                <h2 id="plugin"><i class="fa-solid fa-plug-circle-bolt"></i> 플러그인 가능 구조</h2>
+                <p><code>IProcessBlock</code> 기반의 데이터 플로우는 자연스럽게 플러그인 구조로 확장된다. 블록 팩토리를 이름으로 등록해두고, 그래프 직렬화 시 이름으로 다시 만든다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class BlockRegistry
+{
+public:
+    using Factory = std::function&lt;std::unique_ptr&lt;IProcessBlock&gt;()&gt;;
+
+    void Register(const std::string&amp; name, Factory f)
+    {
+        m_factories[name] = std::move(f);
+    }
+
+    std::unique_ptr&lt;IProcessBlock&gt; Create(const std::string&amp; name) const
+    {
+        auto it = m_factories.find(name);
+        return it != m_factories.end() ? it-&gt;second() : nullptr;
+    }
+
+private:
+    std::unordered_map&lt;std::string, Factory&gt; m_factories;
+};
+
+// 블록 등록
+registry.Register("GaussianBlur",
+    []{ return std::make_unique&lt;GaussianBlur&gt;(); });
+
+// JSON 그래프 로딩
+auto block = registry.Create(jsonNode["type"].get&lt;std::string&gt;());</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다음 글로 이어진다</strong>
+                        외부 DLL에서 블록을 동적으로 로드하면 진짜 플러그인이 된다. 다음 글에서 플러그인 아키텍처와 동적 라이브러리 로딩, 버전 호환성을 다룬다.
+                    </div>
+                </div>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>가상 소멸자 누락</strong>
+                        베이스 포인터로 <code>delete</code>할 때 자식 소멸자가 호출되지 않는다. 메모리 누수와 자원 누수, UB로 이어진다. 인터페이스의 첫 줄에 <code>virtual ~I() = default;</code>를 박아두자.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>객체 슬라이싱(slicing)</strong>
+                        <code>Base b = *derived;</code> 처럼 베이스 타입 값으로 복사하면 자식 부분이 잘려나간다. 다형 객체는 항상 <strong>포인터나 참조</strong>로 다룬다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>생성자/소멸자에서 가상 함수 호출</strong>
+                        생성·소멸 중에는 <strong>정적 디스패치</strong>로 동작한다. 자식 버전이 호출되지 않는다. 초기화/정리 로직은 별도 메서드로 빼서 객체가 완성된 뒤에 호출한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>override 안 쓰면 조용히 새 함수가 된다</strong>
+                        <code>const</code> 빠뜨리거나 인자 타입이 한 글자 다르면, 재정의가 아니라 <strong>새 가상 함수</strong>가 추가될 뿐이다. <code>override</code>를 항상 쓰자.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>private 상속을 인터페이스 구현으로 쓰지 말자</strong>
+                        private 상속은 "is-implemented-in-terms-of" 관계다. 인터페이스 구현은 <strong>public 상속</strong>이 정답이다. 혼동하면 클라이언트가 베이스 타입으로 다형 호출을 못 하게 된다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — virtual functions, abstract class, std::variant</li>
+                        <li>Herb Sutter, Andrei Alexandrescu — "C++ Coding Standards" (Item 39: NVI)</li>
+                        <li>Scott Meyers — "Effective C++" (Item 7: 가상 소멸자, Item 35: NVI)</li>
+                        <li>Sean Parent — "Inheritance Is The Base Class of Evil" (GoingNative 2013)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

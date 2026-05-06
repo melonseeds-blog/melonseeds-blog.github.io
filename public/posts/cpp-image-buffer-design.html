@@ -1,0 +1,697 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ 이미지 버퍼 클래스 설계 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#problem" data-section="problem">풀어야 할 문제</a>
+        <a href="#prior-art" data-section="prior-art">참조 사례</a>
+        <a href="#decision" data-section="decision">설계 결정</a>
+        <a href="#value-image" data-section="value-image">기본 Image</a>
+        <a href="#refcount" data-section="refcount">참조 카운트</a>
+        <a href="#pimpl" data-section="pimpl">pImpl</a>
+        <a href="#cpu-gpu" data-section="cpu-gpu">CPU/GPU 추상화</a>
+        <a href="#roi" data-section="roi">ROI / sub-image</a>
+        <a href="#wrap-external" data-section="wrap-external">외부 SDK wrap</a>
+        <a href="#errorcode" data-section="errorcode">ErrorCode 통합</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+        <a href="#beyond-image" data-section="beyond-image">Region/XLD</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>C++ 이미지 버퍼 클래스 설계 — pImpl / RAII / CPU·GPU 추상화</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>이미지 버퍼 클래스가 풀어야 하는 문제 — 소유권, 픽셀 포맷, 메모리 위치, ROI</li>
+                        <li>value semantics vs reference semantics 결정 트리</li>
+                        <li>cv::Mat 스타일 참조 카운트 헤더와 pImpl 패턴 적용 방식</li>
+                        <li>CPU/GPU 메모리 추상화와 lazy 동기화 설계</li>
+                        <li>외부 카메라 SDK 버퍼 wrap, ROI 공유, ErrorCode 통합</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#problem">이미지 버퍼 클래스가 풀어야 하는 문제</a></li>
+                        <li><a href="#prior-art">참조 사례 — cv::Mat / HObject / Vision Pro</a></li>
+                        <li><a href="#decision">설계 결정 트리</a></li>
+                        <li><a href="#value-image">기본 Image 클래스 (value-like)</a></li>
+                        <li><a href="#refcount">참조 카운트 버전 (cv::Mat 스타일)</a></li>
+                        <li><a href="#pimpl">pImpl 패턴 적용</a></li>
+                        <li><a href="#cpu-gpu">CPU/GPU 메모리 추상화</a></li>
+                        <li><a href="#roi">ROI / sub-image</a></li>
+                        <li><a href="#wrap-external">외부 SDK 버퍼 wrap</a></li>
+                        <li><a href="#errorcode">에러 처리 — ErrorCode 패턴 통합</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#beyond-image">Image 외 컨테이너 — Region, XLD Contour</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 문제 -->
+                <h2 id="problem"><i class="fa-solid fa-image"></i> 이미지 버퍼 클래스가 풀어야 하는 문제</h2>
+                <p>산업용 비전 라이브러리에서 이미지 버퍼 클래스는 가장 먼저 결정해야 하는 핵심 타입이다. 단순한 "픽셀 데이터 wrapper"처럼 보이지만, 실제로는 여러 직교적인 요구를 동시에 만족해야 한다.</p>
+
+                <table>
+                    <tr><th>문제</th><th>구체 사례</th></tr>
+                    <tr><td>메모리 소유권</td><td>누가 release를 책임지는가 — 클래스 소멸자, 사용자, 외부 SDK?</td></tr>
+                    <tr><td>다양한 픽셀 포맷</td><td>Mono8, Mono12 packed, Mono16, Bayer RG/BG, BGR8, RGBA8, Float32</td></tr>
+                    <tr><td>메모리 위치</td><td>일반 CPU 힙, GPU 디바이스 메모리, Pinned 호스트 메모리, Mapped 메모리</td></tr>
+                    <tr><td>ROI / sub-image</td><td>원본의 일부분만 처리할 때 깊은 복사할지 얕은 참조할지</td></tr>
+                    <tr><td>외부 SDK 버퍼 wrap</td><td>카메라 SDK가 자체 버퍼에 채워준 데이터를 소유권 안 가져가고 처리</td></tr>
+                    <tr><td>멀티스레드 안전성</td><td>참조 카운트 원자성, 복사 비용, 한 이미지를 여러 블록이 동시에 읽기</td></tr>
+                </table>
+
+                <p>이 모든 요구를 한 클래스로 해결하려고 하면 인터페이스가 비대해지고, 거꾸로 너무 많이 쪼개면 데이터 플로우가 파편화된다. 균형점을 찾는 것이 설계의 핵심이다.</p>
+
+                <!-- 2. 참조 사례 -->
+                <h2 id="prior-art"><i class="fa-solid fa-magnifying-glass"></i> 참조 사례 — cv::Mat / HObject / Vision Pro</h2>
+                <p>유명 라이브러리들이 이 문제를 어떻게 풀었는지 한 줄씩 정리한다.</p>
+                <ul>
+                    <li><strong>OpenCV <code>cv::Mat</code></strong> — 헤더(width/height/step/data ptr)와 데이터 본체를 분리하고, <em>참조 카운트 기반 얕은 복사</em>. 복사 비용 O(1), <code>clone()</code>으로 명시적 깊은 복사.</li>
+                    <li><strong>HALCON <code>HObject</code></strong> — 이미지/리전/XLD를 하나의 추상 타입으로 묶어 데이터 플로우 관점에서 통일. 내부적으로 <em>광범위한 참조 카운트</em>.</li>
+                    <li><strong>Cognex Vision Pro <code>CogImage8Grey</code> 계열</strong> — 픽셀 포맷별로 클래스 분리, ROI는 별도 root/region 객체. C# 친화적 reference semantics.</li>
+                    <li><strong>MIL <code>MIL_ID</code></strong> — opaque handle로 추상화, ABI를 C 핸들 수준으로 안정화.</li>
+                </ul>
+                <p>공통 패턴은 두 가지다. (1) 헤더와 데이터를 분리한다. (2) 데이터는 참조 카운트로 공유한다.</p>
+
+                <!-- 3. 설계 결정 트리 -->
+                <h2 id="decision"><i class="fa-solid fa-code-branch"></i> 설계 결정 트리</h2>
+
+                <h3 id="decision-semantics"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> value vs reference semantics</h3>
+                <table class="spec-table">
+                    <tr><th>항목</th><th>value semantics (deep copy)</th><th>reference semantics (shallow copy)</th></tr>
+                    <tr><td>복사 비용</td><td>O(N) — 전체 픽셀 복사</td><td>O(1) — 헤더만 복사</td></tr>
+                    <tr><td>예측 가능성</td><td>높음 (수정이 다른 객체에 영향 없음)</td><td>낮음 (의도치 않은 공유 가능)</td></tr>
+                    <tr><td>ROI 표현</td><td>원본을 잘라낸 새 메모리</td><td>같은 데이터 + 다른 offset/stride</td></tr>
+                    <tr><td>대표 예</td><td><code>std::vector</code></td><td><code>cv::Mat</code>, <code>std::shared_ptr</code></td></tr>
+                </table>
+
+                <h3 id="decision-storage"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 표준 컨테이너 vs 직접 관리</h3>
+                <p><code>std::vector&lt;uint8_t&gt;</code>로 픽셀을 들고 있으면 RAII가 거저 따라온다. 다만 <em>aligned 할당</em>이 까다롭고(SIMD/GPU는 보통 32 byte 또는 64 byte 정렬 필요), 외부 SDK 버퍼를 wrap하는 시나리오를 표현하기 어렵다. 산업용 비전 라이브러리에서는 직접 관리가 일반적이다.</p>
+
+                <h3 id="decision-pointer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> shared_ptr 참조 카운트 vs unique_ptr</h3>
+                <p>이미지가 데이터 플로우 그래프에서 여러 블록의 입력으로 동시에 사용되는 시나리오에서는 공유 소유권이 자연스럽다. 따라서 픽셀 데이터 본체는 <code>std::shared_ptr&lt;uint8_t[]&gt;</code> 또는 사용자 정의 control block을 쓰는 것이 일반적이다.</p>
+
+                <h3 id="decision-align"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> aligned 할당</h3>
+                <p>SIMD(SSE/AVX)와 CUDA의 <code>cudaMemcpy</code> 모두 정렬된 포인터에서 더 빠르다. <code>std::aligned_alloc</code>(C++17), MSVC의 <code>_aligned_malloc</code> 등을 사용한다. <strong>해제는 반드시 짝이 맞는 함수로 한다.</strong></p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>aligned 메모리 해제 짝</strong>
+                        <code>_aligned_malloc</code>은 <code>_aligned_free</code>로, <code>std::aligned_alloc</code>은 <code>std::free</code>로 해제한다. <code>delete[]</code>로 해제하면 UB. <code>shared_ptr</code>에 담을 때 반드시 커스텀 deleter를 같이 등록한다.
+                    </div>
+                </div>
+
+                <!-- 4. 기본 Image -->
+                <h2 id="value-image"><i class="fa-solid fa-cube"></i> 기본 Image 클래스 (value-like, deep copy)</h2>
+                <p>가장 단순한 출발점은 value semantics 버전이다. RAII로 메모리를 들고, 복사 시 깊은 복사를 한다. 이해가 쉽고 동작이 예측 가능하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Image.h
+#pragma once
+#include &lt;cstdint&gt;
+#include &lt;cstddef&gt;
+
+namespace ImagingLib::Core
+{
+    enum class PixelFormat
+    {
+        Mono8,
+        Mono16,
+        BGR8,
+        RGBA8,
+        BayerRG8,
+        Float32
+    };
+
+    class Image
+    {
+    public:
+        Image() noexcept = default;
+        Image(int width, int height, PixelFormat format);
+        ~Image();
+
+        // Deep copy semantics.
+        Image(const Image&amp; other);
+        Image&amp; operator=(const Image&amp; other);
+
+        // Move transfers ownership.
+        Image(Image&amp;&amp; other) noexcept;
+        Image&amp; operator=(Image&amp;&amp; other) noexcept;
+
+        int          Width()  const noexcept { return m_width; }
+        int          Height() const noexcept { return m_height; }
+        PixelFormat  Format() const noexcept { return m_format; }
+        size_t       Stride() const noexcept { return m_stride; }
+        uint8_t*     Data()         noexcept { return m_data; }
+        const uint8_t* Data()  const noexcept { return m_data; }
+        bool         IsEmpty() const noexcept { return m_data == nullptr; }
+
+    private:
+        int         m_width  = 0;
+        int         m_height = 0;
+        PixelFormat m_format = PixelFormat::Mono8;
+        size_t      m_stride = 0;     // bytes per row, including alignment padding.
+        uint8_t*    m_data   = nullptr;
+    };
+}</code></pre>
+
+                <p>주요 포인트는 다음과 같다.</p>
+                <ul>
+                    <li><code>Width</code>/<code>Height</code> 같은 단순 getter는 <code>noexcept</code> 값 반환 — ErrorCode 불필요.</li>
+                    <li><code>Stride</code>는 정렬 패딩을 포함한 행당 바이트 수. <code>width * bpp</code>와 다를 수 있다.</li>
+                    <li>5가지 특수 멤버를 모두 명시 — Rule of Five.</li>
+                    <li>할당은 <code>std::aligned_alloc</code>으로 64 byte 정렬, 소멸자에서 짝 맞는 free 호출.</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Stride가 width와 다른 이유</strong>
+                        예를 들어 폭 1023 Mono8 이미지를 64 byte 정렬로 만들면 stride는 1024가 된다. 픽셀 접근은 <code>data + y * stride + x * bpp</code> 공식으로 한다. <code>width * bpp</code>로 계산하면 행 단위로 어긋난다.
+                    </div>
+                </div>
+
+                <!-- 5. 참조 카운트 -->
+                <h2 id="refcount"><i class="fa-solid fa-link"></i> 참조 카운트 버전 (cv::Mat 스타일, shallow copy)</h2>
+                <p>데이터 플로우 그래프에서 한 이미지가 여러 블록의 입력이 되는 경우, value 복사는 비용이 크다. 헤더와 데이터를 분리하고 데이터 본체에 참조 카운트를 붙이면 복사가 O(1)이 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Header is light, data body is shared.
+class Image
+{
+public:
+    Image() noexcept = default;
+    Image(int width, int height, PixelFormat format);
+
+    // Shallow copy — only refcount bumps.
+    Image(const Image&amp; other) noexcept = default;
+    Image&amp; operator=(const Image&amp; other) noexcept = default;
+
+    // Explicit deep copy.
+    Image Clone() const;
+
+    int          Width()  const noexcept { return m_width; }
+    size_t       Stride() const noexcept { return m_stride; }
+    uint8_t*     Data()         noexcept { return m_dataBlock.get() + m_offset; }
+    const uint8_t* Data()  const noexcept { return m_dataBlock.get() + m_offset; }
+
+private:
+    int         m_width  = 0;
+    int         m_height = 0;
+    PixelFormat m_format = PixelFormat::Mono8;
+    size_t      m_stride = 0;
+    size_t      m_offset = 0;          // for ROI: offset into shared block.
+    std::shared_ptr&lt;uint8_t[]&gt; m_dataBlock;  // refcounted body.
+};</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>얕은 복사인데 사용자가 깊은 복사를 기대하는 함정</strong>
+                        <code>Image b = a; b.SetPixel(0,0,255);</code> 가 <code>a</code>를 변경한다. 문서로 명시하고, 깊은 복사가 필요하면 <code>Clone()</code>을 호출하도록 강제한다. cv::Mat과 같은 모델을 따른다고 명시하면 사용자 학습 비용이 줄어든다.
+                    </div>
+                </div>
+
+                <p>"copy-on-write"는 이론적으로 매력적이지만, 매 write마다 참조 카운트를 검사하고 락을 걸어야 한다. 멀티스레드 환경에서 비용이 커서 cv::Mat을 포함한 대부분의 라이브러리가 채택하지 않는다.</p>
+
+                <!-- 6. pImpl -->
+                <h2 id="pimpl"><i class="fa-solid fa-puzzle-piece"></i> pImpl 패턴 적용</h2>
+                <p>SDK를 DLL/SO로 배포하는 순간 ABI 안정성이 중요해진다. 헤더에 <code>std::shared_ptr</code>, <code>std::vector</code> 등 표준 컨테이너 멤버가 노출되면 표준 라이브러리 버전이 바뀔 때 ABI가 깨질 수 있다. <strong>pImpl(pointer to implementation)</strong>이 표준 해법이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Image.h — public header, ABI-stable.
+#pragma once
+#include &lt;memory&gt;
+
+namespace ImagingLib::Core
+{
+    enum class PixelFormat;
+
+    class Image
+    {
+    public:
+        Image() noexcept;
+        Image(int width, int height, PixelFormat format);
+        ~Image();
+
+        Image(const Image&amp; other);
+        Image&amp; operator=(const Image&amp; other);
+        Image(Image&amp;&amp; other) noexcept;
+        Image&amp; operator=(Image&amp;&amp; other) noexcept;
+
+        int          Width()  const noexcept;
+        int          Height() const noexcept;
+        PixelFormat  Format() const noexcept;
+        const uint8_t* Data() const noexcept;
+
+    private:
+        class Impl;
+        std::unique_ptr&lt;Impl&gt; m_impl;
+    };
+}</code></pre>
+
+<pre class="language-cpp"><code class="language-cpp">// Image.cpp — implementation, free to change.
+class Image::Impl
+{
+public:
+    int         width  = 0;
+    int         height = 0;
+    PixelFormat format = PixelFormat::Mono8;
+    size_t      stride = 0;
+    std::shared_ptr&lt;uint8_t[]&gt; dataBlock;
+};
+
+Image::Image() noexcept : m_impl(std::make_unique&lt;Impl&gt;()) {}
+Image::~Image() = default;          // Impl is complete here.
+int Image::Width() const noexcept { return m_impl-&gt;width; }
+// ...</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>pImpl의 효과</strong>
+                        내부 구현을 바꿔도 헤더 재컴파일 불필요 → 컴파일 시간 단축. DLL 경계에서 표준 라이브러리 ABI가 노출되지 않음 → 호환성 안정. 단점은 추가 간접 참조 1회와 동적 할당 1회. 이미지 처리처럼 픽셀당 비용이 지배적인 도메인에서는 무시할 만한 수준이다.
+                    </div>
+                </div>
+
+                <!-- 7. CPU/GPU -->
+                <h2 id="cpu-gpu"><i class="fa-solid fa-microchip"></i> CPU/GPU 메모리 추상화</h2>
+                <p>CUDA 파이프라인을 도입하기 시작하면 데이터가 어디에 있는지 추적해야 한다. 무지성 매번 GPU↔CPU 복사를 하면 PCIe 대역폭이 병목이 된다. 데이터가 머무는 위치를 enum으로 들고, 필요할 때만 옮긴다.</p>
+
+                <table class="spec-table">
+                    <tr><th>위치</th><th>의미</th><th>비고</th></tr>
+                    <tr><td><code>Cpu</code></td><td>일반 호스트 힙</td><td><code>aligned_alloc</code></td></tr>
+                    <tr><td><code>Pinned</code></td><td>page-locked 호스트</td><td><code>cudaMallocHost</code> — H2D 전송 빠름</td></tr>
+                    <tr><td><code>Gpu</code></td><td>디바이스 메모리</td><td><code>cudaMalloc</code></td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">enum class MemoryLocation { Cpu, Pinned, Gpu };
+
+class Image
+{
+public:
+    MemoryLocation Location() const noexcept;
+
+    // Ensure the data is reachable from the requested side.
+    // Triggers an internal copy only if the location does not match.
+    ErrorCode EnsureCpu();
+    ErrorCode EnsureGpu();
+
+    // Raw pointers — caller must call EnsureXxx first.
+    const uint8_t* CpuData() const noexcept;
+    const uint8_t* GpuData() const noexcept;
+};</code></pre>
+
+                <p>핵심 아이디어는 <em>lazy 동기화</em>다. 파이프라인이 GPU에서 시작해 GPU 블록만 거쳐 GPU에서 끝나면 CPU 왕복이 한 번도 일어나지 않는다. 사용자가 결과를 화면에 띄울 때 비로소 <code>EnsureCpu</code>가 호출되어 한 번 복사한다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>GPU 비동기 실행 후 CPU 접근 위험</strong>
+                        <code>cudaMemcpyAsync</code> 또는 커널 launch 직후 CPU에서 데이터를 읽으면 미완료 상태일 수 있다. <code>EnsureCpu</code> 내부에서 반드시 <code>cudaStreamSynchronize</code> 또는 이벤트 wait를 해야 한다. 동기화를 빠뜨리면 디버깅이 매우 어려운 데이터 레이스가 생긴다.
+                    </div>
+                </div>
+
+                <!-- 8. ROI -->
+                <h2 id="roi"><i class="fa-solid fa-crop-simple"></i> ROI / sub-image</h2>
+                <p>처리할 영역이 이미지 전체가 아닌 경우, 사본을 만들지 않고 원본의 일부분만 참조하는 ROI 객체가 자연스럽다. 참조 카운트와 결합하면 거의 공짜다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct Rect { int x, y, width, height; };
+
+// Returns a new Image header that shares the underlying data block.
+// The data pointer is shifted by (y * stride + x * bpp);
+// stride remains the parent's stride.
+Image Image::GetRoi(const Rect&amp; rect) const;</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>ROI는 데이터를 공유한다</strong>
+                        ROI에 쓰면 부모 이미지에도 반영된다. ROI 안의 stride는 부모와 같으므로 행 사이에 "다른 픽셀"이 끼어 있다는 점을 처리 코드가 인지해야 한다. SIMD/GPU 커널이 행 단위로 stride를 받도록 짜야 한다.
+                    </div>
+                </div>
+
+                <!-- 9. 외부 SDK -->
+                <h2 id="wrap-external"><i class="fa-solid fa-plug"></i> 외부 SDK 버퍼 wrap</h2>
+                <p>Vieworks 같은 카메라 SDK는 자체 메모리 풀에 이미지를 채워준다. 우리 라이브러리가 이 메모리를 복사하지 않고 그대로 처리하려면, 소유권을 가져가지 않는 wrap 모드가 필요하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Wrap an externally owned buffer. The caller-supplied deleter is invoked
+// when the last Image referencing this block is destroyed. Pass an empty
+// deleter to indicate that the buffer must outlive every Image instance.
+static Image Image::WrapExternal(
+    uint8_t* data,
+    int width,
+    int height,
+    PixelFormat format,
+    size_t stride,
+    std::function&lt;void(uint8_t*)&gt; deleter);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>소유권을 가져갈지 명시</strong>
+                        deleter를 등록하면 우리가 소유권을 가져간 것이다. 빈 deleter면 외부가 책임진다. 이 둘을 헷갈리면 double free 또는 dangling pointer가 발생한다. 카메라 SDK에서 받은 버퍼는 보통 SDK가 풀로 재사용하므로 빈 deleter + 짧은 수명이 정답이다.
+                    </div>
+                </div>
+
+                <!-- 10. ErrorCode -->
+                <h2 id="errorcode"><i class="fa-solid fa-circle-exclamation"></i> 에러 처리 — ErrorCode 패턴 통합</h2>
+                <p>프로젝트 컨벤션을 그대로 따른다. 단순 getter는 값을 반환하고, 메모리 할당이나 복사 같은 실패 가능 동작은 ErrorCode를 반환한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Simple getters — no ErrorCode.
+int          Width()  const noexcept;
+int          Height() const noexcept;
+bool         IsEmpty() const noexcept;
+
+// Actions that can fail — return ErrorCode.
+ErrorCode    AllocBuffer(int width, int height, PixelFormat format);
+ErrorCode    CopyTo(Image&amp; dst) const;
+ErrorCode    EnsureGpu();</code></pre>
+
+                <p>내부 구현에서는 <code>std::bad_alloc</code> 같은 예외를 잡아 ErrorCode로 변환한다. 예외가 API 경계를 넘어가지 않도록 한다.</p>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-skull-crossbones"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>얕은 복사 의도 미공유</strong>
+                        cv::Mat 스타일을 채택했으면서 문서에 "deep copy"처럼 적어두면 사용자가 혼란을 겪는다. 명시적으로 "shallow copy + Clone()" 모델임을 첫 페이지에 적는다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>aligned 메모리에 잘못된 deallocator</strong>
+                        <code>_aligned_malloc</code>으로 받은 포인터를 <code>delete[]</code>로 해제하면 UB. <code>shared_ptr&lt;uint8_t[]&gt;</code>에 담을 때 반드시 커스텀 deleter를 등록한다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>GPU 메모리를 CPU 포인터처럼 접근</strong>
+                        <code>cudaMalloc</code>으로 받은 포인터를 <code>memcpy</code>나 일반 dereference하면 segfault. <code>EnsureCpu</code>를 거쳐 호스트 포인터를 얻는 경로를 강제한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>DLL 경계에 표준 컨테이너 노출</strong>
+                        헤더에 <code>std::vector</code>, <code>std::string</code>이 멤버로 있으면 표준 라이브러리 버전/플래그가 다른 클라이언트와 ABI가 깨진다. pImpl로 숨긴다.
+                    </div>
+                </div>
+
+                <!-- 12. Region/XLD -->
+                <h2 id="beyond-image"><i class="fa-solid fa-shapes"></i> Image 외 컨테이너 — Region, XLD Contour</h2>
+                <p>비전 라이브러리의 데이터 플로우는 Image만 다루지 않는다. 같은 설계 원칙이 다른 컨테이너에도 적용된다.</p>
+                <ul>
+                    <li><strong>Region</strong> — 픽셀 마스크. 메모리 절약을 위해 보통 <em>RLE(run-length encoding)</em>로 인코딩한다. 픽셀이 100만 개라도 연결된 영역이면 수십 byte로 표현된다.</li>
+                    <li><strong>XLD Contour</strong> — 서브픽셀 정밀도 윤곽선. <code>std::vector&lt;Point2f&gt;</code>로 들고 있고, 위상(open/closed) 메타를 추가한다.</li>
+                </ul>
+                <p>이들을 같은 base 인터페이스(예: <code>IFlowData</code>) 아래 노출하면 데이터 플로우 블록이 입출력을 통일된 방식으로 다룰 수 있다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다음 글로 이어지는 지점</strong>
+                        Image, Region, XLD를 어떤 인터페이스로 묶을지 — <code>IProcessBlock</code>과 <code>IFlowData</code>의 관계, 플러그인 경계에서의 타입 erasure 등은 다음 "C++ 인터페이스 패턴" 글에서 이어 다룬다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — <code>std::shared_ptr</code>, <code>std::aligned_alloc</code>, <code>std::unique_ptr</code></li>
+                        <li>OpenCV 공식 문서 — <code>cv::Mat</code> Memory management and reference counting</li>
+                        <li>Scott Meyers, Effective C++ — Item 30: pImpl idiom과 컴파일 의존성 최소화</li>
+                        <li>NVIDIA CUDA C++ Programming Guide — Pinned memory, async copy, stream synchronization</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

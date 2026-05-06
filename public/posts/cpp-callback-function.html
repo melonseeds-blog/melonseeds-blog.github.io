@@ -1,0 +1,663 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>콜백과 std::function — 에러 콜백 / 이벤트 디스패처 설계 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why-callback" data-section="why-callback">콜백 상황</a>
+        <a href="#three-ways" data-section="three-ways">세 가지 방식</a>
+        <a href="#fnptr" data-section="fnptr">함수 포인터</a>
+        <a href="#stdfunction" data-section="stdfunction">std::function</a>
+        <a href="#cost" data-section="cost">비용</a>
+        <a href="#dispatcher" data-section="dispatcher">디스패처</a>
+        <a href="#weak-ref" data-section="weak-ref">약한 참조</a>
+        <a href="#dual" data-section="dual">Dual 통보</a>
+        <a href="#perf" data-section="perf">성능</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#move-only" data-section="move-only">move_only_function</a>
+        <a href="#case" data-section="case">적용 예</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>콜백과 std::function — 에러 콜백 / 이벤트 디스패처 설계</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>콜백이 필요한 상황과 세 가지 표현 방식 비교</li>
+                        <li><code>std::function</code>의 사용법과 비용 (SBO, indirection)</li>
+                        <li>이벤트 디스패처 설계 — Subscribe/Unsubscribe/Dispatch</li>
+                        <li><code>weak_ptr</code> 캡처로 lifetime 안전성 확보</li>
+                        <li>산업 SDK의 ErrorCode + 콜백 dual 통보 패턴</li>
+                        <li>흔한 함정 (dangling, 디스패처 무효화, 멀티스레드 race)</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-callback">콜백이 필요한 상황</a></li>
+                        <li><a href="#three-ways">세 가지 콜백 표현 방식</a></li>
+                        <li><a href="#fnptr">함수 포인터 + 사용자 데이터</a></li>
+                        <li><a href="#stdfunction">std::function 사용</a></li>
+                        <li><a href="#cost">std::function의 비용</a></li>
+                        <li><a href="#dispatcher">이벤트 디스패처 설계</a></li>
+                        <li><a href="#weak-ref">약한 참조 콜백 (lifetime 안전성)</a></li>
+                        <li><a href="#dual">에러 콜백 + ErrorCode dual 통보</a></li>
+                        <li><a href="#perf">성능 고려</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#move-only">C++23 std::move_only_function</a></li>
+                        <li><a href="#case">이미지 acquisition 시스템 적용 예</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 콜백이 필요한 상황 -->
+                <h2 id="why-callback"><i class="fa-solid fa-bell"></i> 콜백이 필요한 상황</h2>
+                <p>호출자가 결과를 즉시 받을 수 없거나, 라이브러리가 사건 발생 시점에 사용자 코드를 호출해야 할 때 콜백이 등장한다. 산업 SDK에서는 다음과 같은 시나리오가 일반적이다.</p>
+                <ul>
+                    <li><strong>비동기 통보</strong> — 카메라 grab 완료, 에러 발생, 디바이스 disconnect</li>
+                    <li><strong>GUI 이벤트</strong> — 버튼 클릭, 마우스 이동</li>
+                    <li><strong>알고리즘 진행률</strong> — long-running task의 percent 보고, cancel 요청</li>
+                    <li><strong>Dual 통보 시스템</strong> — 함수가 <code>ErrorCode</code>를 즉시 반환하면서, 등록된 전역 콜백에도 동시에 보고</li>
+                </ul>
+                <p>공통점은 "콜러가 호출 시점에 결정한 행동을, 라이브러리가 나중에 자기 컨텍스트에서 실행한다"는 점이다.</p>
+
+                <!-- 2. 세 가지 콜백 표현 방식 -->
+                <h2 id="three-ways"><i class="fa-solid fa-signal"></i> 세 가지 콜백 표현 방식</h2>
+                <p>C++에서 콜백을 표현하는 주요 수단은 셋이다. 각자 트레이드오프가 다르므로 상황에 맞게 고른다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방식</th><th>상태 보유</th><th>타입 안전</th><th>성능</th><th>ABI</th><th>주 용도</th></tr>
+                    <tr><td><strong>함수 포인터</strong></td><td>불가 (void* 별도)</td><td>약함</td><td>가장 빠름</td><td>C 호환</td><td>DLL 경계, C API</td></tr>
+                    <tr><td><strong>인터페이스</strong></td><td>가능</td><td>강함</td><td>가상 호출 1회</td><td>C++ 한정</td><td>구조화된 핸들러</td></tr>
+                    <tr><td><strong>std::function</strong></td><td>가능 (캡처)</td><td>강함</td><td>indirection + SBO</td><td>C++ 한정</td><td>람다, 멤버, 함수 객체 통합</td></tr>
+                </table>
+
+                <p>인터페이스 방식은 핸들러가 여러 메서드를 가진 객체일 때 자연스럽다. 반면 단발성 람다를 받으려면 <code>std::function</code>이 편하다.</p>
+
+                <!-- 3. 함수 포인터 + 사용자 데이터 -->
+                <h2 id="fnptr"><i class="fa-solid fa-code-branch"></i> 함수 포인터 + 사용자 데이터 (C 스타일)</h2>
+                <p>C ABI 호환을 위해 DLL 경계에서 가장 많이 쓰이는 형태다. 상태는 <code>void*</code> 사용자 데이터로 들고 다닌다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// C-style callback signature
+typedef void (*ErrorCb)(int code, const char* msg, void* userData);
+
+ErrorCode SetErrorCallback(ErrorCb cb, void* userData);
+
+// 사용
+struct MyContext { Logger* log; };
+MyContext ctx{ &amp;myLogger };
+
+SetErrorCallback(
+    [](int code, const char* msg, void* user) {
+        auto* c = static_cast&lt;MyContext*&gt;(user);
+        c-&gt;log-&gt;Error("err {}: {}", code, msg);
+    },
+    &amp;ctx);
+</code></pre>
+
+                <p>장점은 명확하다. 가벼운 함수 포인터 1개와 <code>void*</code> 1개만 ABI를 넘나든다. 단점은 <code>void*</code> 캐스팅의 타입 안전성 부재와, 캡처 람다는 변환되지 않는다는 점이다 (capture-less 람다만 함수 포인터로 변환 가능).</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>DLL 경계라면 함수 포인터가 정답</strong>
+                        <code>std::function</code>은 표준이지만 ABI가 컴파일러/STL 버전에 묶인다. 외부에 SDK 헤더를 공개한다면 함수 포인터 + <code>void*</code> 패턴이 가장 안전하다.
+                    </div>
+                </div>
+
+                <!-- 4. std::function 사용 -->
+                <h2 id="stdfunction"><i class="fa-solid fa-share-nodes"></i> std::function 사용</h2>
+                <p>같은 라이브러리 내부에서, 또는 C++ 헤더 only 인터페이스에서는 <code>std::function</code>이 표현력이 가장 좋다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;functional&gt;
+#include &lt;string&gt;
+
+using ErrorCallback = std::function&lt;void(int code, const std::string&amp; msg)&gt;;
+
+ErrorCode SetErrorCallback(ErrorCallback cb);
+
+// 람다 등록 (캡처로 상태 보유)
+Logger logger;
+SetErrorCallback([&amp;logger](int code, const std::string&amp; msg) {
+    logger.Error("err {}: {}", code, msg);
+});
+
+// 멤버 함수 등록
+class Handler
+{
+public:
+    void OnError(int code, const std::string&amp; msg);
+};
+
+Handler h;
+SetErrorCallback([&amp;h](int c, const std::string&amp; m) { h.OnError(c, m); });
+</code></pre>
+
+                <p>람다 캡처로 컨텍스트를 자연스럽게 들고 다닌다. <code>std::bind</code> 대신 람다로 멤버 함수를 감싸는 편이 가독성이 좋다.</p>
+
+                <!-- 5. std::function의 비용 -->
+                <h2 id="cost"><i class="fa-solid fa-gauge-high"></i> std::function의 비용</h2>
+                <p>편의에는 비용이 따른다. <code>std::function</code> 내부는 type-erasure이고, 호출 시 가상 함수와 비슷한 indirection을 거친다.</p>
+
+                <ul>
+                    <li><strong>SBO (Small Buffer Optimization)</strong> — 작은 callable은 내부 버퍼에 저장</li>
+                    <li>SBO 한계 (보통 2~3 포인터 크기) 초과 시 <strong>힙 할당</strong></li>
+                    <li>호출마다 type-erased thunk 경유 → 인라이닝 거의 불가능</li>
+                    <li>생성/복사 비용도 있음 (특히 힙 할당이 발생할 때)</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>std::function은 hot path에서 신중하게</strong>
+                        프레임당 수백만 회 호출되는 inner loop에서 쓰면 indirection이 누적된다. 이런 곳은 템플릿 콜백을 쓰는 편이 빠르다 (아래 성능 섹션 참고).
+                    </div>
+                </div>
+
+                <!-- 6. 이벤트 디스패처 -->
+                <h2 id="dispatcher"><i class="fa-solid fa-network-wired"></i> 이벤트 디스패처 설계</h2>
+                <p>여러 구독자가 하나의 이벤트를 듣는 구조라면 디스패처가 필요하다. 기본 골격은 다음과 같다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">enum class EventType { GrabDone, Error, Disconnect };
+
+struct Event { /* payload */ };
+
+using Token = std::uint64_t;
+
+class EventDispatcher
+{
+public:
+    using Handler = std::function&lt;void(const Event&amp;)&gt;;
+
+    Token Subscribe(EventType t, Handler h);
+    void Unsubscribe(Token t);
+    void Dispatch(const Event&amp; e, EventType t);
+
+private:
+    struct Entry { Token id; Handler fn; };
+    std::unordered_map&lt;EventType, std::vector&lt;Entry&gt;&gt; m_handlers;
+    Token m_nextId{ 1 };
+    std::mutex m_mutex;
+};
+</code></pre>
+
+                <p>구독 해제는 <code>Token</code>(증가하는 ID)으로 식별한다. iterator를 반환하면 vector 재할당 시 무효화되므로, 안정적인 식별자가 더 안전하다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Dispatch 도중 Subscribe/Unsubscribe — vector 무효화</strong>
+                        핸들러 안에서 다시 <code>Subscribe</code>나 <code>Unsubscribe</code>를 호출하면 순회 중인 vector가 변경되어 iterator가 무효화된다. <em>delayed list</em>를 두거나, dispatch 중에는 추가 작업을 큐에 모아 두고 끝난 뒤 적용하는 방식으로 보호한다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>멀티스레드 동시 Subscribe/Dispatch — 데이터 레이스</strong>
+                        <code>std::vector</code>는 동시 read/write에 thread-safe하지 않다. 최소한 mutex로 보호하거나, copy-on-dispatch (락 안에서 vector 복사 후 락 풀고 호출) 패턴을 쓴다. lock-free가 필요하면 <code>shared_ptr&lt;const vector&gt;</code> 스왑 방식이 흔하다.
+                    </div>
+                </div>
+
+                <!-- 7. 약한 참조 -->
+                <h2 id="weak-ref"><i class="fa-solid fa-link-slash"></i> 약한 참조 콜백 (lifetime 안전성)</h2>
+                <p>콜백 안에서 <code>this</code>를 캡처했는데 객체가 먼저 소멸하면 dangling이다. 디스패처는 핸들러 vector를 잡고 있을 뿐, 핸들러가 가리키는 객체의 수명에는 관여하지 않는다.</p>
+
+                <p>해결책은 <code>std::weak_ptr</code>를 캡처하고 호출 직전에 <code>lock()</code>으로 살아있는지 확인하는 것이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class MyClass : public std::enable_shared_from_this&lt;MyClass&gt;
+{
+public:
+    void Register(EventDispatcher&amp; d)
+    {
+        auto self = std::weak_ptr&lt;MyClass&gt;(shared_from_this());
+        d.Subscribe(EventType::GrabDone,
+            [self](const Event&amp; e)
+            {
+                if (auto p = self.lock())
+                {
+                    p-&gt;OnDone(e);
+                }
+                // 객체가 죽었으면 그냥 무시
+            });
+    }
+
+    void OnDone(const Event&amp; e);
+};
+</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>weak_ptr 캡처는 lifetime 안전성의 표준 패턴</strong>
+                        <code>shared_ptr</code>를 캡처하면 디스패처가 객체 수명을 강제로 연장시켜 의도치 않은 순환 참조가 생길 수 있다. <code>weak_ptr</code>가 보통 더 좋은 기본값이다.
+                    </div>
+                </div>
+
+                <!-- 8. Dual 통보 -->
+                <h2 id="dual"><i class="fa-solid fa-tower-broadcast"></i> 에러 콜백 + ErrorCode dual 통보 패턴</h2>
+                <p>산업 SDK에서 자주 쓰는 패턴이다. 함수는 <code>ErrorCode</code>를 즉시 반환하여 호출 컨텍스트가 처리할 수 있게 하고, 동시에 등록된 전역 콜백에도 통보하여 로깅/UI 업데이트가 가능하게 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">ErrorCode ImageProcessor::ApplyBlur(Image&amp; img, int kernel)
+{
+    if (img.IsEmpty())
+    {
+        const ErrorCode ec = ErrorCode::InvalidArgument;
+        // 1) 등록된 콜백에 통보 (전역 로깅, GUI)
+        m_errorBus-&gt;Notify(ec, "image is empty");
+        // 2) 즉시 반환 (호출자 컨텍스트 처리)
+        return ec;
+    }
+    // ... 정상 처리
+    return ErrorCode::Ok;
+}
+</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>한 에러가 두 곳에 보고된다</strong>
+                        호출자도 ErrorCode로 처리하고, 글로벌 핸들러도 받는다. 양쪽이 idempotent해야 한다 (동일 에러를 두 번 로깅하지 않도록 한쪽만 사용자에게 표시하는 정책 등).
+                    </div>
+                </div>
+
+                <!-- 9. 성능 -->
+                <h2 id="perf"><i class="fa-solid fa-gauge-high"></i> 성능 고려</h2>
+                <p>콜백이 hot path에 있다면 <code>std::function</code>의 indirection이 누적된다. 컴파일 타임에 콜백 타입을 알 수 있으면 템플릿 매개변수로 받는 편이 빠르다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 매 호출마다 std::function indirection
+void ProcessFrames(std::function&lt;void(const Frame&amp;)&gt; cb);
+
+// 람다 타입 그대로 인스턴스화 → 인라이닝 가능
+template &lt;class Cb&gt;
+void ProcessFrames(Cb cb)
+{
+    for (auto&amp; f : m_frames)
+    {
+        cb(f);  // 인라인됨
+    }
+}
+</code></pre>
+
+                <p>API 경계에서는 <code>std::function</code>으로 받고, 성능이 결정적인 inner loop는 템플릿으로 분리하는 하이브리드도 흔하다.</p>
+
+                <!-- 10. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>this 캡처 후 객체 소멸 → dangling</strong>
+                        <code>[this]</code> 캡처는 raw pointer와 같다. 객체보다 콜백이 오래 살면 즉시 UB. <code>weak_ptr</code> 또는 명시적 unsubscribe로 보호한다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>콜백 안에서 dispatcher.Unsubscribe(self)</strong>
+                        디스패처가 vector 순회 중인데 그 vector를 수정하는 격이다. 무효화된 iterator로 다음 핸들러를 호출하려 하면 crash. 자기 자신을 해제하려면 <em>pending</em> 큐를 사용해 dispatch 종료 후에 적용한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>콜백에서 throw → 호출자 의도 파괴</strong>
+                        디스패처가 예외 처리를 안 한다면 다음 구독자들이 호출되지 않는다. 라이브러리 콜백은 가능하면 <code>noexcept</code>를 권장하거나, 디스패처가 try/catch로 감싸 다른 구독자를 보호한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>shared_ptr 강한 참조 캡처 → 순환 참조</strong>
+                        <code>[self = shared_from_this()]</code>로 캡처하면 디스패처가 살아있는 동안 객체도 살아남는다. 등록자가 자기 객체의 멤버 디스패처에 자기를 구독하면 사이클. 가능한 한 <code>weak_ptr</code>.
+                    </div>
+                </div>
+
+                <!-- 11. move_only_function -->
+                <h2 id="move-only"><i class="fa-solid fa-arrow-right-from-bracket"></i> C++23 std::move_only_function</h2>
+                <p><code>std::function</code>은 보관하는 callable이 <strong>복사 가능</strong>해야 한다. 그래서 <code>std::unique_ptr</code>를 캡처한 람다는 <code>std::function</code>에 못 넣는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">auto resource = std::make_unique&lt;Resource&gt;();
+std::function&lt;void()&gt; f = [r = std::move(resource)]() { /* ... */ };  // 컴파일 에러
+</code></pre>
+
+                <p>C++23부터 <code>std::move_only_function</code>이 표준에 들어와, move-only callable도 보관할 수 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>std::move_only_function — 한 번만 호출하는 작업에도 유용</strong>
+                        thread pool에 넣을 task처럼 unique_ptr/이동만 가능한 자원을 캡처하는 callable을 자연스럽게 다룰 수 있다. 컴파일러/STL이 C++23 지원하는지 확인 필요.
+                    </div>
+                </div>
+
+                <!-- 12. 적용 예 -->
+                <h2 id="case"><i class="fa-solid fa-camera"></i> 이미지 acquisition 시스템 적용 예</h2>
+                <p>카메라 grabber에 세 종류의 콜백을 노출하는 그림이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class CameraGrabber
+{
+public:
+    using FrameCallback    = std::function&lt;void(const Frame&amp;)&gt;;
+    using ErrorCallback    = std::function&lt;void(int code, const std::string&amp;)&gt;;
+    using ProgressCallback = std::function&lt;void(int percent)&gt;;
+
+    ErrorCode SetFrameCallback(FrameCallback cb);
+    ErrorCode SetErrorCallback(ErrorCallback cb);
+    ErrorCode SetProgressCallback(ProgressCallback cb);
+
+    ErrorCode Start();
+    ErrorCode Stop();
+
+private:
+    void onFrameReceived(const Frame&amp; f)
+    {
+        if (m_frameCb) m_frameCb(f);
+    }
+    void onErrorOccurred(int code, const std::string&amp; msg)
+    {
+        if (m_errorCb) m_errorCb(code, msg);
+    }
+
+    FrameCallback    m_frameCb;
+    ErrorCallback    m_errorCb;
+    ProgressCallback m_progressCb;
+};
+
+// 사용
+CameraGrabber cam;
+cam.SetFrameCallback([&amp;](const Frame&amp; f)   { display.Show(f); });
+cam.SetErrorCallback([&amp;](int c, auto&amp; m)  { logger.Error("{}: {}", c, m); });
+cam.SetProgressCallback([&amp;](int p)         { progressBar.Set(p); });
+cam.Start();
+</code></pre>
+
+                <p>외부 SDK 헤더로 노출할 때는 함수 포인터 + <code>void*</code>로 바꾸고, 내부에서 <code>std::function</code>으로 어댑터를 두는 구조도 흔하다. ABI 안정성과 표현력을 모두 잡는 절충안이다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference.com — <code>std::function</code>, <code>std::move_only_function</code>, <code>std::weak_ptr</code></li>
+                        <li>Sutter &amp; Alexandrescu, <em>"C++ Coding Standards"</em> — 콜백 lifetime 관리</li>
+                        <li>Scott Meyers, <em>"Effective Modern C++"</em> Item 32 — 람다 캡처와 lifetime</li>
+                        <li>Anthony Williams, <em>"C++ Concurrency in Action"</em> — 멀티스레드 콜백 보호</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

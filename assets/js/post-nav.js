@@ -57,6 +57,9 @@ const POST_NAV_DATA = {
         { file: 'cpp-coroutines.html', title: 'C++20 코루틴 입문' },
         { file: 'cpp-atomic-memory-model.html', title: 'std::atomic과 C++ 메모리 모델' },
         { file: 'cpp-false-sharing.html', title: 'false sharing과 캐시 라인' },
+        { file: 'cpp-image-buffer-design.html', title: 'C++ 이미지 버퍼 클래스 설계' },
+        { file: 'cpp-interface-patterns.html', title: '인터페이스 설계 패턴' },
+        { file: 'cpp-callback-function.html', title: '콜백과 std::function' },
     ],
     'tech-halcon': [
         { file: 'halcon-sg1-00-overview.html', title: 'HALCON Solution Guide I 개요와 학습법' },
