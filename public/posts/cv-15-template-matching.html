@@ -1,0 +1,815 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>템플릿 매칭 — matchTemplate과 한계 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">템플릿 매칭이란</a>
+        <a href="#match-template" data-section="match-template">matchTemplate</a>
+        <a href="#interpret" data-section="interpret">결과 해석</a>
+        <a href="#multi-object" data-section="multi-object">다중 객체</a>
+        <a href="#multi-scale" data-section="multi-scale">다중 스케일</a>
+        <a href="#ncc" data-section="ncc">NCC 개념</a>
+        <a href="#limits" data-section="limits">한계</a>
+        <a href="#industrial" data-section="industrial">산업 검사 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>템플릿 매칭 — matchTemplate과 한계</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>템플릿 매칭의 원리 — 작은 템플릿을 큰 이미지 위에서 슬라이딩하며 닮은 위치 찾기</li>
+                        <li><code>matchTemplate</code>의 6가지 매칭 방법과 각 방법의 최소/최대 위치 해석</li>
+                        <li>결과 점수 맵을 <code>minMaxLoc</code>으로 읽는 법, NORMED 방법이 조명에 강한 이유</li>
+                        <li>임계값 기반 다중 객체 검출과 중복 제거(NMS), 다중 스케일 매칭</li>
+                        <li>NCC(정규화 상호상관) 개념, 회전·스케일·가림에 취약한 근본 한계</li>
+                        <li>산업 검사에서 언제 쓰고 언제 shape-based matching으로 넘어가야 하는지</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">템플릿 매칭이란?</a></li>
+                        <li><a href="#match-template">matchTemplate — 6가지 매칭 방법</a></li>
+                        <li><a href="#interpret">결과 해석 — 점수 맵과 minMaxLoc</a></li>
+                        <li><a href="#multi-object">다중 객체 검출과 중복 제거</a></li>
+                        <li><a href="#multi-scale">다중 스케일 매칭</a></li>
+                        <li><a href="#ncc">NCC — 정규화 상호상관</a></li>
+                        <li><a href="#limits">템플릿 매칭의 한계</a></li>
+                        <li><a href="#industrial">산업 검사 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 템플릿 매칭이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-magnifying-glass-location"></i> 템플릿 매칭이란?</h2>
+                <p><strong>템플릿 매칭</strong>(template matching)은 작은 <strong>템플릿 이미지</strong>를 큰 <strong>입력 이미지</strong> 위에서 한 픽셀씩 슬라이딩하며, 각 위치에서 두 이미지가 얼마나 닮았는지 점수를 매겨 가장 닮은 위치를 찾는 기법이다. 발상 자체는 단순하다 — 찾고 싶은 패턴을 오려서 이미지 전체를 훑는다.</p>
+
+                <p>입력 이미지 크기가 <code>W × H</code>, 템플릿 크기가 <code>w × h</code>라면, 템플릿이 들어갈 수 있는 좌상단 위치의 개수는 <code>(W - w + 1) × (H - h + 1)</code>이다. 각 위치마다 닮음 점수를 하나씩 계산하므로, 결과는 그 크기의 <strong>점수 맵</strong>(2차원 행렬)이 된다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 660 320" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 입력 이미지 -->
+                        <rect x="30" y="40" width="240" height="180" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+                        <text x="150" y="32" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a5f">입력 이미지 (W × H)</text>
+                        <!-- 슬라이딩 윈도우(템플릿) 위치들 -->
+                        <rect x="44" y="54" width="56" height="44" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4"/>
+                        <rect x="120" y="96" width="56" height="44" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4"/>
+                        <!-- 최종 매칭 위치 -->
+                        <rect x="170" y="150" width="56" height="44" fill="#fde68a" stroke="#d97706" stroke-width="2.5"/>
+                        <text x="198" y="176" text-anchor="middle" font-size="10" font-weight="700" fill="#78350f">최적</text>
+                        <!-- 슬라이딩 화살표 -->
+                        <path d="M72 76 L148 118" stroke="#64748b" stroke-width="1.5" marker-end="url(#tm-arrow)"/>
+                        <path d="M148 118 L198 172" stroke="#64748b" stroke-width="1.5" marker-end="url(#tm-arrow)"/>
+
+                        <!-- 템플릿 -->
+                        <rect x="320" y="64" width="80" height="60" rx="6" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+                        <text x="360" y="56" text-anchor="middle" font-size="12" font-weight="700" fill="#78350f">템플릿 (w × h)</text>
+                        <circle cx="360" cy="94" r="16" fill="#fcd34d" stroke="#b45309" stroke-width="1.5"/>
+
+                        <!-- 슬라이딩 설명 화살표 -->
+                        <path d="M408 94 L450 94" stroke="#2563eb" stroke-width="2" marker-end="url(#tm-arrow)"/>
+                        <text x="430" y="86" text-anchor="middle" font-size="10" fill="#1e3a5f">슬라이딩</text>
+
+                        <!-- 점수 맵 -->
+                        <rect x="460" y="40" width="170" height="130" rx="6" fill="#f1f5f9" stroke="#475569" stroke-width="2"/>
+                        <text x="545" y="32" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">점수 맵 (result)</text>
+                        <g>
+                            <rect x="472" y="52" width="28" height="28" fill="#dbeafe"/><rect x="500" y="52" width="28" height="28" fill="#bfdbfe"/><rect x="528" y="52" width="28" height="28" fill="#dbeafe"/><rect x="556" y="52" width="28" height="28" fill="#eff6ff"/><rect x="584" y="52" width="28" height="28" fill="#eff6ff"/>
+                            <rect x="472" y="80" width="28" height="28" fill="#bfdbfe"/><rect x="500" y="80" width="28" height="28" fill="#93c5fd"/><rect x="528" y="80" width="28" height="28" fill="#dbeafe"/><rect x="556" y="80" width="28" height="28" fill="#eff6ff"/><rect x="584" y="80" width="28" height="28" fill="#eff6ff"/>
+                            <rect x="472" y="108" width="28" height="28" fill="#dbeafe"/><rect x="500" y="108" width="28" height="28" fill="#dbeafe"/><rect x="528" y="108" width="28" height="28" fill="#fcd34d"/><rect x="556" y="108" width="28" height="28" fill="#fde68a"/><rect x="584" y="108" width="28" height="28" fill="#dbeafe"/>
+                            <rect x="472" y="136" width="28" height="28" fill="#eff6ff"/><rect x="500" y="136" width="28" height="28" fill="#dbeafe"/><rect x="528" y="136" width="28" height="28" fill="#fbbf24"/><rect x="556" y="136" width="28" height="28" fill="#dbeafe"/><rect x="584" y="136" width="28" height="28" fill="#eff6ff"/>
+                            <g stroke="#94a3b8" stroke-width="0.6" fill="none">
+                                <rect x="472" y="52" width="140" height="112"/>
+                            </g>
+                        </g>
+                        <text x="545" y="186" text-anchor="middle" font-size="10" fill="#475569">밝을수록 닮음 점수 높음 → 피크가 최적 위치</text>
+
+                        <defs>
+                            <marker id="tm-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
+                            </marker>
+                        </defs>
+                        <text x="330" y="270" font-size="11" fill="#475569">① 템플릿을 입력 이미지 좌상단부터 한 픽셀씩 이동</text>
+                        <text x="330" y="290" font-size="11" fill="#475569">② 각 위치에서 닮음 점수를 계산해 점수 맵에 기록</text>
+                        <text x="330" y="310" font-size="11" fill="#475569">③ 점수 맵의 피크(최대/최소)가 객체 위치</text>
+                    </svg>
+                    <div class="diagram-caption">템플릿이 입력 이미지 위를 슬라이딩하며 위치마다 닮음 점수를 계산해 점수 맵을 만든다.</div>
+                </div>
+
+                <p>OpenCV에서는 이 전체 과정을 <code>cv::matchTemplate</code> 함수 하나로 처리한다. 슬라이딩 루프를 직접 짤 필요는 없다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>점수 맵은 입력보다 약간 작다</strong>
+                        템플릿이 이미지 밖으로 나갈 수 없으므로, 점수 맵의 크기는 <code>(W - w + 1) × (H - h + 1)</code>이다. 점수 맵의 좌표는 매칭된 영역의 <strong>좌상단</strong> 픽셀을 가리킨다는 점을 기억한다.
+                    </div>
+                </div>
+
+                <!-- 2. matchTemplate -->
+                <h2 id="match-template"><i class="fa-solid fa-code"></i> matchTemplate — 6가지 매칭 방법</h2>
+                <p><code>cv::matchTemplate(image, templ, result, method)</code>는 입력 <code>image</code>와 템플릿 <code>templ</code>을 받아 점수 맵 <code>result</code>를 채운다. <code>result</code>의 타입은 항상 <code>CV_32FC1</code>(32비트 float 1채널)이다. 핵심은 네 번째 인자 <code>method</code> — 닮음을 어떻게 정의하느냐를 고르는 값이다. 6가지가 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;iostream&gt;
+
+int main()
+{
+    // 입력 이미지와 찾을 템플릿을 그레이스케일로 읽는다
+    cv::Mat image = cv::imread("scene.png", cv::IMREAD_GRAYSCALE);
+    cv::Mat templ = cv::imread("part.png", cv::IMREAD_GRAYSCALE);
+
+    if (image.empty() || templ.empty())
+    {
+        std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+        return -1;
+    }
+
+    // 점수 맵 — matchTemplate이 알아서 크기/타입을 잡아준다
+    cv::Mat result;
+
+    // TM_CCOEFF_NORMED: 가장 무난한 선택. 결과는 -1 ~ 1, 클수록 닮음
+    cv::matchTemplate(image, templ, result, cv::TM_CCOEFF_NORMED);
+
+    std::cout &lt;&lt; "result 크기: " &lt;&lt; result.cols &lt;&lt; " x " &lt;&lt; result.rows
+              &lt;&lt; ", 타입: CV_32FC1" &lt;&lt; std::endl;
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+result 크기: 561 x 401, 타입: CV_32FC1</div>
+
+                <p>6가지 방법은 크게 세 계열로 나뉜다 — <strong>SQDIFF</strong>(제곱차), <strong>CCORR</strong>(상호상관), <strong>CCOEFF</strong>(상관계수). 각 계열에 정규화하지 않은 버전과 <code>_NORMED</code>(정규화) 버전이 있다.</p>
+
+                <table>
+                    <tr><th>method</th><th>의미</th><th>좋은 매칭은</th><th>값 범위</th></tr>
+                    <tr><td><code>TM_SQDIFF</code></td><td>픽셀 차이의 제곱 합</td><td><strong>최솟값</strong> (0에 가까움)</td><td>0 ~ 큰 값</td></tr>
+                    <tr><td><code>TM_SQDIFF_NORMED</code></td><td>제곱차를 에너지로 정규화</td><td><strong>최솟값</strong> (0에 가까움)</td><td>0 ~ 1</td></tr>
+                    <tr><td><code>TM_CCORR</code></td><td>픽셀값 곱의 합 (상호상관)</td><td><strong>최댓값</strong></td><td>0 ~ 큰 값</td></tr>
+                    <tr><td><code>TM_CCORR_NORMED</code></td><td>상호상관을 에너지로 정규화</td><td><strong>최댓값</strong></td><td>0 ~ 1</td></tr>
+                    <tr><td><code>TM_CCOEFF</code></td><td>평균을 뺀 뒤 상호상관 (밝기 오프셋 제거)</td><td><strong>최댓값</strong></td><td>음수 ~ 양수</td></tr>
+                    <tr><td><code>TM_CCOEFF_NORMED</code></td><td>평균 제거 + 정규화 = 사실상 NCC</td><td><strong>최댓값</strong></td><td>-1 ~ 1</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>SQDIFF는 최솟값, CCORR/CCOEFF는 최댓값이 정답이다</strong>
+                        가장 흔한 실수다. <code>TM_SQDIFF</code> 계열은 "차이"를 재므로 <strong>작을수록</strong> 닮은 것이고, <code>TM_CCORR</code>·<code>TM_CCOEFF</code> 계열은 "닮음"을 재므로 <strong>클수록</strong> 닮은 것이다. method를 바꿔놓고 <code>minMaxLoc</code>의 반환값을 그대로 쓰면 정반대 위치를 가리킨다.
+                    </div>
+                </div>
+
+                <h3 id="method-pick"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 어떤 method를 골라야 하나</h3>
+                <p>실무에서는 거의 항상 <code>TM_CCOEFF_NORMED</code>를 쓴다. 평균을 빼서 밝기 오프셋에 강하고, 정규화 덕분에 값이 <code>-1 ~ 1</code>로 고정되어 임계값을 정하기 쉽다. 속도가 매우 중요하고 조명이 완벽히 일정하다면 <code>TM_SQDIFF</code>가 가장 빠르지만, 산업 현장에서 조명이 완벽한 경우는 드물다.</p>
+
+                <!-- 3. 결과 해석 -->
+                <h2 id="interpret"><i class="fa-solid fa-chart-area"></i> 결과 해석 — 점수 맵과 minMaxLoc</h2>
+                <p><code>matchTemplate</code>은 점수 맵을 채워줄 뿐, "객체가 어디 있다"고 알려주지는 않는다. 점수 맵에서 피크를 직접 찾아야 한다. <code>cv::minMaxLoc</code>이 행렬 전체의 최솟값·최댓값과 그 위치를 한 번에 돌려준다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat result;
+cv::matchTemplate(image, templ, result, cv::TM_CCOEFF_NORMED);
+
+double minVal, maxVal;
+cv::Point minLoc, maxLoc;
+cv::minMaxLoc(result, &amp;minVal, &amp;maxVal, &amp;minLoc, &amp;maxLoc);
+
+// TM_CCOEFF_NORMED는 "클수록 닮음" → maxLoc이 정답 위치
+cv::Point matchLoc = maxLoc;
+
+// matchLoc은 매칭 영역의 좌상단. 사각형으로 그리려면 템플릿 크기를 더한다
+cv::Rect matchRect(matchLoc, cv::Size(templ.cols, templ.rows));
+
+cv::Mat display;
+cv::cvtColor(image, display, cv::COLOR_GRAY2BGR);
+cv::rectangle(display, matchRect, cv::Scalar(0, 0, 255), 2);
+
+std::cout &lt;&lt; "매칭 점수: " &lt;&lt; maxVal
+          &lt;&lt; ", 위치: (" &lt;&lt; matchLoc.x &lt;&lt; ", " &lt;&lt; matchLoc.y &lt;&lt; ")" &lt;&lt; std::endl;</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+매칭 점수: 0.987421, 위치: (243, 118)</div>
+
+                <p>method 계열에 따라 <code>minLoc</code>을 쓸지 <code>maxLoc</code>을 쓸지 갈린다. 분기 코드를 한 번 만들어 두면 method를 바꿔도 안전하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">double minVal, maxVal;
+cv::Point minLoc, maxLoc;
+cv::minMaxLoc(result, &amp;minVal, &amp;maxVal, &amp;minLoc, &amp;maxLoc);
+
+cv::Point matchLoc;
+double matchScore;
+
+// SQDIFF 계열은 최솟값이 정답, 나머지는 최댓값이 정답
+if (method == cv::TM_SQDIFF || method == cv::TM_SQDIFF_NORMED)
+{
+    matchLoc = minLoc;
+    matchScore = minVal;   // 0에 가까울수록 좋음
+}
+else
+{
+    matchLoc = maxLoc;
+    matchScore = maxVal;   // 1에 가까울수록 좋음
+}</code></pre>
+
+                <h3 id="why-normed"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> NORMED 방법이 조명에 강한 이유</h3>
+                <p>정규화하지 않은 <code>TM_CCORR</code>는 픽셀값의 곱을 합한다. 그런데 입력 이미지의 밝은 영역은 픽셀값 자체가 크기 때문에, 템플릿과 닮지 않았어도 곱의 합이 커진다. 즉 <strong>밝기에 점수가 휘둘린다</strong>. <code>_NORMED</code> 버전은 템플릿과 입력 패치 각각의 <strong>에너지(픽셀값 제곱합의 제곱근)</strong>로 나눠 이 영향을 제거한다. 밝기가 두 배가 되어도 분자와 분모가 같이 커져 점수는 그대로다.</p>
+
+                <p><code>TM_CCOEFF</code> 계열은 한 걸음 더 나간다. 곱하기 전에 <strong>각 패치의 평균을 빼준다</strong>. 이러면 조명이 전체적으로 밝아지거나 어두워지는 <strong>오프셋 변화</strong>까지 상쇄된다. 정규화까지 더한 <code>TM_CCOEFF_NORMED</code>가 조명 변화에 가장 강건한 이유다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>점수 맵 자체를 시각화해 보면 이해가 빠르다</strong>
+                        <code>cv::normalize(result, vis, 0, 255, cv::NORM_MINMAX, CV_8U)</code>로 점수 맵을 8비트로 펴서 <code>imshow</code>하면, 객체 위치에 또렷한 밝은 점(피크)이 보인다. 피크가 흐릿하거나 여러 개면 매칭이 불안정하다는 신호다.
+                    </div>
+                </div>
+
+                <!-- 4. 다중 객체 검출 -->
+                <h2 id="multi-object"><i class="fa-solid fa-clone"></i> 다중 객체 검출과 중복 제거</h2>
+                <p><code>minMaxLoc</code>은 피크 하나만 돌려준다. 같은 패턴이 이미지에 여러 개 있다면, 점수 맵에서 <strong>임계값 이상인 위치를 전부</strong> 골라내야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat result;
+cv::matchTemplate(image, templ, result, cv::TM_CCOEFF_NORMED);
+
+const double kMatchThreshold = 0.8;  // 0.8 이상이면 매칭으로 인정
+
+// 임계값 이상인 픽셀만 골라낸다 (마스크 생성)
+cv::Mat mask;
+cv::threshold(result, mask, kMatchThreshold, 1.0, cv::THRESH_BINARY);
+mask.convertTo(mask, CV_8U);
+
+// 임계값을 넘은 모든 좌표를 수집한다
+std::vector&lt;cv::Point&gt; locations;
+cv::findNonZero(mask, locations);
+
+std::cout &lt;&lt; "임계값 이상 후보: " &lt;&lt; locations.size() &lt;&lt; "개" &lt;&lt; std::endl;</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+임계값 이상 후보: 1483개</div>
+
+                <p>그런데 후보가 1483개나 나온다. 객체가 1483개일 리는 없다. 진짜 매칭 위치 주변의 픽셀들도 점수가 높아 임계값을 같이 넘기 때문이다. 하나의 객체가 수십~수백 개의 인접한 후보 점으로 뭉쳐 나온다. 이 <strong>중복을 제거</strong>해야 한다 — 이것이 <strong>NMS</strong>(Non-Maximum Suppression, 비최대 억제)의 개념이다.</p>
+
+                <h3 id="nms"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> NMS — 겹치는 후보 중 최고만 남기기</h3>
+                <p>NMS의 원리는 간단하다. 점수가 높은 후보부터 보면서, 이미 채택한 후보와 너무 가까운(겹치는) 후보는 버린다. 가장 단순한 거리 기반 구현은 다음과 같다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 후보 (점수, 위치) 쌍을 모은다
+std::vector&lt;std::pair&lt;float, cv::Point&gt;&gt; candidates;
+for (const cv::Point&amp; pt : locations)
+{
+    candidates.push_back({ result.at&lt;float&gt;(pt), pt });
+}
+
+// 점수 내림차순 정렬 — 높은 점수부터 채택
+std::sort(candidates.begin(), candidates.end(),
+          [](const auto&amp; a, const auto&amp; b) { return a.first &gt; b.first; });
+
+std::vector&lt;cv::Point&gt; finalMatches;
+const int kMinDistance = templ.cols / 2;  // 이 거리 안쪽은 같은 객체로 본다
+
+for (const auto&amp; cand : candidates)
+{
+    bool tooClose = false;
+    for (const cv::Point&amp; kept : finalMatches)
+    {
+        // 이미 채택한 매칭과 가까우면 중복으로 간주하고 버린다
+        if (cv::norm(cand.second - kept) &lt; kMinDistance)
+        {
+            tooClose = true;
+            break;
+        }
+    }
+    if (!tooClose)
+    {
+        finalMatches.push_back(cand.second);
+    }
+}
+
+std::cout &lt;&lt; "중복 제거 후 객체: " &lt;&lt; finalMatches.size() &lt;&lt; "개" &lt;&lt; std::endl;</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+중복 제거 후 객체: 7개</div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>박스 IoU 기반 NMS도 있다</strong>
+                        위 코드는 중심 거리로 중복을 판정하는 가장 단순한 방식이다. OpenCV의 <code>cv::dnn::NMSBoxes</code>는 사각형끼리의 <strong>IoU</strong>(겹친 넓이 비율)로 더 정밀하게 억제한다. 객체 크기가 일정한 템플릿 매칭에서는 거리 기반으로도 충분히 잘 동작한다.
+                    </div>
+                </div>
+
+                <!-- 5. 다중 스케일 매칭 -->
+                <h2 id="multi-scale"><i class="fa-solid fa-up-right-and-down-left-from-center"></i> 다중 스케일 매칭</h2>
+                <p><code>matchTemplate</code>은 템플릿과 입력의 크기가 같다고 가정한다. 카메라 거리가 달라져 객체가 템플릿보다 크거나 작게 찍히면 점수가 뚝 떨어진다. 정공법은 <strong>템플릿(또는 입력)을 여러 크기로 바꿔가며 매칭을 반복</strong>하고, 그중 점수가 가장 높은 스케일을 채택하는 것이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat image = cv::imread("scene.png", cv::IMREAD_GRAYSCALE);
+cv::Mat templ = cv::imread("part.png", cv::IMREAD_GRAYSCALE);
+
+double bestScore = -1.0;
+cv::Point bestLoc;
+double bestScale = 1.0;
+
+// 템플릿을 0.5배 ~ 1.5배까지 훑는다
+for (double scale = 0.5; scale &lt;= 1.5; scale += 0.1)
+{
+    cv::Mat scaledTempl;
+    cv::resize(templ, scaledTempl, cv::Size(), scale, scale);
+
+    // 스케일을 키운 템플릿이 입력보다 커지면 건너뛴다
+    if (scaledTempl.cols &gt; image.cols || scaledTempl.rows &gt; image.rows)
+    {
+        continue;
+    }
+
+    cv::Mat result;
+    cv::matchTemplate(image, scaledTempl, result, cv::TM_CCOEFF_NORMED);
+
+    double minVal, maxVal;
+    cv::Point minLoc, maxLoc;
+    cv::minMaxLoc(result, &amp;minVal, &amp;maxVal, &amp;minLoc, &amp;maxLoc);
+
+    // 모든 스케일을 통틀어 가장 높은 점수를 기억한다
+    if (maxVal &gt; bestScore)
+    {
+        bestScore = maxVal;
+        bestLoc = maxLoc;
+        bestScale = scale;
+    }
+}
+
+std::cout &lt;&lt; "최적 스케일: " &lt;&lt; bestScale
+          &lt;&lt; ", 점수: " &lt;&lt; bestScore &lt;&lt; std::endl;</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+최적 스케일: 1.2, 점수: 0.961037</div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>스케일 루프는 그만큼 느려진다</strong>
+                        스케일 단계를 11번 돌면 매칭 비용도 대략 11배다. 게다가 이건 <strong>스케일</strong>만 해결할 뿐 <strong>회전</strong>은 여전히 못 잡는다. 회전까지 다루려면 각도 루프를 한 겹 더 씌워야 하는데, 그쯤 되면 템플릿 매칭으로 버티는 게 맞는지 의심해야 한다.
+                    </div>
+                </div>
+
+                <!-- 6. NCC -->
+                <h2 id="ncc"><i class="fa-solid fa-square-root-variable"></i> NCC — 정규화 상호상관</h2>
+                <p><strong>NCC</strong>(Normalized Cross-Correlation, 정규화 상호상관)는 두 이미지 패치가 얼마나 닮았는지를 재는 고전적인 지표다. OpenCV의 <code>TM_CCOEFF_NORMED</code>가 사실상 NCC와 같다. 수식은 다음과 같다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 620 130" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <text x="310" y="40" text-anchor="middle" font-size="15" fill="#334155">
+                            NCC = <tspan font-style="italic">&#931;</tspan> ( T &#8722; <tspan font-style="italic">T&#772;</tspan> )( I &#8722; <tspan font-style="italic">&#298;</tspan> )  /  &#8730;[ <tspan font-style="italic">&#931;</tspan>( T &#8722; <tspan font-style="italic">T&#772;</tspan> )&#178; &#183; <tspan font-style="italic">&#931;</tspan>( I &#8722; <tspan font-style="italic">&#298;</tspan> )&#178; ]
+                        </text>
+                        <text x="310" y="78" text-anchor="middle" font-size="11.5" fill="#64748b">T = 템플릿 픽셀,  I = 입력 패치 픽셀,  T&#772; / &#298; = 각 패치의 평균</text>
+                        <text x="310" y="104" text-anchor="middle" font-size="11.5" fill="#64748b">분자: 평균 제거 후 상관  ·  분모: 두 패치의 에너지로 정규화  →  결과는 &#8722;1 ~ 1</text>
+                    </svg>
+                    <div class="diagram-caption">NCC는 평균을 빼서 밝기 오프셋을, 에너지로 나눠서 대비(contrast) 변화를 상쇄한다.</div>
+                </div>
+
+                <p>분자는 템플릿과 입력 패치에서 각각 평균을 뺀 뒤 곱해 더한 값이다. 평균을 빼므로 조명이 전체적으로 밝아져도 영향이 없다. 분모는 두 패치의 에너지(표준편차에 비례)를 곱한 것의 제곱근으로, 이걸로 나누면 대비가 두 배가 되어도 점수가 변하지 않는다. 결과는 항상 <code>-1 ~ 1</code> 범위다 — <strong>1</strong>은 완벽히 닮음, <strong>0</strong>은 무관, <strong>-1</strong>은 명암이 정반대.</p>
+
+                <table>
+                    <tr><th>NCC 점수</th><th>해석</th></tr>
+                    <tr><td><code>0.95 ~ 1.0</code></td><td>거의 동일 — 안정적인 매칭</td></tr>
+                    <tr><td><code>0.8 ~ 0.95</code></td><td>닮음 — 실무 임계값을 보통 이 구간에 둠</td></tr>
+                    <tr><td><code>0.5 ~ 0.8</code></td><td>애매 — 변형·노이즈 가능성, 오검출 위험</td></tr>
+                    <tr><td><code>&lt; 0.5</code></td><td>거의 무관 — 매칭 실패로 간주</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>NCC가 밝기·대비에 강한 것이지, 만능은 아니다</strong>
+                        NCC는 <strong>조명 변화</strong>에는 강하지만 <strong>형상 변화</strong>(회전·스케일·원근)에는 여전히 무력하다. 픽셀을 위치 그대로 1:1 대응시켜 비교하기 때문이다. 다음 절의 한계가 바로 여기서 나온다.
+                    </div>
+                </div>
+
+                <!-- 7. 한계 -->
+                <h2 id="limits"><i class="fa-solid fa-triangle-exclamation"></i> 템플릿 매칭의 한계</h2>
+                <p>템플릿 매칭은 단순하고 빠르지만, 가정이 깨지면 급격히 무너진다. 근본 원인은 하나다 — <strong>템플릿의 픽셀과 입력의 픽셀을 위치 그대로 1:1로 비교</strong>하기 때문이다. 픽셀 배치가 조금만 어긋나도 점수가 떨어진다.</p>
+
+                <table>
+                    <tr><th>변형</th><th>템플릿 매칭의 반응</th><th>대응책</th></tr>
+                    <tr><td>회전</td><td>몇 도만 돌아가도 점수 급락. 회전 불변성 전혀 없음</td><td>각도 루프 반복, 또는 shape-based matching</td></tr>
+                    <tr><td>스케일 변화</td><td>크기가 다르면 픽셀이 어긋나 매칭 실패</td><td>다중 스케일 루프 (느림)</td></tr>
+                    <tr><td>원근·시점 변화</td><td>평면이 기울면 형상이 일그러져 대응 불가</td><td>특징점 매칭 + 호모그래피</td></tr>
+                    <tr><td>부분 가림(occlusion)</td><td>일부만 가려도 전체 점수가 깎임</td><td>부분 매칭, 또는 특징점 기반</td></tr>
+                    <tr><td>배경 변화</td><td>템플릿에 배경이 섞이면 배경까지 비교해 오검출</td><td>마스크 사용, 배경 없는 템플릿</td></tr>
+                    <tr><td>조명 변화</td><td>NORMED 계열이면 어느 정도 견딤</td><td><code>TM_CCOEFF_NORMED</code> 사용</td></tr>
+                </table>
+
+                <p>회전과 스케일을 루프로 우회할 수는 있지만, 각도 36단계 × 스케일 11단계면 매칭을 396번 돌려야 한다. 실시간 산업 검사에서는 감당하기 어렵다. 그래서 변형이 큰 상황에서는 다른 접근으로 넘어간다.</p>
+
+                <ul>
+                    <li><strong>Shape-based matching</strong> — 픽셀값이 아니라 <strong>엣지(윤곽선)의 방향</strong>을 비교한다. HALCON, MVTec 같은 산업용 라이브러리의 핵심 기능으로, 회전·스케일·조명·부분 가림에 강건하다.</li>
+                    <li><strong>특징점 매칭</strong> — ORB, SIFT 같은 알고리즘으로 양쪽 이미지에서 <strong>특징점</strong>을 뽑아 대응시킨다. 회전·스케일·원근 변화까지 다룰 수 있다. 다음 글에서 자세히 다룬다.</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"회전·스케일이 없다"는 가정은 명시적으로 확인해야 한다</strong>
+                        템플릿 매칭을 적용하기 전에 "이 대상은 정말 항상 같은 각도·같은 크기로 들어오는가?"를 반드시 따져본다. 컨베이어 위 부품이 회전 가능하거나, 카메라 거리가 들쭉날쭉하면 템플릿 매칭은 처음부터 잘못된 도구다. 가정이 깨지는 걸 모른 채 임계값만 낮추면 오검출이 폭증한다.
+                    </div>
+                </div>
+
+                <!-- 8. 산업 검사 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 검사 관점</h2>
+                <p>한계가 많다고 템플릿 매칭이 쓸모없는 건 아니다. <strong>가정이 맞아떨어지는 상황에서는 빠르고 확실하다</strong>. 산업 검사 현장에서 템플릿 매칭이 잘 맞는 조건은 명확하다.</p>
+
+                <table>
+                    <tr><th>조건</th><th>템플릿 매칭 적합도</th></tr>
+                    <tr><td>대상이 항상 같은 방향(회전 없음)</td><td>적합 — 회전 불변성이 필요 없음</td></tr>
+                    <tr><td>카메라-대상 거리 고정(스케일 일정)</td><td>적합 — 다중 스케일 루프 불필요</td></tr>
+                    <tr><td>지그·픽스처로 위치가 안정적</td><td>적합 — 탐색 범위(ROI)를 좁혀 더 빠름</td></tr>
+                    <tr><td>외형 변화 없는 인쇄·각인·마크</td><td>적합 — 픽셀 패턴이 반복적</td></tr>
+                    <tr><td>부품이 자유롭게 회전·기울어짐</td><td>부적합 — shape-based matching으로</td></tr>
+                    <tr><td>조명이 크게 변하거나 부분 가림 발생</td><td>부적합 — 특징점 매칭 검토</td></tr>
+                </table>
+
+                <p>전형적인 적용 예는 <strong>위치 정렬(alignment)</strong>이다. PCB나 라벨처럼 위치는 약간씩 흔들리지만 외형은 동일한 대상에서, 기준 마크를 템플릿으로 잡아 매칭하면 정확한 좌표를 빠르게 얻는다. 그 좌표를 기준으로 검사 ROI를 보정하는 식이다. 이때 <strong>탐색 영역을 ROI로 좁히면</strong> 매칭이 훨씬 빨라지고 오검출도 줄어든다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>도구 선택의 사다리</strong>
+                        외형·각도·크기가 고정 → <strong>템플릿 매칭</strong>(가장 빠름). 회전·스케일은 변하지만 형상은 유지 → <strong>shape-based matching</strong>(HALCON 시리즈에서 다룸). 원근·시점까지 변함 → <strong>특징점 매칭 + 호모그래피</strong>(다음 글). 위에서부터 시도하고, 가정이 깨지는 지점에서 한 단계 내려간다.
+                    </div>
+                </div>
+
+                <!-- 9. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>템플릿 매칭에서 거의 모두가 한 번씩 밟는 함정들이다.</p>
+
+                <h3 id="pitfall-minmax"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> SQDIFF와 CCORR의 최소/최대 혼동</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>method를 바꾸면 minLoc/maxLoc도 바꿔야 한다</strong>
+                        <code>TM_SQDIFF</code> 계열은 <code>minLoc</code>이 정답, <code>TM_CCORR</code>·<code>TM_CCOEFF</code> 계열은 <code>maxLoc</code>이 정답이다. method만 <code>TM_SQDIFF</code>로 바꾸고 <code>maxLoc</code>을 그대로 쓰면, 가장 안 닮은 위치를 객체라고 가리킨다. 매칭이 "이상하게 엉뚱한 곳"을 찍으면 이 혼동부터 의심한다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">cv::matchTemplate(image, templ, result, cv::TM_SQDIFF);
+
+double minVal, maxVal;
+cv::Point minLoc, maxLoc;
+cv::minMaxLoc(result, &amp;minVal, &amp;maxVal, &amp;minLoc, &amp;maxLoc);
+
+// 나쁨 — SQDIFF인데 maxLoc을 쓰면 가장 안 닮은 위치를 가리킨다
+// cv::Point wrong = maxLoc;
+
+// 좋음 — SQDIFF는 차이가 작을수록 닮음이므로 minLoc
+cv::Point matchLoc = minLoc;</code></pre>
+
+                <h3 id="pitfall-lighting"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> NORMED 아닌 method를 조명 변하는 곳에 사용</h3>
+                <p><code>TM_CCORR</code>나 <code>TM_SQDIFF</code>는 픽셀값의 절대 크기에 직접 반응한다. 조명이 조금만 변해도 점수가 출렁여 임계값을 정하기 어렵다. 조명이 일정하지 않은 현장에서는 <strong>반드시 <code>_NORMED</code> 계열</strong>, 그중에서도 평균까지 빼주는 <code>TM_CCOEFF_NORMED</code>를 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁨 — 조명이 변하는 라인에서 TM_CCORR는 점수가 불안정
+// cv::matchTemplate(image, templ, result, cv::TM_CCORR);
+
+// 좋음 — 밝기 오프셋·대비 변화에 강건
+cv::matchTemplate(image, templ, result, cv::TM_CCOEFF_NORMED);</code></pre>
+
+                <h3 id="pitfall-background"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 템플릿에 배경이 섞여 들어감</h3>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>템플릿은 객체만, 배경은 빼고 잘라야 한다</strong>
+                        템플릿을 넉넉하게 잘라 배경 픽셀이 포함되면, 매칭 점수가 "객체 + 그 배경"을 함께 평가한다. 같은 객체라도 배경이 다른 위치에서는 점수가 떨어지고, 배경이 우연히 비슷한 엉뚱한 곳에서 점수가 오른다. 템플릿은 객체 경계에 딱 맞춰 자르거나, 그게 어려우면 <strong>마스크</strong>를 함께 넘긴다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// matchTemplate은 5번째 인자로 마스크를 받는다 (TM_SQDIFF, TM_CCORR_NORMED 등에서 지원)
+// 마스크에서 0인 픽셀은 매칭 계산에서 제외된다
+cv::Mat mask = cv::imread("part_mask.png", cv::IMREAD_GRAYSCALE);
+
+cv::Mat result;
+cv::matchTemplate(image, templ, result, cv::TM_CCORR_NORMED, mask);
+// → 템플릿의 배경 영역을 마스크로 가려 객체 픽셀만 비교</code></pre>
+
+                <h3 id="pitfall-assume"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 회전·스케일이 없다는 가정을 검증 안 함</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>가정이 깨지면 임계값을 낮춰도 해결되지 않는다</strong>
+                        대상이 살짝 회전하거나 크기가 변하는데 단일 템플릿으로 매칭하면, 점수가 전반적으로 낮아진다. 이때 임계값을 낮춰 억지로 통과시키면 오검출이 같이 늘어난다. 회전·스케일 변형이 의심되면 임계값을 만지지 말고, 다중 스케일/각도 루프나 shape-based matching으로 도구를 바꾼다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        method 계열에 맞춰 <code>minLoc</code>/<code>maxLoc</code>을 쓰고, 조명이 변하면 <code>TM_CCOEFF_NORMED</code>를 쓰고, 템플릿은 배경 없이 자르고, 회전·스케일 가정을 먼저 검증한다. 이 네 가지만 지켜도 템플릿 매칭 버그의 대부분을 피한다. 그래도 안 되면 그건 템플릿 매칭의 한계이지 코드의 버그가 아니다 — 다음 글의 특징점 매칭으로 넘어갈 때다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — cv::matchTemplate 함수 레퍼런스 (imgproc 모듈)</li>
+                        <li>OpenCV Tutorials — "Template Matching" 공식 튜토리얼</li>
+                        <li>docs.opencv.org — TemplateMatchModes 열거형 (6가지 method 정의)</li>
+                        <li>OpenCV Tutorials — "Object Detection (objdetect module)" 및 cv::minMaxLoc 레퍼런스</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

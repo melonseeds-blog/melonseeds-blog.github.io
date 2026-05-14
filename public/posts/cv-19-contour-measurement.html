@@ -1,0 +1,887 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>윤곽 기반 측정 — 치수·각도·서브픽셀 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 측정 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">측정이란</a>
+        <a href="#prerequisite" data-section="prerequisite">측정의 전제</a>
+        <a href="#distance" data-section="distance">거리·치수</a>
+        <a href="#min-area-rect" data-section="min-area-rect">회전 사각형</a>
+        <a href="#fitting" data-section="fitting">선·원 피팅</a>
+        <a href="#angle" data-section="angle">각도 측정</a>
+        <a href="#subpixel" data-section="subpixel">서브픽셀</a>
+        <a href="#calibration" data-section="calibration">픽셀→실측</a>
+        <a href="#reliability" data-section="reliability">측정 신뢰성</a>
+        <a href="#practice" data-section="practice">실전</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>윤곽 기반 측정 — 치수·각도·서브픽셀</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>머신비전 측정이 무엇이고, 측정 이전에 무엇이 갖춰져야 하는지</li>
+                        <li>두 점·두 엣지 사이 거리, boundingRect로 폭·높이 재기</li>
+                        <li>minAreaRect로 기울어진 객체의 실제 폭·길이·각도 측정</li>
+                        <li>fitLine·fitEllipse·minEnclosingCircle로 직선·타원·원 피팅</li>
+                        <li>cornerSubPix와 엣지 프로파일 보간으로 서브픽셀 정밀도 확보</li>
+                        <li>픽셀을 mm로 바꾸는 변환 계수 산출과 측정 신뢰성 관리</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">머신비전 측정이란?</a></li>
+                        <li><a href="#prerequisite">측정의 전제 — 캘리브레이션과 안정적 엣지</a></li>
+                        <li><a href="#distance">거리·치수 측정</a></li>
+                        <li><a href="#min-area-rect">회전 사각형 측정 (minAreaRect)</a></li>
+                        <li><a href="#fitting">선·원 피팅 (fitLine·fitEllipse)</a></li>
+                        <li><a href="#angle">각도 측정</a></li>
+                        <li><a href="#subpixel">서브픽셀 정밀도</a></li>
+                        <li><a href="#calibration">픽셀→실측 변환</a></li>
+                        <li><a href="#reliability">측정 신뢰성</a></li>
+                        <li><a href="#practice">실전 — 부품 검사</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 머신비전 측정이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-ruler-combined"></i> 머신비전 측정이란?</h2>
+                <p><strong>머신비전 측정</strong>은 이미지에서 객체의 치수·거리·각도·지름 같은 물리량을 정량적으로 뽑아내는 작업이다. "이 부품이 있다/없다"를 판정하는 검출과 달리, 측정은 "이 핀의 길이가 12.04 mm다"처럼 <strong>수치</strong>를 돌려준다. 산업 검사의 핵심이며, 공차 판정·조립 정렬·품질 통계의 바탕이 된다.</p>
+
+                <p>측정의 흐름은 대체로 같다. 엣지(10편)를 뽑고, 윤곽(13편)으로 객체 형태를 잡고, 그 위에 기하 연산을 얹어 길이·각도를 계산한 뒤, 픽셀 단위 결과를 실측 단위(mm)로 환산한다.</p>
+
+                <table>
+                    <tr><th>측정 항목</th><th>입력</th><th>대표 함수</th></tr>
+                    <tr><td>거리 / 길이</td><td>두 점 또는 두 엣지</td><td><code>cv::norm</code>, <code>boundingRect</code></td></tr>
+                    <tr><td>폭 / 길이 / 각도</td><td>기울어진 윤곽</td><td><code>minAreaRect</code></td></tr>
+                    <tr><td>직선 방향</td><td>엣지 점 집합</td><td><code>fitLine</code></td></tr>
+                    <tr><td>지름 / 중심</td><td>원·타원 윤곽</td><td><code>fitEllipse</code>, <code>minEnclosingCircle</code></td></tr>
+                    <tr><td>각도</td><td>두 직선 또는 두 벡터</td><td><code>atan2</code>, 벡터 내적</td></tr>
+                    <tr><td>코너 위치 (정밀)</td><td>코너 근방 픽셀</td><td><code>cornerSubPix</code></td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>측정은 "픽셀 좌표 → 기하량 → 실측 단위"의 3단 변환이다</strong>
+                        OpenCV가 돌려주는 모든 좌표는 픽셀이다. 픽셀 좌표로 길이·각도를 계산한 뒤, 마지막에 캘리브레이션 계수를 곱해 mm로 바꾼다. 이 마지막 단계를 빼먹으면 측정이 아니라 그냥 픽셀 세기다.
+                    </div>
+                </div>
+
+                <!-- 2. 측정의 전제 -->
+                <h2 id="prerequisite"><i class="fa-solid fa-list-check"></i> 측정의 전제 — 캘리브레이션과 안정적 엣지</h2>
+                <p>측정 코드를 짜기 전에 두 가지가 먼저 갖춰져야 한다. 이게 없으면 아무리 정교한 기하 계산을 해도 의미가 없다.</p>
+
+                <h3 id="pre-calib"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캘리브레이션 — 픽셀과 실측의 다리</h3>
+                <p>카메라 캘리브레이션(18편)은 렌즈 왜곡을 보정하고 <strong>픽셀 1개가 실제 몇 mm인지</strong>를 알려준다. 왜곡이 보정되지 않으면 이미지 가장자리의 직선이 휘어 보이고, 같은 부품이 화면 중앙에 있을 때와 모서리에 있을 때 측정값이 달라진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 캘리브레이션으로 얻은 카메라 행렬과 왜곡 계수
+cv::Mat cameraMatrix, distCoeffs;
+// ... calibrateCamera 결과를 파일에서 읽어온다 ...
+
+// 측정 전 왜곡 보정 — 직선이 직선으로 펴진다
+cv::Mat undistorted;
+cv::undistort(rawImage, undistorted, cameraMatrix, distCoeffs);
+
+// 이후 모든 측정은 undistorted 위에서 수행한다</code></pre>
+
+                <h3 id="pre-edge"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 안정적인 엣지와 윤곽</h3>
+                <p>측정의 정밀도는 결국 <strong>엣지를 얼마나 일관되게 잡느냐</strong>에 달려 있다. 조명이 흔들리거나 초점이 나가면 엣지 위치가 픽셀 단위로 출렁이고, 그 출렁임이 그대로 측정 오차가 된다. 측정용 이진화는 검출용보다 더 보수적으로, 임계값에 둔감하게 잡아야 한다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>캘리브레이션 없는 측정은 측정이 아니다</strong>
+                        "픽셀 = mm"라고 가정하거나, 화면 한가운데서 한 번 잰 mm/pixel 값을 전체 화면에 그대로 쓰면 안 된다. 렌즈 왜곡과 원근 때문에 위치마다 픽셀 크기가 다르다. 정밀 측정이 목적이라면 캘리브레이션은 선택이 아니라 전제다.
+                    </div>
+                </div>
+
+                <!-- 3. 거리·치수 측정 -->
+                <h2 id="distance"><i class="fa-solid fa-ruler-horizontal"></i> 거리·치수 측정</h2>
+                <p>가장 기본은 두 점 사이의 직선 거리다. <code>cv::norm</code>에 두 점의 차이를 넣으면 유클리드 거리가 나온다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Point2f p1(120.0f, 80.0f);
+cv::Point2f p2(360.0f, 250.0f);
+
+// 두 점 사이 거리 (픽셀)
+double distPx = cv::norm(p1 - p2);
+
+std::cout &lt;&lt; "거리: " &lt;&lt; distPx &lt;&lt; " px" &lt;&lt; std::endl;</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+거리: 293.939 px</div>
+
+                <p>윤곽의 폭과 높이는 <code>boundingRect</code>로 잡는다. 윤곽을 감싸는 <strong>축에 정렬된</strong> 최소 사각형을 돌려준다. 객체가 화면 축과 나란할 때 가장 단순하고 빠르다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;std::vector&lt;cv::Point&gt;&gt; contours;
+cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+for (const auto&amp; contour : contours)
+{
+    // 축 정렬 바운딩 박스
+    cv::Rect box = cv::boundingRect(contour);
+
+    int widthPx = box.width;
+    int heightPx = box.height;
+
+    std::cout &lt;&lt; "폭 " &lt;&lt; widthPx &lt;&lt; " px, 높이 " &lt;&lt; heightPx &lt;&lt; " px" &lt;&lt; std::endl;
+}</code></pre>
+
+                <p>두 엣지 사이의 간격을 잴 때는, 한쪽 엣지의 점들에서 다른 쪽 엣지(또는 직선)까지의 수직 거리를 구해 평균을 낸다. 점 하나만 쓰면 노이즈에 휘둘리므로 여러 점을 평균하는 것이 핵심이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 한 점에서 직선(점 a를 지나고 방향이 dir인 직선)까지의 수직 거리
+double pointToLineDistance(const cv::Point2f&amp; pt,
+                           const cv::Point2f&amp; a, const cv::Point2f&amp; dir)
+{
+    cv::Point2f ap = pt - a;
+    // 외적의 크기 / 방향 벡터 크기 = 수직 거리
+    double cross = ap.x * dir.y - ap.y * dir.x;
+    return std::abs(cross) / cv::norm(dir);
+}</code></pre>
+
+                <!-- 4. 회전 사각형 측정 -->
+                <h2 id="min-area-rect"><i class="fa-solid fa-square-full"></i> 회전 사각형 측정 (minAreaRect)</h2>
+                <p>부품이 화면 축과 나란하다는 보장은 없다. 컨베이어 위에서 비스듬히 흘러가는 객체의 <strong>실제 폭과 길이</strong>를 재려면 <code>minAreaRect</code>를 쓴다. 윤곽을 감싸는 <strong>회전된</strong> 최소 면적 사각형을 돌려준다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <defs>
+                            <marker id="arrowM" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+                            </marker>
+                        </defs>
+                        <!-- boundingRect (축 정렬, 회색 점선) -->
+                        <rect x="150" y="60" width="240" height="180" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5"/>
+                        <text x="155" y="52" font-size="11" fill="#64748b">boundingRect (축 정렬 — 실제보다 큼)</text>
+                        <!-- minAreaRect (회전, 멜론색) -->
+                        <g transform="rotate(28 270 150)">
+                            <rect x="180" y="115" width="180" height="70" fill="#d1fae5" fill-opacity="0.5" stroke="#059669" stroke-width="2.5"/>
+                        </g>
+                        <!-- 회전 사각형 중심 -->
+                        <circle cx="270" cy="150" r="4" fill="#dc2626"/>
+                        <text x="280" y="148" font-size="11" fill="#b91c1c">center</text>
+                        <!-- size.width 화살표 -->
+                        <g transform="rotate(28 270 150)">
+                            <line x1="180" y1="200" x2="360" y2="200" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowM)"/>
+                            <line x1="360" y1="200" x2="180" y2="200" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowM)"/>
+                            <text x="270" y="218" text-anchor="middle" font-size="12" font-weight="700" fill="#1e40af">size.width</text>
+                        </g>
+                        <!-- size.height 화살표 -->
+                        <g transform="rotate(28 270 150)">
+                            <line x1="160" y1="115" x2="160" y2="185" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowM)"/>
+                            <line x1="160" y1="185" x2="160" y2="115" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowM)"/>
+                            <text x="150" y="155" text-anchor="middle" font-size="12" font-weight="700" fill="#1e40af" transform="rotate(-90 150 150)">size.height</text>
+                        </g>
+                        <!-- 각도 표시 -->
+                        <line x1="270" y1="150" x2="430" y2="150" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4"/>
+                        <path d="M 330 150 A 60 60 0 0 0 322 122" fill="none" stroke="#d97706" stroke-width="2"/>
+                        <text x="345" y="138" font-size="13" font-weight="700" fill="#b45309">angle</text>
+                        <text x="150" y="285" font-size="11" fill="#64748b">minAreaRect는 객체의 기울기를 따라가므로 실제 폭·길이를 정확히 잡는다</text>
+                    </svg>
+                    <div class="diagram-caption">boundingRect는 축에 정렬되어 비스듬한 객체를 과대 측정한다. minAreaRect는 객체를 따라 회전해 center·size·angle을 돌려준다.</div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 회전된 최소 면적 사각형
+cv::RotatedRect rr = cv::minAreaRect(contour);
+
+cv::Point2f center = rr.center;   // 중심 (픽셀)
+float w = rr.size.width;          // 한 변
+float h = rr.size.height;         // 다른 변
+float angle = rr.angle;           // 기울기 (도)
+
+// 객체의 길이와 폭 — 긴 쪽이 길이, 짧은 쪽이 폭
+float length = std::max(w, h);
+float breadth = std::min(w, h);
+
+std::cout &lt;&lt; "길이 " &lt;&lt; length &lt;&lt; " px, 폭 " &lt;&lt; breadth
+          &lt;&lt; " px, 각도 " &lt;&lt; angle &lt;&lt; " deg" &lt;&lt; std::endl;
+
+// 네 꼭짓점이 필요하면 points()로 꺼낸다
+cv::Point2f corners[4];
+rr.points(corners);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>minAreaRect의 angle 해석은 OpenCV 버전에 따라 다르다</strong>
+                        OpenCV 4.5 이전에는 angle이 [-90, 0) 범위였고, 4.5부터는 (0, 90] 범위로 바뀌었다. width/height와 angle의 짝짓기 규칙도 함께 달라졌다. 그래서 "긴 변 = 길이"처럼 <code>angle</code>에 직접 의존하지 않는 방식으로 폭·길이를 정하고, 방향이 필요하면 <code>points()</code>로 꼭짓점을 꺼내 직접 벡터를 계산하는 편이 버전에 안전하다.
+                    </div>
+                </div>
+
+                <!-- 5. 선·원 피팅 -->
+                <h2 id="fitting"><i class="fa-solid fa-bezier-curve"></i> 선·원 피팅 (fitLine·fitEllipse)</h2>
+                <p>엣지에서 뽑은 점들은 노이즈 때문에 완벽한 직선이나 원이 아니다. <strong>피팅</strong>은 이 점 무리에 가장 잘 맞는 이상적인 도형을 최소제곱으로 끼워 맞춰, 노이즈를 평균해 없애는 기법이다.</p>
+
+                <h3 id="fit-line"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> fitLine — 점들로 직선 적합</h3>
+                <p><code>fitLine</code>은 점 집합에 직선을 맞춰 <strong>(vx, vy, x0, y0)</strong>을 돌려준다. (vx, vy)는 정규화된 방향 벡터, (x0, y0)은 직선 위의 한 점이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 엣지에서 뽑은 점들 (한 변을 따라 늘어선 점들)
+std::vector&lt;cv::Point2f&gt; edgePoints = collectEdgePoints(binary);
+
+cv::Vec4f line;
+// DIST_L2: 최소제곱. 0, 0.01은 기본 파라미터
+cv::fitLine(edgePoints, line, cv::DIST_L2, 0, 0.01, 0.01);
+
+cv::Point2f dir(line[0], line[1]);   // 방향 벡터 (단위 벡터)
+cv::Point2f pt(line[2], line[3]);    // 직선 위의 한 점
+
+// 직선의 기울기 각도 (도)
+double lineAngle = std::atan2(dir.y, dir.x) * 180.0 / CV_PI;</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>DIST_L2 대신 DIST_HUBER를 쓰면 이상치에 강해진다</strong>
+                        엣지 점에 튀는 값이 섞이면 <code>DIST_L2</code> 적합선이 그쪽으로 끌려간다. <code>cv::DIST_HUBER</code>나 <code>cv::DIST_L1</code>은 멀리 떨어진 점의 영향을 줄여 더 견고한 직선을 준다. 측정용 직선 피팅에는 Huber가 무난하다.
+                    </div>
+                </div>
+
+                <h3 id="fit-ellipse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> fitEllipse — 타원 적합으로 지름·중심</h3>
+                <p>구멍이나 원형 부품의 지름과 중심을 잴 때는 <code>fitEllipse</code>를 쓴다. 윤곽 점에 타원을 맞춰 <code>RotatedRect</code>를 돌려준다 — center는 타원 중심, size는 두 축의 길이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 타원 적합에는 최소 5개 점이 필요하다
+if (contour.size() &gt;= 5)
+{
+    cv::RotatedRect ell = cv::fitEllipse(contour);
+
+    cv::Point2f center = ell.center;          // 타원(구멍) 중심
+    float majorAxis = std::max(ell.size.width, ell.size.height);
+    float minorAxis = std::min(ell.size.width, ell.size.height);
+
+    // 원형 부품이면 두 축이 거의 같다 → 평균을 지름으로
+    float diameter = (majorAxis + minorAxis) / 2.0f;
+
+    std::cout &lt;&lt; "구멍 중심 (" &lt;&lt; center.x &lt;&lt; ", " &lt;&lt; center.y
+              &lt;&lt; "), 지름 " &lt;&lt; diameter &lt;&lt; " px" &lt;&lt; std::endl;
+}</code></pre>
+
+                <h3 id="fit-circle"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> minEnclosingCircle — 감싸는 최소 원</h3>
+                <p><code>minEnclosingCircle</code>은 모든 점을 포함하는 <strong>가장 작은 원</strong>을 돌려준다. fitEllipse가 점들의 평균적 형태에 맞춘다면, 이쪽은 <strong>최대 외접</strong> 개념이라 의미가 다르다. 부품이 원 안에 다 들어오는지 같은 포함 검사에 어울린다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Point2f center;
+float radius;
+cv::minEnclosingCircle(contour, center, radius);
+
+std::cout &lt;&lt; "외접원 반지름 " &lt;&lt; radius &lt;&lt; " px" &lt;&lt; std::endl;</code></pre>
+
+                <table>
+                    <tr><th>함수</th><th>맞추는 도형</th><th>측정 의미</th></tr>
+                    <tr><td><code>fitLine</code></td><td>직선 (최소제곱)</td><td>변의 방향, 기울기 각도</td></tr>
+                    <tr><td><code>fitEllipse</code></td><td>타원 (점들의 평균 형태)</td><td>구멍 지름·중심, 진원도</td></tr>
+                    <tr><td><code>minEnclosingCircle</code></td><td>최소 외접 원</td><td>포함 검사, 최대 크기</td></tr>
+                    <tr><td><code>boundingRect</code></td><td>축 정렬 사각형</td><td>축에 나란한 객체의 폭·높이</td></tr>
+                    <tr><td><code>minAreaRect</code></td><td>회전 최소 사각형</td><td>기울어진 객체의 폭·길이·각도</td></tr>
+                </table>
+
+                <!-- 6. 각도 측정 -->
+                <h2 id="angle"><i class="fa-solid fa-drafting-compass"></i> 각도 측정</h2>
+                <p>각도는 두 직선이 이루는 사이각, 또는 한 직선이 기준축과 이루는 기울기로 잰다. 핵심은 <code>atan2</code>와 벡터 내적이다.</p>
+
+                <h3 id="angle-two-lines"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 두 직선의 사이각</h3>
+                <p>각 직선의 방향 벡터를 구한 뒤, 두 벡터의 <strong>내적</strong>으로 사이각을 계산한다. 내적은 <code>|a||b|cosθ</code>이므로 정규화하면 <code>cosθ</code>가 바로 나온다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 두 방향 벡터 사이의 각도 (도, 0~180)
+double angleBetween(const cv::Point2f&amp; v1, const cv::Point2f&amp; v2)
+{
+    double dot = v1.x * v2.x + v1.y * v2.y;
+    double n1 = cv::norm(v1);
+    double n2 = cv::norm(v2);
+
+    // 0으로 나누기 방지
+    if (n1 &lt; 1e-9 || n2 &lt; 1e-9)
+    {
+        return 0.0;
+    }
+
+    double cosTheta = dot / (n1 * n2);
+    // 부동소수 오차로 범위를 벗어날 수 있으니 클램프
+    cosTheta = std::max(-1.0, std::min(1.0, cosTheta));
+
+    return std::acos(cosTheta) * 180.0 / CV_PI;
+}</code></pre>
+
+                <h3 id="angle-axis"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기준축 대비 기울기</h3>
+                <p>한 직선이 수평축과 이루는 각도는 <code>atan2(dy, dx)</code>로 구한다. <code>atan2</code>는 사분면을 구분해 -180~180도를 돌려주므로, 단순 <code>atan</code>보다 안전하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Point2f a(100.0f, 200.0f);
+cv::Point2f b(340.0f, 120.0f);
+
+cv::Point2f v = b - a;
+double angleDeg = std::atan2(v.y, v.x) * 180.0 / CV_PI;
+
+// minAreaRect의 angle을 그대로 쓰는 대신, 꼭짓점에서 직접 계산하면
+// 버전에 무관하게 일관된 각도를 얻는다
+cv::Point2f corners[4];
+rr.points(corners);
+cv::Point2f edge = corners[1] - corners[0];   // 한 변 벡터
+double rectAngle = std::atan2(edge.y, edge.x) * 180.0 / CV_PI;</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>각도는 캘리브레이션 계수와 무관하다</strong>
+                        길이는 mm/pixel을 곱해야 하지만, 각도는 비율이라 픽셀 좌표에서 잰 값이 그대로 실제 각도다 — 단, 화소가 정사각형(픽셀 가로세로비 1)이고 렌즈 왜곡이 보정된 경우에 한한다. 비정방 화소나 큰 왜곡이 있으면 각도도 틀어진다.
+                    </div>
+                </div>
+
+                <!-- 7. 서브픽셀 정밀도 -->
+                <h2 id="subpixel"><i class="fa-solid fa-magnifying-glass-plus"></i> 서브픽셀 정밀도</h2>
+                <p>윤곽과 엣지가 돌려주는 좌표는 기본적으로 <strong>정수 픽셀</strong> 단위다. 하지만 객체의 진짜 경계는 픽셀 격자에 딱 맞아떨어지지 않는다. 픽셀 단위 측정은 ±0.5 px의 양자화 오차를 안고 가는데, 정밀 측정에서는 이게 치명적이다. <strong>서브픽셀</strong> 기법은 픽셀 사이의 위치를 보간으로 추정해 정밀도를 10배 이상 끌어올린다.</p>
+
+                <h3 id="sub-corner"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> cornerSubPix — 코너 정밀화</h3>
+                <p><code>cornerSubPix</code>는 정수 좌표로 잡은 코너를 입력받아, 주변 밝기 기울기를 분석해 <strong>실수 좌표</strong>로 정밀화한다. 코너 근방에서 "기울기와 변위 벡터가 수직"이라는 조건을 반복적으로 만족시켜 위치를 미세 조정한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 1단계: 정수 픽셀 단위로 코너 후보를 잡는다
+std::vector&lt;cv::Point2f&gt; corners;
+cv::goodFeaturesToTrack(gray, corners, 20, 0.01, 10);
+
+// 2단계: 서브픽셀로 정밀화
+cv::Size winSize(5, 5);          // 탐색 윈도우 절반 크기
+cv::Size zeroZone(-1, -1);       // 무시 영역 없음
+cv::TermCriteria criteria(
+    cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 40, 0.001);
+
+cv::cornerSubPix(gray, corners, winSize, zeroZone, criteria);
+
+// corners는 이제 (123.47, 88.21)처럼 소수점 좌표를 가진다</code></pre>
+
+                <h3 id="sub-edge"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 엣지 프로파일 보간</h3>
+                <p>한 방향으로 밝기 단면(프로파일)을 뜨면, 엣지에서 밝기가 급변한다. 이 변화의 <strong>1차 미분이 최대가 되는 위치</strong>가 엣지인데, 미분 곡선의 정점 주변 세 점에 포물선을 끼워 맞추면 정점의 실수 위치를 얻는다. 이게 엣지 서브픽셀화의 기본 원리다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 1D 프로파일에서 기울기 최대 지점을 서브픽셀로 찾는다.
+// peakIndex 주변 세 점에 포물선을 맞춰 정점 위치를 보간한다.
+double subPixelPeak(const std::vector&lt;double&gt;&amp; grad, int peakIndex)
+{
+    if (peakIndex &lt;= 0 || peakIndex &gt;= (int)grad.size() - 1)
+    {
+        return peakIndex;
+    }
+
+    double yPrev = grad[peakIndex - 1];
+    double yCurr = grad[peakIndex];
+    double yNext = grad[peakIndex + 1];
+
+    double denom = yPrev - 2.0 * yCurr + yNext;
+    if (std::abs(denom) &lt; 1e-9)
+    {
+        return peakIndex;
+    }
+
+    // 포물선 정점의 보정량 (-0.5 ~ 0.5)
+    double offset = 0.5 * (yPrev - yNext) / denom;
+    return peakIndex + offset;
+}</code></pre>
+
+                <table>
+                    <tr><th>구분</th><th>픽셀 단위</th><th>서브픽셀</th></tr>
+                    <tr><td>좌표 형식</td><td>정수 (cv::Point)</td><td>실수 (cv::Point2f)</td></tr>
+                    <tr><td>전형적 정밀도</td><td>±0.5 px</td><td>±0.05 px 이하</td></tr>
+                    <tr><td>대표 기법</td><td>findContours, 정수 코너</td><td>cornerSubPix, 프로파일 보간</td></tr>
+                    <tr><td>비용</td><td>거의 없음</td><td>약간의 추가 연산</td></tr>
+                    <tr><td>적합한 용도</td><td>존재 검사, 대략적 위치</td><td>공차 판정, 정밀 치수</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>서브픽셀 없이 정밀 측정을 기대하면 안 된다</strong>
+                        ±0.5 px의 양자화 오차는 1 px = 10 µm 배율에서 ±5 µm다. 정밀 부품의 공차가 ±3 µm라면 픽셀 단위 측정만으로는 애초에 판정이 불가능하다. 정밀 측정이 목적이면 서브픽셀은 필수이고, 그 전에 엣지 품질부터 확보해야 한다.
+                    </div>
+                </div>
+
+                <!-- 8. 픽셀→실측 변환 -->
+                <h2 id="calibration"><i class="fa-solid fa-arrows-left-right-to-line"></i> 픽셀→실측 변환</h2>
+                <p>측정의 마지막 단계는 픽셀 값을 실제 단위로 바꾸는 것이다. 핵심은 <strong>mm/pixel 계수</strong> 하나다. 이 계수를 구하는 방법은 두 가지다.</p>
+
+                <h3 id="conv-calib"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캘리브레이션 기반</h3>
+                <p>체커보드 캘리브레이션(18편)을 하면 카메라 행렬과, 작업 평면까지의 거리를 알 때 픽셀 크기를 정확히 산출할 수 있다. 렌즈 왜곡까지 보정되므로 화면 전체에서 일관된 계수를 쓸 수 있다.</p>
+
+                <h3 id="conv-scale"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기준 물체(스케일 바) 기반</h3>
+                <p>간단한 현장에서는 크기를 정확히 아는 <strong>기준 물체</strong>를 함께 촬영해 계수를 뽑는다. 예를 들어 10.00 mm 게이지 블록이 이미지에서 412 px로 잡혔다면 계수는 <code>10.00 / 412</code> mm/px다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 기준 물체로 mm/pixel 계수를 산출한다
+double knownLengthMm = 10.00;     // 게이지 블록 실제 길이
+double measuredPx = 412.0;        // 이미지에서 잰 픽셀 길이
+
+double mmPerPixel = knownLengthMm / measuredPx;   // 약 0.02427 mm/px
+
+// 이제 모든 픽셀 측정값을 실측으로 환산한다
+double partWidthPx = 305.7;       // minAreaRect로 잰 부품 폭
+double partWidthMm = partWidthPx * mmPerPixel;
+
+std::cout &lt;&lt; "부품 폭: " &lt;&lt; partWidthMm &lt;&lt; " mm" &lt;&lt; std::endl;</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+부품 폭: 7.41917 mm</div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>기준 물체는 측정 대상과 같은 평면에 있어야 한다</strong>
+                        스케일 바가 측정 대상보다 카메라에 가깝거나 멀면 원근 때문에 픽셀 크기가 달라져 계수가 틀어진다. 기준 물체는 반드시 측정 대상과 같은 작업 거리(같은 평면)에 놓고 촬영해야 한다. 깊이가 다른 면을 한 계수로 재면 그만큼 오차가 난다.
+                    </div>
+                </div>
+
+                <!-- 9. 측정 신뢰성 -->
+                <h2 id="reliability"><i class="fa-solid fa-chart-line"></i> 측정 신뢰성</h2>
+                <p>한 번 잘 잰 값보다 <strong>매번 같은 값이 나오는 것</strong>이 산업 측정에서는 더 중요하다. 측정 시스템 자체의 변동을 관리해야 한다.</p>
+
+                <h3 id="rel-repeatability"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 반복성 — 조명·초점·정렬</h3>
+                <ul>
+                    <li><strong>조명 반복성</strong>: 조명이 흔들리면 엣지 위치가 출렁인다. 측정 셀은 외광을 차단하고 동일 광원을 쓴다.</li>
+                    <li><strong>초점 안정성</strong>: 초점이 나가면 엣지가 번져 측정값이 커진다. 고정 초점 + 일정 작업 거리를 유지한다.</li>
+                    <li><strong>측정 ROI 정렬</strong>: 대상이 매번 조금씩 다른 위치에 오면, 먼저 객체를 찾아 ROI를 객체에 맞춰 정렬한 뒤 측정한다.</li>
+                </ul>
+
+                <h3 id="rel-averaging"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 여러 번 측정해 평균</h3>
+                <p>같은 대상을 여러 번 측정해 평균을 내면 랜덤 노이즈가 줄어든다. 표준편차를 함께 기록하면 측정 시스템이 얼마나 안정적인지 정량적으로 알 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 같은 대상을 N회 측정해 평균과 표준편차를 구한다
+std::vector&lt;double&gt; samples;
+for (int i = 0; i &lt; 10; ++i)
+{
+    cv::Mat frame = grabFrame();
+    double value = measurePartWidth(frame);   // mm 단위 측정 결과
+    samples.push_back(value);
+}
+
+cv::Scalar meanVal, stddevVal;
+cv::meanStdDev(samples, meanVal, stddevVal);
+
+std::cout &lt;&lt; "평균 " &lt;&lt; meanVal[0] &lt;&lt; " mm, "
+          &lt;&lt; "표준편차 " &lt;&lt; stddevVal[0] &lt;&lt; " mm" &lt;&lt; std::endl;</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Gage R&amp;R로 이어진다</strong>
+                        측정 시스템의 반복성(Repeatability)과 재현성(Reproducibility)을 정량 평가하는 것이 Gage R&amp;R이다. 비전 측정도 예외가 아니어서, 같은 부품을 여러 번·여러 조건에서 재고 그 변동이 공차 대비 얼마인지 따진다. 스마트 공장 시리즈의 Gage R&amp;R 글에서 이 절차를 자세히 다룬다.
+                    </div>
+                </div>
+
+                <!-- 10. 실전 -->
+                <h2 id="practice"><i class="fa-solid fa-microchip"></i> 실전 — 부품 검사</h2>
+                <p>지금까지의 조각을 모아 실제 검사 시나리오를 구성한다.</p>
+
+                <h3 id="prac-tolerance"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 부품 치수 검사 (공차 판정)</h3>
+                <p>부품 폭을 재서 설계 공차 안에 있는지 OK/NG를 판정한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct InspectResult
+{
+    double widthMm;
+    bool isPass;
+};
+
+InspectResult inspectWidth(const std::vector&lt;cv::Point&gt;&amp; contour,
+                           double mmPerPixel)
+{
+    cv::RotatedRect rr = cv::minAreaRect(contour);
+    double widthPx = std::min(rr.size.width, rr.size.height);
+    double widthMm = widthPx * mmPerPixel;
+
+    // 설계값 7.40 mm, 공차 ±0.05 mm
+    const double kNominal = 7.40;
+    const double kTolerance = 0.05;
+
+    InspectResult result;
+    result.widthMm = widthMm;
+    result.isPass = std::abs(widthMm - kNominal) &lt;= kTolerance;
+    return result;
+}</code></pre>
+
+                <h3 id="prac-hole"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 구멍 지름·위치 측정</h3>
+                <p>내부 구멍을 찾아 지름과 중심 좌표를 재고, 설계 위치와의 편차를 계산한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// RETR_CCOMP로 외곽과 내부 구멍을 함께 찾는다
+std::vector&lt;std::vector&lt;cv::Point&gt;&gt; contours;
+std::vector&lt;cv::Vec4i&gt; hierarchy;
+cv::findContours(binary, contours, hierarchy,
+                 cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
+
+for (size_t i = 0; i &lt; contours.size(); ++i)
+{
+    // hierarchy[i][3] != -1 이면 자식 윤곽 = 내부 구멍
+    if (hierarchy[i][3] != -1 &amp;&amp; contours[i].size() &gt;= 5)
+    {
+        cv::RotatedRect ell = cv::fitEllipse(contours[i]);
+        double diameterMm =
+            (ell.size.width + ell.size.height) / 2.0 * mmPerPixel;
+
+        std::cout &lt;&lt; "구멍 지름 " &lt;&lt; diameterMm &lt;&lt; " mm, "
+                  &lt;&lt; "중심 (" &lt;&lt; ell.center.x &lt;&lt; ", "
+                  &lt;&lt; ell.center.y &lt;&lt; ") px" &lt;&lt; std::endl;
+    }
+}</code></pre>
+
+                <h3 id="prac-angle"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 각도 검사</h3>
+                <p>두 변의 직선을 각각 피팅한 뒤 사이각을 재서, 90도 ± 공차를 벗어나는지 본다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 두 변에서 각각 엣지 점을 모아 직선을 피팅한다
+cv::Vec4f lineA, lineB;
+cv::fitLine(edgePointsA, lineA, cv::DIST_HUBER, 0, 0.01, 0.01);
+cv::fitLine(edgePointsB, lineB, cv::DIST_HUBER, 0, 0.01, 0.01);
+
+cv::Point2f dirA(lineA[0], lineA[1]);
+cv::Point2f dirB(lineB[0], lineB[1]);
+
+double cornerAngle = angleBetween(dirA, dirB);
+
+const double kRightAngle = 90.0;
+const double kAngleTol = 0.5;        // ±0.5도
+bool angleOk = std::abs(cornerAngle - kRightAngle) &lt;= kAngleTol;
+
+std::cout &lt;&lt; "코너 각도 " &lt;&lt; cornerAngle &lt;&lt; " deg — "
+          &lt;&lt; (angleOk ? "OK" : "NG") &lt;&lt; std::endl;</code></pre>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>측정 코드는 컴파일도 잘 되고 숫자도 그럴듯하게 나오기 때문에, 함정을 밟아도 한참 모르고 지나가기 쉽다.</p>
+
+                <h3 id="pit-no-calib"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캘리브레이션 없이 픽셀 = 실측 가정</h3>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"대충 1 px ≈ 0.02 mm"는 측정이 아니라 추측이다</strong>
+                        캘리브레이션이나 기준 물체 없이 임의의 계수를 쓰면, 화면 위치에 따라 수 % 오차가 생기고 렌즈 왜곡까지 더해진다. 검사 시스템이라면 반드시 캘리브레이션 또는 같은 평면의 스케일 바로 계수를 산출하고, 주기적으로 재검증한다.
+                    </div>
+                </div>
+
+                <h3 id="pit-no-subpix"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 서브픽셀 없이 정밀 측정 기대</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>정수 좌표의 한계를 인정해야 한다</strong>
+                        <code>findContours</code>의 정수 윤곽으로 잰 길이는 ±0.5 px 양자화 오차를 항상 안고 있다. 공차가 픽셀 분해능에 근접하면 픽셀 단위로는 판정 자체가 불가능하다. 정밀 측정에는 <code>cornerSubPix</code>나 프로파일 보간을 반드시 끼운다.
+                    </div>
+                </div>
+
+                <h3 id="pit-angle"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> minAreaRect angle 해석 오류</h3>
+                <p>앞서 본 대로 <code>minAreaRect</code>의 <code>angle</code> 범위와 width/height 짝짓기 규칙은 OpenCV 4.5를 경계로 바뀌었다. 이전 버전 기준으로 짠 각도 코드를 새 버전에서 그대로 돌리면 각도가 90도 어긋나거나 폭과 길이가 뒤바뀐다. <code>angle</code> 값에 직접 의존하지 말고, <code>points()</code>로 꼭짓점을 꺼내 변 벡터에서 각도를 직접 계산한다.</p>
+
+                <h3 id="pit-edge-quality"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 엣지 품질이 측정 정밀도를 결정한다</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>아무리 정교한 피팅도 나쁜 엣지를 구원하지 못한다</strong>
+                        <code>fitEllipse</code>, <code>fitLine</code>, 서브픽셀 모두 입력 엣지가 일관될 때만 의미가 있다. 조명이 불안정하거나 초점이 흐리면 엣지가 프레임마다 출렁이고, 그 변동이 그대로 측정 표준편차가 된다. 측정 정밀도를 높이려면 알고리즘보다 조명·광학을 먼저 손봐야 한다.
+                    </div>
+                </div>
+
+                <h3 id="pit-roi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 측정 ROI가 대상에 맞지 않으면 무의미</h3>
+                <p>측정 ROI가 대상에서 벗어나 있으면, 엉뚱한 엣지나 배경 노이즈를 측정값으로 잡는다. 대상이 매번 같은 위치에 온다는 보장이 없으므로, 먼저 객체를 찾아(검출) 그 위치·각도에 맞춰 ROI를 정렬한 다음 측정해야 한다. 정렬되지 않은 ROI의 측정값은 숫자가 나와도 신뢰할 수 없다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        측정 전에 캘리브레이션으로 mm/pixel을 확보하고, 엣지가 일관되게 잡히도록 조명·광학을 안정시킨다. 기울어진 객체는 <code>minAreaRect</code>로, 직선·원은 피팅으로, 정밀 좌표는 서브픽셀로 잡는다. <code>minAreaRect</code>의 각도는 꼭짓점에서 직접 계산하고, 측정 ROI는 객체에 정렬하며, 여러 번 측정해 평균과 표준편차로 신뢰성을 관리한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — OpenCV 공식 문서 (minAreaRect, fitLine, fitEllipse, cornerSubPix 레퍼런스)</li>
+                        <li>OpenCV Tutorials — "Creating Bounding rotated boxes and ellipses for contours" 공식 튜토리얼</li>
+                        <li>OpenCV Tutorials — "Camera Calibration" (calib3d 모듈, undistort)</li>
+                        <li>OpenCV Tutorials — "Detecting corners location in subpixels" (cornerSubPix)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

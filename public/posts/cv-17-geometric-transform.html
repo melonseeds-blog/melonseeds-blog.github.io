@@ -1,0 +1,793 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기하 변환 — 어파인·원근·호모그래피 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 변환 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">기하 변환이란</a>
+        <a href="#kinds" data-section="kinds">변환의 종류</a>
+        <a href="#basic" data-section="basic">기본 변환</a>
+        <a href="#affine" data-section="affine">어파인 변환</a>
+        <a href="#perspective" data-section="perspective">원근 변환</a>
+        <a href="#homography" data-section="homography">호모그래피</a>
+        <a href="#interpolation" data-section="interpolation">보간</a>
+        <a href="#remap" data-section="remap">remap</a>
+        <a href="#industrial" data-section="industrial">산업 검사 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>기하 변환 — 어파인·원근·호모그래피</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>기하 변환은 픽셀 값이 아니라 픽셀의 좌표를 재배치하는 연산이다</li>
+                        <li>강체 → 유사 → 어파인 → 투영, 자유도가 늘수록 풀려나는 제약</li>
+                        <li>resize, getRotationMatrix2D, flip 같은 기본 변환</li>
+                        <li>warpAffine(2×3), warpPerspective(3×3), findHomography로 투영 변환 추정</li>
+                        <li>보간 방법 선택, remap으로 임의 좌표 매핑, 산업 검사에서의 정렬 활용</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">기하 변환이란?</a></li>
+                        <li><a href="#kinds">변환의 종류와 자유도</a></li>
+                        <li><a href="#basic">기본 변환 — resize / 회전 / flip</a></li>
+                        <li><a href="#affine">어파인 변환 (warpAffine)</a></li>
+                        <li><a href="#perspective">원근 변환 (warpPerspective)</a></li>
+                        <li><a href="#homography">호모그래피 (findHomography)</a></li>
+                        <li><a href="#interpolation">보간 (interpolation)</a></li>
+                        <li><a href="#remap">remap — 임의 좌표 매핑</a></li>
+                        <li><a href="#industrial">산업 검사 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 기하 변환이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-arrows-up-down-left-right"></i> 기하 변환이란?</h2>
+                <p><strong>기하 변환</strong>(geometric transformation)은 이미지의 픽셀을 다른 위치로 옮기는 연산이다. 핵심은 <strong>픽셀 값이 아니라 좌표를 바꾼다</strong>는 점이다. 블러나 임계화는 픽셀이 머무는 자리는 그대로 두고 값만 바꾸지만, 기하 변환은 반대로 값은 그대로 둔 채 그 값이 놓이는 자리를 옮긴다. 이동·회전·크기 조절·기울임(전단)·원근 왜곡이 모두 여기에 속한다.</p>
+
+                <p>수학적으로는 입력 좌표 <code>(x, y)</code>를 출력 좌표 <code>(x', y')</code>로 보내는 함수다. 이 함수가 행렬 한 개로 표현되면 한 번의 행렬 곱으로 모든 픽셀을 한꺼번에 옮길 수 있다. OpenCV의 기하 변환 함수들이 전부 변환 행렬을 인자로 받는 이유다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>실제로는 출력에서 입력을 거꾸로 찾는다</strong>
+                        입력 픽셀을 출력으로 보내면 출력 격자에 빈틈이 생긴다. 그래서 OpenCV는 출력 픽셀마다 "이 자리는 입력의 어디서 왔나"를 역으로 계산하고, 그 위치의 값을 <strong>보간</strong>해서 가져온다. 보간이 기하 변환과 한 묶음으로 따라붙는 이유다.
+                    </div>
+                </div>
+
+                <!-- 2. 변환의 종류와 자유도 -->
+                <h2 id="kinds"><i class="fa-solid fa-shapes"></i> 변환의 종류와 자유도</h2>
+                <p>기하 변환은 <strong>무엇을 보존하느냐</strong>에 따라 등급이 나뉜다. 제약이 많을수록 자유도(degrees of freedom, 추정해야 할 미지수 개수)가 적고, 제약이 풀릴수록 자유도가 늘면서 더 일반적인 변형을 표현한다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 원본 -->
+                        <text x="80" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">원본</text>
+                        <rect x="40" y="45" width="80" height="80" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+                        <text x="80" y="148" text-anchor="middle" font-size="10" fill="#64748b">정사각형</text>
+
+                        <!-- 강체 -->
+                        <text x="220" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">강체 (3 DOF)</text>
+                        <g transform="rotate(18 220 85)">
+                            <rect x="180" y="45" width="80" height="80" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
+                        </g>
+                        <text x="220" y="160" text-anchor="middle" font-size="10" fill="#64748b">거리·각도 유지</text>
+                        <text x="220" y="174" text-anchor="middle" font-size="10" fill="#64748b">이동 + 회전</text>
+
+                        <!-- 유사 -->
+                        <text x="360" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">유사 (4 DOF)</text>
+                        <g transform="rotate(18 360 85)">
+                            <rect x="332" y="57" width="56" height="56" fill="#fde68a" stroke="#d97706" stroke-width="2"/>
+                        </g>
+                        <text x="360" y="160" text-anchor="middle" font-size="10" fill="#64748b">각도·비율 유지</text>
+                        <text x="360" y="174" text-anchor="middle" font-size="10" fill="#64748b">+ 균일 스케일</text>
+
+                        <!-- 어파인 -->
+                        <text x="500" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">어파인 (6 DOF)</text>
+                        <polygon points="465,55 555,45 575,115 485,125" fill="#fbcfe8" stroke="#db2777" stroke-width="2"/>
+                        <text x="500" y="160" text-anchor="middle" font-size="10" fill="#64748b">평행선 유지</text>
+                        <text x="500" y="174" text-anchor="middle" font-size="10" fill="#64748b">+ 전단 · 비균일 스케일</text>
+
+                        <!-- 투영 -->
+                        <text x="640" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">투영 (8 DOF)</text>
+                        <polygon points="610,50 680,58 670,118 600,108" fill="#ddd6fe" stroke="#7c3aed" stroke-width="2"/>
+                        <text x="640" y="160" text-anchor="middle" font-size="10" fill="#64748b">직선만 유지</text>
+                        <text x="640" y="174" text-anchor="middle" font-size="10" fill="#64748b">평행선이 한 점으로</text>
+
+                        <!-- 화살표 -->
+                        <g stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)">
+                            <line x1="128" y1="85" x2="170" y2="85"/>
+                            <line x1="270" y1="85" x2="312" y2="85"/>
+                            <line x1="410" y1="85" x2="452" y2="85"/>
+                            <line x1="582" y1="85" x2="595" y2="85"/>
+                        </g>
+                        <defs>
+                            <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    <div class="diagram-caption">제약이 풀릴수록 도형이 더 자유롭게 변형된다. 강체는 모양을 그대로 옮기고, 투영은 평행선마저 한 점으로 모은다.</div>
+                </div>
+
+                <table>
+                    <tr><th>변환</th><th>자유도</th><th>허용되는 변형</th><th>보존되는 성질</th></tr>
+                    <tr><td>강체 (Rigid / Euclidean)</td><td>3</td><td>이동, 회전</td><td>거리, 각도, 넓이, 평행</td></tr>
+                    <tr><td>유사 (Similarity)</td><td>4</td><td>+ 균일 스케일</td><td>각도, 길이 비율, 평행</td></tr>
+                    <tr><td>어파인 (Affine)</td><td>6</td><td>+ 전단, 비균일 스케일</td><td>평행, 직선, 길이 비율(같은 직선상)</td></tr>
+                    <tr><td>투영 (Projective / Homography)</td><td>8</td><td>+ 원근 왜곡</td><td>직선 (평행·각도·비율 모두 깨짐)</td></tr>
+                </table>
+
+                <p>실무에서 가장 많이 쓰는 것은 <strong>어파인</strong>과 <strong>투영(원근)</strong> 두 가지다. 어파인은 2×3 행렬로, 투영은 3×3 행렬로 표현한다. 행렬이 한 줄 더 큰 만큼 투영이 더 일반적인 변형을 담는다.</p>
+
+                <!-- 3. 기본 변환 -->
+                <h2 id="basic"><i class="fa-solid fa-up-right-and-down-left-from-center"></i> 기본 변환 — resize / 회전 / flip</h2>
+                <p>변환 행렬을 직접 다루기 전에, 자주 쓰는 변환은 전용 함수로 제공된다. 크기 조절, 회전 행렬 생성, 뒤집기, 단순 이동을 차례로 본다.</p>
+
+                <h3 id="basic-resize"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> resize — 크기 조절</h3>
+                <p><code>cv::resize</code>는 이미지를 목표 크기나 배율로 늘리거나 줄인다. 목표 <code>cv::Size</code>를 직접 주거나, <code>Size()</code>를 빈 값으로 두고 <code>fx</code>, <code>fy</code> 배율을 줄 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat src = cv::imread("part.png");
+
+// 1) 목표 크기를 직접 지정
+cv::Mat dstA;
+cv::resize(src, dstA, cv::Size(640, 480));
+
+// 2) 배율로 지정 — 가로세로 절반으로 축소
+cv::Mat dstB;
+cv::resize(src, dstB, cv::Size(), 0.5, 0.5, cv::INTER_AREA);
+
+// 3) 확대 — 2배. 확대에는 CUBIC이 부드럽다
+cv::Mat dstC;
+cv::resize(src, dstC, cv::Size(), 2.0, 2.0, cv::INTER_CUBIC);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>축소는 INTER_AREA, 확대는 INTER_CUBIC</strong>
+                        축소할 때 <code>INTER_AREA</code>는 여러 픽셀을 평균 내 모아레와 계단 현상을 줄인다. 확대할 때는 <code>INTER_CUBIC</code>이나 <code>INTER_LINEAR</code>가 더 매끄럽다. 기본값 <code>INTER_LINEAR</code>는 무난하지만 최적은 아니다.
+                    </div>
+                </div>
+
+                <h3 id="basic-rotate"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> getRotationMatrix2D — 회전 행렬</h3>
+                <p>임의 각도로 회전하려면 <code>cv::getRotationMatrix2D</code>로 2×3 회전 행렬을 만들고 <code>warpAffine</code>에 넘긴다. 인자는 회전 중심, 각도(도 단위, 반시계 방향이 양수), 스케일이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat src = cv::imread("part.png");
+cv::Point2f center(src.cols / 2.0f, src.rows / 2.0f);
+
+// 중심 기준 30도 회전, 스케일 1.0
+cv::Mat rotMat = cv::getRotationMatrix2D(center, 30.0, 1.0);
+
+cv::Mat rotated;
+cv::warpAffine(src, rotated, rotMat, src.size());</code></pre>
+
+                <p>위 코드는 출력 크기를 원본과 같게 두어 모서리가 잘린다. 회전한 이미지 전체를 담으려면 회전 후 경계 상자를 계산해 출력 크기를 키우고, 행렬의 이동 성분을 보정한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">double angle = 30.0;
+cv::Point2f center(src.cols / 2.0f, src.rows / 2.0f);
+cv::Mat rotMat = cv::getRotationMatrix2D(center, angle, 1.0);
+
+// 회전된 경계 상자 크기를 구한다
+cv::Rect2f bbox = cv::RotatedRect(center, src.size(), (float)angle).boundingRect2f();
+
+// 이동 성분을 보정해 잘리지 않게 한다
+rotMat.at&lt;double&gt;(0, 2) += bbox.width / 2.0 - center.x;
+rotMat.at&lt;double&gt;(1, 2) += bbox.height / 2.0 - center.y;
+
+cv::Mat rotated;
+cv::warpAffine(src, rotated, rotMat, bbox.size());</code></pre>
+
+                <h3 id="basic-flip"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> flip — 뒤집기 / translate — 이동</h3>
+                <p><code>cv::flip</code>은 축을 기준으로 이미지를 반전한다. 단순 평행 이동은 이동 성분만 채운 2×3 행렬을 <code>warpAffine</code>에 넘기면 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// flip: flipCode 0 = 상하, 1 = 좌우, -1 = 상하좌우
+cv::Mat flipped;
+cv::flip(src, flipped, 1);  // 좌우 반전
+
+// 평행 이동 — x로 +50, y로 +30
+double tx = 50, ty = 30;
+cv::Mat transMat = (cv::Mat_&lt;double&gt;(2, 3) &lt;&lt; 1, 0, tx,
+                                               0, 1, ty);
+cv::Mat translated;
+cv::warpAffine(src, translated, transMat, src.size());</code></pre>
+
+                <p>이동 행렬 <code>[[1, 0, tx], [0, 1, ty]]</code>에서 왼쪽 2×2가 단위 행렬이면 회전·스케일 없이 위치만 옮긴다. 이 형태가 어파인 행렬의 가장 단순한 사례다.</p>
+
+                <!-- 4. 어파인 변환 -->
+                <h2 id="affine"><i class="fa-solid fa-vector-square"></i> 어파인 변환 (warpAffine)</h2>
+                <p><strong>어파인 변환</strong>은 2×3 행렬로 표현되며, 핵심 성질은 <strong>평행선이 변환 후에도 평행</strong>하게 유지된다는 것이다. 이동·회전·스케일·전단을 모두 담지만 원근 왜곡은 표현하지 못한다. 직사각형은 평행사변형까지만 변형된다 — 사다리꼴은 안 된다.</p>
+
+                <p>어파인 행렬은 다음 형태다. <code>(x, y)</code>를 <code>(x', y')</code>로 보낸다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 어파인 변환식
+//  x' = a*x + b*y + c
+//  y' = d*x + e*y + f
+//
+// 행렬 형태 (2x3):
+//  | a  b  c |
+//  | d  e  f |</code></pre>
+
+                <h3 id="affine-getmatrix"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> getAffineTransform — 3점 대응으로 행렬 구하기</h3>
+                <p>어파인 행렬의 미지수는 6개이므로, 변환 전후의 <strong>대응점 3쌍</strong>이면 행렬이 유일하게 정해진다. <code>cv::getAffineTransform</code>이 그 계산을 해 준다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat src = cv::imread("label.png");
+
+// 변환 전 3점 (원본 좌표)
+cv::Point2f srcPts[3] = {
+    { 0.0f,           0.0f },
+    { (float)src.cols, 0.0f },
+    { 0.0f,           (float)src.rows }
+};
+
+// 변환 후 3점 — 대응되는 목표 좌표
+cv::Point2f dstPts[3] = {
+    { 60.0f,  30.0f },
+    { (float)src.cols - 20.0f, 50.0f },
+    { 40.0f, (float)src.rows - 10.0f }
+};
+
+// 3점 대응 → 2x3 어파인 행렬
+cv::Mat affineMat = cv::getAffineTransform(srcPts, dstPts);
+
+cv::Mat dst;
+cv::warpAffine(src, dst, affineMat, src.size());</code></pre>
+
+                <p><code>warpAffine</code>의 마지막 인자는 출력 이미지 크기다. 그 외에 보간 방법과 경계 처리 방식도 지정할 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::warpAffine(
+    src, dst, affineMat, src.size(),
+    cv::INTER_LINEAR,            // 보간 방법
+    cv::BORDER_CONSTANT,         // 영역 밖 처리
+    cv::Scalar(0, 0, 0)         // 영역 밖을 채울 색 (검은색)
+);</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>역변환이 필요하면 invertAffineTransform</strong>
+                        변환 행렬을 알 때 그 반대 변환을 얻으려면 <code>cv::invertAffineTransform(affineMat, invMat)</code>을 쓴다. 대상물 좌표계에서 검출한 결과를 원본 이미지 좌표로 되돌릴 때 자주 필요하다.
+                    </div>
+                </div>
+
+                <!-- 5. 원근 변환 -->
+                <h2 id="perspective"><i class="fa-solid fa-cube"></i> 원근 변환 (warpPerspective)</h2>
+                <p><strong>원근 변환</strong>(perspective transform)은 3×3 행렬로 표현되며, 어파인이 못 하는 <strong>원근 왜곡</strong>을 담는다. 평행선이 변환 후 한 점(소실점)으로 모일 수 있어, 비스듬히 찍어 사다리꼴로 보이는 사각형을 똑바른 직사각형으로 펼 수 있다.</p>
+
+                <p>원근 행렬의 미지수는 8개(마지막 원소는 1로 고정)이므로, 대응점 <strong>4쌍</strong>이 필요하다. <code>cv::getPerspectiveTransform</code>이 4점 대응으로 행렬을 구한다.</p>
+
+                <h3 id="perspective-doc"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 비스듬히 찍은 문서·라벨 펴기</h3>
+                <p>대표 사례는 기울어진 라벨이나 문서를 정면에서 본 모습으로 펴는 것이다. 원본에서 라벨의 네 꼭짓점을 찾고, 그 점들을 직사각형의 네 꼭짓점으로 보내는 변환을 만든다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat src = cv::imread("tilted_label.jpg");
+
+// 원본에서 라벨의 네 꼭짓점 (좌상 → 우상 → 우하 → 좌하 순서)
+cv::Point2f srcQuad[4] = {
+    { 142.0f,  88.0f },   // 좌상
+    { 510.0f, 130.0f },   // 우상
+    { 470.0f, 410.0f },   // 우하
+    {  98.0f, 360.0f }    // 좌하
+};
+
+// 펴진 결과의 목표 직사각형 (400 x 300)
+int outW = 400, outH = 300;
+cv::Point2f dstQuad[4] = {
+    { 0.0f,         0.0f },
+    { (float)outW,  0.0f },
+    { (float)outW,  (float)outH },
+    { 0.0f,         (float)outH }
+};
+
+// 4점 대응 → 3x3 원근 행렬
+cv::Mat perspMat = cv::getPerspectiveTransform(srcQuad, dstQuad);
+
+cv::Mat warped;
+cv::warpPerspective(src, warped, perspMat, cv::Size(outW, outH));</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 결과</div>
+비스듬한 사다리꼴 라벨 → 400 x 300 정면 직사각형으로 펴짐
+이후 OCR·검사 알고리즘은 똑바른 이미지를 입력으로 받는다</div>
+
+                <p>꼭짓점 순서는 <code>srcQuad</code>와 <code>dstQuad</code>가 <strong>일대일로 같은 순서</strong>여야 한다. 좌상-우상-우하-좌하로 맞췄으면 양쪽 모두 그 순서를 지켜야 한다. 순서가 어긋나면 이미지가 뒤집히거나 꼬인다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>어파인과 원근을 혼동하지 않는다</strong>
+                        어파인은 <strong>평행선을 평행하게 유지</strong>한다. 원근은 평행선이 한 점으로 모인다. 비스듬히 찍힌 사각형을 펴려는데 <code>getAffineTransform</code>(3점)을 쓰면 사다리꼴 왜곡이 절대 펴지지 않는다. 원근 왜곡이 있으면 반드시 <code>getPerspectiveTransform</code>(4점)이다.
+                    </div>
+                </div>
+
+                <!-- 6. 호모그래피 -->
+                <h2 id="homography"><i class="fa-solid fa-link"></i> 호모그래피 (findHomography)</h2>
+                <p><code>getPerspectiveTransform</code>은 대응점이 정확히 4쌍일 때만 쓴다. 그런데 특징점 매칭으로 얻은 대응점은 수십~수백 쌍이고 그중 일부는 잘못 매칭된 <strong>이상치(outlier)</strong>다. 이때는 <code>cv::findHomography</code>를 쓴다. 여러 대응점에서 가장 그럴듯한 3×3 투영 행렬(호모그래피)을 추정하며, <strong>RANSAC</strong>으로 이상치를 걸러낸다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// srcPts, dstPts: 특징점 매칭(16편)으로 얻은 대응점 목록
+std::vector&lt;cv::Point2f&gt; srcPts, dstPts;
+// ... 매칭 결과를 채운다 ...
+
+cv::Mat inlierMask;
+
+// RANSAC으로 호모그래피 추정. 3.0은 인라이어 판정 임계(픽셀)
+cv::Mat H = cv::findHomography(srcPts, dstPts, cv::RANSAC, 3.0, inlierMask);
+
+if (H.empty())
+{
+    std::cerr &lt;&lt; "호모그래피 추정 실패" &lt;&lt; std::endl;
+    return -1;
+}
+
+// inlierMask로 실제 사용된 대응점 개수를 확인할 수 있다
+int inliers = cv::countNonZero(inlierMask);
+std::cout &lt;&lt; "인라이어: " &lt;&lt; inliers &lt;&lt; " / " &lt;&lt; srcPts.size() &lt;&lt; std::endl;</code></pre>
+
+                <h3 id="homography-align"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 객체 정렬 · 이미지 정합</h3>
+                <p>추정한 호모그래피 <code>H</code>는 <code>warpPerspective</code>에 그대로 넘긴다. 기준 템플릿 이미지를 현재 장면에 맞춰 정렬하거나, 두 장의 이미지를 같은 좌표계로 겹치는 <strong>이미지 정합</strong>(registration)에 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 템플릿(기준) 이미지를 장면 좌표계로 정렬
+cv::Mat aligned;
+cv::warpPerspective(templateImg, aligned, H, sceneImg.size());
+
+// 템플릿의 네 모서리가 장면 어디에 놓이는지 투영
+std::vector&lt;cv::Point2f&gt; corners = {
+    { 0, 0 },
+    { (float)templateImg.cols, 0 },
+    { (float)templateImg.cols, (float)templateImg.rows },
+    { 0, (float)templateImg.rows }
+};
+std::vector&lt;cv::Point2f&gt; projected;
+cv::perspectiveTransform(corners, projected, H);
+// projected: 장면 안에서 객체가 차지하는 사각형 영역</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>perspectiveTransform은 점만 변환한다</strong>
+                        <code>warpPerspective</code>는 이미지 전체를 변환하지만, <code>cv::perspectiveTransform</code>은 좌표 목록만 변환한다. 검출한 좌표·ROI 꼭짓점을 변환된 좌표계로 옮길 때 가볍게 쓴다.
+                    </div>
+                </div>
+
+                <!-- 7. 보간 -->
+                <h2 id="interpolation"><i class="fa-solid fa-grip"></i> 보간 (interpolation)</h2>
+                <p>출력 픽셀의 원본 위치는 대개 정수 좌표가 아니라 소수점 자리에 떨어진다. <code>(132.7, 88.3)</code> 같은 위치의 값을 주변 정수 픽셀로부터 추정하는 것이 <strong>보간</strong>이다. OpenCV의 거의 모든 기하 변환 함수가 보간 방법 인자를 받는다.</p>
+
+                <table>
+                    <tr><th>방법</th><th>동작</th><th>품질 / 속도</th><th>권장 용도</th></tr>
+                    <tr><td><code>INTER_NEAREST</code></td><td>가장 가까운 픽셀 값 그대로</td><td>최저 품질 / 최고 속도</td><td>마스크·라벨맵 (값이 섞이면 안 될 때)</td></tr>
+                    <tr><td><code>INTER_LINEAR</code></td><td>주변 2×2 픽셀 선형 보간</td><td>무난 / 빠름 (기본값)</td><td>일반 용도, 실시간 처리</td></tr>
+                    <tr><td><code>INTER_CUBIC</code></td><td>주변 4×4 픽셀 3차 보간</td><td>높은 품질 / 느림</td><td>확대, 화질이 중요한 경우</td></tr>
+                    <tr><td><code>INTER_AREA</code></td><td>영역 평균(픽셀 면적 관계)</td><td>축소에 최적</td><td>이미지 축소, 다운샘플링</td></tr>
+                    <tr><td><code>INTER_LANCZOS4</code></td><td>주변 8×8 Lanczos 보간</td><td>최고 품질 / 가장 느림</td><td>고품질 리샘플링</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>마스크나 라벨 이미지는 반드시 INTER_NEAREST</strong>
+                        클래스 ID나 0/255 마스크는 픽셀 값 자체가 의미를 가진다. 선형 보간을 쓰면 클래스 1과 3 사이에 존재하지 않는 2가 생기고, 마스크 경계에 127 같은 어중간한 값이 생긴다. 이런 이미지는 값을 섞지 않는 <code>INTER_NEAREST</code>로만 변환한다.
+                    </div>
+                </div>
+
+                <!-- 8. remap -->
+                <h2 id="remap"><i class="fa-solid fa-map"></i> remap — 임의 좌표 매핑</h2>
+                <p><code>warpAffine</code>·<code>warpPerspective</code>는 변환을 행렬 <strong>하나</strong>로 표현할 수 있을 때만 쓴다. 렌즈 왜곡처럼 위치마다 변형량이 다른 <strong>비선형 변환</strong>은 행렬로 담을 수 없다. 이때 <code>cv::remap</code>을 쓴다. 출력 픽셀마다 "원본 어디서 가져올지"를 좌표 맵 두 장(<code>mapX</code>, <code>mapY</code>)으로 직접 지정한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat src = cv::imread("part.png");
+int h = src.rows, w = src.cols;
+
+// 출력 각 픽셀이 원본의 어느 좌표에서 올지 지정하는 맵
+cv::Mat mapX(h, w, CV_32FC1);
+cv::Mat mapY(h, w, CV_32FC1);
+
+for (int y = 0; y &lt; h; ++y)
+{
+    for (int x = 0; x &lt; w; ++x)
+    {
+        // 예: 좌우 반전을 remap으로 표현
+        mapX.at&lt;float&gt;(y, x) = (float)(w - 1 - x);
+        mapY.at&lt;float&gt;(y, x) = (float)y;
+    }
+}
+
+cv::Mat dst;
+cv::remap(src, dst, mapX, mapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT);</code></pre>
+
+                <p>좌우 반전은 <code>flip</code>으로 충분하지만, 핵심은 맵을 어떻게 채우느냐에 따라 <strong>어떤 비선형 변형이든</strong> 표현할 수 있다는 점이다. 다음 글에서 다룰 <strong>카메라 캘리브레이션</strong>은 렌즈 왜곡 계수로 이 맵을 만들어(<code>initUndistortRectifyMap</code>) <code>remap</code>으로 왜곡을 펴낸다. <code>remap</code>은 그 왜곡 보정의 기반이다.</p>
+
+                <!-- 9. 산업 검사 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 검사 관점</h2>
+                <p>산업 비전에서 기하 변환은 거의 항상 <strong>정렬</strong>을 위해 쓴다. 검사 알고리즘은 대상물이 매번 같은 위치·각도에 있다고 가정할 때 가장 안정적이다. 현실에서는 부품이 컨베이어 위에서 조금씩 틀어진다. 이 틀어짐을 기하 변환으로 보정하는 것이 핵심이다.</p>
+
+                <h3 id="industrial-roi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 검사 ROI를 대상에 맞추기</h3>
+                <p>두 가지 접근이 있다. 대상물을 기준 자세로 옮기거나(이미지를 변환), 검사 ROI를 대상물의 현재 자세로 옮기거나(좌표를 변환). 후자가 더 가볍다 — 이미지 전체를 다시 그리지 않고 ROI 꼭짓점만 변환하면 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 기준 이미지에서 정의해 둔 검사 ROI 꼭짓점
+std::vector&lt;cv::Point2f&gt; templateRoi = {
+    { 120, 80 }, { 260, 80 }, { 260, 200 }, { 120, 200 }
+};
+
+// 현재 부품 자세를 어파인 행렬로 추정했다고 하자 (정합 결과)
+cv::Mat alignMat;  // 2x3, 기준 → 현재 자세
+
+// ROI 꼭짓점을 현재 부품 위치로 옮긴다
+std::vector&lt;cv::Point2f&gt; currentRoi;
+cv::transform(templateRoi, currentRoi, alignMat);
+// currentRoi 영역에서 검사를 수행한다</code></pre>
+
+                <h3 id="industrial-coord"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 비스듬한 촬영 보정과 좌표계 정합</h3>
+                <p>카메라를 대상물 정면에 두지 못하는 경우, 원근 변환으로 정면에서 본 모습으로 펴고 나서 측정한다. 이렇게 펴면 픽셀 좌표가 실제 평면 좌표와 선형 관계가 되어, 펴진 이미지 위의 거리 측정이 곧 실제 치수와 비례한다. 여러 카메라·여러 스테이션의 좌표를 하나의 기준 좌표계로 모으는 <strong>좌표계 정합</strong>도 호모그래피로 처리한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정렬은 검사의 전처리, 측정의 기준</strong>
+                        대부분의 검사 파이프라인은 "대상 검출 → 자세 추정 → 기하 변환으로 정렬 → 검사·측정" 순서다. 정렬이 부정확하면 그 뒤 모든 단계가 흔들린다. 그래서 대응점 정확도와 변환 종류 선택이 검사 신뢰도를 좌우한다.
+                    </div>
+                </div>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>기하 변환에서 반복적으로 나오는 실수들이다.</p>
+
+                <h3 id="pitfall-affine-persp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 어파인과 원근 혼동</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>어파인은 평행을 유지, 원근은 안 한다</strong>
+                        가장 잦은 실수다. 원근 왜곡(사다리꼴)이 있는데 어파인으로 펴려 하면 절대 펴지지 않는다. 반대로 단순히 회전·이동만 필요한데 원근(4점)을 쓰면 대응점 오차가 엉뚱한 사다리꼴 왜곡으로 증폭된다. <strong>평행선이 평행으로 남으면 어파인, 한 점으로 모이면 원근</strong>으로 판단한다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-points"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 대응점 순서와 정확도</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>대응점은 순서가 맞아야 하고, 정밀할수록 좋다</strong>
+                        <code>srcPts[i]</code>와 <code>dstPts[i]</code>는 같은 인덱스가 같은 물리적 지점이어야 한다. 순서가 어긋나면 이미지가 꼬인다. 또 대응점은 변환 행렬을 결정하는 입력이므로, 한두 픽셀의 오차도 변환 전체로 퍼진다. 점은 가능한 한 멀리 떨어뜨려 배치하고(가까우면 오차에 민감), 위치를 서브픽셀 정밀도로 잡는다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-interp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 보간 방법 부적절</h3>
+                <p>축소에 <code>INTER_LINEAR</code>를 쓰면 모아레가 남고, 마스크에 선형 보간을 쓰면 경계가 흐려진다. 용도에 맞는 보간을 골라야 한다 — 축소는 <code>AREA</code>, 확대는 <code>CUBIC</code>, 마스크·라벨은 <code>NEAREST</code>.</p>
+
+                <h3 id="pitfall-border"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 변환 후 영역 밖은 검은색</h3>
+                <p>회전이나 원근 변환을 하면 출력에 원본이 채우지 못하는 빈 영역이 생긴다. 기본값 <code>BORDER_CONSTANT</code> + <code>Scalar(0,0,0)</code>이라 그 영역은 검게 남는다. 검사 알고리즘이 그 검은 영역을 결함으로 오인할 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 빈 영역을 흰색으로 채우기
+cv::warpAffine(src, dst, rotMat, dst.size(),
+               cv::INTER_LINEAR, cv::BORDER_CONSTANT,
+               cv::Scalar(255, 255, 255));
+
+// 또는 가장자리 픽셀을 복제해 채우기
+cv::warpAffine(src, dst, rotMat, dst.size(),
+               cv::INTER_LINEAR, cv::BORDER_REPLICATE);</code></pre>
+
+                <h3 id="pitfall-invert"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 역변환이 필요할 때</h3>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>변환된 좌표계의 결과는 원본으로 되돌려야 한다</strong>
+                        정렬한 이미지에서 결함을 검출했다면 그 좌표는 <strong>변환된 좌표계</strong>의 값이다. 사용자에게 원본 이미지 위에 표시하려면 역변환을 적용해야 한다. 어파인은 <code>cv::invertAffineTransform</code>, 원근은 <code>cv::invert</code>(또는 <code>warpPerspective</code>에 <code>WARP_INVERSE_MAP</code> 플래그)로 되돌린다. 이 단계를 빼먹으면 결함 위치가 엉뚱한 곳에 찍힌다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 어파인 역변환
+cv::Mat invAffine;
+cv::invertAffineTransform(affineMat, invAffine);
+
+// 변환 좌표계의 검출점을 원본 좌표로 되돌린다
+std::vector&lt;cv::Point2f&gt; detected, original;
+cv::transform(detected, original, invAffine);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        변환 종류는 보존 성질로 고른다(평행 유지 → 어파인, 소실점 → 원근). 대응점은 순서를 맞추고 멀리 떨어뜨려 정밀하게 잡는다. 보간은 용도별로(축소 AREA, 확대 CUBIC, 마스크 NEAREST). 빈 영역은 <code>borderMode</code>로 처리하고, 검출 결과는 역변환으로 원본 좌표계에 되돌린다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — "Geometric Image Transformations" 모듈 레퍼런스 (warpAffine, warpPerspective, remap)</li>
+                        <li>OpenCV Tutorials — "Affine Transformations" / "Geometric Transformations of Images" 공식 튜토리얼</li>
+                        <li>docs.opencv.org — cv::findHomography, cv::getPerspectiveTransform 함수 레퍼런스</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

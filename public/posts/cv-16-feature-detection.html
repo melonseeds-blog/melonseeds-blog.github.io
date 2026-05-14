@@ -1,0 +1,917 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>특징점 — Harris·ORB·SIFT와 매칭 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-feature" data-section="what-feature">특징점이란</a>
+        <a href="#three-stages" data-section="three-stages">3단계 흐름</a>
+        <a href="#harris" data-section="harris">Harris 코너</a>
+        <a href="#orb" data-section="orb">ORB</a>
+        <a href="#sift" data-section="sift">SIFT</a>
+        <a href="#descriptor" data-section="descriptor">기술자</a>
+        <a href="#matching" data-section="matching">매칭</a>
+        <a href="#good-match" data-section="good-match">좋은 매칭 거르기</a>
+        <a href="#compare" data-section="compare">검출기 비교</a>
+        <a href="#practice" data-section="practice">산업 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>특징점 — Harris·ORB·SIFT와 매칭</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>특징점(feature/keypoint)이 무엇이고 왜 회전·스케일 불변성이 중요한지</li>
+                        <li>특징점 처리의 3단계 — 검출(detection) → 기술(description) → 매칭(matching)</li>
+                        <li>Harris 코너 검출, ORB, SIFT 세 검출기의 원리와 코드</li>
+                        <li>이진 기술자와 실수 기술자의 차이, BFMatcher와 FLANN으로 매칭</li>
+                        <li>Lowe's ratio test와 crossCheck로 오매칭을 거르는 방법</li>
+                        <li>검출기 비교표와 산업 현장에서의 활용, 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-feature">특징점이란?</a></li>
+                        <li><a href="#three-stages">특징점 처리 3단계</a></li>
+                        <li><a href="#harris">Harris 코너 검출</a></li>
+                        <li><a href="#orb">ORB — 빠르고 무료인 이진 검출기</a></li>
+                        <li><a href="#sift">SIFT — 스케일 불변 특징</a></li>
+                        <li><a href="#descriptor">기술자(descriptor) — 이진 vs 실수</a></li>
+                        <li><a href="#matching">매칭 — BFMatcher와 FLANN</a></li>
+                        <li><a href="#good-match">좋은 매칭 거르기</a></li>
+                        <li><a href="#compare">검출기 비교</a></li>
+                        <li><a href="#practice">산업·실전 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 특징점이란 -->
+                <h2 id="what-feature"><i class="fa-solid fa-location-crosshairs"></i> 특징점이란?</h2>
+                <p><strong>특징점</strong>(feature, keypoint)은 이미지에서 <strong>식별 가능한 두드러진 지점</strong>이다. 대표적으로 코너가 있다. 같은 장면을 다른 각도, 다른 거리, 다른 조명에서 다시 찍어도 그 지점을 또 찾을 수 있다면 좋은 특징점이다.</p>
+
+                <p>왜 코너인가? 평평한 영역은 주변과 구별되지 않는다 — 어디가 어디인지 알 수 없다. 엣지(경계선) 위의 점은 선을 따라 미끄러질 수 있어 한 방향으로는 위치가 모호하다. 반면 <strong>코너</strong>는 두 방향 모두 밝기 변화가 크므로 위치가 한 점으로 고정된다. 이 "딱 하나로 집어낼 수 있다"는 성질이 매칭의 출발점이다.</p>
+
+                <table>
+                    <tr><th>이미지 위치</th><th>밝기 변화</th><th>특징점으로서</th></tr>
+                    <tr><td>평평한 영역 (flat)</td><td>모든 방향으로 변화 없음</td><td>나쁨 — 구별 불가</td></tr>
+                    <tr><td>엣지 (edge)</td><td>한 방향만 변화</td><td>모호함 — 선 따라 미끄러짐</td></tr>
+                    <tr><td>코너 (corner)</td><td>두 방향 모두 변화 큼</td><td>좋음 — 위치 고정</td></tr>
+                </table>
+
+                <p>좋은 특징점이 갖춰야 할 성질은 <strong>반복성</strong>(repeatability)으로 요약된다. 같은 물리적 지점이 변환된 이미지에서도 다시 검출되어야 한다. 그래서 검출기를 평가할 때는 <strong>회전 불변성</strong>, <strong>스케일 불변성</strong>, <strong>조명 변화에 대한 강건성</strong>을 본다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>특징점은 "다시 찾을 수 있는 점"이다</strong>
+                        검출 자체보다 중요한 건 재현성이다. 한 장에서만 잘 찾히고 다른 장에서 안 찾히는 점은 매칭에 쓸 수 없다. 회전·스케일·조명이 바뀌어도 같은 점이 또 잡혀야 비로소 두 이미지를 연결할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 2. 3단계 -->
+                <h2 id="three-stages"><i class="fa-solid fa-diagram-project"></i> 특징점 처리 3단계</h2>
+                <p>특징점을 이용한 작업은 항상 세 단계를 거친다. <strong>검출 → 기술 → 매칭</strong>이다. 단계마다 다루는 대상과 출력이 다르다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <defs>
+                            <marker id="farrow" markerWidth="11" markerHeight="11" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#4b5563"/>
+                            </marker>
+                        </defs>
+
+                        <!-- 1 검출 -->
+                        <rect x="20" y="50" width="190" height="130" rx="12" fill="#fef9e7" stroke="#d97706" stroke-width="2"/>
+                        <circle cx="115" cy="64" r="13" fill="#d97706"/>
+                        <text x="115" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">1</text>
+                        <text x="115" y="98" text-anchor="middle" font-size="14" font-weight="700" fill="#78350f">검출 Detection</text>
+                        <text x="115" y="120" text-anchor="middle" font-size="10.5" fill="#92400e">두드러진 지점을 찾는다</text>
+                        <text x="115" y="138" text-anchor="middle" font-size="10.5" fill="#92400e">코너·블롭 위치 탐색</text>
+                        <text x="115" y="162" text-anchor="middle" font-size="10.5" font-weight="700" fill="#b45309">→ KeyPoint 목록</text>
+
+                        <!-- 화살표 -->
+                        <line x1="218" y1="115" x2="252" y2="115" stroke="#4b5563" stroke-width="2.5" marker-end="url(#farrow)"/>
+
+                        <!-- 2 기술 -->
+                        <rect x="262" y="50" width="190" height="130" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+                        <circle cx="357" cy="64" r="13" fill="#2563eb"/>
+                        <text x="357" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">2</text>
+                        <text x="357" y="98" text-anchor="middle" font-size="14" font-weight="700" fill="#1e3a5f">기술 Description</text>
+                        <text x="357" y="120" text-anchor="middle" font-size="10.5" fill="#1e40af">점 주변을 벡터로 요약</text>
+                        <text x="357" y="138" text-anchor="middle" font-size="10.5" fill="#1e40af">지문 같은 식별자 생성</text>
+                        <text x="357" y="162" text-anchor="middle" font-size="10.5" font-weight="700" fill="#1d4ed8">→ Descriptor 행렬</text>
+
+                        <!-- 화살표 -->
+                        <line x1="460" y1="115" x2="494" y2="115" stroke="#4b5563" stroke-width="2.5" marker-end="url(#farrow)"/>
+
+                        <!-- 3 매칭 -->
+                        <rect x="504" y="50" width="196" height="130" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+                        <circle cx="602" cy="64" r="13" fill="#059669"/>
+                        <text x="602" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">3</text>
+                        <text x="602" y="98" text-anchor="middle" font-size="14" font-weight="700" fill="#065f46">매칭 Matching</text>
+                        <text x="602" y="120" text-anchor="middle" font-size="10.5" fill="#047857">두 이미지의 기술자 비교</text>
+                        <text x="602" y="138" text-anchor="middle" font-size="10.5" fill="#047857">가장 가까운 쌍을 연결</text>
+                        <text x="602" y="162" text-anchor="middle" font-size="10.5" font-weight="700" fill="#059669">→ DMatch 목록</text>
+
+                        <text x="360" y="218" text-anchor="middle" font-size="11" fill="#6b7280">검출기는 1·2를 함께 수행하기도 한다 (ORB, SIFT의 detectAndCompute)</text>
+                    </svg>
+                    <div class="diagram-caption">특징점 처리 파이프라인 — 검출로 위치를 찾고, 기술로 지문을 만들고, 매칭으로 두 이미지를 연결한다.</div>
+                </div>
+
+                <p><strong>검출</strong>은 "어디가 특징점인가"를 답한다. 출력은 좌표·크기·방향을 담은 <code>cv::KeyPoint</code> 목록이다. <strong>기술</strong>은 "그 점이 어떻게 생겼나"를 답한다. 각 키포인트 주변 패치를 고정 길이 벡터(기술자)로 요약한다. <strong>매칭</strong>은 "이쪽 점과 저쪽 점이 같은가"를 답한다. 두 이미지의 기술자를 비교해 가장 닮은 쌍을 찾는다.</p>
+
+                <!-- 3. Harris -->
+                <h2 id="harris"><i class="fa-solid fa-vector-square"></i> Harris 코너 검출</h2>
+                <p><strong>Harris 코너 검출</strong>은 가장 고전적인 검출기다. 원리는 직관적이다 — 작은 윈도우를 이미지 위에서 조금씩 움직였을 때, <strong>어느 방향으로 옮겨도 윈도우 안의 밝기가 크게 변하는 지점</strong>이 코너다. 평평한 곳은 어디로 옮겨도 안 변하고, 엣지는 한 방향(엣지를 따라가는 방향)으로는 안 변한다. 코너만 두 방향 모두 변한다.</p>
+
+                <p>OpenCV는 <code>cv::cornerHarris</code>로 이 코너 응답값을 계산한다. 응답값이 큰 픽셀이 코너다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+cv::Mat src = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+if (src.empty())
+{
+    std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+    return -1;
+}
+
+// 코너 응답값 계산 (CV_32FC1 결과)
+cv::Mat response;
+int blockSize = 2;     // 코너 판정에 쓰는 이웃 윈도우 크기
+int ksize = 3;         // Sobel 미분 커널 크기
+double k = 0.04;       // Harris 검출기 자유 파라미터 (보통 0.04~0.06)
+cv::cornerHarris(src, response, blockSize, ksize, k);
+
+// 응답값을 0~255로 정규화해서 시각화하기 좋게
+cv::Mat normResponse;
+cv::normalize(response, normResponse, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+
+// 임계값을 넘는 픽셀을 코너로 표시
+cv::Mat display;
+cv::cvtColor(src, display, cv::COLOR_GRAY2BGR);
+for (int y = 0; y &lt; normResponse.rows; ++y)
+{
+    for (int x = 0; x &lt; normResponse.cols; ++x)
+    {
+        if (normResponse.at&lt;uchar&gt;(y, x) &gt; 120)  // 임계값
+        {
+            cv::circle(display, cv::Point(x, y), 4, cv::Scalar(0, 0, 255), 1);
+        }
+    }
+}</code></pre>
+
+                <h3 id="harris-gftt"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> goodFeaturesToTrack — 더 쓰기 쉬운 코너 검출</h3>
+                <p><code>cornerHarris</code>는 응답 맵을 그대로 돌려주므로 임계값과 비최대 억제를 직접 처리해야 한다. <code>cv::goodFeaturesToTrack</code>은 그 과정을 알아서 해주고 <strong>코너 좌표 목록</strong>을 바로 돌려준다. 내부적으로 Harris 또는 Shi-Tomasi 방식을 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat gray = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+
+std::vector&lt;cv::Point2f&gt; corners;
+int maxCorners = 200;          // 최대 코너 개수
+double qualityLevel = 0.01;    // 최강 코너 대비 품질 비율 하한
+double minDistance = 10.0;     // 코너 사이 최소 거리 (픽셀)
+
+cv::goodFeaturesToTrack(gray, corners, maxCorners,
+                        qualityLevel, minDistance);
+
+std::cout &lt;&lt; "검출된 코너 수: " &lt;&lt; corners.size() &lt;&lt; std::endl;
+
+cv::Mat display;
+cv::cvtColor(gray, display, cv::COLOR_GRAY2BGR);
+for (const cv::Point2f&amp; pt : corners)
+{
+    cv::circle(display, pt, 4, cv::Scalar(0, 255, 0), -1);
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+검출된 코너 수: 187</div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Harris는 스케일 불변이 아니다</strong>
+                        Harris 코너는 회전에는 강하지만 <strong>스케일이 바뀌면 약하다</strong>. 이미지를 키우면 작은 코너가 완만한 곡선처럼 보여 더 이상 코너로 잡히지 않는다. 또한 Harris는 검출만 한다 — 기술자가 없어 그 자체로는 매칭에 못 쓴다. 매칭까지 하려면 ORB·SIFT 같은 검출·기술 통합 검출기가 필요하다.
+                    </div>
+                </div>
+
+                <!-- 4. ORB -->
+                <h2 id="orb"><i class="fa-solid fa-bolt"></i> ORB — 빠르고 무료인 이진 검출기</h2>
+                <p><strong>ORB</strong>(Oriented FAST and Rotated BRIEF)는 이름 그대로 두 알고리즘을 결합한다. 코너 검출은 <strong>FAST</strong>에 방향 정보를 더해 쓰고(Oriented FAST), 기술자는 <strong>BRIEF</strong>에 회전 보정을 더해 쓴다(Rotated BRIEF). 결과는 <strong>이진 기술자</strong>다 — 각 차원이 0/1 비트다.</p>
+
+                <p>ORB는 빠르고, 메모리를 적게 쓰고, <strong>특허가 없어 상업적으로 자유롭게 쓸 수 있다</strong>. 산업 검사나 실시간 처리에 가장 먼저 검토할 검출기다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+cv::Mat gray = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+
+// ORB 검출기 생성 — 최대 특징점 수를 지정
+cv::Ptr&lt;cv::ORB&gt; orb = cv::ORB::create(1000);
+
+std::vector&lt;cv::KeyPoint&gt; keypoints;
+cv::Mat descriptors;
+
+// 검출과 기술을 한 번에 수행
+orb-&gt;detectAndCompute(gray, cv::noArray(), keypoints, descriptors);
+
+std::cout &lt;&lt; "키포인트 수: " &lt;&lt; keypoints.size() &lt;&lt; std::endl;
+std::cout &lt;&lt; "기술자 행렬: " &lt;&lt; descriptors.rows &lt;&lt; " x "
+          &lt;&lt; descriptors.cols &lt;&lt; ", 타입="
+          &lt;&lt; descriptors.type() &lt;&lt; std::endl;  // CV_8U = 0
+
+// 키포인트를 이미지에 그린다 (크기·방향 포함)
+cv::Mat display;
+cv::drawKeypoints(gray, keypoints, display, cv::Scalar::all(-1),
+                  cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+키포인트 수: 1000
+기술자 행렬: 1000 x 32, 타입=0</div>
+
+                <p>주목할 점은 기술자 행렬의 형태다. 키포인트 1000개에 대해 <code>1000 x 32</code> 행렬이고 타입은 <code>CV_8U</code>다. ORB 기술자 한 개는 <strong>32바이트 = 256비트</strong>다. 각 비트가 점 주변 픽셀쌍의 밝기 비교 결과다. 이 이진 구조 때문에 매칭이 빠르다 — 두 기술자의 거리는 단순히 다른 비트 수(해밍 거리)다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>ORB의 nfeatures는 넉넉히 잡는다</strong>
+                        <code>cv::ORB::create(nfeatures)</code>의 기본값은 500이다. 매칭 정확도를 높이려면 1000~2000으로 올리는 게 보통이다. 다만 키포인트가 많을수록 매칭 비용도 늘어나니, 실시간이라면 처리 시간을 측정하며 균형을 잡는다.
+                    </div>
+                </div>
+
+                <!-- 5. SIFT -->
+                <h2 id="sift"><i class="fa-solid fa-layer-group"></i> SIFT — 스케일 불변 특징</h2>
+                <p><strong>SIFT</strong>(Scale-Invariant Feature Transform)는 강건성의 기준점 같은 검출기다. 이미지를 여러 스케일로 만든 피라미드에서 특징점을 찾기 때문에 <strong>스케일이 바뀌어도, 회전해도, 조명이 달라져도</strong> 같은 점을 다시 찾는다. Harris가 스케일에 약했던 문제를 정면으로 해결한다.</p>
+
+                <p>대가가 있다. SIFT는 <strong>느리다</strong>. 그리고 기술자가 <strong>128차원 실수 벡터</strong>라 메모리도 더 쓴다. 한때는 특허로 묶여 있었지만 특허가 만료되어 지금은 OpenCV 메인 모듈(<code>features2d</code>)에 포함되어 별도 contrib 없이 쓸 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;opencv2/features2d.hpp&gt;
+
+cv::Mat gray = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+
+// SIFT 검출기 생성 (인자 없이 기본값)
+cv::Ptr&lt;cv::SIFT&gt; sift = cv::SIFT::create();
+
+std::vector&lt;cv::KeyPoint&gt; keypoints;
+cv::Mat descriptors;
+sift-&gt;detectAndCompute(gray, cv::noArray(), keypoints, descriptors);
+
+std::cout &lt;&lt; "키포인트 수: " &lt;&lt; keypoints.size() &lt;&lt; std::endl;
+std::cout &lt;&lt; "기술자 행렬: " &lt;&lt; descriptors.rows &lt;&lt; " x "
+          &lt;&lt; descriptors.cols &lt;&lt; ", 타입="
+          &lt;&lt; descriptors.type() &lt;&lt; std::endl;  // CV_32F = 5</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+키포인트 수: 642
+기술자 행렬: 642 x 128, 타입=5</div>
+
+                <p>ORB와 비교하면 차이가 명확하다. ORB는 <code>x 32</code> / <code>CV_8U</code>(이진), SIFT는 <code>x 128</code> / <code>CV_32F</code>(실수)다. 이 타입 차이가 매칭 단계에서 <strong>어떤 거리 측정을 써야 하는지</strong>를 결정한다 — 뒤에서 다시 다룬다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>API가 통일되어 있다</strong>
+                        ORB든 SIFT든 모두 <code>cv::Feature2D</code> 인터페이스를 따른다. <code>create()</code>로 만들고 <code>detectAndCompute()</code>로 검출·기술을 한 번에 한다. 그래서 검출기를 바꿔 끼우기 쉽다 — <code>cv::Ptr&lt;cv::Feature2D&gt;</code> 타입으로 받아두면 같은 코드로 ORB와 SIFT를 모두 돌릴 수 있다.
+                    </div>
+                </div>
+
+                <!-- 6. 기술자 -->
+                <h2 id="descriptor"><i class="fa-solid fa-fingerprint"></i> 기술자(descriptor) — 이진 vs 실수</h2>
+                <p><strong>기술자</strong>는 키포인트 주변을 <strong>고정 길이 벡터로 표현</strong>한 것이다. 사람으로 치면 지문이다. 두 키포인트가 같은 물리적 지점이라면 기술자도 서로 비슷할 것이고, 이 "비슷함"을 숫자로 잴 수 있어야 매칭이 가능하다.</p>
+
+                <p>기술자는 크게 두 종류다 — <strong>이진 기술자</strong>와 <strong>실수 기술자</strong>. 둘은 저장 형태도, 거리를 재는 방법도 다르다.</p>
+
+                <table>
+                    <tr><th>구분</th><th>이진 기술자</th><th>실수 기술자</th></tr>
+                    <tr><td>대표 검출기</td><td>ORB, BRISK, AKAZE</td><td>SIFT, SURF, KAZE</td></tr>
+                    <tr><td>저장 형태</td><td>비트열 (CV_8U)</td><td>실수 벡터 (CV_32F)</td></tr>
+                    <tr><td>ORB / SIFT 예</td><td>32바이트 = 256비트</td><td>128차원 float = 512바이트</td></tr>
+                    <tr><td>거리 측정</td><td>해밍 거리 (다른 비트 수)</td><td>L2 거리 (유클리드)</td></tr>
+                    <tr><td>매칭 norm</td><td><code>NORM_HAMMING</code></td><td><code>NORM_L2</code></td></tr>
+                    <tr><td>속도</td><td>매우 빠름</td><td>상대적으로 느림</td></tr>
+                    <tr><td>강건성</td><td>좋음</td><td>매우 좋음</td></tr>
+                </table>
+
+                <p>핵심은 <strong>거리 측정 방법이 기술자 종류에 묶여 있다</strong>는 점이다. 이진 기술자는 비트 단위라 두 비트열에서 다른 비트가 몇 개인지(해밍 거리)를 센다. 실수 기술자는 벡터 공간의 점이라 두 점 사이 유클리드 거리(L2)를 잰다. 이걸 잘못 짝지으면 매칭이 통째로 망가진다 — 이 글의 마지막 함정 절에서 다시 강조한다.</p>
+
+                <!-- 7. 매칭 -->
+                <h2 id="matching"><i class="fa-solid fa-link"></i> 매칭 — BFMatcher와 FLANN</h2>
+                <p>두 이미지에서 각각 기술자를 뽑았다면, 이제 <strong>한쪽 기술자마다 다른 쪽에서 가장 가까운 기술자를 찾는다</strong>. 이게 매칭이다. OpenCV는 두 가지 매처를 제공한다.</p>
+
+                <h3 id="match-bf"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> BFMatcher — 무차별 대입 매칭</h3>
+                <p><strong>BFMatcher</strong>(Brute-Force Matcher)는 가장 단순하다. 한쪽의 기술자 하나를 다른 쪽 <strong>전부</strong>와 비교해 가장 가까운 것을 고른다. 정확하지만 기술자가 많으면 느리다. 매처를 만들 때 <strong>norm 종류를 반드시 기술자에 맞춰</strong> 지정한다.</p>
+
+                <table>
+                    <tr><th>norm 타입</th><th>거리 측정</th><th>맞는 기술자</th></tr>
+                    <tr><td><code>NORM_HAMMING</code></td><td>해밍 거리</td><td>ORB, BRISK, AKAZE (이진)</td></tr>
+                    <tr><td><code>NORM_HAMMING2</code></td><td>해밍 거리 (2비트 묶음)</td><td>WTA_K=3,4로 만든 ORB</td></tr>
+                    <tr><td><code>NORM_L2</code></td><td>유클리드 거리</td><td>SIFT, SURF, KAZE (실수)</td></tr>
+                    <tr><td><code>NORM_L1</code></td><td>맨해튼 거리</td><td>SIFT, SURF (대안)</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+cv::Mat img1 = cv::imread("scene1.jpg", cv::IMREAD_GRAYSCALE);
+cv::Mat img2 = cv::imread("scene2.jpg", cv::IMREAD_GRAYSCALE);
+
+// 1) ORB로 양쪽 검출 + 기술
+cv::Ptr&lt;cv::ORB&gt; orb = cv::ORB::create(1000);
+std::vector&lt;cv::KeyPoint&gt; kp1, kp2;
+cv::Mat desc1, desc2;
+orb-&gt;detectAndCompute(img1, cv::noArray(), kp1, desc1);
+orb-&gt;detectAndCompute(img2, cv::noArray(), kp2, desc2);
+
+// 2) ORB는 이진 기술자 → NORM_HAMMING 필수
+cv::BFMatcher matcher(cv::NORM_HAMMING);
+
+// 3) 단순 매칭 — 각 기술자의 최근접 1개
+std::vector&lt;cv::DMatch&gt; matches;
+matcher.match(desc1, desc2, matches);
+
+std::cout &lt;&lt; "전체 매칭 수: " &lt;&lt; matches.size() &lt;&lt; std::endl;
+
+// 매칭 결과 그리기
+cv::Mat matchImg;
+cv::drawMatches(img1, kp1, img2, kp2, matches, matchImg);
+cv::imwrite("matches.jpg", matchImg);</code></pre>
+
+                <p><code>cv::DMatch</code> 하나는 매칭 쌍 하나를 나타낸다. <code>queryIdx</code>(첫 이미지 키포인트 인덱스), <code>trainIdx</code>(둘째 이미지 키포인트 인덱스), <code>distance</code>(두 기술자 거리)를 담는다. <code>distance</code>가 작을수록 닮은 쌍이다.</p>
+
+                <h3 id="match-flann"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> FLANN — 빠른 근사 매칭</h3>
+                <p>기술자가 수천 개를 넘어가면 BFMatcher의 전수 비교는 부담스럽다. <strong>FLANN</strong>(Fast Library for Approximate Nearest Neighbors)은 인덱스 트리를 만들어 <strong>근사 최근접</strong>을 빠르게 찾는다. 정확도를 조금 양보하는 대신 훨씬 빠르다 — 대규모 매칭이나 실시간에 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+// SIFT 실수 기술자라고 가정 (desc1, desc2는 CV_32F)
+cv::Ptr&lt;cv::SIFT&gt; sift = cv::SIFT::create();
+std::vector&lt;cv::KeyPoint&gt; kp1, kp2;
+cv::Mat desc1, desc2;
+sift-&gt;detectAndCompute(img1, cv::noArray(), kp1, desc1);
+sift-&gt;detectAndCompute(img2, cv::noArray(), kp2, desc2);
+
+// FLANN 기반 매처 — 기본 인덱스는 실수 기술자(L2)에 맞다
+cv::FlannBasedMatcher flann;
+
+// knnMatch — 각 기술자에 대해 가장 가까운 k개를 찾는다
+std::vector&lt;std::vector&lt;cv::DMatch&gt;&gt; knnMatches;
+flann.knnMatch(desc1, desc2, knnMatches, 2);  // k=2
+
+std::cout &lt;&lt; "knn 매칭 그룹 수: " &lt;&lt; knnMatches.size() &lt;&lt; std::endl;</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>기본 FLANN은 이진 기술자에 그대로 못 쓴다</strong>
+                        <code>cv::FlannBasedMatcher</code>의 기본 인덱스는 실수 기술자(L2) 전용이다. ORB 같은 이진 기술자를 그냥 넣으면 오류가 나거나 결과가 엉망이 된다. 이진 기술자에 FLANN을 쓰려면 <code>LshIndexParams</code>로 LSH(지역 민감 해싱) 인덱스를 따로 구성해야 한다. 그래서 ORB에는 보통 <code>BFMatcher(NORM_HAMMING)</code>를 쓴다.
+                    </div>
+                </div>
+
+                <p><code>knnMatch</code>가 단순 <code>match</code>와 다른 점은 <strong>최근접 1개가 아니라 k개를 돌려준다</strong>는 것이다. 위에서 <code>k=2</code>로 둔 이유는 다음 절의 ratio test 때문이다 — 1등과 2등 거리를 비교해야 좋은 매칭을 거를 수 있다.</p>
+
+                <!-- 8. 좋은 매칭 거르기 -->
+                <h2 id="good-match"><i class="fa-solid fa-filter"></i> 좋은 매칭 거르기</h2>
+                <p>매처는 "가장 가까운" 쌍을 무조건 돌려준다 — 그게 실제로 같은 점인지 아닌지는 신경 쓰지 않는다. 그래서 <strong>매칭 결과에는 항상 오매칭(false match)이 섞여 있다</strong>. 거르지 않고 그대로 쓰면 뒤 단계(호모그래피 추정 등)가 통째로 망가진다. 거르는 방법은 세 가지다.</p>
+
+                <h3 id="good-ratio"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Lowe's ratio test</h3>
+                <p>SIFT를 만든 David Lowe가 제안한 방법이다. 각 기술자에 대해 <strong>1등과 2등의 거리 비율</strong>을 본다. 진짜 매칭이면 1등이 압도적으로 가깝다(비율이 작다). 1등과 2등이 비슷하게 가깝다면(비율이 크다) 그 점은 애매하니 버린다. 보통 임계값은 0.7~0.8이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// knnMatch로 k=2를 받아둔 상태 (knnMatches)
+std::vector&lt;cv::DMatch&gt; goodMatches;
+const float ratioThresh = 0.75f;  // Lowe 권장 0.7~0.8
+
+for (const std::vector&lt;cv::DMatch&gt;&amp; pair : knnMatches)
+{
+    if (pair.size() &lt; 2)
+    {
+        continue;  // 2등이 없으면 비교 불가
+    }
+
+    // 1등 거리가 2등 거리의 75%보다 작아야 신뢰
+    if (pair[0].distance &lt; ratioThresh * pair[1].distance)
+    {
+        goodMatches.push_back(pair[0]);
+    }
+}
+
+std::cout &lt;&lt; "ratio test 통과: " &lt;&lt; goodMatches.size()
+          &lt;&lt; " / " &lt;&lt; knnMatches.size() &lt;&lt; std::endl;</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+ratio test 통과: 214 / 983</div>
+
+                <h3 id="good-cross"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 교차 검사 (crossCheck)</h3>
+                <p><strong>교차 검사</strong>는 발상이 단순하다. A의 점 a가 B의 점 b를 1등으로 골랐다면, <strong>b도 a를 1등으로 골라야</strong> 진짜 매칭이라고 본다. 한쪽만 짝사랑하는 매칭은 버린다. BFMatcher 생성자에서 <code>crossCheck=true</code>로 켠다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// crossCheck=true — 양방향 1등이 일치하는 매칭만 반환
+cv::BFMatcher matcher(cv::NORM_HAMMING, true);
+
+std::vector&lt;cv::DMatch&gt; matches;
+matcher.match(desc1, desc2, matches);  // 이미 교차 검증된 결과
+
+std::cout &lt;&lt; "교차 검사 통과 매칭: " &lt;&lt; matches.size() &lt;&lt; std::endl;</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>crossCheck와 knnMatch는 같이 못 쓴다</strong>
+                        <code>crossCheck=true</code>로 만든 BFMatcher에 <code>knnMatch</code>를 호출하면 동작하지 않는다. 교차 검사는 단순 <code>match</code>와 함께 쓰고, ratio test는 <code>knnMatch</code>(k=2)와 함께 쓴다. 둘 중 하나를 택하거나, ratio test로 거른 뒤 직접 교차 검증 로직을 추가한다.
+                    </div>
+                </div>
+
+                <h3 id="good-ransac"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> RANSAC으로 기하 검증</h3>
+                <p>ratio test와 교차 검사는 <strong>기술자의 닮음</strong>만 본다. 하지만 닮은 패치가 우연히 엉뚱한 곳에 있을 수 있다. 마지막 관문은 <strong>기하학적 일관성</strong> 검증이다 — 진짜 매칭들은 하나의 변환(호모그래피 등)으로 설명되어야 한다. <strong>RANSAC</strong>은 매칭 다수가 동의하는 변환을 찾고, 그 변환에서 벗어나는 매칭(outlier)을 버린다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// goodMatches: ratio test를 통과한 매칭들
+std::vector&lt;cv::Point2f&gt; pts1, pts2;
+for (const cv::DMatch&amp; m : goodMatches)
+{
+    pts1.push_back(kp1[m.queryIdx].pt);
+    pts2.push_back(kp2[m.trainIdx].pt);
+}
+
+// RANSAC으로 호모그래피 추정 + inlier 마스크 획득
+std::vector&lt;uchar&gt; inlierMask;
+cv::Mat H = cv::findHomography(pts1, pts2, cv::RANSAC,
+                              3.0, inlierMask);  // 3.0px 허용 오차
+
+// 마스크가 1인 매칭만 최종 inlier
+std::vector&lt;cv::DMatch&gt; inlierMatches;
+for (size_t i = 0; i &lt; goodMatches.size(); ++i)
+{
+    if (inlierMask[i])
+    {
+        inlierMatches.push_back(goodMatches[i]);
+    }
+}
+
+std::cout &lt;&lt; "RANSAC inlier: " &lt;&lt; inlierMatches.size()
+          &lt;&lt; " / " &lt;&lt; goodMatches.size() &lt;&lt; std::endl;</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>호모그래피는 다음 글에서 자세히 다룬다</strong>
+                        여기서는 RANSAC이 "기하적으로 말이 안 되는 매칭을 걸러준다"는 역할만 짚는다. <code>findHomography</code>가 돌려주는 변환 행렬 <code>H</code> 자체와 그 의미 — 두 평면 사이의 사상 — 는 다음 글 「기하 변환과 호모그래피」에서 이어 다룬다.
+                    </div>
+                </div>
+
+                <p>정리하면 거르기는 <strong>단계적</strong>이다. ratio test로 애매한 매칭을 떨어내고 → (필요하면) 교차 검사로 한 번 더 → RANSAC으로 기하적으로 어긋난 것을 최종 제거한다. 각 단계가 다른 기준으로 거르므로 함께 쓸수록 결과가 깨끗해진다.</p>
+
+                <!-- 9. 검출기 비교 -->
+                <h2 id="compare"><i class="fa-solid fa-scale-balanced"></i> 검출기 비교</h2>
+                <p>Harris, ORB, SIFT는 목적이 다르다. 상황에 맞게 고른다.</p>
+
+                <table>
+                    <tr><th>항목</th><th>Harris</th><th>ORB</th><th>SIFT</th></tr>
+                    <tr><td>하는 일</td><td>검출만</td><td>검출 + 기술</td><td>검출 + 기술</td></tr>
+                    <tr><td>기술자</td><td>없음</td><td>이진 (256비트)</td><td>실수 (128차원)</td></tr>
+                    <tr><td>속도</td><td>빠름</td><td>매우 빠름</td><td>느림</td></tr>
+                    <tr><td>회전 불변</td><td>강함</td><td>강함</td><td>강함</td></tr>
+                    <tr><td>스케일 불변</td><td>약함</td><td>보통 (피라미드 사용)</td><td>매우 강함</td></tr>
+                    <tr><td>조명 강건성</td><td>보통</td><td>좋음</td><td>매우 좋음</td></tr>
+                    <tr><td>메모리</td><td>적음</td><td>적음</td><td>많음</td></tr>
+                    <tr><td>라이선스</td><td>자유</td><td>자유 (특허 없음)</td><td>자유 (특허 만료)</td></tr>
+                    <tr><td>매칭 norm</td><td>해당 없음</td><td><code>NORM_HAMMING</code></td><td><code>NORM_L2</code></td></tr>
+                    <tr><td>대표 용도</td><td>코너 추적, 캘리브레이션</td><td>실시간·산업 매칭</td><td>고정밀 정합, 인식</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실무 선택 기준</strong>
+                        속도가 중요하고 스케일 변화가 크지 않으면 <strong>ORB</strong>를 먼저 쓴다 — 산업 검사 대부분이 여기 해당한다. 스케일·시점 변화가 크고 정확도가 최우선이며 속도를 양보할 수 있으면 <strong>SIFT</strong>다. <strong>Harris</strong>(또는 goodFeaturesToTrack)는 매칭이 아니라 코너 좌표 자체가 필요할 때 — 옵티컬 플로우 추적, 체커보드 코너 검출 같은 곳 — 에 쓴다.
+                    </div>
+                </div>
+
+                <!-- 10. 산업 실전 관점 -->
+                <h2 id="practice"><i class="fa-solid fa-industry"></i> 산업·실전 관점</h2>
+                <p>특징점 매칭은 추상적인 기법이 아니다. 현장에서 바로 다음 같은 일에 쓰인다.</p>
+
+                <table>
+                    <tr><th>응용</th><th>특징점이 하는 일</th></tr>
+                    <tr><td>객체 인식</td><td>기준 이미지의 특징점을 장면에서 찾아 물체 존재·위치 판단</td></tr>
+                    <tr><td>이미지 정합 / 스티칭</td><td>겹치는 두 이미지의 공통 특징점으로 정렬해 한 장으로 합침</td></tr>
+                    <tr><td>위치 추정 (정합 보정)</td><td>기준 패턴과 현재 프레임을 매칭해 부품의 이동·회전량 계산</td></tr>
+                    <tr><td>파노라마 / 모자이크</td><td>연속 촬영 영상을 특징점 기준으로 이어 붙임</td></tr>
+                    <tr><td>SLAM / 시각 주행 거리계</td><td>프레임 간 특징점 추적으로 카메라 이동 경로 복원</td></tr>
+                </table>
+
+                <h3 id="practice-vs-template"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 템플릿 매칭의 한계를 어떻게 보완하는가</h3>
+                <p>앞 글에서 본 <strong>템플릿 매칭</strong>(<code>matchTemplate</code>)은 작은 패치를 픽셀 단위로 슬라이딩하며 비교한다. 빠르고 단순하지만 약점이 뚜렷하다 — <strong>회전과 스케일 변화에 거의 무력</strong>하다. 대상이 조금만 돌아가거나 크기가 달라지면 점수가 급락한다. 조명이 바뀌어도 흔들린다.</p>
+
+                <p>특징점 매칭은 이 약점을 정면으로 메운다. 검출기 자체가 회전·스케일 불변으로 설계되었고, 기술자가 조명 변화를 어느 정도 흡수한다. 게다가 특징점은 <strong>대상의 일부만 보여도</strong> — 가려지거나 화면 밖으로 일부 나가도 — 보이는 특징점만으로 매칭이 된다. 템플릿 매칭은 패치 전체가 보여야 하지만, 특징점은 부분 가림(occlusion)에 강하다.</p>
+
+                <table>
+                    <tr><th>비교 항목</th><th>템플릿 매칭</th><th>특징점 매칭</th></tr>
+                    <tr><td>회전 변화</td><td>약함</td><td>강함</td></tr>
+                    <tr><td>스케일 변화</td><td>약함</td><td>강함 (ORB·SIFT)</td></tr>
+                    <tr><td>부분 가림</td><td>약함</td><td>강함</td></tr>
+                    <tr><td>구현 난이도</td><td>매우 쉬움</td><td>중간 (거르기 단계 필요)</td></tr>
+                    <tr><td>적합한 상황</td><td>고정 자세·고정 크기 패턴</td><td>자세·크기·일부 가림이 변하는 대상</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>둘은 경쟁이 아니라 도구함의 다른 칸이다</strong>
+                        검사 대상이 항상 같은 자세·같은 크기로 들어온다면 템플릿 매칭이 더 빠르고 충분하다. 대상이 회전하거나 거리가 변하거나 일부가 가려질 수 있다면 특징점 매칭으로 올라간다. 현장에서는 두 기법을 상황에 따라 골라 쓴다.
+                    </div>
+                </div>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>특징점 매칭에서 거의 모두가 한 번씩 밟는 함정들이다.</p>
+
+                <h3 id="pitfall-norm"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 이진 기술자에 L2 norm 사용</h3>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>ORB에는 NORM_HAMMING, SIFT에는 NORM_L2</strong>
+                        ORB 같은 이진 기술자에 <code>BFMatcher(NORM_L2)</code>를 쓰면 비트열을 실수 벡터처럼 다루게 되어 거리가 의미를 잃는다 — 매칭이 통째로 엉망이 된다. 반대로 SIFT 실수 기술자에 <code>NORM_HAMMING</code>을 쓰는 것도 똑같이 틀렸다. <strong>기술자 종류와 norm은 한 세트</strong>다. 검출기를 바꾸면 norm도 같이 바꾼다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁨 — ORB(이진)에 L2를 쓰면 거리가 무의미해진다
+// cv::BFMatcher wrong(cv::NORM_L2);
+// wrong.match(orbDesc1, orbDesc2, matches);  // 결과 엉망
+
+// 좋음 — ORB는 해밍 거리
+cv::BFMatcher orbMatcher(cv::NORM_HAMMING);
+
+// 좋음 — SIFT는 L2 거리
+cv::BFMatcher siftMatcher(cv::NORM_L2);</code></pre>
+
+                <h3 id="pitfall-noratio"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ratio test 생략으로 오매칭 폭증</h3>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>match() 결과를 거르지 않고 그대로 쓰면 안 된다</strong>
+                        <code>matcher.match()</code>는 모든 기술자에 대해 최근접 쌍을 무조건 하나씩 만든다 — 실제로 대응점이 없는 키포인트도 억지로 짝이 지어진다. 거르지 않으면 매칭 절반이 오매칭일 수 있고, 이걸 RANSAC에 넣으면 변환 추정이 실패한다. <strong>ratio test나 교차 검사 중 최소 하나는 반드시 거친다.</strong>
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁨 — 거르지 않은 raw 매칭을 그대로 사용
+// matcher.match(desc1, desc2, matches);
+// cv::findHomography(...);  // 오매칭 때문에 추정 실패 가능
+
+// 좋음 — knnMatch + ratio test로 거른 뒤 사용
+std::vector&lt;std::vector&lt;cv::DMatch&gt;&gt; knn;
+matcher.knnMatch(desc1, desc2, knn, 2);
+
+std::vector&lt;cv::DMatch&gt; good;
+for (const auto&amp; p : knn)
+{
+    if (p.size() == 2 &amp;&amp; p[0].distance &lt; 0.75f * p[1].distance)
+    {
+        good.push_back(p[0]);
+    }
+}
+// 이제 good을 findHomography에 넘긴다</code></pre>
+
+                <h3 id="pitfall-texture"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 텍스처 없는 표면은 특징점이 부족하다</h3>
+                <p>특징점은 밝기 변화가 있는 곳에서만 잡힌다. <strong>균일한 금속판, 매끈한 플라스틱, 흰 벽</strong>처럼 텍스처가 없는 표면에서는 키포인트가 거의 안 나온다. 검출 수가 한 자릿수면 매칭이 불가능하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Ptr&lt;cv::ORB&gt; orb = cv::ORB::create(1000);
+std::vector&lt;cv::KeyPoint&gt; kp;
+cv::Mat desc;
+orb-&gt;detectAndCompute(plainSurface, cv::noArray(), kp, desc);
+
+// 텍스처 없는 표면은 검출 수가 극히 적다
+if (kp.size() &lt; 20)
+{
+    std::cerr &lt;&lt; "특징점 부족 (" &lt;&lt; kp.size()
+              &lt;&lt; "개) — 조명·패턴 추가 검토 필요" &lt;&lt; std::endl;
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>대안 — 조명을 바꾸거나 검사 방식을 바꾼다</strong>
+                        텍스처가 없으면 특징점 매칭은 적합하지 않다. 측면 조명(grazing light)으로 표면의 미세한 굴곡을 드러내거나, 대상에 마커·패턴이 있는 부분을 기준으로 삼거나, 아예 엣지·윤곽 기반 검사(앞 글들에서 다룬 contour·blob)로 접근을 바꾸는 편이 낫다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-siftslow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> SIFT는 느리다 — 실시간에 무턱대고 쓰지 않는다</h3>
+                <p>SIFT는 강력하지만 ORB보다 수 배에서 수십 배 느리다. 고해상도 이미지를 30fps로 처리해야 하는 인라인 검사에 SIFT를 그냥 넣으면 프레임이 밀린다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실시간이면 ORB부터, 정밀도가 부족할 때만 SIFT로</strong>
+                        먼저 ORB로 충분한지 측정한다. 스케일·시점 변화가 커서 ORB 매칭률이 낮을 때만 SIFT를 검토하되, 처리 영역을 ROI로 좁히거나, 이미지를 다운스케일하거나, 검출 주기를 낮추는(매 프레임 대신 N프레임마다) 식으로 비용을 관리한다. 처리 시간은 항상 실측한다 — 추측하지 않는다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        특징점은 검출 → 기술 → 매칭의 3단계를 거친다. 검출기는 ORB(빠름·이진)와 SIFT(강건·실수)를 상황에 맞게 고르고, 기술자 종류에 맞는 norm(<code>NORM_HAMMING</code> / <code>NORM_L2</code>)을 짝지어 쓴다. 매칭 결과는 반드시 ratio test·교차 검사·RANSAC으로 거른다. 텍스처가 없는 표면에는 애초에 적합하지 않다는 점도 기억한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — OpenCV 공식 문서, features2d 모듈 (cv::ORB, cv::SIFT, cv::Feature2D 클래스 레퍼런스)</li>
+                        <li>OpenCV Tutorials — "Feature Detection and Description", "Feature Matching" 공식 튜토리얼</li>
+                        <li>OpenCV Tutorials — "Harris Corner Detection", "Shi-Tomasi Corner Detector & Good Features to Track"</li>
+                        <li>docs.opencv.org — cv::BFMatcher, cv::FlannBasedMatcher, cv::findHomography 레퍼런스</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

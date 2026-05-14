@@ -1,0 +1,859 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카메라 캘리브레이션 — 왜곡 보정 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">캘리브레이션이란</a>
+        <a href="#camera-model" data-section="camera-model">카메라 모델</a>
+        <a href="#intrinsic" data-section="intrinsic">내부 파라미터</a>
+        <a href="#distortion" data-section="distortion">렌즈 왜곡</a>
+        <a href="#extrinsic" data-section="extrinsic">외부 파라미터</a>
+        <a href="#procedure" data-section="procedure">체커보드 절차</a>
+        <a href="#reproj-error" data-section="reproj-error">재투영 오차</a>
+        <a href="#undistort" data-section="undistort">왜곡 보정</a>
+        <a href="#usage" data-section="usage">결과 활용</a>
+        <a href="#tips" data-section="tips">잘하는 팁</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>카메라 캘리브레이션 — 왜곡 보정</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>카메라 캘리브레이션이 무엇이고 왜 정밀 측정의 전제가 되는지</li>
+                        <li>핀홀 카메라 모델 — 3D 점이 2D 이미지로 투영되는 과정</li>
+                        <li>내부 파라미터(K 행렬), 렌즈 왜곡 계수, 외부 파라미터(R, t)</li>
+                        <li>체커보드로 캘리브레이션하는 4단계 절차와 OpenCV 코드</li>
+                        <li>재투영 오차로 품질을 확인하고, undistort / remap으로 왜곡을 보정하는 법</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">카메라 캘리브레이션이란?</a></li>
+                        <li><a href="#camera-model">카메라 모델 — 핀홀 모델</a></li>
+                        <li><a href="#intrinsic">내부 파라미터 (intrinsic)</a></li>
+                        <li><a href="#distortion">렌즈 왜곡 (distortion)</a></li>
+                        <li><a href="#extrinsic">외부 파라미터 (extrinsic)</a></li>
+                        <li><a href="#procedure">체커보드 캘리브레이션 절차</a></li>
+                        <li><a href="#reproj-error">재투영 오차 (reprojection error)</a></li>
+                        <li><a href="#undistort">왜곡 보정 — undistort / remap</a></li>
+                        <li><a href="#usage">캘리브레이션 결과 활용</a></li>
+                        <li><a href="#tips">캘리브레이션 잘하는 팁</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 캘리브레이션이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-crosshairs"></i> 카메라 캘리브레이션이란?</h2>
+                <p><strong>카메라 캘리브레이션</strong>(camera calibration)은 카메라의 광학적 특성을 수치로 구하는 작업이다. 렌즈와 센서가 3차원 세상을 어떻게 2차원 이미지로 바꾸는지 — 그 변환 규칙을 숫자로 알아내는 것이다. 구체적으로는 초점거리, 주점, 렌즈 왜곡 같은 값들을 측정한다.</p>
+
+                <p>왜 필요한가. 이미지 한 장에서 픽셀 좌표 <code>(320, 240)</code>을 읽었다고 하자. 그 픽셀이 실세계에서 몇 mm 떨어진 점인지, 어느 방향에 있는지는 카메라의 특성을 모르면 알 수 없다. 캘리브레이션은 <strong>픽셀 좌표를 실세계 좌표와 연결하는 전제</strong>다. 이게 없으면 픽셀은 그저 색깔이 칠해진 격자일 뿐이고, 측정도 3D 복원도 불가능하다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>산업 측정 검사의 출발점</strong>
+                        "이 부품의 구멍 지름이 5.00 mm인가"를 카메라로 판정하려면, 픽셀 거리를 mm로 변환할 수 있어야 한다. 그 변환의 정확도는 캘리브레이션 품질에 그대로 묶여 있다. 캘리브레이션을 대충 하면 그 위에 쌓는 모든 측정이 흔들린다.
+                    </div>
+                </div>
+
+                <!-- 2. 카메라 모델 -->
+                <h2 id="camera-model"><i class="fa-solid fa-camera"></i> 카메라 모델 — 핀홀 모델</h2>
+                <p>카메라가 3D 점을 2D로 바꾸는 과정을 수학적으로 단순화한 것이 <strong>핀홀 카메라 모델</strong>(pinhole camera model)이다. 렌즈를 아주 작은 구멍 하나로 가정한다. 3차원 공간의 점에서 나온 빛이 그 구멍을 통과해 반대편 이미지 평면에 한 점으로 맺힌다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 660 300" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <defs>
+                            <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+                            </marker>
+                        </defs>
+                        <!-- 3D 점 -->
+                        <circle cx="70" cy="80" r="7" fill="#dc2626"/>
+                        <text x="70" y="62" text-anchor="middle" font-size="13" font-weight="700" fill="#7f1d1d">3D 점 P</text>
+                        <text x="70" y="106" text-anchor="middle" font-size="10" fill="#991b1b">(X, Y, Z)</text>
+
+                        <!-- 핀홀 (광학 중심) -->
+                        <line x1="350" y1="40" x2="350" y2="260" stroke="#94a3b8" stroke-width="2"/>
+                        <circle cx="350" cy="150" r="6" fill="#0f172a"/>
+                        <text x="350" y="282" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">광학 중심 (핀홀)</text>
+
+                        <!-- 광선: 3D 점 -> 핀홀 -> 이미지 평면 -->
+                        <line x1="70" y1="80" x2="350" y2="150" stroke="#dc2626" stroke-width="1.8"/>
+                        <line x1="350" y1="150" x2="540" y2="197" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="4"/>
+
+                        <!-- 이미지 평면 -->
+                        <rect x="500" y="95" width="110" height="110" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+                        <text x="555" y="85" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a5f">이미지 평면</text>
+                        <circle cx="540" cy="197" r="6" fill="#2563eb"/>
+                        <text x="556" y="225" text-anchor="middle" font-size="10" fill="#1e40af">투영점 p (u, v)</text>
+
+                        <!-- 광축 -->
+                        <line x1="350" y1="150" x2="610" y2="150" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3"/>
+                        <text x="470" y="143" text-anchor="middle" font-size="9" fill="#64748b">광축 (optical axis)</text>
+                        <circle cx="555" cy="150" r="3.5" fill="#64748b"/>
+                        <text x="585" y="154" font-size="9" fill="#64748b">주점</text>
+
+                        <!-- 초점거리 표시 -->
+                        <line x1="350" y1="245" x2="500" y2="245" stroke="#059669" stroke-width="1.5" marker-end="url(#arr)"/>
+                        <line x1="500" y1="245" x2="350" y2="245" stroke="#059669" stroke-width="1.5" marker-end="url(#arr)"/>
+                        <text x="425" y="262" text-anchor="middle" font-size="10" fill="#065f46">초점거리 f</text>
+                    </svg>
+                    <div class="diagram-caption">3D 점 P가 광학 중심을 지나 이미지 평면에 점 p로 투영된다. 이 투영 규칙을 숫자로 기술하는 것이 카메라 모델이다.</div>
+                </div>
+
+                <p>이 투영 과정은 두 단계로 나뉜다. 먼저 <strong>외부 파라미터</strong>가 월드 좌표의 3D 점을 카메라 기준 좌표로 옮긴다(회전 + 이동). 그다음 <strong>내부 파라미터</strong>가 카메라 좌표의 3D 점을 이미지 평면의 픽셀로 투영한다. 식으로 쓰면 다음과 같다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 핀홀 모델의 투영 식 (동차 좌표 표기)
+//
+//   s * [u, v, 1]^T  =  K * [ R | t ] * [X, Y, Z, 1]^T
+//
+//   [X,Y,Z]  : 월드 좌표의 3D 점
+//   [R | t]  : 외부 파라미터 (회전 행렬 R, 이동 벡터 t)
+//   K        : 내부 파라미터 행렬 (카메라 행렬)
+//   [u,v]    : 결과 픽셀 좌표
+//   s        : 스케일 인자 (깊이에 의해 정해짐)
+//
+// 여기에 더해 렌즈 왜곡이 [u,v]를 비선형으로 비튼다.</code></pre>
+
+                <p>캘리브레이션이 하는 일은 결국 이 식의 <code>K</code>, 왜곡 계수, 그리고 각 촬영의 <code>R</code>·<code>t</code>를 데이터로부터 거꾸로 푸는 것이다.</p>
+
+                <!-- 3. 내부 파라미터 -->
+                <h2 id="intrinsic"><i class="fa-solid fa-table-cells-large"></i> 내부 파라미터 (intrinsic)</h2>
+                <p><strong>내부 파라미터</strong>는 카메라 한 대의 고유한 광학 특성이다. 카메라를 어디에 두든 바뀌지 않고, 렌즈·센서 조합에만 의존한다. 카메라 좌표의 3D 점을 이미지 픽셀로 투영하는 규칙을 담는다.</p>
+
+                <p>네 개의 핵심 값이 있다. <strong>초점거리</strong> <code>fx</code>, <code>fy</code>(픽셀 단위)와 <strong>주점</strong> <code>cx</code>, <code>cy</code>(광축이 이미지와 만나는 점, 보통 이미지 중앙 근처)다. 이들을 3×3 행렬로 묶은 것이 <strong>카메라 행렬 K</strong>다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 카메라 행렬 K (3x3)
+//
+//       | fx   0   cx |
+//   K = |  0  fy   cy |
+//       |  0   0    1 |
+//
+//   fx, fy : 초점거리 (픽셀 단위). 보통 fx ≈ fy
+//   cx, cy : 주점 좌표 (픽셀)
+
+cv::Mat cameraMatrix = (cv::Mat_&lt;double&gt;(3, 3) &lt;&lt;
+    1400.0,    0.0,  960.0,
+       0.0, 1400.0,  540.0,
+       0.0,    0.0,    1.0);
+
+// 개별 값 꺼내 쓰기
+double fx = cameraMatrix.at&lt;double&gt;(0, 0);
+double cx = cameraMatrix.at&lt;double&gt;(0, 2);</code></pre>
+
+                <table>
+                    <tr><th>파라미터</th><th>기호</th><th>의미</th><th>단위</th></tr>
+                    <tr><td>초점거리 X</td><td><code>fx</code></td><td>가로 방향 초점거리</td><td>픽셀</td></tr>
+                    <tr><td>초점거리 Y</td><td><code>fy</code></td><td>세로 방향 초점거리</td><td>픽셀</td></tr>
+                    <tr><td>주점 X</td><td><code>cx</code></td><td>광축의 가로 위치</td><td>픽셀</td></tr>
+                    <tr><td>주점 Y</td><td><code>cy</code></td><td>광축의 세로 위치</td><td>픽셀</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>초점거리가 mm가 아니라 픽셀인 이유</strong>
+                        렌즈의 물리적 초점거리(예: 16 mm)를 센서의 픽셀 크기로 나눈 값이 <code>fx</code>, <code>fy</code>다. 픽셀 단위로 두면 센서 해상도와 무관하게 투영 식이 깔끔해진다. <code>fx</code>와 <code>fy</code>가 다르면 픽셀이 정사각형이 아니라는 뜻이다.
+                    </div>
+                </div>
+
+                <!-- 4. 렌즈 왜곡 -->
+                <h2 id="distortion"><i class="fa-solid fa-wave-square"></i> 렌즈 왜곡 (distortion)</h2>
+                <p>핀홀 모델은 빛이 직진한다고 가정하지만, 실제 렌즈는 빛을 휘게 한다. 그 결과 직선이 이미지에서 곡선으로 보이는데, 이를 <strong>렌즈 왜곡</strong>이라 한다. 왜곡은 크게 두 종류다.</p>
+
+                <h3 id="radial"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 방사 왜곡 (radial distortion)</h3>
+                <p>이미지 중심에서 멀어질수록 심해지는 왜곡이다. 광각 렌즈에서 두드러진다. 직선이 바깥으로 부푸는 <strong>배럴 왜곡</strong>(barrel), 안으로 휘는 <strong>핀쿠션 왜곡</strong>(pincushion) 두 패턴이 있다. 계수 <code>k1</code>, <code>k2</code>, <code>k3</code>로 모델링한다.</p>
+
+                <h3 id="tangential"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 접선 왜곡 (tangential distortion)</h3>
+                <p>렌즈와 센서가 완벽히 평행하지 않을 때 생긴다. 이미지의 일부 영역이 실제보다 가깝거나 멀게 보인다. 계수 <code>p1</code>, <code>p2</code>로 모델링한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// OpenCV의 왜곡 계수 벡터 — 순서가 고정되어 있다
+//
+//   distCoeffs = [ k1, k2, p1, p2, k3 ]
+//
+//   k1, k2, k3 : 방사 왜곡 계수
+//   p1, p2     : 접선 왜곡 계수
+
+cv::Mat distCoeffs = (cv::Mat_&lt;double&gt;(1, 5) &lt;&lt;
+    -0.28, 0.12, 0.0005, -0.0003, -0.04);
+
+// 왜곡이 거의 없는 고급 렌즈라면 0에 가까운 값이 나온다.
+// 광각·저가 렌즈일수록 k1의 절댓값이 커진다.</code></pre>
+
+                <table>
+                    <tr><th>왜곡 계수</th><th>종류</th><th>역할</th></tr>
+                    <tr><td><code>k1</code></td><td>방사</td><td>1차 방사 왜곡 — 영향이 가장 큼</td></tr>
+                    <tr><td><code>k2</code></td><td>방사</td><td>2차 방사 왜곡</td></tr>
+                    <tr><td><code>k3</code></td><td>방사</td><td>3차 방사 왜곡 — 초광각에서만 의미</td></tr>
+                    <tr><td><code>p1</code></td><td>접선</td><td>센서 기울어짐 보정 (세로)</td></tr>
+                    <tr><td><code>p2</code></td><td>접선</td><td>센서 기울어짐 보정 (가로)</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>배럴 vs 핀쿠션</strong>
+                        체커보드의 바깥쪽 직선이 바깥으로 볼록하면 배럴(<code>k1 &lt; 0</code> 경향), 안으로 오목하면 핀쿠션(<code>k1 &gt; 0</code> 경향)이다. 보정 후에는 이 직선들이 다시 곧게 펴진다 — 보정이 잘 됐는지 눈으로 확인하는 가장 쉬운 방법이다.
+                    </div>
+                </div>
+
+                <!-- 5. 외부 파라미터 -->
+                <h2 id="extrinsic"><i class="fa-solid fa-arrows-to-dot"></i> 외부 파라미터 (extrinsic)</h2>
+                <p><strong>외부 파라미터</strong>는 카메라와 대상의 <strong>상대적인 위치 관계</strong>를 나타낸다. 내부 파라미터와 달리, 카메라나 대상을 움직이면 바뀐다. 월드 좌표계의 점을 카메라 좌표계로 옮기는 변환이며, <strong>회전 행렬 R</strong>(3×3)과 <strong>이동 벡터 t</strong>(3×1)로 구성된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 외부 파라미터 — 월드 좌표 -> 카메라 좌표 변환
+//
+//   [X_cam, Y_cam, Z_cam]^T  =  R * [X_world, Y_world, Z_world]^T  +  t
+//
+//   R : 3x3 회전 행렬 (카메라가 어느 방향을 보는가)
+//   t : 3x1 이동 벡터 (카메라가 어디에 있는가)
+
+// calibrateCamera는 R을 회전 벡터(rvec) 형태로 돌려준다.
+// Rodrigues 변환으로 3x3 행렬과 상호 변환한다.
+cv::Mat rvec, tvec;        // 한 장의 촬영에 대한 외부 파라미터
+cv::Mat rotationMatrix;
+cv::Rodrigues(rvec, rotationMatrix);   // rvec(3x1) -> R(3x3)</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>내부는 하나, 외부는 촬영마다 따로</strong>
+                        캘리브레이션에서 체커보드를 20장 찍었다면, 내부 파라미터 <code>K</code>와 왜곡 계수는 <strong>전체에 공통</strong>인 한 세트가 나온다. 반면 외부 파라미터 <code>R</code>·<code>t</code>는 <strong>촬영 한 장마다</strong> 따로 나온다 — 매번 체커보드의 위치·각도가 달랐기 때문이다.
+                    </div>
+                </div>
+
+                <!-- 6. 체커보드 캘리브레이션 절차 -->
+                <h2 id="procedure"><i class="fa-solid fa-list-ol"></i> 체커보드 캘리브레이션 절차</h2>
+                <p>가장 널리 쓰이는 방법은 <strong>체커보드</strong>(체스판 패턴)를 이용하는 것이다. 패턴의 코너 간격을 정확히 알고 있으므로, 여러 각도에서 찍은 이미지의 코너 위치만으로 카메라 파라미터를 역산할 수 있다. 이 아이디어가 그 유명한 <strong>Zhang's method</strong>(장정유의 방법, 2000)이고 OpenCV의 <code>calibrateCamera</code>가 이를 구현한다.</p>
+
+                <table>
+                    <tr><th>단계</th><th>작업</th><th>OpenCV 함수</th></tr>
+                    <tr><td>①</td><td>여러 각도·기울기로 체커보드 촬영 (15~20장)</td><td>—</td></tr>
+                    <tr><td>②</td><td>각 이미지에서 체커보드 코너 검출</td><td><code>findChessboardCorners</code></td></tr>
+                    <tr><td>③</td><td>검출된 코너를 서브픽셀 정밀도로 다듬기</td><td><code>cornerSubPix</code></td></tr>
+                    <tr><td>④</td><td>대응점 집합으로 카메라 파라미터 추정</td><td><code>calibrateCamera</code></td></tr>
+                </table>
+
+                <h3 id="proc-object-points"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 준비 — 3D 기준점 좌표 만들기</h3>
+                <p>체커보드의 내부 코너들이 실세계에서 어디 있는지를 정의한다. 보드가 평면이므로 <code>Z = 0</code>으로 두고, 정사각형 한 칸의 실제 크기(mm)를 곱한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;vector&gt;
+
+// 체커보드 내부 코너 수 (가로 9, 세로 6) — 칸 수가 아니라 코너 수
+const cv::Size kBoardSize(9, 6);
+const float kSquareSize = 25.0f;   // 정사각형 한 칸 = 25 mm
+
+// 보드 한 장의 3D 기준점 (Z=0 평면)
+std::vector&lt;cv::Point3f&gt; objectTemplate;
+for (int row = 0; row &lt; kBoardSize.height; ++row)
+{
+    for (int col = 0; col &lt; kBoardSize.width; ++col)
+    {
+        objectTemplate.emplace_back(col * kSquareSize,
+                                    row * kSquareSize,
+                                    0.0f);
+    }
+}</code></pre>
+
+                <h3 id="proc-detect"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ②③ 코너 검출 + 서브픽셀 정밀화</h3>
+                <p>각 이미지에서 코너를 찾고, 정수 픽셀로 나온 좌표를 <code>cornerSubPix</code>로 소수점 단위까지 다듬는다. 정밀도가 캘리브레이션 품질을 좌우한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;std::vector&lt;cv::Point3f&gt;&gt; objectPoints;  // 모든 이미지의 3D 점
+std::vector&lt;std::vector&lt;cv::Point2f&gt;&gt; imagePoints;   // 모든 이미지의 2D 코너
+cv::Size imageSize;
+
+std::vector&lt;std::string&gt; files = { "calib01.jpg", "calib02.jpg", /* ... */ };
+
+for (const auto&amp; file : files)
+{
+    cv::Mat image = cv::imread(file, cv::IMREAD_COLOR);
+    if (image.empty())
+    {
+        std::cerr &lt;&lt; "이미지 로드 실패: " &lt;&lt; file &lt;&lt; std::endl;
+        continue;
+    }
+
+    cv::Mat gray;
+    cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+    imageSize = gray.size();
+
+    // ② 체커보드 코너 검출
+    std::vector&lt;cv::Point2f&gt; corners;
+    bool found = cv::findChessboardCorners(
+        gray, kBoardSize, corners,
+        cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
+
+    if (!found)
+    {
+        std::cerr &lt;&lt; "코너 검출 실패: " &lt;&lt; file &lt;&lt; std::endl;
+        continue;   // 이 이미지는 버린다
+    }
+
+    // ③ 서브픽셀 정밀화
+    cv::TermCriteria criteria(
+        cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001);
+    cv::cornerSubPix(gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
+                     criteria);
+
+    objectPoints.push_back(objectTemplate);
+    imagePoints.push_back(corners);
+
+    // (선택) 검출 결과를 눈으로 확인
+    cv::drawChessboardCorners(image, kBoardSize, corners, found);
+    cv::imshow("corners", image);
+    cv::waitKey(100);
+}</code></pre>
+
+                <h3 id="proc-calibrate"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ④ calibrateCamera로 파라미터 추정</h3>
+                <p>모은 대응점 집합을 <code>calibrateCamera</code>에 넘기면 내부 파라미터, 왜곡 계수, 그리고 촬영별 외부 파라미터가 한 번에 나온다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat cameraMatrix, distCoeffs;
+std::vector&lt;cv::Mat&gt; rvecs, tvecs;   // 촬영별 외부 파라미터
+
+// 반환값은 전체 RMS 재투영 오차
+double rms = cv::calibrateCamera(
+    objectPoints, imagePoints, imageSize,
+    cameraMatrix, distCoeffs, rvecs, tvecs);
+
+std::cout &lt;&lt; "RMS 재투영 오차: " &lt;&lt; rms &lt;&lt; " px" &lt;&lt; std::endl;
+std::cout &lt;&lt; "카메라 행렬 K:\n" &lt;&lt; cameraMatrix &lt;&lt; std::endl;
+std::cout &lt;&lt; "왜곡 계수:\n" &lt;&lt; distCoeffs &lt;&lt; std::endl;
+
+// 결과를 파일로 저장해 두면 매번 다시 캘리브레이션할 필요가 없다
+cv::FileStorage fs("calibration.yml", cv::FileStorage::WRITE);
+fs &lt;&lt; "camera_matrix" &lt;&lt; cameraMatrix;
+fs &lt;&lt; "dist_coeffs" &lt;&lt; distCoeffs;
+fs &lt;&lt; "image_size" &lt;&lt; imageSize;
+fs.release();</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+RMS 재투영 오차: 0.231 px
+카메라 행렬 K:
+[1402.7, 0, 958.3;
+ 0, 1401.9, 541.2;
+ 0, 0, 1]
+왜곡 계수:
+[-0.2814, 0.1187, 0.00041, -0.00029, -0.0376]</div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>findChessboardCorners의 패턴 크기는 내부 코너 수다</strong>
+                        체커보드가 가로 10칸·세로 7칸이라면 <code>cv::Size(9, 6)</code>을 넘겨야 한다 — 칸 수가 아니라 <strong>칸과 칸 사이의 내부 코너 수</strong>다. 여기서 한 칸씩 잘못 세면 모든 이미지에서 검출이 실패한다. 가장 흔한 첫 실수다.
+                    </div>
+                </div>
+
+                <!-- 7. 재투영 오차 -->
+                <h2 id="reproj-error"><i class="fa-solid fa-bullseye"></i> 재투영 오차 (reprojection error)</h2>
+                <p><strong>재투영 오차</strong>는 캘리브레이션 품질을 재는 지표다. 추정한 파라미터로 3D 기준점을 다시 이미지에 투영해 보고, 실제로 검출했던 코너 위치와 얼마나 어긋나는지를 픽셀 단위로 측정한다. <strong>낮을수록 좋다.</strong></p>
+
+<pre class="language-cpp"><code class="language-cpp">// 이미지별 재투영 오차를 직접 계산해 본다
+double totalError = 0.0;
+size_t totalPoints = 0;
+
+for (size_t i = 0; i &lt; objectPoints.size(); ++i)
+{
+    std::vector&lt;cv::Point2f&gt; projected;
+
+    // 추정한 파라미터로 3D 점을 다시 2D로 투영
+    cv::projectPoints(objectPoints[i], rvecs[i], tvecs[i],
+                      cameraMatrix, distCoeffs, projected);
+
+    // 실제 검출 코너와의 거리(L2 norm)
+    double err = cv::norm(imagePoints[i], projected, cv::NORM_L2);
+
+    double imgError = err * err;
+    totalError += imgError;
+    totalPoints += objectPoints[i].size();
+
+    std::cout &lt;&lt; "이미지 " &lt;&lt; i &lt;&lt; " 오차: "
+              &lt;&lt; std::sqrt(imgError / objectPoints[i].size())
+              &lt;&lt; " px" &lt;&lt; std::endl;
+}
+
+double meanError = std::sqrt(totalError / totalPoints);
+std::cout &lt;&lt; "전체 평균 재투영 오차: " &lt;&lt; meanError &lt;&lt; " px" &lt;&lt; std::endl;</code></pre>
+
+                <table>
+                    <tr><th>RMS 오차</th><th>해석</th></tr>
+                    <tr><td>&lt; 0.3 px</td><td>매우 우수 — 정밀 측정에 바로 사용 가능</td></tr>
+                    <tr><td>0.3 ~ 0.5 px</td><td>양호 — 일반적인 검사 용도로 충분</td></tr>
+                    <tr><td>0.5 ~ 1.0 px</td><td>보통 — 촬영 추가나 재촬영 고려</td></tr>
+                    <tr><td>&gt; 1.0 px</td><td>불량 — 코너 오검출, 각도 단조, 보드 평탄도 의심</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>재투영 오차를 확인하지 않으면 캘리브레이션을 한 게 아니다</strong>
+                        <code>calibrateCamera</code>는 입력이 엉망이어도 어떻게든 숫자를 뱉는다. RMS 오차를 보지 않으면 그 결과가 쓸 만한지 알 방법이 없다. 특정 이미지의 오차만 유독 크다면 그 이미지를 빼고 다시 돌리는 것이 좋다.
+                    </div>
+                </div>
+
+                <!-- 8. 왜곡 보정 -->
+                <h2 id="undistort"><i class="fa-solid fa-grip-lines"></i> 왜곡 보정 — undistort / remap</h2>
+                <p>파라미터를 구했으면 이제 이미지에서 렌즈 왜곡을 제거할 수 있다. 휘었던 직선이 곧게 펴진다. 방법은 두 가지다.</p>
+
+                <h3 id="undistort-simple"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> undistort — 한 장짜리 간단한 보정</h3>
+                <p>이미지 한 장만 보정하면 된다면 <code>undistort</code> 한 줄로 끝난다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat distorted = cv::imread("distorted.jpg");
+cv::Mat undistorted;
+
+// 카메라 행렬 + 왜곡 계수로 왜곡 제거
+cv::undistort(distorted, undistorted, cameraMatrix, distCoeffs);
+
+cv::imwrite("undistorted.jpg", undistorted);</code></pre>
+
+                <h3 id="undistort-map"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> initUndistortRectifyMap + remap — 반복 처리용 (빠름)</h3>
+                <p><code>undistort</code>는 호출할 때마다 보정 맵을 새로 계산한다. 같은 카메라로 들어오는 영상 스트림을 매 프레임 보정한다면 낭비다. <strong>맵을 한 번만 만들어 두고</strong> <code>remap</code>으로 재사용하면 훨씬 빠르다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 보정 맵은 한 번만 계산한다 (루프 밖에서)
+cv::Mat map1, map2;
+cv::initUndistortRectifyMap(
+    cameraMatrix, distCoeffs, cv::Mat(),       // R = 단안이면 비워둠
+    cameraMatrix, imageSize,                   // 새 카메라 행렬
+    CV_16SC2, map1, map2);
+
+// 매 프레임은 remap만 — 맵 재계산이 없어 빠르다
+cv::VideoCapture cap(0);
+cv::Mat frame, corrected;
+while (cap.read(frame))
+{
+    cv::remap(frame, corrected, map1, map2, cv::INTER_LINEAR);
+    cv::imshow("corrected", corrected);
+    if (cv::waitKey(1) == 27) break;   // ESC 종료
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>getOptimalNewCameraMatrix로 검은 테두리 조절</strong>
+                        보정하면 이미지 가장자리에 검은 영역이 생긴다. <code>getOptimalNewCameraMatrix</code>에 <code>alpha</code> 값을 주면, 검은 영역을 모두 잘라낼지(<code>alpha=0</code>) 모든 픽셀을 남길지(<code>alpha=1</code>) 선택할 수 있다. 이 행렬을 <code>initUndistortRectifyMap</code>의 새 카메라 행렬로 넘긴다.
+                    </div>
+                </div>
+
+                <!-- 9. 결과 활용 -->
+                <h2 id="usage"><i class="fa-solid fa-ruler-combined"></i> 캘리브레이션 결과 활용</h2>
+                <p>캘리브레이션 결과는 단순히 이미지를 곧게 펴는 데서 끝나지 않는다. 픽셀과 실세계를 잇는 다리이므로, 그 위에 여러 응용이 쌓인다.</p>
+
+                <table>
+                    <tr><th>활용</th><th>내용</th></tr>
+                    <tr><td>정밀 측정</td><td>픽셀 거리를 mm로 변환해 부품 치수·위치·각도를 측정</td></tr>
+                    <tr><td>3D 복원</td><td>스테레오 카메라나 다중 시점으로 깊이·형상 복원</td></tr>
+                    <tr><td>자세 추정 (PnP)</td><td>알려진 3D 점과 이미지 대응으로 카메라/대상의 6자유도 자세 계산</td></tr>
+                    <tr><td>AR</td><td>실세계 좌표에 정확히 정합되는 가상 객체 합성</td></tr>
+                </table>
+
+                <p>예를 들어 평면 위에 놓인 대상을 측정한다면, 캘리브레이션된 카메라로 보정한 이미지에서 픽셀 좌표를 실세계 좌표로 변환할 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 알려진 3D 점들과 이미지 대응으로 대상의 자세를 구한다 (PnP)
+std::vector&lt;cv::Point3f&gt; objectPts = /* 대상의 3D 좌표 */;
+std::vector&lt;cv::Point2f&gt; imagePts  = /* 이미지에서 검출한 2D 좌표 */;
+
+cv::Mat rvec, tvec;
+bool ok = cv::solvePnP(objectPts, imagePts,
+                       cameraMatrix, distCoeffs, rvec, tvec);
+
+if (ok)
+{
+    // tvec = 카메라 기준 대상의 위치 (캘리브레이션 단위, 보통 mm)
+    std::cout &lt;&lt; "대상까지 거리: " &lt;&lt; cv::norm(tvec) &lt;&lt; " mm" &lt;&lt; std::endl;
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>산업 측정 검사의 필수 전제</strong>
+                        "픽셀 → mm" 변환 정확도가 곧 측정 정확도다. 캘리브레이션 없이 픽셀당 고정 비율(예: 0.05 mm/px)을 쓰면, 렌즈 왜곡 때문에 이미지 중심부와 가장자리의 실제 비율이 달라 측정값이 위치마다 흔들린다. 정밀 검사 시스템이 캘리브레이션을 가장 먼저 하는 이유다.
+                    </div>
+                </div>
+
+                <!-- 10. 잘하는 팁 -->
+                <h2 id="tips"><i class="fa-solid fa-lightbulb"></i> 캘리브레이션 잘하는 팁</h2>
+                <p>캘리브레이션은 입력 이미지의 품질이 전부다. 같은 알고리즘이라도 어떻게 촬영했느냐에 따라 RMS 오차가 몇 배씩 차이 난다.</p>
+
+                <table>
+                    <tr><th>팁</th><th>이유</th></tr>
+                    <tr><td>체커보드를 화면 전체에 채워가며 촬영</td><td>가장자리 왜곡 정보가 있어야 <code>k1~k3</code>이 잘 추정됨</td></tr>
+                    <tr><td>다양한 각도·기울기로 촬영</td><td>기울임이 있어야 초점거리와 왜곡이 분리되어 풀림</td></tr>
+                    <tr><td>충분한 장수 (15~20장)</td><td>장수가 많아야 노이즈가 평균화되어 안정적</td></tr>
+                    <tr><td>초점을 고정하고 촬영</td><td>초점이 바뀌면 초점거리가 바뀌어 한 세트로 안 묶임</td></tr>
+                    <tr><td>체커보드는 평평하고 단단한 판에 부착</td><td>종이가 휘면 "평면" 가정이 깨져 오차가 커짐</td></tr>
+                    <tr><td>조명을 균일하게, 반사 없이</td><td>코너 검출 성공률과 서브픽셀 정밀도가 올라감</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>"중앙·코너·기울임"을 의식하며 촬영한다</strong>
+                        보드를 이미지 중앙, 네 모서리, 그리고 좌우·상하로 기울인 자세까지 골고루 담는다. 한자리에서 살짝씩만 움직여 찍은 20장보다, 자세가 확실히 다른 12장이 더 좋은 결과를 낸다.
+                    </div>
+                </div>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>캘리브레이션이 실패하거나, 성공한 줄 알았는데 측정이 안 맞을 때 의심할 지점들이다.</p>
+
+                <h3 id="pitfall-detect"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 체커보드 코너 검출 실패</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>findChessboardCorners가 false만 돌려준다</strong>
+                        조명이 어둡거나 불균일하면, 초점이 안 맞으면, 보드가 화면 밖으로 잘리면 검출이 실패한다. <code>CALIB_CB_ADAPTIVE_THRESH</code>와 <code>CALIB_CB_NORMALIZE_IMAGE</code> 플래그를 켜고, 그래도 안 되면 촬영 환경(조명·초점)부터 손본다. 알고리즘 탓이 아니라 사진 탓인 경우가 대부분이다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-monotone"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 장수 부족 · 각도 단조로움</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>다 정면에서 찍은 30장보다 자세가 다양한 15장</strong>
+                        보드를 카메라와 거의 평행하게만 찍으면, 초점거리와 거리가 수학적으로 구분되지 않아(불량 조건) 파라미터가 엉뚱한 값으로 수렴한다. 장수만 늘리는 게 아니라 <strong>각도와 기울기의 다양성</strong>을 늘려야 한다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-noerror"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 재투영 오차를 확인하지 않음</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>RMS 오차를 안 보고 결과를 그냥 쓴다</strong>
+                        <code>calibrateCamera</code>의 반환값(RMS 오차)을 무시하면, 품질이 나쁜 파라미터인지 알 수 없다. 1 px가 넘는 오차로 측정 시스템을 구축해 놓고 "측정이 왜 안 맞지" 하는 경우가 흔하다. 오차를 먼저 확인하고, 큰 이미지는 빼고 다시 돌린다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-touch"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캘리브레이션 후 렌즈·초점을 건드림</h3>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>초점 링을 돌리는 순간 캘리브레이션은 무효다</strong>
+                        내부 파라미터는 렌즈·초점 상태에 묶여 있다. 캘리브레이션을 끝낸 뒤 줌을 바꾸거나 초점을 다시 맞추거나 렌즈를 교체하면, 저장해 둔 <code>K</code>와 왜곡 계수는 더 이상 그 카메라를 설명하지 못한다. 산업 현장에서는 캘리브레이션 후 초점·조리개 링을 테이프나 락으로 고정한다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-pattern"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 패턴 크기를 칸 수로 착각</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>findChessboardCorners에 넘기는 것은 내부 코너 수</strong>
+                        앞서도 강조했지만 가장 자주 반복되는 실수다. 가로 10칸 보드의 가로 내부 코너는 9개다. <code>cv::Size(10, 7)</code>이 아니라 <code>cv::Size(9, 6)</code>을 넘겨야 한다. 한 칸 잘못 세면 모든 이미지에서 <code>found == false</code>가 되어 캘리브레이션 자체가 시작되지 않는다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        패턴 크기는 내부 코너 수로 정확히, 다양한 각도로 15~20장, 코너 검출이 실패하면 촬영 환경부터, 끝나면 RMS 오차를 반드시 확인, 그리고 캘리브레이션 후 렌즈·초점은 절대 건드리지 않는다. 이 다섯 가지가 쓸 만한 캘리브레이션과 못 쓰는 캘리브레이션을 가른다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — "Camera Calibration and 3D Reconstruction" (calib3d 모듈 공식 문서)</li>
+                        <li>OpenCV Tutorials — "Camera Calibration" 체커보드 캘리브레이션 공식 튜토리얼</li>
+                        <li>Z. Zhang, "A Flexible New Technique for Camera Calibration", IEEE TPAMI, 2000 — Zhang's method 원논문</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
