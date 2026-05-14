@@ -1,0 +1,763 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenCV 시작하기 — cv::Mat과 C++ 빌드 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* cv::Mat 구조 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#opencv-intro" data-section="opencv-intro">OpenCV란</a>
+        <a href="#setup" data-section="setup">환경 구축</a>
+        <a href="#first-program" data-section="first-program">첫 프로그램</a>
+        <a href="#mat-core" data-section="mat-core">cv::Mat 핵심</a>
+        <a href="#mat-create" data-section="mat-create">Mat 생성</a>
+        <a href="#copy" data-section="copy">얕은/깊은 복사</a>
+        <a href="#mat-members" data-section="mat-members">Mat 멤버</a>
+        <a href="#type-system" data-section="type-system">타입 시스템</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>OpenCV 시작하기 — cv::Mat과 C++ 빌드</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>OpenCV가 무엇이고 어떤 모듈로 구성되는지</li>
+                        <li>Visual Studio 2022 + vcpkg manifest 모드로 OpenCV 설치하고 CMake로 링크</li>
+                        <li>이미지를 읽고 화면에 띄우는 첫 프로그램</li>
+                        <li>cv::Mat의 헤더 + 데이터 분리 구조와 참조 카운트 메모리 관리</li>
+                        <li>얕은 복사와 깊은 복사의 차이, 타입 시스템, 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#opencv-intro">OpenCV란?</a></li>
+                        <li><a href="#setup">개발 환경 구축</a></li>
+                        <li><a href="#first-program">첫 프로그램 — 이미지 읽고 표시하기</a></li>
+                        <li><a href="#mat-core">cv::Mat 핵심 구조</a></li>
+                        <li><a href="#mat-create">cv::Mat 생성 방법</a></li>
+                        <li><a href="#copy">얕은 복사 vs 깊은 복사</a></li>
+                        <li><a href="#mat-members">cv::Mat 주요 멤버</a></li>
+                        <li><a href="#type-system">타입 시스템 (CV_8UC3 등)</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. OpenCV란 -->
+                <h2 id="opencv-intro"><i class="fa-solid fa-eye"></i> OpenCV란?</h2>
+                <p><strong>OpenCV</strong>(Open Source Computer Vision Library)는 이미지·영상 처리와 컴퓨터 비전을 위한 오픈소스 라이브러리다. 1999년 인텔에서 시작되어 지금은 사실상 비전 분야의 표준 도구로 쓰인다. C++로 작성되었고 Python, Java 바인딩도 제공한다. 산업용 검사, 로보틱스, 의료 영상, 딥러닝 전처리까지 거의 모든 비전 작업의 바탕이 된다.</p>
+
+                <p>OpenCV는 거대한 단일 덩어리가 아니라 기능별 <strong>모듈</strong>로 나뉜다. 필요한 모듈만 골라 링크하면 된다.</p>
+
+                <table>
+                    <tr><th>모듈</th><th>역할</th><th>대표 기능</th></tr>
+                    <tr><td><code>core</code></td><td>기본 자료구조와 연산</td><td>cv::Mat, 행렬 연산, 기본 타입</td></tr>
+                    <tr><td><code>imgproc</code></td><td>이미지 처리</td><td>필터, 엣지, 색공간 변환, 기하 변환</td></tr>
+                    <tr><td><code>imgcodecs</code></td><td>이미지 파일 입출력</td><td>imread, imwrite (PNG, JPG 등)</td></tr>
+                    <tr><td><code>highgui</code></td><td>간단한 GUI</td><td>imshow, waitKey, 윈도우 생성</td></tr>
+                    <tr><td><code>videoio</code></td><td>영상·카메라 입출력</td><td>VideoCapture, VideoWriter</td></tr>
+                    <tr><td><code>features2d</code></td><td>특징점 검출·매칭</td><td>ORB, SIFT, 키포인트 매칭</td></tr>
+                    <tr><td><code>calib3d</code></td><td>카메라 캘리브레이션·3D</td><td>왜곡 보정, 스테레오, PnP</td></tr>
+                    <tr><td><code>dnn</code></td><td>딥러닝 추론</td><td>ONNX/Caffe 모델 추론</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>처음에는 core + imgproc + imgcodecs + highgui면 충분하다</strong>
+                        이 네 모듈로 이미지를 읽고, 처리하고, 저장하고, 화면에 띄우는 기본 흐름을 모두 다룰 수 있다. 나머지는 필요할 때 추가한다.
+                    </div>
+                </div>
+
+                <!-- 2. 개발 환경 구축 -->
+                <h2 id="setup"><i class="fa-solid fa-screwdriver-wrench"></i> 개발 환경 구축</h2>
+                <p>Windows + Visual Studio 2022 환경에서 <strong>vcpkg manifest 모드</strong>로 OpenCV를 설치한다. manifest 모드는 프로젝트 폴더에 <code>vcpkg.json</code>을 두면 빌드 시 의존성을 자동으로 받아 빌드하는 방식이다. 의존성이 프로젝트에 명시되므로 팀원 간 환경이 일치한다.</p>
+
+                <h3 id="vcpkg-json"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> vcpkg.json 작성</h3>
+                <p>프로젝트 루트에 <code>vcpkg.json</code>을 만든다.</p>
+
+<pre class="language-json"><code class="language-json">{
+  "name": "opencv-start",
+  "version": "0.1.0",
+  "dependencies": [
+    {
+      "name": "opencv4",
+      "version&gt;=": "4.10.0",
+      "features": ["contrib"]
+    }
+  ]
+}</code></pre>
+
+                <p><code>features</code>에 <code>contrib</code>를 넣으면 SIFT 같은 추가 모듈도 함께 받는다. CUDA가 필요하면 <code>"cuda"</code>를 추가한다. 처음에는 빼고 시작하는 편이 빌드가 빠르다.</p>
+
+                <h3 id="cmake-link"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CMake로 OpenCV 링크</h3>
+                <p><code>CMakeLists.txt</code>에서 <code>find_package</code>로 OpenCV를 찾고 타깃에 링크한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cmake_minimum_required(VERSION 3.20)
+project(opencv_start)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# vcpkg가 설치한 OpenCV를 찾는다
+find_package(OpenCV REQUIRED)
+
+add_executable(opencv_start main.cpp)
+
+# OpenCV 헤더 경로 + 라이브러리 연결
+target_include_directories(opencv_start PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(opencv_start PRIVATE ${OpenCV_LIBS})</code></pre>
+
+                <p>구성할 때 vcpkg toolchain 파일을 지정해야 manifest 모드가 동작한다.</p>
+
+<pre class="language-bash"><code class="language-bash">cmake -B build -S . ^
+  -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+cmake --build build --config Release</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>Visual Studio에서 폴더 열기로 바로 쓸 수 있다</strong>
+                        VS2022는 CMake 프로젝트를 기본 지원한다. toolchain 파일은 <code>CMakeSettings.json</code> 또는 <code>CMakePresets.json</code>에 한 번만 적어두면 된다.
+                    </div>
+                </div>
+
+                <!-- 3. 첫 프로그램 -->
+                <h2 id="first-program"><i class="fa-solid fa-image"></i> 첫 프로그램 — 이미지 읽고 표시하기</h2>
+                <p>이미지를 디스크에서 읽어 창에 띄우는 가장 기본적인 프로그램이다. <code>imread</code>로 읽고, <code>imshow</code>로 그리고, <code>waitKey</code>로 키 입력을 기다린다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;iostream&gt;
+
+int main()
+{
+    // 이미지를 읽는다 (컬러로). 실패하면 빈 Mat 반환
+    cv::Mat image = cv::imread("sample.jpg", cv::IMREAD_COLOR);
+
+    if (image.empty())
+    {
+        std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+        return -1;
+    }
+
+    std::cout &lt;&lt; "크기: " &lt;&lt; image.cols &lt;&lt; " x " &lt;&lt; image.rows
+              &lt;&lt; ", 채널: " &lt;&lt; image.channels() &lt;&lt; std::endl;
+
+    cv::imshow("First Window", image);  // 창에 표시
+    cv::waitKey(0);                     // 키 입력까지 대기
+    cv::destroyAllWindows();
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+크기: 1920 x 1080, 채널: 3</div>
+
+                <p><code>imread</code>의 두 번째 인자는 읽기 모드다. <code>IMREAD_COLOR</code>는 3채널 컬러, <code>IMREAD_GRAYSCALE</code>는 1채널 흑백, <code>IMREAD_UNCHANGED</code>는 알파 채널까지 원본 그대로 읽는다. <code>waitKey(0)</code>은 키를 누를 때까지 무한 대기하고, <code>waitKey(30)</code>처럼 양수를 주면 그 밀리초만큼만 기다린다 — 영상 루프에서 자주 쓴다.</p>
+
+                <!-- 4. cv::Mat 핵심 구조 -->
+                <h2 id="mat-core"><i class="fa-solid fa-table-cells"></i> cv::Mat 핵심 구조</h2>
+                <p><code>cv::Mat</code>은 OpenCV의 심장이다. 이름은 Matrix(행렬)이지만 실질적으로는 <strong>이미지 컨테이너</strong>다. 이미지를 가로 × 세로 격자에 픽셀값이 채워진 행렬로 보기 때문이다.</p>
+
+                <p>핵심은 <code>cv::Mat</code>이 <strong>헤더(메타데이터)</strong>와 <strong>데이터(픽셀 버퍼)</strong>를 분리해서 관리한다는 점이다. 헤더는 작다 — 크기, 타입, 데이터 포인터 같은 정보만 담는다. 실제 픽셀값이 들어있는 데이터 버퍼는 따로 힙에 잡히고, 여러 Mat이 같은 버퍼를 <strong>공유</strong>할 수 있다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 헤더 박스 -->
+                        <rect x="30" y="40" width="200" height="200" rx="10" fill="#fef9e7" stroke="#d97706" stroke-width="2"/>
+                        <text x="130" y="68" text-anchor="middle" font-size="15" font-weight="700" fill="#78350f">cv::Mat 헤더</text>
+                        <text x="130" y="90" text-anchor="middle" font-size="11" fill="#92400e">(스택 / 작음)</text>
+                        <line x1="50" y1="104" x2="210" y2="104" stroke="#d97706" stroke-width="1" stroke-dasharray="3"/>
+                        <text x="50" y="128" font-size="12" fill="#451a03">rows = 1080</text>
+                        <text x="50" y="150" font-size="12" fill="#451a03">cols = 1920</text>
+                        <text x="50" y="172" font-size="12" fill="#451a03">type = CV_8UC3</text>
+                        <text x="50" y="194" font-size="12" fill="#451a03">step = 5760</text>
+                        <text x="50" y="222" font-size="12" font-weight="700" fill="#b45309">data &#9679;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9656;</text>
+
+                        <!-- 화살표 -->
+                        <line x1="230" y1="216" x2="400" y2="150" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow)"/>
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+                            </marker>
+                        </defs>
+
+                        <!-- 데이터 박스 -->
+                        <rect x="410" y="40" width="200" height="200" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+                        <text x="510" y="68" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a5f">픽셀 데이터 버퍼</text>
+                        <text x="510" y="90" text-anchor="middle" font-size="11" fill="#1e40af">(힙 / 큼, 참조 카운트)</text>
+                        <line x1="430" y1="104" x2="590" y2="104" stroke="#2563eb" stroke-width="1" stroke-dasharray="3"/>
+                        <!-- 픽셀 격자 -->
+                        <g fill="#bfdbfe" stroke="#2563eb" stroke-width="0.8">
+                            <rect x="445" y="120" width="22" height="22"/><rect x="467" y="120" width="22" height="22"/><rect x="489" y="120" width="22" height="22"/><rect x="511" y="120" width="22" height="22"/><rect x="533" y="120" width="22" height="22"/>
+                            <rect x="445" y="142" width="22" height="22"/><rect x="467" y="142" width="22" height="22"/><rect x="489" y="142" width="22" height="22"/><rect x="511" y="142" width="22" height="22"/><rect x="533" y="142" width="22" height="22"/>
+                            <rect x="445" y="164" width="22" height="22"/><rect x="467" y="164" width="22" height="22"/><rect x="489" y="164" width="22" height="22"/><rect x="511" y="164" width="22" height="22"/><rect x="533" y="164" width="22" height="22"/>
+                        </g>
+                        <text x="510" y="212" text-anchor="middle" font-size="11" fill="#1e40af">B G R  B G R  ... 픽셀값 연속 저장</text>
+                    </svg>
+                    <div class="diagram-caption">cv::Mat은 가벼운 헤더와 무거운 데이터 버퍼로 나뉜다. 헤더의 data 포인터가 버퍼를 가리킨다.</div>
+                </div>
+
+                <p>이 구조 덕분에 Mat을 함수 인자로 넘기거나 대입해도 거대한 픽셀 버퍼를 통째로 복사하지 않는다. 헤더만 가볍게 복사되고 데이터 버퍼는 공유된다. 이 동작이 다음 절의 <strong>얕은 복사</strong>다.</p>
+
+                <!-- 5. cv::Mat 생성 방법 -->
+                <h2 id="mat-create"><i class="fa-solid fa-plus"></i> cv::Mat 생성 방법</h2>
+                <p>Mat을 만드는 방법은 여러 가지다. 상황에 맞게 고른다.</p>
+
+                <h3 id="create-ctor"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 생성자로 만들기</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 비어 있는 Mat
+cv::Mat empty;
+
+// 행 480, 열 640, 8비트 3채널 — 값은 미초기화
+cv::Mat a(480, 640, CV_8UC3);
+
+// 크기를 cv::Size로 지정 (주의: Size는 width, height 순서)
+cv::Mat b(cv::Size(640, 480), CV_8UC3);
+
+// 모든 픽셀을 특정 값으로 초기화 (BGR = 회색)
+cv::Mat gray(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>생성자 인자 순서가 헷갈린다</strong>
+                        <code>Mat(rows, cols, ...)</code>는 <strong>행(height) 먼저</strong>지만, <code>cv::Size(width, height)</code>는 <strong>너비 먼저</strong>다. 둘을 섞어 쓰면 가로세로가 뒤바뀐다.
+                    </div>
+                </div>
+
+                <h3 id="create-static"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정적 팩토리 — zeros / ones / eye</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 모든 값 0 (검은 이미지)
+cv::Mat z = cv::Mat::zeros(480, 640, CV_8UC1);
+
+// 모든 값 1
+cv::Mat o = cv::Mat::ones(3, 3, CV_32FC1);
+
+// 단위 행렬 (대각선만 1)
+cv::Mat i = cv::Mat::eye(3, 3, CV_32FC1);</code></pre>
+
+                <h3 id="create-wrap"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기존 데이터 래핑</h3>
+                <p>카메라 SDK가 넘겨준 버퍼처럼 이미 존재하는 메모리를 Mat으로 감쌀 수 있다. 이때 Mat은 그 버퍼를 <strong>소유하지 않는다</strong> — 복사 없이 가리키기만 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">unsigned char* sdkBuffer = grabber.GetFrameData();
+int w = 1920, h = 1080;
+
+// 외부 버퍼를 가리키는 Mat (데이터 복사 없음)
+cv::Mat frame(h, w, CV_8UC1, sdkBuffer);
+
+// 안전하게 보관하려면 깊은 복사로 소유권을 가져온다
+cv::Mat owned = frame.clone();</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>래핑한 Mat은 원본 버퍼가 살아있어야 유효하다</strong>
+                        외부 버퍼를 감싼 Mat은 버퍼가 해제되거나 다음 프레임으로 덮어쓰이면 곧바로 깨진 데이터를 가리킨다. 데이터를 오래 들고 있어야 하면 <code>clone()</code>으로 복사하자.
+                    </div>
+                </div>
+
+                <!-- 6. 얕은 복사 vs 깊은 복사 -->
+                <h2 id="copy"><i class="fa-solid fa-copy"></i> 얕은 복사 vs 깊은 복사</h2>
+                <p>cv::Mat을 다룰 때 가장 많이 실수하는 지점이다. 헤더와 데이터가 분리되어 있다는 사실이 여기서 직접 드러난다.</p>
+
+                <h3 id="copy-shallow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 얕은 복사 — 헤더만 복사, 데이터 공유</h3>
+                <p><code>Mat b = a;</code>나 함수 인자 전달은 <strong>헤더만 복사</strong >한다. 두 Mat이 같은 픽셀 버퍼를 가리키므로, 한쪽을 수정하면 다른 쪽도 바뀐다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat a = cv::imread("sample.jpg");
+
+cv::Mat b = a;        // 얕은 복사 — b와 a는 같은 데이터 공유
+cv::Mat c(a);         // 이것도 얕은 복사
+
+b.setTo(cv::Scalar(0, 0, 0));  // b를 검게 칠하면...
+// → a도 검게 변한다! 같은 버퍼이기 때문</code></pre>
+
+                <h3 id="copy-deep"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 깊은 복사 — 데이터까지 복제</h3>
+                <p>원본과 독립된 사본이 필요하면 <code>clone()</code> 또는 <code>copyTo()</code>를 쓴다. 픽셀 버퍼가 통째로 복제된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat a = cv::imread("sample.jpg");
+
+cv::Mat d = a.clone();   // 깊은 복사 — 완전히 독립된 버퍼
+
+cv::Mat e;
+a.copyTo(e);             // 깊은 복사 — e에 새 버퍼 할당 후 복제
+
+d.setTo(cv::Scalar(0, 0, 0));  // d를 검게 칠해도
+// → a는 그대로. 서로 다른 버퍼</code></pre>
+
+                <h3 id="copy-refcount"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 참조 카운트 기반 메모리 관리</h3>
+                <p>그렇다면 얕은 복사된 Mat 중 하나가 사라지면 데이터는 누가 해제할까? cv::Mat은 데이터 버퍼마다 <strong>참조 카운트</strong>를 둔다. 같은 버퍼를 가리키는 Mat이 늘면 카운트가 증가하고, 소멸하면 감소한다. 카운트가 0이 되는 순간 버퍼가 자동 해제된다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>std::shared_ptr와 같은 원리다</strong>
+                        cv::Mat의 데이터 관리는 <code>std::shared_ptr</code>의 참조 카운트와 동일한 발상이다 — 마지막 소유자가 사라질 때 해제. 그래서 Mat을 값으로 주고받아도 메모리 누수나 이중 해제가 없다. C++ 시리즈의 스마트 포인터 글을 떠올리면 정확히 같은 그림이다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat a = cv::imread("sample.jpg");  // 버퍼 참조 카운트 = 1
+{
+    cv::Mat b = a;   // 얕은 복사 → 카운트 = 2
+    cv::Mat c = a;   // 얕은 복사 → 카운트 = 3
+}                    // b, c 소멸 → 카운트 = 1
+// a가 여전히 버퍼를 안전하게 소유</code></pre>
+
+                <table>
+                    <tr><th>구분</th><th>코드</th><th>동작</th><th>비용</th></tr>
+                    <tr><td>얕은 복사</td><td><code>Mat b = a;</code></td><td>헤더만 복사, 데이터 공유</td><td>매우 저렴</td></tr>
+                    <tr><td>얕은 복사</td><td><code>Mat c(a);</code></td><td>헤더만 복사, 데이터 공유</td><td>매우 저렴</td></tr>
+                    <tr><td>깊은 복사</td><td><code>a.clone()</code></td><td>새 버퍼 할당 + 픽셀 복제</td><td>버퍼 크기에 비례</td></tr>
+                    <tr><td>깊은 복사</td><td><code>a.copyTo(b)</code></td><td>대상에 복제 (필요 시 재할당)</td><td>버퍼 크기에 비례</td></tr>
+                </table>
+
+                <!-- 7. cv::Mat 주요 멤버 -->
+                <h2 id="mat-members"><i class="fa-solid fa-list-check"></i> cv::Mat 주요 멤버</h2>
+                <p>Mat을 다룰 때 자주 들여다보는 멤버와 메서드들이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat img = cv::imread("sample.jpg");  // 1920x1080 컬러
+
+img.rows;          // 1080 — 세로 픽셀 수 (height)
+img.cols;          // 1920 — 가로 픽셀 수 (width)
+img.channels();    // 3 — 채널 수 (BGR)
+img.type();        // 16 — 타입 (CV_8UC3의 정수값)
+img.depth();       // 0 — 픽셀 한 개의 비트 깊이 (CV_8U)
+img.step;          // 5760 — 한 행의 바이트 수 (1920 * 3)
+img.total();       // 2073600 — 전체 픽셀 수 (rows * cols)
+img.data;          // unsigned char* — 픽셀 버퍼 시작 주소
+img.empty();       // false — 데이터가 없으면 true</code></pre>
+
+                <table>
+                    <tr><th>멤버</th><th>의미</th><th>비고</th></tr>
+                    <tr><td><code>rows</code> / <code>cols</code></td><td>세로 / 가로 픽셀 수</td><td>멤버 변수 (괄호 없음)</td></tr>
+                    <tr><td><code>channels()</code></td><td>채널 수</td><td>흑백 1, 컬러 3, 알파 포함 4</td></tr>
+                    <tr><td><code>type()</code></td><td>타입 정수값</td><td>깊이 + 채널이 합쳐진 코드</td></tr>
+                    <tr><td><code>depth()</code></td><td>픽셀 한 개의 비트 깊이</td><td>CV_8U, CV_16U, CV_32F 등</td></tr>
+                    <tr><td><code>step</code></td><td>한 행의 바이트 수</td><td>패딩이 있으면 cols×채널보다 큼</td></tr>
+                    <tr><td><code>data</code></td><td>픽셀 버퍼 포인터</td><td>직접 접근 시 사용, 위험</td></tr>
+                    <tr><td><code>total()</code></td><td>전체 픽셀 수</td><td>rows × cols</td></tr>
+                    <tr><td><code>empty()</code></td><td>데이터 유무</td><td>imread 실패 검사에 필수</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>step은 cols × 채널과 다를 수 있다</strong>
+                        OpenCV는 메모리 정렬을 위해 행 끝에 패딩을 넣기도 한다. 픽셀을 포인터로 직접 순회할 때는 <code>cols * channels()</code>가 아니라 반드시 <code>step</code>을 기준으로 다음 행을 찾아야 한다.
+                    </div>
+                </div>
+
+                <!-- 8. 타입 시스템 -->
+                <h2 id="type-system"><i class="fa-solid fa-shapes"></i> 타입 시스템 (CV_8UC3 등)</h2>
+                <p>OpenCV의 타입 코드는 <code>CV_&lt;비트깊이&gt;&lt;자료형&gt;C&lt;채널수&gt;</code> 형태다. 예를 들어 <code>CV_8UC3</code>은 <strong>8비트 unsigned, 3채널</strong> — 가장 흔한 컬러 이미지 포맷이다.</p>
+
+                <table>
+                    <tr><th>구성 요소</th><th>표기</th><th>의미</th></tr>
+                    <tr><td>비트 깊이</td><td>8, 16, 32, 64</td><td>픽셀값 한 개의 비트 수</td></tr>
+                    <tr><td>자료형</td><td>U / S / F</td><td>Unsigned / Signed / Float</td></tr>
+                    <tr><td>채널 수</td><td>C1, C2, C3, C4</td><td>채널 개수</td></tr>
+                </table>
+
+                <p>실무에서 마주치는 조합은 사실 몇 개로 좁혀진다.</p>
+
+                <table>
+                    <tr><th>타입</th><th>구성</th><th>대표 용도</th></tr>
+                    <tr><td><code>CV_8UC1</code></td><td>8비트 unsigned, 1채널</td><td>흑백(그레이스케일) 이미지, 마스크</td></tr>
+                    <tr><td><code>CV_8UC3</code></td><td>8비트 unsigned, 3채널</td><td>일반 컬러 이미지 (BGR)</td></tr>
+                    <tr><td><code>CV_8UC4</code></td><td>8비트 unsigned, 4채널</td><td>알파 채널 포함 (BGRA)</td></tr>
+                    <tr><td><code>CV_16UC1</code></td><td>16비트 unsigned, 1채널</td><td>고비트 산업 카메라, 깊이 영상</td></tr>
+                    <tr><td><code>CV_32FC1</code></td><td>32비트 float, 1채널</td><td>연산 중간 결과, 정밀 계산</td></tr>
+                    <tr><td><code>CV_32FC3</code></td><td>32비트 float, 3채널</td><td>HDR, 정규화된 컬러 처리</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// 흑백 마스크
+cv::Mat mask(480, 640, CV_8UC1, cv::Scalar(0));
+
+// 16비트 산업 카메라 프레임
+cv::Mat frame16(1080, 1920, CV_16UC1);
+
+// float 연산용 버퍼로 변환
+cv::Mat colorImg = cv::imread("sample.jpg");  // CV_8UC3
+cv::Mat floatImg;
+colorImg.convertTo(floatImg, CV_32FC3, 1.0 / 255.0);  // 0~1 정규화</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>depth는 자료형, type은 자료형 + 채널</strong>
+                        <code>depth()</code>는 <code>CV_8U</code>처럼 채널을 뺀 값을, <code>type()</code>은 <code>CV_8UC3</code>처럼 채널까지 포함한 값을 돌려준다. 함수가 특정 타입을 요구할 때 이 차이를 알아야 한다.
+                    </div>
+                </div>
+
+                <!-- 9. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>입문 단계에서 거의 모두가 한 번씩 밟는 함정들이다.</p>
+
+                <h3 id="pitfall-empty"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 빈 Mat 접근</h3>
+                <p><code>imread</code>가 실패하면 예외를 던지지 않고 <strong>빈 Mat</strong>을 반환한다. 검사 없이 픽셀에 접근하면 크래시한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat img = cv::imread("없는파일.jpg");
+
+// 나쁨 — 경로가 틀리면 여기서 크래시
+// int v = img.at&lt;uchar&gt;(0, 0);
+
+// 좋음 — 항상 empty() 먼저 검사
+if (img.empty())
+{
+    std::cerr &lt;&lt; "로드 실패" &lt;&lt; std::endl;
+    return -1;
+}</code></pre>
+
+                <h3 id="pitfall-copy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 얕은 복사를 깊은 복사로 착각</h3>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Mat b = a; 는 사본이 아니다</strong>
+                        원본을 보존하면서 처리하려고 <code>Mat b = a;</code>로 "복사"한 뒤 <code>b</code>를 수정하면 <code>a</code>까지 망가진다. 두 Mat이 같은 버퍼를 공유하기 때문이다. 독립된 사본이 필요하면 반드시 <code>a.clone()</code>을 써야 한다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat original = cv::imread("sample.jpg");
+
+// 의도: original은 그대로 두고 result만 흐리게
+cv::Mat result = original;            // 함정! 얕은 복사
+cv::GaussianBlur(result, result, cv::Size(15, 15), 0);
+// → original도 흐려진다
+
+// 올바른 방법
+cv::Mat result2 = original.clone();   // 깊은 복사
+cv::GaussianBlur(result2, result2, cv::Size(15, 15), 0);
+// → original은 안전</code></pre>
+
+                <h3 id="pitfall-bgr"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 채널 순서는 RGB가 아니라 BGR</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>OpenCV의 컬러 이미지는 BGR 순서다</strong>
+                        역사적 이유로 OpenCV는 채널을 <strong>Blue, Green, Red</strong> 순으로 저장한다. <code>cv::Scalar(255, 0, 0)</code>은 빨강이 아니라 <strong>파랑</strong>이다. matplotlib나 Qt 등 RGB를 기대하는 라이브러리로 넘길 때는 <code>cv::cvtColor(img, rgb, cv::COLOR_BGR2RGB)</code>로 변환해야 색이 안 뒤집힌다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat img(100, 100, CV_8UC3, cv::Scalar(255, 0, 0));
+// → 파란색 이미지 (B=255). 빨강을 원했다면 Scalar(0, 0, 255)
+
+// 다른 라이브러리에 넘기기 전 RGB로 변환
+cv::Mat rgb;
+cv::cvtColor(img, rgb, cv::COLOR_BGR2RGB);</code></pre>
+
+                <h3 id="pitfall-waitkey"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> imshow 후 waitKey 누락</h3>
+                <p><code>imshow</code>는 창에 그릴 내용을 예약만 한다. 실제 렌더링과 이벤트 처리는 <code>waitKey</code>가 호출될 때 일어난다. <code>waitKey</code>를 빼면 창이 안 뜨거나 회색으로 멈춘 것처럼 보인다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::imshow("Window", img);
+// cv::waitKey 가 없으면 창이 제대로 안 뜬다
+
+cv::waitKey(0);  // 이 줄이 있어야 창이 그려지고 키 입력을 받는다</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        빈 Mat은 <code>empty()</code>로 검사하고, 사본이 필요하면 <code>clone()</code>을 쓰고, 색은 BGR임을 기억하고, <code>imshow</code> 뒤엔 <code>waitKey</code>를 붙인다. 이 네 가지만 몸에 익히면 입문 단계의 버그 대부분을 피한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — OpenCV 공식 문서 (cv::Mat 클래스 레퍼런스, 모듈 가이드)</li>
+                        <li>OpenCV Tutorials — "Mat - The Basic Image Container" 공식 튜토리얼</li>
+                        <li>vcpkg.io — vcpkg manifest 모드 공식 문서</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

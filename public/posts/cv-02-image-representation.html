@@ -1,0 +1,902 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이미지 표현 — 채널·픽셀 포맷·메모리 레이아웃 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+        .spec-table code { font-size: 0.85em; }
+
+        /* 다이어그램 */
+        .diagram-box {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px; margin: 20px 0;
+            text-align: center;
+        }
+        .diagram-box svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#digital-image" data-section="digital-image">디지털 이미지</a>
+        <a href="#channel" data-section="channel">채널</a>
+        <a href="#bit-depth" data-section="bit-depth">비트 깊이</a>
+        <a href="#type-notation" data-section="type-notation">타입 표기</a>
+        <a href="#memory-layout" data-section="memory-layout">메모리 레이아웃</a>
+        <a href="#continuous" data-section="continuous">연속 메모리</a>
+        <a href="#pixel-meaning" data-section="pixel-meaning">픽셀 값의 의미</a>
+        <a href="#conversion" data-section="conversion">데이터 변환</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>이미지 표현 — 채널·픽셀 포맷·메모리 레이아웃</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>디지털 이미지는 픽셀의 2차원 배열 — 좌표계와 채널 개념</li>
+                        <li>비트 깊이와 <code>CV_&lt;bit&gt;&lt;U|S|F&gt;C&lt;channels&gt;</code> 타입 표기 읽는 법</li>
+                        <li>인터리브드 메모리 레이아웃, step/stride, 패딩, 연속성(isContinuous)</li>
+                        <li><code>convertTo</code>·<code>normalize</code>로 비트 깊이 변환과 스케일링</li>
+                        <li>BGR 채널 순서, 8비트 오버플로우, 비연속 Mat 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#digital-image">디지털 이미지란?</a></li>
+                        <li><a href="#channel">채널 (Channel)</a></li>
+                        <li><a href="#bit-depth">비트 깊이 (Bit Depth)</a></li>
+                        <li><a href="#type-notation">타입 표기 완전 정복</a></li>
+                        <li><a href="#memory-layout">메모리 레이아웃</a></li>
+                        <li><a href="#continuous">연속 메모리 (isContinuous)</a></li>
+                        <li><a href="#pixel-meaning">픽셀 값의 의미</a></li>
+                        <li><a href="#conversion">데이터 변환</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 디지털 이미지란 -->
+                <h2 id="digital-image"><i class="fa-solid fa-table-cells"></i> 디지털 이미지란?</h2>
+                <p>디지털 이미지는 결국 <strong>숫자가 채워진 2차원 배열</strong>이다. 각 칸이 하나의 픽셀(pixel)이고, 픽셀에 담긴 숫자가 그 위치의 밝기나 색을 나타낸다. 화면에 보이는 사진도 메모리 안에서는 정수 또는 실수의 격자일 뿐이다.</p>
+
+                <p>OpenCV에서 이 격자를 담는 그릇이 <code>cv::Mat</code>이다. 행(row) 개수가 <code>rows</code>, 열(column) 개수가 <code>cols</code>다.</p>
+
+                <h3 id="coordinate-system"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 좌표계 — 원점은 좌상단</h3>
+                <p>이미지 좌표계는 수학 시간에 배운 것과 다르다. <strong>원점 (0, 0)은 왼쪽 위</strong>에 있고, x는 오른쪽(열, column)으로, y는 아래쪽(행, row)으로 증가한다.</p>
+
+                <div class="diagram-box">
+                    <svg viewBox="0 0 460 240" xmlns="http://www.w3.org/2000/svg">
+                        <!-- grid -->
+                        <g stroke="#cbd5e1" stroke-width="1">
+                            <line x1="60" y1="40" x2="380" y2="40"/>
+                            <line x1="60" y1="80" x2="380" y2="80"/>
+                            <line x1="60" y1="120" x2="380" y2="120"/>
+                            <line x1="60" y1="160" x2="380" y2="160"/>
+                            <line x1="60" y1="200" x2="380" y2="200"/>
+                            <line x1="60" y1="40" x2="60" y2="200"/>
+                            <line x1="124" y1="40" x2="124" y2="200"/>
+                            <line x1="188" y1="40" x2="188" y2="200"/>
+                            <line x1="252" y1="40" x2="252" y2="200"/>
+                            <line x1="316" y1="40" x2="316" y2="200"/>
+                            <line x1="380" y1="40" x2="380" y2="200"/>
+                        </g>
+                        <!-- origin cell -->
+                        <rect x="60" y="40" width="64" height="40" fill="#a3d977" opacity="0.55"/>
+                        <text x="92" y="65" font-size="11" text-anchor="middle" fill="#1e3a5f" font-weight="700">(0,0)</text>
+                        <!-- sample cell at x=2,y=2 -->
+                        <rect x="188" y="120" width="64" height="40" fill="#7eb8e8" opacity="0.5"/>
+                        <text x="220" y="145" font-size="11" text-anchor="middle" fill="#1e3a5f">x=2, y=2</text>
+                        <!-- x axis arrow -->
+                        <line x1="60" y1="24" x2="380" y2="24" stroke="#dc2626" stroke-width="2" marker-end="url(#arrowR)"/>
+                        <text x="395" y="28" font-size="12" fill="#dc2626" font-weight="700">x (열)</text>
+                        <!-- y axis arrow -->
+                        <line x1="44" y1="40" x2="44" y2="200" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowD)"/>
+                        <text x="44" y="222" font-size="12" fill="#2563eb" font-weight="700" text-anchor="middle">y (행)</text>
+                        <defs>
+                            <marker id="arrowR" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                                <path d="M0,0 L8,4 L0,8 Z" fill="#dc2626"/>
+                            </marker>
+                            <marker id="arrowD" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto">
+                                <path d="M0,0 L8,0 L4,8 Z" fill="#2563eb"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    <div class="diagram-caption">이미지 좌표계 — 원점은 좌상단, x는 열 방향, y는 행 방향으로 증가</div>
+                </div>
+
+                <p>그래서 픽셀에 접근할 때 인덱스 순서가 헷갈리기 쉽다. <code>at&lt;T&gt;(y, x)</code>는 <strong>행 먼저, 열 나중</strong> 순서다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat img = cv::imread("sample.png", cv::IMREAD_GRAYSCALE);
+
+int w = img.cols;   // 너비 (열 개수)
+int h = img.rows;   // 높이 (행 개수)
+
+// 픽셀 접근 — 인자 순서는 (y, x), 즉 (row, col)
+uchar v = img.at&lt;uchar&gt;(10, 20);   // y=10행, x=20열의 밝기값
+
+// cv::Point는 반대로 (x, y) 순서 — 혼동 주의
+cv::Point pt(20, 10);              // x=20, y=10
+uchar v2 = img.at&lt;uchar&gt;(pt);      // 위와 같은 픽셀</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>at()은 (행, 열), Point는 (x, y)</strong>
+                        <code>at&lt;T&gt;(row, col)</code>은 y가 먼저인데 <code>cv::Point(x, y)</code>는 x가 먼저다. 둘을 섞어 쓰면 좌표가 뒤집힌 채로 동작하므로 항상 의식하고 쓴다.
+                    </div>
+                </div>
+
+                <!-- 2. 채널 -->
+                <h2 id="channel"><i class="fa-solid fa-layer-group"></i> 채널 (Channel)</h2>
+                <p>채널은 <strong>한 픽셀이 몇 개의 숫자로 표현되는가</strong>를 뜻한다. 흑백 사진은 픽셀당 밝기값 하나면 충분하지만, 컬러 사진은 색을 표현하려고 여러 개의 숫자를 쓴다.</p>
+
+                <table class="spec-table">
+                    <tr><th>채널 수</th><th>구성</th><th>픽셀당 데이터</th><th>용도</th></tr>
+                    <tr><td class="highlight">1채널</td><td>Grayscale</td><td>밝기값 1개</td><td>측정, 엣지 검출, 이진화</td></tr>
+                    <tr><td class="highlight">3채널</td><td>BGR</td><td>Blue, Green, Red</td><td>일반 컬러 이미지</td></tr>
+                    <tr><td class="highlight">4채널</td><td>BGRA</td><td>BGR + Alpha(투명도)</td><td>오버레이, PNG 합성</td></tr>
+                </table>
+
+                <p>OpenCV는 컬러를 RGB가 아니라 <strong>BGR 순서</strong>로 저장한다는 점을 반드시 기억한다. 역사적인 이유(초기 윈도우 비트맵 호환)로 굳어진 관례다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat gray = cv::imread("img.png", cv::IMREAD_GRAYSCALE);
+cv::Mat color = cv::imread("img.png", cv::IMREAD_COLOR);   // BGR 3채널
+
+std::cout &lt;&lt; gray.channels()  &lt;&lt; "\n";   // 1
+std::cout &lt;&lt; color.channels() &lt;&lt; "\n";   // 3
+
+// 3채널 픽셀 접근 — Vec3b = uchar 3개 묶음
+cv::Vec3b bgr = color.at&lt;cv::Vec3b&gt;(10, 20);
+uchar blue  = bgr[0];
+uchar green = bgr[1];
+uchar red   = bgr[2];</code></pre>
+
+                <h3 id="split-merge"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 채널 분리와 병합 — split / merge</h3>
+                <p>컬러 이미지를 채널별 단일 채널 이미지로 쪼개거나, 반대로 합칠 수 있다. 특정 채널만 따로 처리해야 할 때 자주 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat color = cv::imread("img.png", cv::IMREAD_COLOR);
+
+// 분리 — 3개의 1채널 Mat으로
+std::vector&lt;cv::Mat&gt; ch;
+cv::split(color, ch);
+// ch[0] = Blue, ch[1] = Green, ch[2] = Red (각각 1채널)
+
+// Red 채널만 밝게 한 뒤 다시 병합
+ch[2] = ch[2] * 1.3;
+
+cv::Mat merged;
+cv::merge(ch, merged);   // 다시 3채널 BGR로
+
+// 컬러 → 그레이 변환은 split이 아니라 cvtColor 사용
+cv::Mat gray;
+cv::cvtColor(color, gray, cv::COLOR_BGR2GRAY);</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>그레이 변환 = 채널 평균이 아니다</strong>
+                        <code>cvtColor(BGR2GRAY)</code>는 단순 평균이 아니라 사람 눈의 민감도를 반영한 가중치(<code>0.299R + 0.587G + 0.114B</code>)로 계산한다. 초록색에 가장 민감하기 때문이다.
+                    </div>
+                </div>
+
+                <!-- 3. 비트 깊이 -->
+                <h2 id="bit-depth"><i class="fa-solid fa-ruler"></i> 비트 깊이 (Bit Depth)</h2>
+                <p>비트 깊이는 <strong>한 채널의 값을 몇 비트로 저장하는가</strong>이다. 비트가 많을수록 표현할 수 있는 단계(계조)가 많아진다.</p>
+
+                <table class="spec-table">
+                    <tr><th>OpenCV 깊이</th><th>C++ 타입</th><th>비트</th><th>값 범위</th><th>주 용도</th></tr>
+                    <tr><td class="highlight">CV_8U</td><td><code>uchar</code></td><td>8비트 부호 없음</td><td>0 ~ 255</td><td>일반 이미지, 디스플레이</td></tr>
+                    <tr><td class="highlight">CV_16U</td><td><code>ushort</code></td><td>16비트 부호 없음</td><td>0 ~ 65535</td><td>산업 카메라 10/12/16비트</td></tr>
+                    <tr><td class="highlight">CV_16S</td><td><code>short</code></td><td>16비트 부호 있음</td><td>-32768 ~ 32767</td><td>미분/엣지 중간 결과</td></tr>
+                    <tr><td class="highlight">CV_32F</td><td><code>float</code></td><td>32비트 실수</td><td>임의 (보통 0.0~1.0)</td><td>연산 정밀도, 정규화</td></tr>
+                    <tr><td class="highlight">CV_64F</td><td><code>double</code></td><td>64비트 실수</td><td>임의</td><td>고정밀 행렬 연산</td></tr>
+                </table>
+
+                <h3 id="industrial-bits"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 산업 카메라의 10/12비트 데이터</h3>
+                <p>산업용 카메라는 8비트보다 미세한 명암 차이를 잡으려고 <strong>10비트(0~1023)나 12비트(0~4095)</strong>로 출력하는 경우가 많다. 하지만 메모리는 8비트 단위로 다뤄지므로, 10/12비트 데이터는 보통 <strong>16비트 컨테이너(CV_16U)에 담아 처리</strong>한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 12비트 카메라 raw 버퍼를 16비트 Mat으로 감쌌다고 가정
+cv::Mat raw12(h, w, CV_16U, cameraBuffer);   // 값 범위 0~4095
+
+// 12비트 → 8비트 표시용으로 줄이기 (4095 / 255 ≈ 16.06)
+cv::Mat display8;
+raw12.convertTo(display8, CV_8U, 255.0 / 4095.0);
+
+// 또는 실제 사용 비트수가 16비트의 어디에 정렬됐는지 확인 필요
+// MSB 정렬(상위 비트 정렬)이면 우측 시프트가 필요할 수 있다
+double minV, maxV;
+cv::minMaxLoc(raw12, &amp;minV, &amp;maxV);
+std::cout &lt;&lt; "actual range: " &lt;&lt; minV &lt;&lt; " ~ " &lt;&lt; maxV &lt;&lt; "\n";</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>10/12비트는 "16비트 안의 어디에" 들어있는지 확인</strong>
+                        카메라마다 12비트 값을 16비트의 하위 비트(LSB 정렬)에 두기도, 상위 비트(MSB 정렬)에 두기도 한다. 정렬 방식을 모르고 스케일링하면 영상이 어둡거나 깨져 보인다. 카메라 SDK의 픽셀 포맷 문서를 먼저 확인한다.
+                    </div>
+                </div>
+
+                <!-- 4. 타입 표기 -->
+                <h2 id="type-notation"><i class="fa-solid fa-code"></i> 타입 표기 완전 정복</h2>
+                <p>OpenCV의 타입 상수는 <code>CV_8UC3</code> 처럼 생겼다. 처음 보면 암호 같지만 규칙만 알면 한눈에 읽힌다.</p>
+
+                <div class="diagram-box">
+                    <svg viewBox="0 0 440 150" xmlns="http://www.w3.org/2000/svg">
+                        <text x="220" y="55" font-size="30" text-anchor="middle" font-family="Consolas, monospace" font-weight="700" fill="#1e3a5f">CV_<tspan fill="#dc2626">8</tspan><tspan fill="#2563eb">U</tspan><tspan fill="#059669">C3</tspan></text>
+                        <!-- bit -->
+                        <line x1="155" y1="65" x2="140" y2="100" stroke="#dc2626" stroke-width="1.5"/>
+                        <text x="100" y="118" font-size="11" fill="#dc2626" font-weight="700">비트 깊이</text>
+                        <text x="100" y="133" font-size="10" fill="#64748b">8/16/32/64</text>
+                        <!-- type -->
+                        <line x1="178" y1="65" x2="220" y2="100" stroke="#2563eb" stroke-width="1.5"/>
+                        <text x="220" y="118" font-size="11" fill="#2563eb" font-weight="700" text-anchor="middle">자료형</text>
+                        <text x="220" y="133" font-size="10" fill="#64748b" text-anchor="middle">U / S / F</text>
+                        <!-- channel -->
+                        <line x1="210" y1="65" x2="320" y2="100" stroke="#059669" stroke-width="1.5"/>
+                        <text x="350" y="118" font-size="11" fill="#059669" font-weight="700">채널 수</text>
+                        <text x="350" y="133" font-size="10" fill="#64748b">C1 ~ C4</text>
+                    </svg>
+                    <div class="diagram-caption"><code>CV_&lt;bit&gt;&lt;U|S|F&gt;C&lt;channels&gt;</code> — 비트 깊이 + 자료형 + 채널 수</div>
+                </div>
+
+                <ul>
+                    <li><strong>U</strong> = Unsigned(부호 없는 정수), <strong>S</strong> = Signed(부호 있는 정수), <strong>F</strong> = Float(실수)</li>
+                    <li><strong>C&lt;n&gt;</strong> = 채널 수. <code>C1</code>은 생략 가능 — <code>CV_8U</code>와 <code>CV_8UC1</code>은 같다.</li>
+                </ul>
+
+                <table class="spec-table">
+                    <tr><th>타입 상수</th><th>읽는 법</th><th>대표 용도</th></tr>
+                    <tr><td><code>CV_8UC1</code></td><td>8비트 부호없음, 1채널</td><td>그레이스케일 이미지</td></tr>
+                    <tr><td><code>CV_8UC3</code></td><td>8비트 부호없음, 3채널</td><td>BGR 컬러 이미지</td></tr>
+                    <tr><td><code>CV_8UC4</code></td><td>8비트 부호없음, 4채널</td><td>BGRA 이미지</td></tr>
+                    <tr><td><code>CV_16UC1</code></td><td>16비트 부호없음, 1채널</td><td>산업 카메라 12/16비트</td></tr>
+                    <tr><td><code>CV_32FC1</code></td><td>32비트 실수, 1채널</td><td>정규화된 그레이, 거리맵</td></tr>
+                    <tr><td><code>CV_32FC3</code></td><td>32비트 실수, 3채널</td><td>HDR, 정밀 색 연산</td></tr>
+                </table>
+
+                <h3 id="type-decode"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> type() 반환값 해석</h3>
+                <p><code>Mat::type()</code>은 정수 하나를 돌려준다. 그 값에서 깊이와 채널을 분리해 읽을 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat img = cv::imread("img.png", cv::IMREAD_COLOR);
+
+int t = img.type();              // 예: CV_8UC3 == 16
+int depth = img.depth();         // CV_8U == 0
+int ch = img.channels();         // 3
+
+// 사람이 읽을 수 있는 문자열로 바꾸는 헬퍼
+std::string typeToString(int type)
+{
+    int depth = type &amp; CV_MAT_DEPTH_MASK;   // 하위 비트 = 깊이
+    int chans = 1 + (type &gt;&gt; CV_CN_SHIFT);   // 상위 비트 = 채널 수
+
+    const char* d = nullptr;
+    switch (depth)
+    {
+        case CV_8U:  d = "8U";  break;
+        case CV_8S:  d = "8S";  break;
+        case CV_16U: d = "16U"; break;
+        case CV_16S: d = "16S"; break;
+        case CV_32S: d = "32S"; break;
+        case CV_32F: d = "32F"; break;
+        case CV_64F: d = "64F"; break;
+        default:     d = "?";   break;
+    }
+    return "CV_" + std::string(d) + "C" + std::to_string(chans);
+}
+
+std::cout &lt;&lt; typeToString(img.type()) &lt;&lt; "\n";</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+CV_8UC3</div>
+
+                <!-- 5. 메모리 레이아웃 -->
+                <h2 id="memory-layout"><i class="fa-solid fa-memory"></i> 메모리 레이아웃</h2>
+                <p>2차원 이미지지만 메모리는 1차원이다. OpenCV는 픽셀을 <strong>행 우선(row-major)</strong>으로 저장한다. 즉 첫 행의 모든 픽셀이 먼저 나열되고, 그다음 둘째 행이 이어진다.</p>
+
+                <h3 id="interleaved"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 인터리브드 vs 플래너</h3>
+                <p>컬러 이미지를 메모리에 늘어놓는 방식은 두 가지다.</p>
+                <ul>
+                    <li><strong>인터리브드(interleaved)</strong>: 한 픽셀의 모든 채널을 모아 둔다 — <code>BGR BGR BGR ...</code>. OpenCV의 기본 방식.</li>
+                    <li><strong>플래너(planar)</strong>: 채널별로 따로 모은다 — <code>BBB... GGG... RRR...</code>. <code>split()</code>한 결과가 이 형태.</li>
+                </ul>
+
+                <div class="diagram-box">
+                    <svg viewBox="0 0 600 270" xmlns="http://www.w3.org/2000/svg">
+                        <text x="10" y="22" font-size="12" font-weight="700" fill="#1e3a5f">3채널 BGR 이미지 — 4 px 폭, 2 행</text>
+
+                        <!-- Row 0 -->
+                        <text x="10" y="58" font-size="11" fill="#64748b">Row 0</text>
+                        <!-- pixel 0 -->
+                        <rect x="55" y="42" width="22" height="24" fill="#7eb8e8"/><text x="66" y="58" font-size="9" text-anchor="middle">B</text>
+                        <rect x="77" y="42" width="22" height="24" fill="#a3d977"/><text x="88" y="58" font-size="9" text-anchor="middle">G</text>
+                        <rect x="99" y="42" width="22" height="24" fill="#e89b9b"/><text x="110" y="58" font-size="9" text-anchor="middle">R</text>
+                        <!-- pixel 1 -->
+                        <rect x="121" y="42" width="22" height="24" fill="#7eb8e8"/><text x="132" y="58" font-size="9" text-anchor="middle">B</text>
+                        <rect x="143" y="42" width="22" height="24" fill="#a3d977"/><text x="154" y="58" font-size="9" text-anchor="middle">G</text>
+                        <rect x="165" y="42" width="22" height="24" fill="#e89b9b"/><text x="176" y="58" font-size="9" text-anchor="middle">R</text>
+                        <!-- pixel 2 -->
+                        <rect x="187" y="42" width="22" height="24" fill="#7eb8e8"/><text x="198" y="58" font-size="9" text-anchor="middle">B</text>
+                        <rect x="209" y="42" width="22" height="24" fill="#a3d977"/><text x="220" y="58" font-size="9" text-anchor="middle">G</text>
+                        <rect x="231" y="42" width="22" height="24" fill="#e89b9b"/><text x="242" y="58" font-size="9" text-anchor="middle">R</text>
+                        <!-- pixel 3 -->
+                        <rect x="253" y="42" width="22" height="24" fill="#7eb8e8"/><text x="264" y="58" font-size="9" text-anchor="middle">B</text>
+                        <rect x="275" y="42" width="22" height="24" fill="#a3d977"/><text x="286" y="58" font-size="9" text-anchor="middle">G</text>
+                        <rect x="297" y="42" width="22" height="24" fill="#e89b9b"/><text x="308" y="58" font-size="9" text-anchor="middle">R</text>
+                        <!-- padding row 0 -->
+                        <rect x="319" y="42" width="44" height="24" fill="#cbd5e1" stroke="#94a3b8" stroke-dasharray="3 2"/>
+                        <text x="341" y="58" font-size="9" text-anchor="middle" fill="#475569">pad</text>
+
+                        <!-- Row 1 -->
+                        <text x="10" y="98" font-size="11" fill="#64748b">Row 1</text>
+                        <rect x="55" y="82" width="22" height="24" fill="#7eb8e8"/><text x="66" y="98" font-size="9" text-anchor="middle">B</text>
+                        <rect x="77" y="82" width="22" height="24" fill="#a3d977"/><text x="88" y="98" font-size="9" text-anchor="middle">G</text>
+                        <rect x="99" y="82" width="22" height="24" fill="#e89b9b"/><text x="110" y="98" font-size="9" text-anchor="middle">R</text>
+                        <rect x="121" y="82" width="22" height="24" fill="#7eb8e8"/><text x="132" y="98" font-size="9" text-anchor="middle">B</text>
+                        <rect x="143" y="82" width="22" height="24" fill="#a3d977"/><text x="154" y="98" font-size="9" text-anchor="middle">G</text>
+                        <rect x="165" y="82" width="22" height="24" fill="#e89b9b"/><text x="176" y="98" font-size="9" text-anchor="middle">R</text>
+                        <rect x="187" y="82" width="22" height="24" fill="#7eb8e8"/><text x="198" y="98" font-size="9" text-anchor="middle">B</text>
+                        <rect x="209" y="82" width="22" height="24" fill="#a3d977"/><text x="220" y="98" font-size="9" text-anchor="middle">G</text>
+                        <rect x="231" y="82" width="22" height="24" fill="#e89b9b"/><text x="242" y="98" font-size="9" text-anchor="middle">R</text>
+                        <rect x="253" y="82" width="22" height="24" fill="#7eb8e8"/><text x="264" y="98" font-size="9" text-anchor="middle">B</text>
+                        <rect x="275" y="82" width="22" height="24" fill="#a3d977"/><text x="286" y="98" font-size="9" text-anchor="middle">G</text>
+                        <rect x="297" y="82" width="22" height="24" fill="#e89b9b"/><text x="308" y="98" font-size="9" text-anchor="middle">R</text>
+                        <rect x="319" y="82" width="44" height="24" fill="#cbd5e1" stroke="#94a3b8" stroke-dasharray="3 2"/>
+                        <text x="341" y="98" font-size="9" text-anchor="middle" fill="#475569">pad</text>
+
+                        <!-- step bracket -->
+                        <line x1="55" y1="118" x2="363" y2="118" stroke="#dc2626" stroke-width="1.5"/>
+                        <line x1="55" y1="114" x2="55" y2="122" stroke="#dc2626" stroke-width="1.5"/>
+                        <line x1="363" y1="114" x2="363" y2="122" stroke="#dc2626" stroke-width="1.5"/>
+                        <text x="209" y="134" font-size="10" text-anchor="middle" fill="#dc2626" font-weight="700">step[0] = 한 행 전체 바이트 (데이터 + 패딩)</text>
+
+                        <line x1="55" y1="150" x2="319" y2="150" stroke="#2563eb" stroke-width="1.5"/>
+                        <line x1="55" y1="146" x2="55" y2="154" stroke="#2563eb" stroke-width="1.5"/>
+                        <line x1="319" y1="146" x2="319" y2="154" stroke="#2563eb" stroke-width="1.5"/>
+                        <text x="187" y="166" font-size="10" text-anchor="middle" fill="#2563eb" font-weight="700">cols × channels × elemSize1 = 실제 픽셀 데이터</text>
+
+                        <!-- planar comparison -->
+                        <text x="10" y="205" font-size="11" font-weight="700" fill="#1e3a5f">인터리브드</text>
+                        <text x="100" y="205" font-size="11" font-family="Consolas, monospace" fill="#475569">B G R  B G R  B G R  B G R ...</text>
+                        <text x="10" y="235" font-size="11" font-weight="700" fill="#1e3a5f">플래너</text>
+                        <text x="100" y="235" font-size="11" font-family="Consolas, monospace" fill="#475569">B B B B ...  G G G G ...  R R R R ...</text>
+                    </svg>
+                    <div class="diagram-caption">인터리브드 BGR 레이아웃 — 행 끝에 정렬용 패딩이 붙으면 step이 실제 픽셀 폭보다 커진다</div>
+                </div>
+
+                <h3 id="step-stride"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> step / stride 와 패딩</h3>
+                <p><code>step</code>(또는 stride)은 <strong>한 행에서 다음 행으로 건너뛰는 바이트 수</strong>다. 직관적으로는 <code>cols × channels × 1바이트</code>일 것 같지만, 메모리 정렬(alignment)을 위해 행 끝에 <strong>패딩(padding)</strong>이 붙으면 <code>step</code>이 그보다 커진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat img(480, 641, CV_8UC3);   // 일부러 폭을 641로 (정렬 안 맞게)
+
+std::cout &lt;&lt; "cols        : " &lt;&lt; img.cols          &lt;&lt; "\n";  // 641
+std::cout &lt;&lt; "channels    : " &lt;&lt; img.channels()     &lt;&lt; "\n";  // 3
+std::cout &lt;&lt; "elemSize1   : " &lt;&lt; img.elemSize1()    &lt;&lt; "\n";  // 1 (채널 1개 바이트)
+std::cout &lt;&lt; "elemSize    : " &lt;&lt; img.elemSize()     &lt;&lt; "\n";  // 3 (픽셀 1개 바이트)
+std::cout &lt;&lt; "실제 픽셀 폭 : " &lt;&lt; img.cols * img.elemSize() &lt;&lt; "\n";  // 1923
+std::cout &lt;&lt; "step[0]     : " &lt;&lt; img.step[0]        &lt;&lt; "\n";  // 1923 또는 그 이상(패딩)
+std::cout &lt;&lt; "step[1]     : " &lt;&lt; img.step[1]        &lt;&lt; "\n";  // 3 (한 픽셀)
+
+// y행 x열 픽셀의 메모리 주소 계산 공식
+// addr = data + y * step[0] + x * elemSize()
+uchar* rowPtr = img.ptr&lt;uchar&gt;(10);          // 10행의 시작 포인터 (권장)
+uchar* px = img.data + 10 * img.step[0] + 20 * img.elemSize();  // 수동 계산</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>행 단위 접근은 항상 ptr()로</strong>
+                        <code>img.ptr&lt;T&gt;(y)</code>는 패딩을 자동으로 고려해 y행의 시작 주소를 정확히 돌려준다. 직접 <code>data + y * cols</code> 식으로 계산하면 패딩을 빠뜨려 행이 어긋난다.
+                    </div>
+                </div>
+
+                <!-- 6. 연속 메모리 -->
+                <h2 id="continuous"><i class="fa-solid fa-link"></i> 연속 메모리 (isContinuous)</h2>
+                <p>모든 행이 패딩 없이 빈틈없이 이어져 있으면 그 <code>Mat</code>은 <strong>연속(continuous)</strong>이다. <code>imread</code>로 막 읽은 이미지는 보통 연속이다. 하지만 <strong>ROI(관심 영역)를 떼어내면 비연속</strong>이 된다 — 원본의 일부 행 조각만 가리키므로 행 사이에 원본의 나머지 부분이 끼어 있기 때문이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat full = cv::imread("img.png", cv::IMREAD_GRAYSCALE);
+std::cout &lt;&lt; full.isContinuous() &lt;&lt; "\n";   // 보통 1 (true)
+
+// ROI 추출 — 데이터는 복사되지 않고 원본을 공유
+cv::Mat roi = full(cv::Rect(100, 50, 200, 150));
+std::cout &lt;&lt; roi.isContinuous() &lt;&lt; "\n";    // 0 (false) — 비연속
+
+// ROI를 연속으로 만들려면 명시적으로 복사
+cv::Mat roiCopy = roi.clone();
+std::cout &lt;&lt; roiCopy.isContinuous() &lt;&lt; "\n"; // 1 (true)</code></pre>
+
+                <h3 id="fast-iteration"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 연속일 때의 빠른 일괄 처리</h3>
+                <p>연속이면 2차원 이미지를 <strong>1차원 배열처럼 한 번에</strong> 훑을 수 있어 빠르다. <code>reshape</code>로 1행짜리로 바꾸거나, 연속 여부를 보고 루프 범위를 합치는 패턴을 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 모든 픽셀에 +10을 더하는 함수 — 연속/비연속 모두 안전
+void addBrightness(cv::Mat&amp; img, int delta)
+{
+    CV_Assert(img.type() == CV_8UC1);
+
+    int rows = img.rows;
+    int cols = img.cols;
+
+    // 연속이면 전체를 한 행으로 펼쳐서 루프 횟수를 줄인다
+    if (img.isContinuous())
+    {
+        cols = rows * cols;
+        rows = 1;
+    }
+
+    for (int y = 0; y &lt; rows; ++y)
+    {
+        uchar* p = img.ptr&lt;uchar&gt;(y);   // 행 시작 포인터
+        for (int x = 0; x &lt; cols; ++x)
+        {
+            p[x] = cv::saturate_cast&lt;uchar&gt;(p[x] + delta);
+        }
+    }
+}
+
+// reshape — 연속 Mat을 1행 N열로 (데이터 복사 없음)
+cv::Mat flat = img.reshape(1, 1);   // (채널 수, 행 수) → 1채널 1행</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>reshape는 연속 Mat에서만 안전하다</strong>
+                        비연속 Mat에 <code>reshape(1, 1)</code>을 호출하면 예외가 나거나, 패딩까지 포함된 잘못된 데이터를 가리킨다. 비연속이면 먼저 <code>clone()</code>으로 연속화한 뒤 reshape 한다.
+                    </div>
+                </div>
+
+                <!-- 7. 픽셀 값의 의미 -->
+                <h2 id="pixel-meaning"><i class="fa-solid fa-eye"></i> 픽셀 값의 의미</h2>
+                <p>같은 숫자라도 이미지 타입에 따라 뜻이 다르다.</p>
+
+                <table class="spec-table">
+                    <tr><th>이미지 종류</th><th>픽셀 값</th><th>해석</th></tr>
+                    <tr><td>그레이스케일 8U</td><td><code>0</code></td><td>완전한 검정</td></tr>
+                    <tr><td>그레이스케일 8U</td><td><code>255</code></td><td>완전한 흰색</td></tr>
+                    <tr><td>그레이스케일 8U</td><td><code>128</code></td><td>중간 회색</td></tr>
+                    <tr><td>BGR 8U</td><td><code>(255, 0, 0)</code></td><td>순수한 파랑 (B=255)</td></tr>
+                    <tr><td>BGR 8U</td><td><code>(0, 0, 255)</code></td><td>순수한 빨강 (R=255)</td></tr>
+                    <tr><td>정규화 32F</td><td><code>0.0 ~ 1.0</code></td><td>0=검정, 1=흰색 (실수 비율)</td></tr>
+                </table>
+
+                <p>딥러닝 입력이나 정밀한 연산에서는 0~255 정수 대신 <strong>0.0~1.0 범위의 float</strong>로 정규화해 쓰는 경우가 많다. 곱셈·나눗셈에서 자릿수가 잘리지 않고, 여러 연산을 누적해도 정밀도가 유지되기 때문이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat img8 = cv::imread("img.png", cv::IMREAD_GRAYSCALE);  // 0~255
+
+// 8U → 32F 정규화 (0.0 ~ 1.0)
+cv::Mat imgF;
+img8.convertTo(imgF, CV_32F, 1.0 / 255.0);
+
+float v = imgF.at&lt;float&gt;(10, 20);   // 예: 0.5019...  (원래 128)
+
+// 다시 표시용 8U로 되돌리기
+cv::Mat back8;
+imgF.convertTo(back8, CV_8U, 255.0);</code></pre>
+
+                <!-- 8. 데이터 변환 -->
+                <h2 id="conversion"><i class="fa-solid fa-arrows-rotate"></i> 데이터 변환</h2>
+
+                <h3 id="convertto"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> convertTo — 비트 깊이 변환과 스케일링</h3>
+                <p><code>convertTo(dst, type, alpha, beta)</code>는 각 픽셀에 <code>dst = src × alpha + beta</code>를 적용하면서 타입을 바꾼다. 비트 깊이 변환과 밝기/대비 조정을 한 번에 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat src = cv::imread("img.png", cv::IMREAD_GRAYSCALE);
+
+// 1) 단순 타입 변환 (값 그대로)
+cv::Mat f32;
+src.convertTo(f32, CV_32F);
+
+// 2) 16비트(0~4095) → 8비트(0~255) 스케일 다운
+cv::Mat raw16 = cv::imread("12bit.tif", cv::IMREAD_UNCHANGED);  // CV_16U
+cv::Mat disp8;
+raw16.convertTo(disp8, CV_8U, 255.0 / 4095.0);
+
+// 3) 밝기 +30, 대비 1.2배 (alpha=대비, beta=밝기)
+cv::Mat adjusted;
+src.convertTo(adjusted, CV_8U, 1.2, 30);
+// 결과가 255를 넘으면 자동으로 saturate(포화) 처리됨</code></pre>
+
+                <h3 id="normalize"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> normalize — 범위 맞추기</h3>
+                <p><code>normalize</code>는 픽셀 값을 <strong>지정한 범위로 다시 펼쳐준다</strong>. 실제 값 범위를 모를 때(필터 결과, 거리맵 등)나, 어두운 이미지를 화면 전체 명암으로 펼칠 때 유용하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat src = cv::imread("dark.png", cv::IMREAD_GRAYSCALE);
+
+// MIN-MAX 정규화 — 실제 최솟값→0, 최댓값→255 로 펼침 (콘트라스트 스트레칭)
+cv::Mat stretched;
+cv::normalize(src, stretched, 0, 255, cv::NORM_MINMAX, CV_8U);
+
+// 0.0 ~ 1.0 float 범위로 정규화
+cv::Mat norm01;
+cv::normalize(src, norm01, 0.0, 1.0, cv::NORM_MINMAX, CV_32F);
+
+// 필터 결과처럼 음수가 섞인 Mat도 안전하게 표시용으로 변환 가능
+cv::Mat sobel;
+cv::Sobel(src, sobel, CV_32F, 1, 0);          // 음수 포함
+cv::Mat sobelDisp;
+cv::normalize(sobel, sobelDisp, 0, 255, cv::NORM_MINMAX, CV_8U);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>convertTo vs normalize</strong>
+                        스케일 비율을 <em>내가 정확히 알 때</em>는 <code>convertTo</code>(예: 4095→255). 실제 데이터의 min/max에 <em>맞춰 펼치고 싶을 때</em>는 <code>normalize</code>(NORM_MINMAX). 둘은 목적이 다르다.
+                    </div>
+                </div>
+
+                <!-- 9. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="pitfall-bgr"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1. 채널 순서는 RGB가 아니라 BGR</h3>
+                <p>OpenCV로 읽은 컬러 이미지는 BGR 순서다. 이를 RGB로 가정하고 다른 라이브러리(matplotlib, Qt, 딥러닝 프레임워크 등)에 넘기면 빨강과 파랑이 뒤바뀐다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat bgr = cv::imread("img.png", cv::IMREAD_COLOR);   // BGR
+
+// 빨간색 픽셀을 만들고 싶다면 — R은 인덱스 2
+bgr.at&lt;cv::Vec3b&gt;(0, 0) = cv::Vec3b(0, 0, 255);   // (B,G,R) = 빨강
+
+// RGB를 기대하는 외부 라이브러리에 넘기기 전 변환
+cv::Mat rgb;
+cv::cvtColor(bgr, rgb, cv::COLOR_BGR2RGB);</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>BGR ↔ RGB 혼동</strong>
+                        영상이 "푸르딩딩"하거나 "불그스름"하게 나오면 십중팔구 채널 순서 문제다. OpenCV 내부에서만 다룰 때는 BGR 그대로 두고, 외부와 주고받을 때만 <code>cvtColor</code>로 변환한다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-overflow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2. 8비트 오버플로우 — saturate_cast</h3>
+                <p><code>uchar</code>는 0~255만 담는다. <code>200 + 100 = 300</code>은 8비트에 들어가지 않아 <strong>래핑(wrap-around)</strong>되어 <code>44</code>가 된다. 밝게 만들려다 오히려 어두워지는 버그가 여기서 나온다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">uchar a = 200, b = 100;
+
+// 잘못된 코드 — 오버플로우
+uchar wrong = a + b;                       // 300 → 44 (래핑!)
+
+// 올바른 코드 — saturate_cast로 255에서 잘림(포화)
+uchar safe = cv::saturate_cast&lt;uchar&gt;(a + b);   // 255
+
+// OpenCV 내장 연산자는 자동으로 saturate 처리한다
+cv::Mat img = cv::imread("img.png", cv::IMREAD_GRAYSCALE);
+cv::Mat bright = img + 100;                 // 안전 — 자동 포화
+// 직접 포인터로 픽셀을 순회할 때만 saturate_cast가 필요</code></pre>
+
+                <h3 id="pitfall-step-cols"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3. step과 cols 혼동</h3>
+                <p><code>cols</code>는 "픽셀 개수", <code>step[0]</code>은 "한 행의 바이트 수"다. 패딩이 있거나 다채널이면 둘은 다르다. 포인터 산술에 <code>cols</code>를 쓰면 행이 어긋난다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat img(100, 100, CV_8UC3);
+
+// 틀린 가정: 다음 행 = data + cols
+// 실제로는 cols(100) ≠ step[0](300 또는 그 이상)
+
+uchar* row5_wrong = img.data + 5 * img.cols;       // 어긋남
+uchar* row5_right = img.data + 5 * img.step[0];    // 정확
+uchar* row5_best  = img.ptr&lt;uchar&gt;(5);             // 가장 안전</code></pre>
+
+                <h3 id="pitfall-noncontinuous"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4. 비연속 Mat에서 data 포인터 직접 순회</h3>
+                <p>ROI 같은 비연속 Mat을 <code>img.data</code>부터 <code>rows*cols</code> 만큼 일직선으로 순회하면, 행 사이의 패딩(원본의 다른 부분)까지 건드리게 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat full = cv::imread("img.png", cv::IMREAD_GRAYSCALE);
+cv::Mat roi = full(cv::Rect(10, 10, 50, 50));   // 비연속
+
+// 위험한 코드 — 비연속인데 일직선 순회
+uchar* p = roi.data;
+for (int i = 0; i &lt; roi.rows * roi.cols; ++i)
+    p[i] = 0;            // 행을 넘어가면 원본의 엉뚱한 픽셀을 침범!
+
+// 안전한 코드 — 행 단위로 ptr() 사용
+for (int y = 0; y &lt; roi.rows; ++y)
+{
+    uchar* row = roi.ptr&lt;uchar&gt;(y);
+    for (int x = 0; x &lt; roi.cols; ++x)
+        row[x] = 0;
+}
+
+// 또는 처음부터 연속화
+cv::Mat safeRoi = roi.clone();   // 연속 보장</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"한 줄 순회"는 isContinuous()를 먼저 확인</strong>
+                        <code>data</code> 포인터로 전체를 한 번에 도는 최적화는 <code>isContinuous()</code>가 <code>true</code>일 때만 유효하다. 비연속이면 반드시 행 단위 <code>ptr()</code> 순회로 바꾸거나 <code>clone()</code>한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>OpenCV 공식 문서 — <code>cv::Mat</code> 클래스 레퍼런스 (docs.opencv.org)</li>
+                        <li>OpenCV Tutorials — How to scan images, lookup tables and time measurement</li>
+                        <li>OpenCV Tutorials — Mat - The Basic Image Container</li>
+                        <li>OpenCV 공식 문서 — <code>convertTo</code>, <code>normalize</code>, <code>split</code>, <code>merge</code> API</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
