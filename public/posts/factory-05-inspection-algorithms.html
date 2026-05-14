@@ -1,0 +1,852 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>검사 대상별 알고리즘 전략 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#inspection-types" data-section="inspection-types">검사 유형 분류</a>
+        <a href="#alignment" data-section="alignment">위치 정렬</a>
+        <a href="#defect" data-section="defect">외관·결함</a>
+        <a href="#dimension" data-section="dimension">치수 측정</a>
+        <a href="#assembly" data-section="assembly">위치·조립</a>
+        <a href="#surface" data-section="surface">표면 검사</a>
+        <a href="#ocr-code" data-section="ocr-code">문자·코드</a>
+        <a href="#rule-vs-dl" data-section="rule-vs-dl">전통 vs 딥러닝</a>
+        <a href="#decision" data-section="decision">판정 설계</a>
+        <a href="#strategy-map" data-section="strategy-map">전략 선택 가이드</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">스마트 공장</span>
+                </div>
+                <h1>검사 대상별 알고리즘 전략</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>검사 유형 5분류 — 외관·치수·위치조립·표면·문자코드</li>
+                        <li>위치 정렬(Alignment)이 모든 검사의 전제인 이유</li>
+                        <li>외관·결함 검사 — golden template 비교, 차영상, blob 분석</li>
+                        <li>치수 측정 — 서브픽셀 edge, 캘리브레이션, 텔레센트릭 렌즈</li>
+                        <li>위치·조립·완전성 — ROI별 존재 여부와 feature 조합 판정</li>
+                        <li>표면 검사 — 불균일 텍스처에서 결함 분리, anomaly detection</li>
+                        <li>문자·코드 인식 — OCR/OCV, 1D 바코드, 2D 데이터 매트릭스</li>
+                        <li>전통적 비전과 딥러닝 — 언제 무엇을, 하이브리드 전략</li>
+                        <li>판정 설계 — 단일 임계값의 위험과 복수 feature 조합</li>
+                        <li>검사 유형별 알고리즘 전략 선택 종합 판단표</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#inspection-types">검사 유형 분류</a></li>
+                        <li><a href="#alignment">위치 정렬 — 모든 검사의 전제</a></li>
+                        <li><a href="#defect">외관·결함 검사</a></li>
+                        <li><a href="#dimension">치수 측정</a></li>
+                        <li><a href="#assembly">위치·조립·완전성 검사</a></li>
+                        <li><a href="#surface">표면 검사</a></li>
+                        <li><a href="#ocr-code">문자·코드 인식</a></li>
+                        <li><a href="#rule-vs-dl">전통적 비전 vs 딥러닝</a></li>
+                        <li><a href="#decision">판정 설계</a></li>
+                        <li><a href="#strategy-map">알고리즘 전략 선택 가이드</a></li>
+                    </ol>
+                </div>
+
+                <p>앞선 편들에서 비전 시스템의 구성 요소(2편), 처리 파이프라인(3편), 조명 설계(4편)를 다뤘다. 좋은 영상이 안정적으로 들어온다고 가정하면, 그다음 질문은 "그 영상에서 무엇을 어떻게 판정할 것인가"다. 이 글은 개별 알고리즘의 구현이 아니라 <strong>검사 유형마다 어떤 접근을 선택하는가</strong>라는 전략을 다룬다. HALCON 시리즈와 향후 OpenCV 시리즈가 개별 알고리즘을 깊게 파고든다면, 이 글은 그 위에 놓이는 "전략 지도"에 해당한다.</p>
+
+                <!-- 1. 검사 유형 분류 -->
+                <h2 id="inspection-types"><i class="fa-solid fa-layer-group"></i> 검사 유형 분류</h2>
+
+                <p>현장의 검사 요구는 제각각이지만, 알고리즘 관점에서 보면 크게 다섯 가지로 묶인다. 같은 유형에 속하면 비슷한 접근이 통하고, 유형이 다르면 출발점부터 다르다. 그래서 "이 검사가 어느 유형인가"를 먼저 판단하는 것이 알고리즘 선택의 첫 단추다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>검사 유형</th>
+                            <th>판정하는 것</th>
+                            <th>대표 예시</th>
+                            <th>핵심 알고리즘 축</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">외관·결함</td>
+                            <td>있어서는 안 될 것이 있는가</td>
+                            <td>찍힘, 이물, 크랙, 버(burr)</td>
+                            <td>기준 영상 비교, 차영상, blob 분석</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">치수·측정</td>
+                            <td>크기·거리·각도가 규격 안인가</td>
+                            <td>지름, 폭, 간격, 각도, 진원도</td>
+                            <td>서브픽셀 edge, 기하 피팅, 캘리브레이션</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">위치·조립</td>
+                            <td>제자리에 제대로 있는가</td>
+                            <td>부품 유무, 정렬, 누락, 방향</td>
+                            <td>패턴 매칭, ROI별 존재 판정, feature 조합</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">표면</td>
+                            <td>면이 균일하고 깨끗한가</td>
+                            <td>스크래치, 오염, 얼룩, 코팅 불량</td>
+                            <td>텍스처 분석, frequency 필터, anomaly detection</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">문자·코드</td>
+                            <td>인쇄·각인된 정보가 맞는가</td>
+                            <td>로트 번호, 날짜, 바코드, 데이터 매트릭스</td>
+                            <td>OCR/OCV, 코드 decode</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>한 제품에 여러 유형이 섞인다</strong>
+                        실제 한 제품을 검사할 때는 이 유형들이 동시에 요구되는 경우가 대부분이다. 커넥터 하나를 검사해도 핀이 다 있는지(위치·조립), 핀 간격이 규격인지(치수), 하우징에 크랙이 없는지(외관)를 한 번에 본다. 그래서 검사 프로그램은 "유형별 검사 모듈의 조합"으로 설계하는 것이 자연스럽다.
+                    </div>
+                </div>
+
+                <!-- 2. 위치 정렬 -->
+                <h2 id="alignment"><i class="fa-solid fa-crosshairs"></i> 위치 정렬 — 모든 검사의 전제</h2>
+
+                <p>검사 알고리즘을 이야기하기 전에 반드시 먼저 짚어야 할 것이 <strong>위치 정렬</strong>(Alignment)이다. 컨베이어나 트레이에 올라온 대상물은 매번 정확히 같은 위치·같은 각도로 오지 않는다. 몇 픽셀, 몇 도씩 흔들린다. 이 흔들림을 보정하지 않고 고정된 좌표에 검사 ROI를 박아두면, ROI가 엉뚱한 곳을 보게 되어 나머지 모든 검사가 무너진다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 정렬의 원리 — 기준 좌표계를 매번 다시 잡는다</div>
+                    <p>해법은 검사 시작 전에 <strong>대상물의 현재 위치·각도를 먼저 찾아내는 것</strong>이다. 학습 단계에서 대상물의 특징적인 부분(모서리, 마크, 구멍 패턴 등)을 기준 패턴으로 등록해 둔다. 런타임에는 이 패턴을 영상에서 매칭해 대상물이 기준 위치에서 얼마나 이동·회전했는지(평행이동 X·Y, 회전 θ)를 구한다. 그리고 모든 검사 ROI를 이 변환량만큼 함께 이동·회전시킨다. ROI가 대상물을 "따라다니게" 만드는 것이다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 320" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrFlow" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                        </defs>
+                        <text x="360" y="24" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">위치 정렬 → ROI 이동 → 검사 흐름</text>
+
+                        <!-- 1. 영상 획득 -->
+                        <rect x="20" y="56" width="150" height="84" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="95" y="82" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">영상 획득</text>
+                        <text x="95" y="100" text-anchor="middle" font-size="9" fill="#fb8c00">대상물이 매번</text>
+                        <text x="95" y="113" text-anchor="middle" font-size="9" fill="#fb8c00">다른 위치·각도로</text>
+                        <text x="95" y="126" text-anchor="middle" font-size="9" fill="#fb8c00">들어옴</text>
+
+                        <line x1="170" y1="98" x2="202" y2="98" stroke="#4caf50" stroke-width="2" marker-end="url(#arrFlow)"/>
+
+                        <!-- 2. 기준 패턴 매칭 -->
+                        <rect x="204" y="56" width="150" height="84" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="279" y="82" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">기준 패턴 매칭</text>
+                        <text x="279" y="100" text-anchor="middle" font-size="9" fill="#42a5f5">등록된 패턴을</text>
+                        <text x="279" y="113" text-anchor="middle" font-size="9" fill="#42a5f5">영상에서 탐색</text>
+                        <text x="279" y="126" text-anchor="middle" font-size="9" fill="#42a5f5">→ 위치·각도 산출</text>
+
+                        <line x1="354" y1="98" x2="386" y2="98" stroke="#4caf50" stroke-width="2" marker-end="url(#arrFlow)"/>
+
+                        <!-- 3. 좌표 변환 -->
+                        <rect x="388" y="56" width="150" height="84" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="463" y="82" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">좌표 변환 계산</text>
+                        <text x="463" y="100" text-anchor="middle" font-size="9" fill="#42a5f5">기준 대비 이동량</text>
+                        <text x="463" y="113" text-anchor="middle" font-size="9" fill="#42a5f5">ΔX, ΔY, Δθ</text>
+                        <text x="463" y="126" text-anchor="middle" font-size="9" fill="#42a5f5">변환 행렬 생성</text>
+
+                        <line x1="538" y1="98" x2="570" y2="98" stroke="#4caf50" stroke-width="2" marker-end="url(#arrFlow)"/>
+
+                        <!-- 4. ROI 이동 -->
+                        <rect x="572" y="56" width="128" height="84" rx="10" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="636" y="82" text-anchor="middle" font-size="11" fill="#4527a0" font-weight="700">검사 ROI 이동</text>
+                        <text x="636" y="100" text-anchor="middle" font-size="9" fill="#7e57c2">모든 ROI를</text>
+                        <text x="636" y="113" text-anchor="middle" font-size="9" fill="#7e57c2">변환량만큼</text>
+                        <text x="636" y="126" text-anchor="middle" font-size="9" fill="#7e57c2">함께 이동·회전</text>
+
+                        <!-- 아래로 -->
+                        <line x1="636" y1="140" x2="636" y2="172" stroke="#4caf50" stroke-width="2" marker-end="url(#arrFlow)"/>
+
+                        <!-- 5. 검사 실행 -->
+                        <rect x="240" y="174" width="240" height="62" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="360" y="200" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">검사 실행</text>
+                        <text x="360" y="220" text-anchor="middle" font-size="9.5" fill="#66bb6a">정렬된 ROI 안에서 외관·치수·문자 등 각 검사 수행</text>
+                        <line x1="572" y1="186" x2="482" y2="200" stroke="#4caf50" stroke-width="2" marker-end="url(#arrFlow)"/>
+
+                        <!-- 경고 띠 -->
+                        <rect x="150" y="262" width="420" height="42" rx="8" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+                        <text x="360" y="280" text-anchor="middle" font-size="10" fill="#92400e" font-weight="700">정렬 실패 시 — ROI가 엉뚱한 곳을 보게 되어 이후 모든 검사가 무의미해진다</text>
+                        <text x="360" y="296" text-anchor="middle" font-size="9" fill="#b45309">정렬은 선택이 아니라 검사의 전제 조건이다</text>
+                    </svg>
+                    <div class="caption">그림 1. 위치 정렬에서 검사 실행까지의 흐름 — 기준 패턴으로 좌표계를 잡고, 검사 ROI 전체를 대상물에 맞춰 이동시킨다</div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>정렬이 안 되면 그다음은 의미가 없다</strong>
+                        검사 결과가 불안정할 때 알고리즘 파라미터부터 만지는 경우가 많지만, 원인이 정렬 실패인 경우가 흔하다. 기준 패턴이 조명 변화에 약하거나, 대상물에 패턴으로 쓸 만한 안정적 특징이 없으면 정렬 자체가 흔들린다. 검사 알고리즘을 손대기 전에 "정렬이 매번 정확히 되고 있는가"를 먼저 확인하는 것이 순서다.
+                    </div>
+                </div>
+
+                <!-- 3. 외관·결함 검사 -->
+                <h2 id="defect"><i class="fa-solid fa-bug"></i> 외관·결함 검사</h2>
+
+                <p>외관·결함 검사는 "있어서는 안 될 것이 있는가"를 판정한다. 정상품은 일정한 모습을 갖지만 결함은 위치·크기·형태가 제각각이라 결함 자체를 직접 모델링하기 어렵다. 그래서 전략은 대부분 <strong>정상에서 벗어난 것을 찾는</strong> 방향으로 잡는다.</p>
+
+                <h3 id="defect-golden"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기준 영상 비교와 차영상</h3>
+
+                <p>가장 직관적인 접근은 <strong>golden template</strong>(기준 영상)과의 비교다. 정상품 영상을 기준으로 등록해 두고, 검사 영상을 정렬한 뒤 두 영상의 차이(차영상, difference image)를 계산한다. 차이가 큰 영역이 결함 후보가 된다. 단순하지만 강력하며, 모양이 일정한 인쇄물·패턴 제품에 잘 맞는다. 다만 정상품 자체의 정상적인 편차(미세한 색차, 위치 오차)까지 차이로 잡히기 때문에, 정렬 정밀도와 허용 편차 설정이 성패를 가른다.</p>
+
+                <h3 id="defect-blob"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> blob 분석</h3>
+
+                <p>차영상이나 임계값 처리로 결함 후보 영역을 뽑아낸 다음에는 <strong>blob 분석</strong>으로 그 영역들을 정량화한다. 연결된 픽셀 덩어리(blob)마다 면적, 둘레, 종횡비, 위치를 계산하고, 이 값들로 "진짜 결함"과 "노이즈"를 구분한다. 면적이 일정 이하인 작은 점은 무시하고, 길쭉한 형태는 크랙, 둥근 형태는 이물처럼 형태 특징으로 결함 종류까지 분류할 수 있다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>결함 종류</th>
+                            <th>특징</th>
+                            <th>1차 접근</th>
+                            <th>주의점</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">찍힘·눌림 (dent)</td>
+                            <td>국소적 밝기·음영 변화</td>
+                            <td>차영상 + blob 면적 판정</td>
+                            <td>조명 각도에 따라 보이거나 사라짐</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">이물 (contamination)</td>
+                            <td>주변과 다른 밝기의 덩어리</td>
+                            <td>임계값 + blob 분석</td>
+                            <td>정상 무늬와 구분 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">크랙 (crack)</td>
+                            <td>가늘고 긴 선형 결함</td>
+                            <td>edge·선형 필터 + blob 종횡비</td>
+                            <td>가늘어서 대비 확보가 관건</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">버 (burr)</td>
+                            <td>윤곽선 밖으로 튀어나온 부분</td>
+                            <td>윤곽 추출 + 기준 윤곽 비교</td>
+                            <td>정렬 정밀도에 민감</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>결함은 "보이게 만드는 것"이 절반</strong>
+                        결함 검사 알고리즘이 잘 안 될 때, 알고리즘보다 조명을 먼저 의심하는 것이 맞다. 찍힘은 로우앵글 조명으로 음영을 만들어야 보이고, 투명체 내부 결함은 백라이트가 필요하다. 4편에서 다뤘듯 결함을 영상에서 대비 있게 드러내는 조명이 갖춰지면, 알고리즘은 의외로 단순해진다.
+                    </div>
+                </div>
+
+                <!-- 4. 치수 측정 -->
+                <h2 id="dimension"><i class="fa-solid fa-ruler-combined"></i> 치수 측정</h2>
+
+                <p>치수 측정은 "크기·거리·각도가 규격 안인가"를 숫자로 판정한다. 외관 검사가 "있다/없다"의 정성 판정이라면, 치수 검사는 <strong>실측값을 내야 하는 정량 판정</strong>이다. 그래서 정밀도와 재현성이 핵심 요구가 된다.</p>
+
+                <h3 id="dimension-edge"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 서브픽셀 edge 측정</h3>
+
+                <p>측정의 출발점은 <strong>edge</strong>(경계)다. 대상물의 윤곽이나 구멍의 경계를 찾고, 그 사이의 거리·각도·지름을 계산한다. 여기서 중요한 것이 <strong>서브픽셀</strong>(sub-pixel) 정밀도다. 픽셀 단위로만 경계를 찾으면 측정 분해능이 1픽셀에 묶이지만, 경계 주변의 밝기 변화 곡선을 해석하면 픽셀의 1/10 이하 수준까지 경계 위치를 추정할 수 있다. 정밀 측정에서는 사실상 필수다.</p>
+
+                <h3 id="dimension-fit"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기하 피팅 — 점에서 형상으로</h3>
+
+                <p>측정한 edge 점들을 직선·원·타원 같은 기하 형상에 <strong>피팅</strong>(fitting)한다. 여러 점을 모아 직선으로 피팅하면 점 하나하나의 노이즈가 평균화되어 안정적인 직선을 얻고, 그 직선들로 거리·각도를 계산한다. 원 피팅으로 지름과 진원도를, 두 직선의 교점으로 코너 위치를 구하는 식이다. 점 하나가 아니라 형상으로 다루는 것이 측정 안정성의 핵심이다.</p>
+
+                <h3 id="dimension-calib"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캘리브레이션 — 픽셀을 실측으로</h3>
+
+                <p>알고리즘이 내놓는 값은 픽셀 단위다. 이것을 mm 같은 실측 단위로 바꾸려면 <strong>캘리브레이션</strong>이 필요하다. 크기를 아는 기준 타깃(체커보드, 도트 그리드 등)을 촬영해 "1픽셀이 실제 몇 mm인가"를 구하고, 동시에 렌즈 왜곡까지 보정한다. 캘리브레이션이 부정확하면 알고리즘이 아무리 정밀해도 실측값은 틀린다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>텔레센트릭 렌즈와 치수 측정 — 2편 참조</strong>
+                        일반 렌즈는 대상물이 가까우면 크게, 멀면 작게 찍힌다. 대상물의 높이가 조금만 달라져도 측정값이 변한다는 뜻이다. 2편에서 다룬 <strong>텔레센트릭 렌즈</strong>는 일정 범위 안에서 거리에 따른 배율 변화가 거의 없어, 고정밀 치수 측정에는 사실상 표준으로 쓰인다. 측정 정밀도 요구가 높다면 알고리즘 이전에 렌즈 선택부터가 전략이다.
+                    </div>
+                </div>
+
+                <!-- 5. 위치·조립·완전성 -->
+                <h2 id="assembly"><i class="fa-solid fa-puzzle-piece"></i> 위치·조립·완전성 검사</h2>
+
+                <p>위치·조립·완전성 검사는 "제자리에 제대로 있는가"를 본다. 부품이 다 있는지(완전성), 올바른 위치·방향인지(정렬), 빠진 것은 없는지(누락)를 판정한다. 결함 검사가 "없어야 할 것"을 찾는다면, 이쪽은 <strong>"있어야 할 것이 있는지"</strong>를 확인한다.</p>
+
+                <h3 id="assembly-roi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ROI별 존재 여부 판정</h3>
+
+                <p>기본 전략은 부품이 있어야 할 자리마다 ROI를 두고, 각 ROI 안에 해당 부품의 특징이 나타나는지 확인하는 것이다. 정렬로 ROI를 대상물에 맞춰 둔 상태에서, ROI 안의 밝기·패턴·형상이 "부품 있음"의 조건을 만족하는지 검사한다. 나사 8개가 다 박혔는지, 커넥터가 꽂혔는지, 라벨이 붙었는지가 이런 식으로 검사된다.</p>
+
+                <h3 id="assembly-feature"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> feature 조합 판정</h3>
+
+                <p>단순히 "ROI에 뭔가 있다"만으로는 부족한 경우가 많다. 부품이 있긴 한데 거꾸로 끼워졌거나, 비슷한 다른 부품이 잘못 들어갔을 수 있다. 이때는 패턴 매칭으로 부품의 방향(각도)까지 확인하고, 색·크기·위치 같은 여러 <strong>feature를 조합</strong>해 판정한다. "ROI에 있고 + 방향이 맞고 + 색이 맞을 때"만 정상으로 보는 식이다. 판정 규칙을 feature의 AND/OR 조합으로 설계하는 것이 핵심이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>완전성 검사는 "누락의 정의"가 먼저다</strong>
+                        무엇이 "누락"인지 명확히 정의하지 않으면 알고리즘을 짤 수 없다. 부품이 아예 없는 것만 누락인가, 비스듬히 걸친 것도 누락인가, 다른 부품이 들어간 것은 누락인가 오삽입인가. 검사 항목을 나열하고 각각의 정상·불량 경계를 사람이 먼저 합의하는 것이, 알고리즘 선택보다 앞선다.
+                    </div>
+                </div>
+
+                <!-- 6. 표면 검사 -->
+                <h2 id="surface"><i class="fa-solid fa-droplet"></i> 표면 검사</h2>
+
+                <p>표면 검사는 다섯 유형 중 가장 까다롭다. 스크래치·오염·얼룩 같은 결함을 찾아야 하는데, 검사 대상의 표면 자체가 균일하지 않은 경우가 많기 때문이다. 가공 무늬, 텍스처, 자연스러운 색 편차가 있는 면에서 "정상적인 불균일"과 "결함"을 분리해야 한다.</p>
+
+                <h3 id="surface-texture"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 텍스처와 frequency 접근</h3>
+
+                <p>전통적 접근은 표면을 <strong>텍스처</strong>로 보고, 결함을 텍스처의 국소적 교란으로 다루는 것이다. 가공 무늬는 일정한 주기를 갖는 경우가 많아, 영상을 주파수 영역(frequency domain)으로 보면 무늬는 특정 주파수 성분으로, 결함은 그 패턴을 벗어난 성분으로 나타난다. frequency 필터로 정상 무늬 성분을 걸러내면 결함이 두드러진다. 공간 영역에서도 적절한 필터로 배경 텍스처를 평탄화한 뒤 결함을 분리하는 접근이 쓰인다.</p>
+
+                <h3 id="surface-anomaly"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 딥러닝 anomaly detection</h3>
+
+                <p>표면이 너무 불규칙해서 정상 패턴을 규칙으로 기술하기 어려운 경우, 최근에는 <strong>anomaly detection</strong>(이상 탐지) 계열의 딥러닝이 쓰인다. 결함 샘플을 모으기 어렵다는 표면 검사의 고질적 문제를, 정상 샘플만으로 학습해 "정상에서 벗어난 정도"를 점수화하는 방식으로 우회한다. 결함의 종류를 미리 알지 못해도 "처음 보는 이상"을 잡아낼 수 있다는 점이 강점이다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>표면 검사는 조명 의존도가 가장 높다 — 4편 참조</strong>
+                        스크래치는 조명 각도가 조금만 바뀌어도 보였다 사라졌다 한다. 표면 검사에서 조명이 불안정하면 어떤 알고리즘도, 어떤 딥러닝 모델도 신뢰할 수 없다. 4편에서 다룬 로우앵글·돔·동축 조명의 선택이 표면 검사에서는 특히 결정적이다. 알고리즘 튜닝에 며칠을 쓰기 전에, 조명으로 결함이 안정적으로 보이는지부터 확인해야 한다.
+                    </div>
+                </div>
+
+                <!-- 7. 문자·코드 인식 -->
+                <h2 id="ocr-code"><i class="fa-solid fa-barcode"></i> 문자·코드 인식</h2>
+
+                <p>문자·코드 인식은 제품에 인쇄·각인된 정보를 읽는 검사다. 사람이 읽으라고 만든 <strong>문자</strong>(로트 번호, 날짜)와 기계가 읽으라고 만든 <strong>코드</strong>(바코드, 데이터 매트릭스)로 나뉜다.</p>
+
+                <h3 id="ocr-ocv"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> OCR과 OCV</h3>
+
+                <p>문자 검사에는 두 가지 목적이 있다. <strong>OCR</strong>(Optical Character Recognition)은 무슨 글자인지 "읽어내는" 것이고, <strong>OCV</strong>(Optical Character Verification)는 인쇄된 글자가 지정된 문자열과 "맞는지 검증"하는 것이다. 검사 현장에서는 "이 제품에 찍힐 로트가 ABC123인데 실제로 그렇게 찍혔나"를 보는 OCV가 더 흔하다. OCV는 읽을 후보가 정해져 있어 OCR보다 안정적이다.</p>
+
+                <h3 id="code-decode"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1D 바코드와 2D 데이터 매트릭스</h3>
+
+                <p>코드는 <strong>1D 바코드</strong>(선형)와 <strong>2D 코드</strong>(데이터 매트릭스, QR)로 나뉜다. 2D 코드는 작은 면적에 더 많은 정보를 담고, 일부가 손상돼도 복원되는 오류 정정 기능이 있어 산업 현장에서 부품 각인용으로 널리 쓰인다. 코드 인식 알고리즘은 표준 decode 라이브러리가 성숙해 있어, 알고리즘 자체보다 <strong>영상 품질</strong>이 인식률을 좌우한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>decode 실패 시 — 알고리즘보다 영상부터</strong>
+                        바코드·데이터 매트릭스가 안 읽힐 때 decode 파라미터를 만지기 쉽지만, 원인의 대부분은 영상 품질이다. 코드 영역의 대비가 부족하거나, 초점이 안 맞거나, 각인 코드인데 조명이 음영을 못 만들어 셀이 안 보이는 경우다. 데이터 매트릭스 각인에는 보통 동축·돔 조명이 필요하다. "안 읽히면 영상부터 본다"가 코드 검사의 기본 순서다.
+                    </div>
+                </div>
+
+                <!-- 8. 전통 vs 딥러닝 -->
+                <h2 id="rule-vs-dl"><i class="fa-solid fa-code-branch"></i> 전통적 비전 vs 딥러닝 — 언제 무엇을</h2>
+
+                <p>검사 알고리즘 전략에서 빠지지 않는 갈림길이 <strong>전통적 비전</strong>(rule-based)과 <strong>딥러닝</strong> 사이의 선택이다. 딥러닝이 만능처럼 보이지만, 산업 검사에서는 여전히 전통적 비전이 더 나은 영역이 넓다. 둘은 경쟁 관계가 아니라 적용 조건이 다른 도구다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>비교 항목</th>
+                            <th>전통적 비전 (rule-based)</th>
+                            <th>딥러닝</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">잘 맞는 상황</td>
+                            <td>규칙이 명확하고 반복적, 대상이 일정</td>
+                            <td>규칙화가 어렵고 변동·다양성이 큼</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">치수 측정</td>
+                            <td>강점 — 정밀·정량 측정의 표준</td>
+                            <td>약점 — 정밀 측정에는 부적합</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">불규칙 표면 결함</td>
+                            <td>약점 — 규칙 기술이 어려움</td>
+                            <td>강점 — anomaly detection 등</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">학습 데이터</td>
+                            <td>거의 불필요, 샘플 몇 개로 설정</td>
+                            <td>대량의 라벨링 데이터 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">처리 속도</td>
+                            <td>빠름, 가벼움</td>
+                            <td>상대적으로 무거움 (GPU 의존)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">판정 설명 가능성</td>
+                            <td>높음 — 왜 불량인지 추적 가능</td>
+                            <td>낮음 — 판정 근거가 불투명</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">조건 변경 대응</td>
+                            <td>파라미터 조정으로 즉시 대응</td>
+                            <td>재학습 필요, 시간·비용 큼</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="hybrid"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 하이브리드 — 섞어 쓰는 것이 현실</h3>
+
+                <p>현장의 좋은 답은 보통 둘 중 하나가 아니라 <strong>하이브리드</strong>다. 전통적 비전으로 대상물을 정렬하고 ROI를 잡은 다음, 그 안에서 규칙화하기 어려운 표면 결함만 딥러닝으로 판정하는 식이다. 정렬·치수·코드처럼 규칙이 명확한 부분은 빠르고 설명 가능한 전통적 비전이 맡고, 불규칙한 외관·표면 결함처럼 규칙화가 막히는 부분만 딥러닝에 넘긴다. 각자 잘하는 영역을 분담시키는 것이 전략의 요점이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>선택 기준은 "규칙화 가능성"</strong>
+                        전통이냐 딥러닝이냐를 가르는 한 가지 질문은 "이 검사를 명시적 규칙으로 적을 수 있는가"다. 적을 수 있으면 전통적 비전이 거의 항상 더 낫다 — 빠르고, 가볍고, 설명 가능하고, 데이터가 필요 없다. 규칙으로 적으려다 보면 예외가 끝없이 늘어나는 검사, 그것이 딥러닝의 자리다.
+                    </div>
+                </div>
+
+                <!-- 9. 판정 설계 -->
+                <h2 id="decision"><i class="fa-solid fa-scale-balanced"></i> 판정 설계</h2>
+
+                <p>알고리즘이 feature 값을 뽑아냈다면, 마지막 단계는 그 값으로 양품/불량을 가르는 <strong>판정 설계</strong>다. 알고리즘 선택만큼이나 판정 설계가 검사 시스템의 신뢰성을 좌우한다.</p>
+
+                <h3 id="decision-threshold"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 단일 임계값의 위험</h3>
+
+                <p>가장 흔한 함정이 <strong>단일 임계값</strong>(single threshold) 하나로 판정하는 것이다. "결함 면적 100 이상이면 불량"처럼 선 하나를 긋는 방식이다. 문제는 정상품과 불량품의 feature 값 분포가 그 선 근처에서 겹친다는 점이다. 선을 어디에 두든 정상품을 불량으로 버리거나(false reject) 불량품을 통과시키는(false accept) 일이 생긴다. 임계값을 한쪽으로 조이면 다른 쪽이 나빠진다.</p>
+
+                <h3 id="decision-combo"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 복수 feature 조합과 마진</h3>
+
+                <p>해법의 방향은 <strong>판정 근거를 여러 개로 늘리는 것</strong>이다. 면적 하나가 아니라 면적·둘레·종횡비·대비를 함께 보고, 이들의 조합으로 판정하면 정상·불량의 분리가 훨씬 선명해진다. 또한 정상품 feature 분포의 가장자리에 임계값을 딱 붙이지 않고 <strong>마진</strong>(여유)을 두는 것이 중요하다. 조명 변동, 대상물 편차 같은 현실의 흔들림을 마진이 흡수해 준다.</p>
+
+                <h3 id="decision-stat"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 통계적 판정</h3>
+
+                <p>한 걸음 더 나아가면, 충분한 정상품 데이터로 feature의 정상 분포를 구하고 그 분포에서 벗어난 정도로 판정하는 <strong>통계적 접근</strong>이 있다. "정상 평균에서 표준편차의 몇 배 이상 벗어나면 불량"처럼 분포 기반으로 경계를 정하면, 임의의 숫자를 손으로 정하는 것보다 근거가 분명하고 라인 변동에도 더 견딘다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>false reject와 false accept — 3편과 연결</strong>
+                        3편에서 검사 파이프라인을 다루며 false reject(정상품 오버킬)와 false accept(불량품 유출)의 트레이드오프를 짚었다. 판정 설계는 결국 이 두 오류의 균형을 잡는 작업이다. 어느 쪽이 더 치명적인지는 제품에 따라 다르다 — 안전 부품은 false accept를 극도로 경계하고, 고가품은 false reject 비용이 크다. 판정 임계값은 알고리즘이 아니라 이 비즈니스 판단으로 정해진다.
+                    </div>
+                </div>
+
+                <!-- 10. 전략 선택 가이드 -->
+                <h2 id="strategy-map"><i class="fa-solid fa-map"></i> 알고리즘 전략 선택 가이드</h2>
+
+                <p>지금까지의 내용을 검사 유형별로 한눈에 보이게 정리한다. 실제 검사를 설계할 때는 "이 검사가 어느 유형인가"를 먼저 판단하고, 1차 후보를 적용해 본 뒤 한계가 보이면 2차 후보로 넘어가는 순서가 자연스럽다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>검사 유형</th>
+                            <th>1차 후보 (먼저 시도)</th>
+                            <th>2차 후보 (1차 한계 시)</th>
+                            <th>주의점</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">위치 정렬</td>
+                            <td>기준 패턴 매칭 (모서리·마크·구멍)</td>
+                            <td>다중 패턴, 형상 기반 매칭</td>
+                            <td>모든 검사의 전제 — 여기가 흔들리면 전부 무너짐</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">외관·결함</td>
+                            <td>golden template 차영상 + blob 분석</td>
+                            <td>딥러닝 결함 검출 (다양·불규칙 결함)</td>
+                            <td>조명으로 결함을 먼저 보이게 — 알고리즘은 그다음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">치수·측정</td>
+                            <td>서브픽셀 edge + 기하 피팅</td>
+                            <td>(딥러닝 부적합) 측정 구도·렌즈 재검토</td>
+                            <td>캘리브레이션·텔레센트릭 렌즈가 정밀도를 결정</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">위치·조립</td>
+                            <td>ROI별 존재 판정 + 패턴 매칭</td>
+                            <td>feature 조합 판정, 딥러닝 분류</td>
+                            <td>"누락·오삽입"의 정의를 먼저 합의</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">표면</td>
+                            <td>텍스처·frequency 필터 분리</td>
+                            <td>딥러닝 anomaly detection (정상만 학습)</td>
+                            <td>조명 의존도 최고 — 조명 안정성이 선결 과제</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">문자·코드</td>
+                            <td>OCV / 표준 decode 라이브러리</td>
+                            <td>딥러닝 OCR (변형 많은 문자)</td>
+                            <td>안 읽히면 알고리즘보다 영상 품질부터</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 알고리즘 전략의 세 가지 원칙</div>
+                    <p><strong>1. 정렬이 먼저다</strong> — 어떤 검사든 위치 정렬이 안정적으로 되는지부터 확인한다. 정렬 없는 검사는 모래 위의 집이다.<br>
+                    <strong>2. 영상이 알고리즘에 앞선다</strong> — 결함이 영상에 안 보이면 어떤 알고리즘도 못 찾는다. 조명·렌즈·구도로 "보이게 만드는 것"이 절반 이상이다.<br>
+                    <strong>3. 단순한 것부터</strong> — 전통적 비전으로 풀리면 전통적 비전으로 푼다. 빠르고, 설명 가능하고, 데이터가 필요 없다. 딥러닝은 규칙화가 막힌 곳에서 꺼낸다.</p>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>이 글은 전략 지도다</strong>
+                        이 글은 개별 알고리즘의 구현이 아니라 "어떤 검사에 어떤 접근을 쓰는가"의 지도다. 여기서 방향을 잡았다면, 구체적인 구현은 HALCON 시리즈와 향후 OpenCV 시리즈에서 각 알고리즘을 깊게 다룬다. 패턴 매칭, 서브픽셀 edge, blob 분석, 캘리브레이션을 코드 수준에서 어떻게 다루는지는 그 시리즈에서 이어진다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>MVTec — HALCON Solution Guide: Machine Vision (matching, measuring, OCR, blob analysis)</li>
+                        <li>MVTec — MVTec AD (Anomaly Detection) Dataset 및 산업 이상 탐지 연구</li>
+                        <li>Cognex — Introduction to Machine Vision 및 Pattern Matching / ID Reading 자료</li>
+                        <li>E. R. Davies — Computer and Machine Vision: Theory, Algorithms, Practicalities</li>
+                        <li>ISO/IEC 16022 — Data Matrix bar code symbology specification</li>
+                        <li>OpenCV Documentation — Camera Calibration, Feature Detection, Contour Analysis</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-factory');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-factory');
+</script>
+
+</body>
+</html>
