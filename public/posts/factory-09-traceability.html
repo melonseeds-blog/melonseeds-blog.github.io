@@ -1,0 +1,894 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>추적성(Traceability) — 부품 단위 이력 관리 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">추적성이란</a>
+        <a href="#direction" data-section="direction">정방향·역방향</a>
+        <a href="#id-methods" data-section="id-methods">식별 수단</a>
+        <a href="#data-matrix" data-section="data-matrix">데이터 매트릭스</a>
+        <a href="#vision" data-section="vision">머신비전과 추적성</a>
+        <a href="#grading" data-section="grading">코드 품질 등급</a>
+        <a href="#data-flow" data-section="data-flow">추적 데이터 흐름</a>
+        <a href="#marking" data-section="marking">마킹 방식</a>
+        <a href="#problems" data-section="problems">흔한 문제</a>
+        <a href="#checklist" data-section="checklist">설계 체크리스트</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">스마트 공장</span>
+                </div>
+                <h1>추적성(Traceability) — 부품 단위 이력 관리</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>추적성의 정의와 필요성 — 리콜 대응, 품질 책임, 규제</li>
+                        <li>정방향 추적과 역방향 추적의 차이와 쓰임</li>
+                        <li>식별 수단 비교 — 1D 바코드, 2D 데이터 매트릭스, QR, DPM, RFID</li>
+                        <li>2D 데이터 매트릭스가 산업에서 표준이 된 이유</li>
+                        <li>머신비전의 두 역할 — 코드 리딩과 코드 품질 검증(OCV)</li>
+                        <li>코드 품질 등급 — ISO/IEC 15415, 15416</li>
+                        <li>각 공정의 스캔 데이터가 MES로 모이는 추적 데이터 흐름</li>
+                        <li>마킹 방식 비교와 추적성 구축 시 흔한 문제, 설계 체크리스트</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">추적성이란 무엇인가</a></li>
+                        <li><a href="#direction">정방향 추적과 역방향 추적</a></li>
+                        <li><a href="#id-methods">제품을 식별하는 수단</a></li>
+                        <li><a href="#data-matrix">2D 데이터 매트릭스가 표준이 된 이유</a></li>
+                        <li><a href="#vision">머신비전과 추적성</a></li>
+                        <li><a href="#grading">코드 품질 등급(Grading)</a></li>
+                        <li><a href="#data-flow">추적 데이터의 흐름</a></li>
+                        <li><a href="#marking">마킹 방식 — 코드를 새기는 법</a></li>
+                        <li><a href="#problems">추적성 구축 시 흔한 문제</a></li>
+                        <li><a href="#checklist">추적성 시스템 설계 체크리스트</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 추적성이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-magnifying-glass-location"></i> 추적성이란 무엇인가</h2>
+
+                <p><strong>추적성</strong>(Traceability)은 제품이나 부품이 <strong>언제, 어디서, 어떤 공정을 거쳤는지</strong>를 빠짐없이 되짚을 수 있는 능력을 말한다. 핵심은 "되짚을 수 있다"는 점이다. 생산이 끝난 뒤에도 특정 제품 하나를 골라, 그것이 어느 라인에서 몇 시에 만들어졌고, 어떤 원자재 로트를 썼고, 각 공정의 검사 결과가 무엇이었는지를 데이터로 확인할 수 있어야 추적성이 있다고 말한다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 추적성 = 식별 + 기록 + 연결</div>
+                    <p><strong>식별</strong>은 제품 하나하나에 고유한 이름표를 붙이는 것이다. 시리얼 번호를 바코드나 데이터 매트릭스로 새긴다. <strong>기록</strong>은 각 공정에서 그 제품에 일어난 일을 데이터로 남기는 것이다. 어떤 설비가, 몇 시에, 어떤 파라미터로 작업했고 검사 결과가 무엇이었는지를 적는다. <strong>연결</strong>은 이 기록들을 시리얼 번호를 열쇠로 삼아 하나로 묶는 것이다. 세 가지가 모두 갖춰져야 "그 제품의 이력"을 통째로 꺼내볼 수 있다.</p>
+                </div>
+
+                <h3 id="why-needed"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 추적성이 필요한 세 가지 이유</h3>
+
+                <p>추적성은 "있으면 좋은 것"이 아니라 제조업에서 점점 "없으면 안 되는 것"이 되고 있다. 이유는 크게 세 가지다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">리콜 대응</span>
+                        <span class="term-desc">특정 원자재 로트에 문제가 발견됐을 때, 추적성이 없으면 그 로트가 들어간 제품을 특정할 수 없어 전량 리콜로 번진다. 추적성이 있으면 영향받은 제품만 골라낼 수 있어 리콜 범위와 비용이 극적으로 줄어든다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">품질 책임</span>
+                        <span class="term-desc">고객 클레임이 들어왔을 때, 해당 제품의 검사 이력을 즉시 꺼내 "정상 검사를 통과했는지" 입증할 수 있다. 책임 소재를 자사 공정·협력사·고객 사용 환경 중 어디로 좁힐지 데이터로 판단한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">규제 대응</span>
+                        <span class="term-desc">자동차(IATF 16949), 의료기기(UDI), 항공, 식품 등 다수 산업은 부품 단위 이력 관리를 법규나 산업 표준으로 의무화한다. 추적성 없이는 납품 자격 자체가 없는 경우가 많다.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>로트 단위 추적과 부품 단위 추적</strong>
+                        추적의 단위는 두 가지다. <strong>로트(Lot) 단위</strong>는 "이 묶음 전체"를 하나로 본다. 관리는 쉽지만 문제가 생기면 로트 전체가 영향 범위가 된다. <strong>부품(Unit/Serial) 단위</strong>는 제품 하나하나를 개별 추적한다. 관리 비용은 크지만 문제 발생 시 영향 범위를 최소한으로 좁힐 수 있다. 이 글이 다루는 것은 부품 단위 추적이며, 스마트 공장이 지향하는 방향이다.
+                    </div>
+                </div>
+
+                <!-- 2. 정방향·역방향 -->
+                <h2 id="direction"><i class="fa-solid fa-arrows-left-right"></i> 정방향 추적과 역방향 추적</h2>
+
+                <p>추적은 방향이 있다. 원자재에서 완제품 쪽으로 따라가는 <strong>정방향 추적</strong>(Forward Traceability)과, 완제품에서 원자재 쪽으로 거슬러 올라가는 <strong>역방향 추적</strong>(Backward Traceability)이다. 둘은 쓰는 상황이 다르다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrow-right" style="color:#1565c0;"></i> 정방향 추적</h4>
+                        <p><strong>원자재 → 완제품</strong> 방향으로 추적한다. "이 원자재 로트가 어떤 제품들에 들어갔는가"를 묻는다.</p>
+                        <ul>
+                            <li>원자재 불량 발견 시 영향받은 완제품 목록 추출</li>
+                            <li>리콜 대상 범위 산정</li>
+                            <li>특정 설비 이상 시 그 설비를 거친 제품 격리</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrow-left" style="color:#e65100;"></i> 역방향 추적</h4>
+                        <p><strong>완제품 → 원자재</strong> 방향으로 추적한다. "이 제품은 무엇으로, 어떻게 만들어졌는가"를 묻는다.</p>
+                        <ul>
+                            <li>고객 클레임 제품의 원인 공정 분석</li>
+                            <li>불량품의 원자재 로트·설비·작업 조건 확인</li>
+                            <li>품질 문제의 근본 원인 규명</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p>실제 추적성 시스템은 두 방향을 모두 지원해야 한다. 데이터 구조 관점에서 보면, 각 제품의 시리얼 번호에 그것이 소비한 원자재 로트와 거쳐 간 공정 기록이 모두 연결돼 있으면, 같은 데이터를 어느 방향으로 질의하느냐의 차이일 뿐이다. 정방향은 "원자재 로트 → 시리얼"로, 역방향은 "시리얼 → 원자재 로트"로 질의한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>두 방향을 한 문장으로</strong>
+                        정방향은 "문제의 원자재가 어디까지 퍼졌나"를 묻고, 역방향은 "문제의 제품이 어디서 비롯됐나"를 묻는다. 리콜은 정방향, 원인 분석은 역방향이 주력이다.
+                    </div>
+                </div>
+
+                <!-- 3. 식별 수단 -->
+                <h2 id="id-methods"><i class="fa-solid fa-barcode"></i> 제품을 식별하는 수단</h2>
+
+                <p>추적성의 출발점은 제품에 고유 식별자를 부여하는 것이다. 식별자를 물리적으로 제품에 담는 수단은 여러 가지이며, 각각 담을 수 있는 정보량, 필요한 면적, 손상에 견디는 정도, 비용이 다르다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">1D 바코드</span>
+                        <span class="term-desc">굵기가 다른 막대의 배열로 정보를 표현한다. 구조가 단순하고 인쇄·판독이 쉽지만, 한 방향으로만 정보를 담아 용량이 작고 넓은 가로 면적이 필요하다. 일부만 손상돼도 판독이 어렵다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">2D 데이터 매트릭스</span>
+                        <span class="term-desc">정사각형 셀의 격자로 정보를 표현한다. 작은 면적에 많은 정보를 담고, 에러 정정 기능으로 일부 손상돼도 복원이 된다. 산업 부품 직접 마킹(DPM)에 가장 널리 쓰인다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">QR 코드</span>
+                        <span class="term-desc">2D 코드의 일종으로, 세 모서리의 큰 위치 검출 패턴이 특징이다. 데이터 매트릭스보다 빠른 인식과 큰 용량에 강점이 있어 물류·소비재에서 흔하지만, 작은 산업 부품 마킹에는 면적 효율이 떨어진다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">DPM</span>
+                        <span class="term-desc">Direct Part Marking. 라벨을 붙이는 것이 아니라 부품 표면에 코드를 직접 새기는 방식이다. 라벨이 떨어지거나 타버릴 환경(고온, 세척, 장기 사용)에서 영구 식별이 필요할 때 쓴다. 보통 데이터 매트릭스를 새긴다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">RFID</span>
+                        <span class="term-desc">무선 태그에 정보를 저장하고 전파로 읽는다. 비접촉·비가시 판독이 가능하고 다수를 한 번에 읽으며 데이터 갱신도 된다. 그러나 태그 단가가 높고 금속·액체 환경에서 간섭이 생긴다. 머신비전의 대상이 아니다.</span>
+                    </div>
+                </div>
+
+                <h3 id="id-compare"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 식별 수단 비교</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>식별 수단</th>
+                            <th>정보 용량</th>
+                            <th>필요 면적</th>
+                            <th>손상 내성</th>
+                            <th>적합한 상황</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">1D 바코드</td>
+                            <td>작음 (수십 자)</td>
+                            <td>넓은 가로 폭</td>
+                            <td>낮음</td>
+                            <td>라벨 부착이 쉬운 일반 포장·물류</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">2D 데이터 매트릭스</td>
+                            <td>큼 (수천 자)</td>
+                            <td>매우 작음</td>
+                            <td>높음 (에러 정정)</td>
+                            <td>작은 산업 부품, DPM, 전자·자동차</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">QR 코드</td>
+                            <td>매우 큼</td>
+                            <td>중간</td>
+                            <td>높음 (에러 정정)</td>
+                            <td>물류, 소비재, URL·다국어 정보</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DPM (데이터 매트릭스)</td>
+                            <td>큼</td>
+                            <td>매우 작음</td>
+                            <td>매우 높음 (영구 마킹)</td>
+                            <td>고온·세척·장수명 부품의 영구 식별</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">RFID</td>
+                            <td>큼 (갱신 가능)</td>
+                            <td>태그 부착 공간</td>
+                            <td>높음 (비가시 판독)</td>
+                            <td>비접촉·다수 동시 판독, 자산 추적</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>코드는 보통 "열쇠"만 담는다</strong>
+                        코드에 제품의 모든 이력을 다 담을 필요는 없고, 그렇게 하지도 않는다. 코드에는 보통 고유 시리얼 번호 같은 <strong>열쇠</strong>만 담고, 실제 이력 데이터는 MES·데이터베이스에 저장한다. 코드를 읽어 열쇠를 얻고, 그 열쇠로 DB에서 이력을 조회하는 구조다. 그래서 작은 데이터 매트릭스 하나로도 충분하다.
+                    </div>
+                </div>
+
+                <!-- 4. 데이터 매트릭스 -->
+                <h2 id="data-matrix"><i class="fa-solid fa-table-cells"></i> 2D 데이터 매트릭스가 표준이 된 이유</h2>
+
+                <p>산업 현장에서 부품에 새겨진 코드를 보면 대부분 정사각형의 작은 점 격자, 즉 데이터 매트릭스(Data Matrix, ISO/IEC 16022)다. 1D 바코드나 QR이 아니라 데이터 매트릭스가 산업 표준처럼 자리잡은 데에는 분명한 이유가 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 데이터 매트릭스가 산업에 맞는 세 가지 이유</div>
+                    <p><strong>1. 작은 면적</strong> — 2차원으로 정보를 담아 1D 바코드보다 훨씬 작은 면적에 같은 양을 넣는다. 손가락 끝만 한 부품, 좁은 PCB 여백, 작은 커넥터에도 마킹할 수 있다.<br>
+                    <strong>2. 손상 복원</strong> — 리드-솔로몬 에러 정정(Error Correction)을 내장해, 코드의 일부가 긁히거나 오염되거나 일부 셀이 깨져도 원래 데이터를 복원한다. 산업 부품은 후공정에서 긁히고 더러워지므로 이 특성이 결정적이다.<br>
+                    <strong>3. DPM 가능</strong> — 위치 검출 패턴이 두 변의 단순한 실선(L자 파인더)과 점선이라, 레이저·도트핀으로 직접 새기기 쉽다. 라벨 없이 부품 표면에 영구 마킹할 수 있다.</p>
+                </div>
+
+                <p>QR 코드도 2D이고 에러 정정도 있지만, 세 모서리의 큰 위치 검출 패턴이 면적을 많이 차지한다. 같은 정보를 담을 때 데이터 매트릭스가 더 작게 들어간다. 산업 부품은 마킹할 공간이 늘 부족하므로, 이 면적 효율이 데이터 매트릭스를 선택하게 만든다. QR은 면적 여유가 있고 사람이 스마트폰으로 읽을 일이 있는 소비재·물류 쪽에 더 맞는다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>에러 정정이 곧 현장 신뢰성</strong>
+                        데이터 매트릭스의 에러 정정은 "보험"이 아니라 "필수"다. 부품은 마킹된 뒤에도 세척, 조립, 운반을 거치며 코드가 일부 손상된다. 에러 정정이 없으면 그 손상이 곧 판독 실패다. 에러 정정 덕분에 일부 손상돼도 끝까지 읽혀, 추적 데이터에 구멍이 생기지 않는다.
+                    </div>
+                </div>
+
+                <!-- 5. 머신비전과 추적성 -->
+                <h2 id="vision"><i class="fa-solid fa-eye"></i> 머신비전과 추적성</h2>
+
+                <p>코드를 부품에 새기는 것만으로는 추적성이 완성되지 않는다. 그 코드를 각 공정에서 정확히 <strong>읽어내고</strong>, 새겨진 코드가 애초에 <strong>잘 찍혔는지 검증</strong>하는 일이 필요하다. 이 두 가지가 머신비전이 추적성에서 맡는 역할이다.</p>
+
+                <h3 id="code-reading"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 코드 리딩 — 코드를 읽는다</h3>
+
+                <p>코드 리딩(Code Reading)은 카메라로 부품의 코드를 촬영해 그 안에 담긴 데이터를 디코딩하는 작업이다. 단순해 보이지만 산업 현장에서는 쉽지 않다. 부품이 기울어 있거나, 코드가 곡면에 있거나, 표면이 반사되거나, 조명이 고르지 않으면 인식이 어렵다. 그래서 코드 리딩은 적절한 조명 설계와 함께 가야 한다. 특히 DPM 코드는 표면과 코드의 명암 대비가 약해 동축 조명, 돔 조명 같은 전용 조명 기법이 거의 필수다.</p>
+
+                <h3 id="code-ocv"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 코드 품질 검증 — 코드가 잘 찍혔는지 본다</h3>
+
+                <p>코드를 새긴 직후, 그 코드가 규격에 맞게 잘 찍혔는지 검사하는 것이 코드 품질 검증이다. 이것을 <strong>OCV</strong>(Optical Character Verification) 또는 코드 검증(Code Verification)이라고 부른다. 읽기(Reading)가 "이 코드가 무슨 값인가"를 묻는다면, 검증(Verification)은 "이 코드가 얼마나 잘 찍혔는가"를 묻는다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"지금 읽힌다"와 "끝까지 읽힌다"는 다르다</strong>
+                        마킹 직후에는 깨끗해서 품질이 낮은 코드도 일단 읽힌다. 문제는 그 부품이 세척·조립·운반을 거친 뒤다. 품질 등급이 낮은 코드는 약간의 손상만 더해져도 후공정에서 판독에 실패한다. 그 순간 추적 데이터에 구멍이 생긴다. 그래서 마킹 직후 품질 등급을 검증해, 낮은 등급은 그 자리에서 걸러내야 한다.
+                    </div>
+                </div>
+
+                <!-- 6. 코드 품질 등급 -->
+                <h2 id="grading"><i class="fa-solid fa-ranking-star"></i> 코드 품질 등급(Grading)</h2>
+
+                <p>코드 품질을 주관적으로 "좋다/나쁘다"로 판단하면 공급망 전체에서 기준이 흔들린다. 그래서 국제 표준이 코드 품질을 정량적인 <strong>등급(Grade)</strong>으로 매기는 방법을 정의한다. 1D 바코드는 <code>ISO/IEC 15416</code>, 2D 코드(데이터 매트릭스·QR)는 <code>ISO/IEC 15415</code>가 등급 산정 방법을 규정한다.</p>
+
+                <h3 id="grade-params"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 무엇을 평가하는가</h3>
+
+                <p>2D 코드 등급(ISO/IEC 15415)은 여러 항목을 각각 평가하고, 그중 가장 낮은 점수를 최종 등급으로 삼는다. 가장 약한 고리가 전체를 결정한다는 사고방식이다. 평가 항목의 예는 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>평가 항목</th>
+                            <th>무엇을 보는가</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Symbol Contrast</td>
+                            <td>코드의 밝은 셀과 어두운 셀 사이 명암 대비가 충분한가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Modulation</td>
+                            <td>각 셀의 밝기가 흔들림 없이 일관되게 구분되는가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Fixed Pattern Damage</td>
+                            <td>위치 검출 패턴(L자 파인더, 점선)이 손상되지 않았는가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Axial Non-uniformity</td>
+                            <td>격자가 가로·세로 방향으로 균일한가 (찌그러지지 않았는가)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Grid Non-uniformity</td>
+                            <td>셀 격자가 이상적인 위치에서 얼마나 어긋났는가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Unused Error Correction</td>
+                            <td>에러 정정 여력이 얼마나 남아 있는가 (적게 쓸수록 좋음)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="grade-scale"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 등급 척도</h3>
+
+                <p>최종 등급은 보통 <strong>A · B · C · D · F</strong>의 문자 등급, 또는 <strong>4.0 ~ 0</strong>의 숫자 등급으로 표현한다. A(4.0)가 가장 좋고 F(0)가 불합격이다. 산업에서는 보통 고객사가 "C등급(1.5) 이상" 같은 최소 기준을 요구하며, 그 기준을 마킹 직후 검증으로 보증한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>등급이 낮으면 후공정에서 못 읽는다</strong>
+                        품질 등급은 "이 코드가 앞으로도 안정적으로 읽힐 가능성"을 나타내는 점수다. 등급이 낮다는 것은 명암 대비가 약하거나 격자가 찌그러졌다는 뜻이고, 거기에 후공정의 오염·손상이 더해지면 판독 실패로 직결된다. 마킹 공정에서 등급 검증을 빼면, 추적성의 구멍은 한참 뒤 다른 공장에서 발견된다.
+                    </div>
+                </div>
+
+                <!-- 7. 추적 데이터 흐름 -->
+                <h2 id="data-flow"><i class="fa-solid fa-diagram-project"></i> 추적 데이터의 흐름</h2>
+
+                <p>추적성의 실체는 결국 데이터다. 부품이 라인을 따라 흐르는 동안, 각 공정에서 코드를 스캔하고 그 시점의 정보를 기록해 데이터베이스에 쌓는다. 이 흐름이 끊김 없이 이어져야 나중에 "그 제품의 전체 이력"을 꺼낼 수 있다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 380" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrFlow" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                            <marker id="arrUp" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#1565c0"/></marker>
+                        </defs>
+                        <text x="360" y="24" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">추적 데이터 흐름 — 각 공정의 스캔이 MES로 모인다</text>
+
+                        <!-- 마킹 공정 -->
+                        <rect x="20" y="56" width="150" height="84" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="95" y="80" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">① 마킹 공정</text>
+                        <text x="95" y="98" text-anchor="middle" font-size="9" fill="#fb8c00">시리얼 코드 마킹</text>
+                        <text x="95" y="112" text-anchor="middle" font-size="9" fill="#fb8c00">코드 품질 등급 검증</text>
+                        <text x="95" y="126" text-anchor="middle" font-size="9" fill="#fb8c00">시리얼 발번·등록</text>
+
+                        <line x1="170" y1="98" x2="202" y2="98" stroke="#4caf50" stroke-width="2" marker-end="url(#arrFlow)"/>
+
+                        <!-- 가공/조립 공정 -->
+                        <rect x="204" y="56" width="150" height="84" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="279" y="80" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">② 가공·조립 공정</text>
+                        <text x="279" y="98" text-anchor="middle" font-size="9" fill="#42a5f5">코드 스캔(리딩)</text>
+                        <text x="279" y="112" text-anchor="middle" font-size="9" fill="#42a5f5">설비ID·작업조건 기록</text>
+                        <text x="279" y="126" text-anchor="middle" font-size="9" fill="#42a5f5">투입 원자재 로트 연결</text>
+
+                        <line x1="354" y1="98" x2="386" y2="98" stroke="#4caf50" stroke-width="2" marker-end="url(#arrFlow)"/>
+
+                        <!-- 검사 공정 -->
+                        <rect x="388" y="56" width="150" height="84" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="463" y="80" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">③ 검사 공정</text>
+                        <text x="463" y="98" text-anchor="middle" font-size="9" fill="#42a5f5">코드 스캔(리딩)</text>
+                        <text x="463" y="112" text-anchor="middle" font-size="9" fill="#42a5f5">측정값·판정·검사이미지</text>
+                        <text x="463" y="126" text-anchor="middle" font-size="9" fill="#42a5f5">검사 시각 기록</text>
+
+                        <line x1="538" y1="98" x2="570" y2="98" stroke="#4caf50" stroke-width="2" marker-end="url(#arrFlow)"/>
+
+                        <!-- 출하 공정 -->
+                        <rect x="572" y="56" width="128" height="84" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="636" y="80" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">④ 출하</text>
+                        <text x="636" y="98" text-anchor="middle" font-size="9" fill="#66bb6a">코드 스캔(리딩)</text>
+                        <text x="636" y="112" text-anchor="middle" font-size="9" fill="#66bb6a">출하처·출하시각 기록</text>
+                        <text x="636" y="126" text-anchor="middle" font-size="9" fill="#66bb6a">납품 단위 묶음</text>
+
+                        <!-- 각 공정에서 DB로 내려가는 화살표 -->
+                        <line x1="95" y1="140" x2="95" y2="244" stroke="#1565c0" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arrUp)"/>
+                        <line x1="279" y1="140" x2="279" y2="244" stroke="#1565c0" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arrUp)"/>
+                        <line x1="463" y1="140" x2="463" y2="244" stroke="#1565c0" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arrUp)"/>
+                        <line x1="636" y1="140" x2="636" y2="244" stroke="#1565c0" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arrUp)"/>
+                        <text x="360" y="190" text-anchor="middle" font-size="9.5" fill="#1565c0" font-weight="600">스캔할 때마다 — 시리얼 + 공정 + 설비 + 시각 + 결과를 기록</text>
+
+                        <!-- MES / DB -->
+                        <rect x="120" y="248" width="480" height="58" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="360" y="272" text-anchor="middle" font-size="12" fill="#2e7d32" font-weight="700">MES / 추적성 데이터베이스</text>
+                        <text x="360" y="292" text-anchor="middle" font-size="9.5" fill="#66bb6a">시리얼 번호를 열쇠로 모든 공정 기록을 하나로 연결 — 부품 단위 이력 완성</text>
+
+                        <!-- 질의 -->
+                        <rect x="120" y="324" width="230" height="40" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="235" y="341" text-anchor="middle" font-size="9.5" fill="#1565c0" font-weight="700">역방향 질의 — 시리얼 → 이력</text>
+                        <text x="235" y="356" text-anchor="middle" font-size="8.5" fill="#42a5f5">"이 제품은 어떻게 만들어졌나"</text>
+                        <rect x="370" y="324" width="230" height="40" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="485" y="341" text-anchor="middle" font-size="9.5" fill="#e65100" font-weight="700">정방향 질의 — 로트 → 시리얼 목록</text>
+                        <text x="485" y="356" text-anchor="middle" font-size="8.5" fill="#fb8c00">"이 원자재가 어디까지 퍼졌나"</text>
+                    </svg>
+                    <div class="caption">그림 1. 추적 데이터의 흐름 — 각 공정에서 코드를 스캔할 때마다 시점·설비·결과가 시리얼 번호에 묶여 MES에 쌓이고, 나중에 양방향으로 질의된다</div>
+                </div>
+
+                <p>핵심은 <strong>모든 공정에서 빠짐없이 스캔하고 기록한다</strong>는 점이다. 한 공정이라도 스캔을 누락하면 그 제품의 이력에 끊긴 구간이 생기고, 그 구간에서 발생한 문제는 추적할 수 없다. 그래서 추적성 시스템 설계에서 가장 중요한 원칙은 "데이터 흐름에 구멍을 만들지 않는다"는 것이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>스캔은 게이트 역할도 한다</strong>
+                        각 공정의 코드 스캔은 단순 기록을 넘어 "이 부품이 이 공정에 들어와도 되는가"를 판단하는 게이트로도 쓰인다. 앞 공정 검사에서 불량 판정된 시리얼이 스캔되면 그 자리에서 라인을 멈춰 후공정 진입을 막는다. 추적 데이터가 실시간 품질 게이트로 작동하는 것이다.
+                    </div>
+                </div>
+
+                <!-- 8. 마킹 방식 -->
+                <h2 id="marking"><i class="fa-solid fa-pen-nib"></i> 마킹 방식 — 코드를 새기는 법</h2>
+
+                <p>부품에 코드를 새기는 방식은 재질과 요구 내구성에 따라 선택한다. 크게 레이저, 잉크젯, 도트핀 세 가지가 쓰이며, 각각 장단이 뚜렷하다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">레이저 마킹</span>
+                        <span class="term-desc">레이저로 표면을 태우거나 깎거나 변색시켜 코드를 새긴다. 영구적이고 정밀하며 비접촉이라 부품에 물리적 부담이 없다. 금속·플라스틱 등 폭넓은 재질에 쓰지만 설비 단가가 높고 재질별 파라미터 튜닝이 필요하다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">잉크젯 마킹</span>
+                        <span class="term-desc">잉크를 분사해 코드를 인쇄한다. 빠르고 저렴하며 곡면·다양한 재질에 대응한다. 그러나 잉크는 마모·용제·세척에 약해 내구성이 낮다. 포장·박스 등 영구성이 필요 없는 곳에 적합하다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">도트핀 마킹</span>
+                        <span class="term-desc">핀으로 표면을 두드려 작은 점을 찍어 코드를 만든다(점각). 깊게 새겨 매우 견고하고 거친 금속 표면에 강하다. 다만 소음·진동이 있고 속도가 느리며, 점이 만드는 명암 대비가 약해 판독에 전용 조명이 필요하다.</span>
+                    </div>
+                </div>
+
+                <h3 id="marking-compare"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 마킹 방식 비교</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>마킹 방식</th>
+                            <th>내구성</th>
+                            <th>속도</th>
+                            <th>적합 재질</th>
+                            <th>적합한 상황</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">레이저</td>
+                            <td>매우 높음 (영구)</td>
+                            <td>빠름</td>
+                            <td>금속, 플라스틱 등 폭넓음</td>
+                            <td>장수명 부품의 정밀·영구 마킹 (DPM)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">잉크젯</td>
+                            <td>낮음 (마모·세척에 약함)</td>
+                            <td>매우 빠름</td>
+                            <td>곡면·다양한 재질</td>
+                            <td>포장·박스 등 영구성 불필요한 마킹</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">도트핀</td>
+                            <td>매우 높음 (깊은 점각)</td>
+                            <td>느림</td>
+                            <td>거친 금속 표면</td>
+                            <td>거칠고 가혹한 환경의 금속 부품 (DPM)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>마킹 방식이 판독 난이도를 결정한다</strong>
+                        마킹 방식은 머신비전의 판독 난이도와 직결된다. 레이저·도트핀으로 새긴 DPM 코드는 코드와 표면의 명암 대비가 약하고 표면 반사가 심해, 일반 조명으로는 잘 안 읽힌다. 동축 조명·돔 조명 같은 전용 조명 설계가 거의 필수다. 마킹 방식을 정할 때 판독 시스템의 조명까지 함께 설계해야 한다.
+                    </div>
+                </div>
+
+                <!-- 9. 흔한 문제 -->
+                <h2 id="problems"><i class="fa-solid fa-triangle-exclamation"></i> 추적성 구축 시 흔한 문제</h2>
+
+                <p>추적성 시스템은 개념은 단순하지만 현장에서는 여러 지점에서 무너진다. 미리 알아두면 설계 단계에서 막을 수 있는 대표적인 문제들이다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-barcode" style="color:#ef4444;"></i> 코드 미인식</h4>
+                        <p>마킹 품질이 낮거나 조명이 부적절해 코드가 안 읽힌다. 곡면·반사 표면, DPM의 약한 대비가 흔한 원인이다. 마킹 등급 검증과 전용 조명 설계로 막는다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-database" style="color:#e65100;"></i> 데이터 누락</h4>
+                        <p>스캔은 됐는데 기록이 DB에 안 들어가거나, 통신 끊김으로 데이터가 유실된다. 스캔과 저장의 성공을 확인하고 실패 시 재시도·버퍼링하는 구조가 필요하다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-clock" style="color:#1565c0;"></i> 시각 동기화</h4>
+                        <p>설비마다 시계가 어긋나 있으면 공정 순서가 뒤바뀌어 기록된다. 이력의 시간축이 어긋나면 원인 분석이 불가능하다. NTP 등으로 전 설비 시각을 동기화해야 한다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-link-slash" style="color:#7b1fa2;"></i> 공정 누락</h4>
+                        <p>일부 공정에 스캔 지점이 없어 이력에 빈 구간이 생긴다. 그 구간의 문제는 영원히 추적 불가다. 모든 공정에 스캔 지점을 빠짐없이 두는 것이 원칙이다.</p>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>추적성은 가장 약한 고리만큼만 강하다</strong>
+                        열 개 공정 중 아홉 개가 완벽하게 스캔·기록해도, 한 공정이 누락되면 그 제품의 이력은 거기서 끊긴다. 그리고 끊긴 구간에서 문제가 터졌을 때는 손쓸 방법이 없다. 추적성 시스템의 신뢰도는 가장 잘된 공정이 아니라 가장 허술한 공정이 결정한다.
+                    </div>
+                </div>
+
+                <!-- 10. 체크리스트 -->
+                <h2 id="checklist"><i class="fa-solid fa-list-check"></i> 추적성 시스템 설계 체크리스트</h2>
+
+                <p>추적성 시스템을 설계하거나 점검할 때 짚어야 할 항목을 정리한다. 식별, 데이터, 검증, 운영 네 영역으로 나눠 본다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-fingerprint"></i> 식별 — 무엇으로 구분하는가</div>
+                    <p>· 식별 단위가 부품 단위인가 로트 단위인가, 요구 규제에 맞는가<br>
+                    · 식별 수단(데이터 매트릭스·QR·RFID 등)이 부품 크기·재질·환경에 맞는가<br>
+                    · 마킹 방식(레이저·잉크젯·도트핀)이 요구 내구성을 만족하는가<br>
+                    · 시리얼 번호 체계가 중복 없이 유일하며 향후 확장을 견디는가</p>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-diagram-project"></i> 데이터 — 무엇을, 어디에 남기는가</div>
+                    <p>· 모든 공정에 스캔 지점이 빠짐없이 있는가 (공정 누락 없음)<br>
+                    · 각 스캔에서 시리얼·공정·설비·시각·결과가 함께 기록되는가<br>
+                    · 투입 원자재 로트가 시리얼에 연결되는가 (정·역방향 추적 가능)<br>
+                    · 전 설비의 시각이 동기화돼 있는가<br>
+                    · 통신 끊김 시 데이터 재시도·버퍼링 구조가 있는가</p>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-circle-check"></i> 검증 — 제대로 동작하는가</div>
+                    <p>· 마킹 직후 코드 품질 등급(ISO/IEC 15415/15416)을 검증하는가<br>
+                    · 고객사 요구 최소 등급 기준을 정의하고 그 이하를 걸러내는가<br>
+                    · DPM 코드 판독을 위한 전용 조명이 설계됐는가<br>
+                    · 스캔·저장의 성공 여부를 확인하는가 (실패를 감지하는가)</p>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-gears"></i> 운영 — 끝까지 쓰이는가</div>
+                    <p>· 정방향·역방향 질의가 실용적인 속도로 가능한가<br>
+                    · 불량 시리얼이 후공정 진입을 막는 게이트로 작동하는가<br>
+                    · 이력 데이터의 보관 기간이 규제·고객 요구를 만족하는가<br>
+                    · 추적성 데이터가 MES·품질 분석과 연결돼 실제로 활용되는가</p>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>추적성은 "사고가 났을 때" 가치가 드러난다</strong>
+                        평소에는 추적성 시스템이 비용으로만 보인다. 그 가치는 리콜·클레임·감사 같은 사고 상황에서 한순간에 드러난다. 영향 범위를 좁혀 리콜 비용을 줄이고, 검사 이력으로 책임을 입증하고, 규제 감사를 통과한다. 그래서 추적성은 "쓸 일이 없기를 바라지만 반드시 갖춰야 하는" 시스템이다. 다음 편에서는 비전 시스템 자체의 신뢰성 — 검사가 안정적이고 재현되는지를 어떻게 보장하는가를 다룬다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>ISO/IEC 16022 — Data Matrix bar code symbology specification</li>
+                        <li>ISO/IEC 15415 — 2D 바코드 인쇄 품질 시험 규격 (Bar code print quality test specification — Two-dimensional symbols)</li>
+                        <li>ISO/IEC 15416 — 1D 바코드 인쇄 품질 시험 규격 (Bar code print quality test specification — Linear symbols)</li>
+                        <li>ISO/IEC 29158 — Direct Part Mark (DPM) Quality Guideline</li>
+                        <li>GS1 General Specifications — 식별 코드 체계 및 데이터 표준 (https://www.gs1.org)</li>
+                        <li>ISA-95 / IEC 62264 — Enterprise-Control System Integration (MES 추적성 관리)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-factory');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-factory');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,751 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>디지털 트윈 — 가상 공장 모델링 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#definition" data-section="definition">디지털 트윈이란</a>
+        <a href="#model-shadow-twin" data-section="model-shadow-twin">모델·섀도우·트윈</a>
+        <a href="#components" data-section="components">구성 요소</a>
+        <a href="#in-factory" data-section="in-factory">스마트 공장 활용</a>
+        <a href="#capabilities" data-section="capabilities">무엇을 할 수 있나</a>
+        <a href="#vision-twin" data-section="vision-twin">머신비전과 트윈</a>
+        <a href="#building" data-section="building">구축에 필요한 것</a>
+        <a href="#reality" data-section="reality">디지털 트윈의 현실</a>
+        <a href="#adoption" data-section="adoption">도입 단계와 고려사항</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">스마트 공장</span>
+                </div>
+                <h1>디지털 트윈 — 가상 공장 모델링</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>디지털 트윈의 정의 — 단순 3D 모델·시뮬레이션과 무엇이 다른가</li>
+                        <li>디지털 모델 / 디지털 섀도우 / 디지털 트윈의 구분 (데이터 연결 정도)</li>
+                        <li>디지털 트윈의 네 가지 구성 요소와 데이터 연결 구조</li>
+                        <li>설비·공정·공장 전체 — 스마트 공장에서의 활용 수준</li>
+                        <li>실시간 모니터링부터 가상 시운전까지, 무엇을 할 수 있나</li>
+                        <li>머신비전 검사 데이터와 디지털 트윈의 연계</li>
+                        <li>구축에 필요한 기술과 과장된 기대에 대한 경계</li>
+                        <li>정적 모델에서 양방향 트윈까지의 도입 단계와 고려사항</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#definition">디지털 트윈이란 무엇인가</a></li>
+                        <li><a href="#model-shadow-twin">디지털 모델 vs 섀도우 vs 트윈</a></li>
+                        <li><a href="#components">디지털 트윈의 구성 요소</a></li>
+                        <li><a href="#in-factory">스마트 공장에서의 활용</a></li>
+                        <li><a href="#capabilities">디지털 트윈으로 무엇을 할 수 있나</a></li>
+                        <li><a href="#vision-twin">머신비전·검사 데이터와 디지털 트윈</a></li>
+                        <li><a href="#building">구축에 필요한 것</a></li>
+                        <li><a href="#reality">디지털 트윈의 현실</a></li>
+                        <li><a href="#adoption">도입 단계와 고려사항</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 디지털 트윈이란 -->
+                <h2 id="definition"><i class="fa-solid fa-clone"></i> 디지털 트윈이란 무엇인가</h2>
+
+                <p><strong>디지털 트윈</strong>(Digital Twin)은 물리적인 자산·공정·시스템을 가상 공간에 복제한 모델을 말한다. 설비 한 대일 수도 있고, 생산 라인 하나일 수도 있고, 공장 전체일 수도 있다. 핵심은 단순히 "닮은 모형"을 만드는 것이 아니라, <strong>실제 대상과 가상 모델이 데이터로 연결되어 함께 움직인다</strong>는 점이다.</p>
+
+                <p>여기서 흔히 생기는 오해가 있다. 3D CAD 모델이나 시뮬레이션 프로그램을 디지털 트윈이라고 부르는 것이다. 둘은 다르다. 3D 모델은 한 시점의 형상을 표현할 뿐 실제 설비가 지금 어떤 상태인지 모른다. 시뮬레이션은 가정한 조건으로 결과를 예측할 뿐 실제 데이터를 받지 않는다. 디지털 트윈은 <strong>실제 대상에서 흘러나오는 실시간 데이터로 끊임없이 동기화</strong>된다는 점에서 이 둘과 구분된다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 디지털 트윈 = 가상 모델 + 실시간 데이터 동기화 + 분석·예측</div>
+                    <p><strong>가상 모델</strong>은 대상의 형상·구조·동작 방식을 디지털로 표현한 것이다. 3D 형상일 수도 있고, 물리 거동을 나타낸 수식 모델일 수도 있다. <strong>실시간 데이터 동기화</strong>는 실제 설비의 센서값·상태·생산 실적이 가상 모델로 끊임없이 흘러 들어와 모델을 현재 상태로 갱신하는 것이다. 이것이 디지털 트윈의 심장이다. <strong>분석·예측</strong>은 동기화된 모델 위에서 시뮬레이션을 돌리고, 이상을 감지하고, 미래를 예측한다. 이 세 가지가 갖춰져야 비로소 "트윈"이라고 부를 수 있다.</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>디지털 트윈은 CPS의 구체적 구현이다</strong>
+                        이 시리즈 1편에서 다룬 <code>CPS</code>(Cyber-Physical System)를 기억하면 이해가 쉽다. CPS는 "현장에서 일어나는 일이 데이터가 되고, 그 데이터가 다시 현장을 제어한다"는 순환 개념이다. 디지털 트윈은 이 추상적인 순환을 <strong>실제로 보고 만질 수 있는 가상 모델</strong>로 구현한 형태다. CPS가 원리라면 디지털 트윈은 그 원리를 담은 제품이다.
+                    </div>
+                </div>
+
+                <!-- 2. 모델·섀도우·트윈 -->
+                <h2 id="model-shadow-twin"><i class="fa-solid fa-arrows-left-right"></i> 디지털 모델 vs 섀도우 vs 트윈</h2>
+
+                <p>"디지털 트윈"이라는 말은 현장에서 너무 넓게 쓰인다. 정적인 3D 모델도 디지털 트윈이라 부르고, 데이터를 일부 받아오는 대시보드도 디지털 트윈이라 부른다. 학계에서는 이를 구분하기 위해 <strong>물리 객체와 가상 객체 사이의 데이터 연결 정도</strong>를 기준으로 세 단계로 나눈다. 이 구분은 2017년 Werner Kritzinger 등의 연구에서 정리되어 널리 인용된다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>구분</th>
+                            <th>데이터 연결</th>
+                            <th>설명</th>
+                            <th>예시</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">디지털 모델<br>(Digital Model)</td>
+                            <td>수동 (연결 없음)</td>
+                            <td>물리 객체와 가상 모델 사이에 자동 데이터 흐름이 없다. 사람이 직접 모델을 만들고 갱신한다.</td>
+                            <td>설비 3D CAD 도면, 공정 시뮬레이션 모델</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">디지털 섀도우<br>(Digital Shadow)</td>
+                            <td>단방향 (물리 → 가상)</td>
+                            <td>실제 설비의 데이터가 가상 모델로 자동으로 흘러 들어온다. 그러나 가상 모델이 실제 설비를 제어하지는 못한다.</td>
+                            <td>실시간 설비 상태를 반영하는 모니터링 모델</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">디지털 트윈<br>(Digital Twin)</td>
+                            <td>양방향 (물리 ↔ 가상)</td>
+                            <td>데이터가 양쪽으로 흐른다. 가상 모델의 분석·시뮬레이션 결과가 다시 실제 설비의 제어로 돌아간다.</td>
+                            <td>가상 모델에서 최적 조건을 찾아 설비에 자동 반영</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>이 구분이 중요한 이유는 현장에서 "디지털 트윈을 구축했다"고 말할 때 실제로는 디지털 모델이나 섀도우 수준인 경우가 많기 때문이다. 세 단계는 우열의 문제가 아니라 <strong>목적에 맞는 단계를 고르는 문제</strong>다. 모니터링이 목적이면 섀도우로 충분하고, 굳이 양방향 제어까지 갈 필요가 없다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>한 문장으로 구분하기</strong>
+                        <strong>모델</strong>은 "사람이 그린 그림", <strong>섀도우</strong>는 "실제를 따라 움직이는 거울", <strong>트윈</strong>은 "거울이 실제를 되밀어 주는 관계"다. 데이터가 한쪽으로만 흐르면 섀도우, 양쪽으로 흐르면 트윈이다.
+                    </div>
+                </div>
+
+                <!-- 3. 구성 요소 -->
+                <h2 id="components"><i class="fa-solid fa-diagram-project"></i> 디지털 트윈의 구성 요소</h2>
+
+                <p>디지털 트윈은 네 가지 요소로 이루어진다. <strong>물리 객체</strong>, <strong>가상 모델</strong>, 그리고 둘을 잇는 <strong>데이터 연결</strong>, 그 위에서 돌아가는 <strong>분석·시뮬레이션</strong>이다. 어느 하나라도 빠지면 디지털 트윈이 아니다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 400" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrR" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                            <marker id="arrL" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#e65100"/></marker>
+                        </defs>
+                        <text x="360" y="28" text-anchor="middle" font-size="15" fill="#1b5e20" font-weight="700">디지털 트윈의 구성 — 물리 ↔ 가상 데이터 연결</text>
+
+                        <!-- 물리 객체 (왼쪽) -->
+                        <rect x="40" y="120" width="210" height="150" rx="12" fill="#fff3e0" stroke="#ff9800" stroke-width="2.5"/>
+                        <text x="145" y="148" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">물리 객체 (Physical)</text>
+                        <text x="145" y="172" text-anchor="middle" font-size="10.5" fill="#fb8c00">실제 설비 · 생산 라인 · 공장</text>
+                        <text x="145" y="192" text-anchor="middle" font-size="10.5" fill="#fb8c00">IoT 센서 · 머신비전 카메라</text>
+                        <text x="145" y="212" text-anchor="middle" font-size="10.5" fill="#fb8c00">PLC · 액추에이터 · 로봇</text>
+                        <rect x="70" y="228" width="150" height="28" rx="6" fill="#ffe0b2" stroke="#ffb74d" stroke-width="1.5"/>
+                        <text x="145" y="246" text-anchor="middle" font-size="9.5" fill="#e65100">상태 · 센서값 · 생산 실적 발생</text>
+
+                        <!-- 가상 모델 (오른쪽) -->
+                        <rect x="470" y="120" width="210" height="150" rx="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2.5"/>
+                        <text x="575" y="148" text-anchor="middle" font-size="13" fill="#1565c0" font-weight="700">가상 모델 (Virtual)</text>
+                        <text x="575" y="172" text-anchor="middle" font-size="10.5" fill="#42a5f5">3D 형상 모델 · 물리 거동 모델</text>
+                        <text x="575" y="192" text-anchor="middle" font-size="10.5" fill="#42a5f5">공정 로직 · 동작 시퀀스</text>
+                        <text x="575" y="212" text-anchor="middle" font-size="10.5" fill="#42a5f5">실시간 상태로 동기화</text>
+                        <rect x="500" y="228" width="150" height="28" rx="6" fill="#bbdefb" stroke="#64b5f6" stroke-width="1.5"/>
+                        <text x="575" y="246" text-anchor="middle" font-size="9.5" fill="#1565c0">현재 상태를 그대로 반영</text>
+
+                        <!-- 상향 데이터 연결 (물리 → 가상) -->
+                        <line x1="252" y1="160" x2="468" y2="160" stroke="#3a9a3e" stroke-width="2.5" marker-end="url(#arrR)"/>
+                        <text x="360" y="152" text-anchor="middle" font-size="10.5" fill="#2e7d32" font-weight="600">데이터 (물리 → 가상)</text>
+                        <text x="360" y="178" text-anchor="middle" font-size="9" fill="#66bb6a">IoT · 산업 통신 · 실시간 수집</text>
+
+                        <!-- 하향 제어 연결 (가상 → 물리) -->
+                        <line x1="468" y1="230" x2="252" y2="230" stroke="#e65100" stroke-width="2.5" marker-end="url(#arrL)"/>
+                        <text x="360" y="222" text-anchor="middle" font-size="10.5" fill="#e65100" font-weight="600">제어·지시 (가상 → 물리)</text>
+                        <text x="360" y="248" text-anchor="middle" font-size="9" fill="#fb8c00">최적 조건 · 파라미터 반영</text>
+
+                        <!-- 분석·시뮬레이션 (하단 중앙) -->
+                        <rect x="210" y="312" width="300" height="68" rx="12" fill="#ede7f6" stroke="#673ab7" stroke-width="2.5"/>
+                        <text x="360" y="338" text-anchor="middle" font-size="12.5" fill="#4527a0" font-weight="700">분석 · 시뮬레이션</text>
+                        <text x="360" y="358" text-anchor="middle" font-size="10" fill="#7e57c2">이상 감지 · What-if 시뮬레이션 · 예측 · 최적화</text>
+                        <text x="360" y="373" text-anchor="middle" font-size="9" fill="#9575cd">동기화된 가상 모델 위에서 수행</text>
+
+                        <!-- 연결선: 가상 모델 → 분석 -->
+                        <line x1="540" y1="270" x2="440" y2="310" stroke="#673ab7" stroke-width="1.8" stroke-dasharray="5 3"/>
+                        <!-- 연결선: 분석 → 물리(제어) -->
+                        <line x1="280" y1="310" x2="180" y2="270" stroke="#673ab7" stroke-width="1.8" stroke-dasharray="5 3"/>
+
+                        <!-- 라벨: 동기화 루프 -->
+                        <text x="360" y="98" text-anchor="middle" font-size="10" fill="#7b1fa2" font-weight="600">이 양방향 연결이 끊김 없이 순환할수록 "트윈"에 가까워진다</text>
+                    </svg>
+                    <div class="caption">그림 1. 디지털 트윈의 네 가지 구성 요소 — 물리 객체와 가상 모델이 양방향 데이터로 연결되고, 그 위에서 분석·시뮬레이션이 돌아간다</div>
+                </div>
+
+                <h3 id="comp-physical"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 물리 객체 — 트윈이 복제하는 실체</h3>
+                <p>디지털 트윈이 따라 하는 실제 대상이다. 설비 한 대, 생산 라인, 공장 전체 어느 것이든 될 수 있다. 중요한 것은 이 물리 객체가 <strong>자기 상태를 데이터로 내보낼 수 있어야</strong> 한다는 점이다. 센서가 붙어 있고, 그 데이터를 꺼낼 통신 경로가 있어야 트윈의 출발점이 된다.</p>
+
+                <h3 id="comp-virtual"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 가상 모델 — 디지털 공간의 복제본</h3>
+                <p>물리 객체를 디지털로 표현한 것이다. 3D 형상만 있는 것이 아니라, 설비가 어떻게 움직이는지(동작 로직), 물리적으로 어떻게 거동하는지(물리 모델)까지 담는다. 모델이 정밀할수록 트윈의 예측이 정확해지지만, 그만큼 만들고 유지하는 비용도 커진다.</p>
+
+                <h3 id="comp-connection"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 데이터 연결 — 트윈을 살아 있게 하는 것</h3>
+                <p>물리 객체와 가상 모델을 잇는 데이터 통로다. IoT 센서, 산업 통신(<code>OPC UA</code> 등), 데이터 수집 시스템이 여기 해당한다. 이 연결이 없으면 그냥 3D 모델이고, 단방향이면 섀도우, 양방향이면 트윈이다. 디지털 트윈의 성패는 사실상 이 연결의 품질에 달려 있다.</p>
+
+                <h3 id="comp-analysis"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 분석·시뮬레이션 — 트윈이 만드는 가치</h3>
+                <p>동기화된 가상 모델 위에서 돌아가는 두뇌다. 현재 상태를 분석해 이상을 감지하고, 가정을 바꿔 가며 시뮬레이션하고, 미래를 예측한다. 디지털 트윈을 만드는 진짜 목적은 여기에 있다. 앞의 세 요소는 이 분석을 가능하게 하는 토대다.</p>
+
+                <!-- 4. 스마트 공장에서의 활용 -->
+                <h2 id="in-factory"><i class="fa-solid fa-industry"></i> 스마트 공장에서의 활용</h2>
+
+                <p>스마트 공장에서 디지털 트윈은 복제하는 대상의 범위에 따라 세 가지 수준으로 나뉜다. 작은 단위에서 시작해 점점 넓혀 가는 것이 일반적인 접근이다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>수준</th>
+                            <th>복제 대상</th>
+                            <th>주요 목적</th>
+                            <th>예시</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">설비 디지털 트윈</td>
+                            <td>설비 한 대 (로봇, CNC, 검사기 등)</td>
+                            <td>설비 상태 모니터링, 고장 예측, 동작 검증</td>
+                            <td>로봇 암의 마모 예측, 검사 장비의 동작 시뮬레이션</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">공정 디지털 트윈</td>
+                            <td>생산 라인·공정 단위</td>
+                            <td>병목 분석, 공정 조건 최적화, 흐름 시뮬레이션</td>
+                            <td>조립 라인의 택트 타임 분석, 공정 순서 변경 효과 검증</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">공장 전체 디지털 트윈</td>
+                            <td>공장 전체 (다수 라인 + 물류 + 설비)</td>
+                            <td>생산 계획 시뮬레이션, 자원 배분, 전체 최적화</td>
+                            <td>생산 일정 변경의 전체 영향 분석, 신규 라인 배치 검토</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>공장 전체 트윈부터 시작하지 않는다</strong>
+                        가장 흔한 실패가 처음부터 "공장 전체 디지털 트윈"을 목표로 잡는 것이다. 공장 전체 트윈은 수많은 설비·공정·물류를 모두 모델링하고 연결해야 해서 비용과 난이도가 가장 높다. 거의 모든 성공 사례는 <strong>병목이거나 중요한 설비 한 대</strong>에서 작게 출발한다. 설비 트윈에서 효과를 확인하고, 공정 트윈으로 넓히고, 그다음에 공장 전체를 고민하는 순서다.
+                    </div>
+                </div>
+
+                <!-- 5. 무엇을 할 수 있나 -->
+                <h2 id="capabilities"><i class="fa-solid fa-wand-magic-sparkles"></i> 디지털 트윈으로 무엇을 할 수 있나</h2>
+
+                <p>디지털 트윈이 만들어내는 가치는 크게 다섯 가지로 정리된다. 단순 모니터링부터 미래 예측까지, 데이터 연결이 양방향에 가까워질수록 할 수 있는 일이 늘어난다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-gauge-high" style="color:#1565c0;"></i> 실시간 모니터링</h4>
+                        <p>흩어진 설비 데이터를 가상 모델 위에 모아 현재 상태를 한눈에 본다. 어느 설비가 멈췄는지, 어디에 부하가 걸렸는지 직관적으로 파악한다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-flask" style="color:#7b1fa2;"></i> What-if 시뮬레이션</h4>
+                        <p>"이 조건을 바꾸면 어떻게 될까"를 실제 라인을 멈추지 않고 가상 모델에서 미리 돌려 본다. 실패의 비용 없이 시도할 수 있다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-sliders" style="color:#2e7d32;"></i> 공정 최적화</h4>
+                        <p>시뮬레이션으로 찾은 최적 조건을 실제 공정에 반영한다. 택트 타임 단축, 자원 배분 개선 같은 결과로 이어진다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-plug-circle-check" style="color:#e65100;"></i> 가상 시운전</h4>
+                        <p>새 설비·라인을 실제로 짓기 전에 가상 모델에서 동작을 검증한다. 제어 로직 오류를 현장이 아닌 화면에서 잡는다.</p>
+                    </div>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-screwdriver-wrench"></i> 가상 시운전(Virtual Commissioning)이 특히 중요한 이유</div>
+                    <p>전통적으로 새 설비나 라인을 도입하면 현장에 물리적으로 설치한 뒤에야 제어 로직을 검증할 수 있었다. 이때 발견되는 오류는 라인을 멈추고 고쳐야 해서 비용과 시간이 크게 든다. <strong>가상 시운전</strong>은 설비가 도착하기 전에, 디지털 트윈 위에서 PLC 제어 로직과 설비 동작을 미리 맞춰 보는 것이다. 현장 설치 기간이 짧아지고, 시운전 단계의 사고 위험도 줄어든다. 디지털 트윈의 투자 효과가 가장 명확하게 드러나는 활용처 중 하나다.</p>
+                </div>
+
+                <p>여기에 <strong>예지보전 연계</strong>가 더해진다. 이 시리즈 11편에서 다룬 예지보전은 설비 데이터의 변화로 고장을 미리 예측하는 것인데, 디지털 트윈은 그 예측을 더 정교하게 만든다. 단순히 센서값의 추세만 보는 것이 아니라, 설비의 물리 모델 위에서 "이 마모가 계속되면 언제 어떤 부품이 한계에 도달하는가"를 시뮬레이션할 수 있기 때문이다.</p>
+
+                <!-- 6. 머신비전과 트윈 -->
+                <h2 id="vision-twin"><i class="fa-solid fa-eye"></i> 머신비전·검사 데이터와 디지털 트윈</h2>
+
+                <p>머신비전 엔지니어의 시선에서 디지털 트윈은 두 방향으로 만난다. 하나는 <strong>비전 검사 결과가 디지털 트윈에 품질 정보를 공급</strong>하는 방향이고, 다른 하나는 <strong>디지털 트윈이 비전 시스템 자체를 가상 시운전</strong>하는 방향이다.</p>
+
+                <h3 id="vision-feed"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 비전 검사 결과가 트윈의 품질 입력이 된다</h3>
+                <p>IoT 센서가 설비의 온도·진동을 트윈에 공급한다면, 머신비전은 <strong>제품의 품질 상태</strong>를 트윈에 공급한다. 각 제품의 양품/불량 판정, 측정값, 결함 위치가 디지털 트윈에 입력되면, 가상 모델 위에서 품질이 공정 위치별로 어떻게 분포하는지 볼 수 있다. 예를 들어 특정 설비를 지난 제품에서 결함이 집중된다면, 트윈은 그 상관관계를 드러내 준다. 비전이 만든 정량적 데이터가 트윈 안에서 <strong>불량 패턴 분석</strong>의 재료가 되는 것이다.</p>
+
+                <h3 id="vision-commissioning"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 비전 시스템의 가상 시운전</h3>
+                <p>반대 방향도 있다. 새 검사 라인을 구축할 때, 카메라 위치·시야·트리거 타이밍·PLC 신호 연동을 실제 설치 전에 디지털 트윈 위에서 검증할 수 있다. 컨베이어 속도에 맞춰 트리거가 제때 들어오는지, 카메라 시야 안에 대상이 들어오는지, 검사 결과 신호가 PLC로 올바르게 전달되는지를 가상 환경에서 미리 맞춰 본다. 현장에서 카메라를 떼었다 붙였다 하며 조정하는 시간을 크게 줄일 수 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>비전 데이터는 트윈의 "품질 채널"이다</strong>
+                        디지털 트윈이 설비의 건강 상태(센서 데이터)와 제품의 품질 상태(비전 데이터)를 함께 가지고 있을 때, 비로소 "이 설비 상태에서 이런 불량이 나온다"는 연결을 만들 수 있다. 머신비전 없이는 트윈이 설비만 보고 제품을 못 보는 반쪽짜리가 된다.
+                    </div>
+                </div>
+
+                <!-- 7. 구축에 필요한 것 -->
+                <h2 id="building"><i class="fa-solid fa-toolbox"></i> 구축에 필요한 것</h2>
+
+                <p>디지털 트윈을 구축하려면 네 가지 요소 기술이 필요하다. 어느 하나만 잘해서는 트윈이 되지 않고, 네 가지가 맞물려야 한다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">3D 모델링</span>
+                        <span class="term-desc">설비·라인·공장의 형상과 동작을 디지털로 표현한다. CAD 데이터를 활용하거나 전용 모델링 도구로 만든다. 형상뿐 아니라 설비가 어떻게 움직이는지 동작 로직까지 담아야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">IoT 데이터 연결</span>
+                        <span class="term-desc">실제 설비의 센서·PLC·제어기에서 데이터를 꺼내 가상 모델로 보내는 통로다. 산업 통신 표준(OPC UA, MQTT 등)과 데이터 수집 인프라가 필요하다. 트윈의 생명선이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">시뮬레이션 엔진</span>
+                        <span class="term-desc">가상 모델 위에서 물리 거동·공정 흐름·동작 시퀀스를 계산하는 소프트웨어다. What-if 시뮬레이션과 가상 시운전이 여기서 돌아간다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">데이터 플랫폼</span>
+                        <span class="term-desc">실시간 데이터와 이력 데이터를 저장·관리하고, 분석 결과를 시각화하는 기반이다. 트윈이 다루는 데이터 양이 많아 확장 가능한 저장·처리 구조가 필요하다.</span>
+                    </div>
+                </div>
+
+                <!-- 8. 디지털 트윈의 현실 -->
+                <h2 id="reality"><i class="fa-solid fa-scale-balanced"></i> 디지털 트윈의 현실</h2>
+
+                <p>디지털 트윈은 마케팅에서 가장 화려하게 포장되는 용어 중 하나다. "공장 전체를 가상으로 복제해 모든 것을 예측한다"는 그림은 매력적이지만, 실제 현장의 모습은 그보다 훨씬 소박하다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"공장 전체를 똑같이 복제한다"는 환상</strong>
+                        전체 공장을 정밀하게 복제한 디지털 트윈은 만들기도 어렵고 유지하기는 더 어렵다. 설비 하나가 바뀌면 모델도 바꿔야 하고, 데이터 연결이 끊기면 트윈은 거짓말을 시작한다. 정밀한 전체 트윈을 목표로 잡으면 대부분 구축 도중에 비용과 복잡도에 막힌다. 디지털 트윈은 <strong>"모든 것을 복제"가 아니라 "필요한 것만 복제"</strong>로 접근해야 살아남는다.
+                    </div>
+                </div>
+
+                <p>현실적인 디지털 트윈은 이렇게 생겼다. 병목이 되는 설비 한 대, 또는 품질에 가장 민감한 공정 하나를 골라 그것만 트윈으로 만든다. 그 트윈이 실제로 고장을 줄이거나 택트 타임을 단축하는 효과를 내면, 그 효과를 근거로 범위를 넓힌다. <strong>작게 시작해 효과를 확인하고 확장한다</strong>는 원칙은 스마트 공장 전반에 통하지만, 디지털 트윈에서 특히 중요하다. 모델 정확도와 유지보수 비용이 범위에 비례해 가파르게 커지기 때문이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>"섀도우면 충분한데 트윈이라 부르는" 경우가 많다</strong>
+                        실제 산업 현장에서 "디지털 트윈"이라 불리는 시스템의 상당수는 엄밀히 보면 디지털 섀도우(단방향)다. 그리고 그것으로 충분한 경우도 많다. 모니터링과 분석이 목적이라면 양방향 제어까지 갈 필요가 없다. 중요한 것은 이름이 아니라 <strong>"내 목적에 어느 단계가 필요한가"</strong>를 정확히 아는 것이다.
+                    </div>
+                </div>
+
+                <!-- 9. 도입 단계와 고려사항 -->
+                <h2 id="adoption"><i class="fa-solid fa-stairs"></i> 도입 단계와 고려사항</h2>
+
+                <h3 id="adoption-steps"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정적 모델에서 양방향 트윈까지</h3>
+
+                <p>디지털 트윈은 한 번에 완성되지 않는다. 데이터 연결의 정도를 단계적으로 높여 가는 것이 현실적인 경로다. 앞서 본 모델·섀도우·트윈 구분이 그대로 도입 단계가 된다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>단계</th>
+                            <th>도달 수준</th>
+                            <th>하는 일</th>
+                            <th>다음 단계로 가려면</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">1단계</td>
+                            <td>정적 3D 모델</td>
+                            <td>대상 설비·공정의 형상과 동작 로직을 디지털로 모델링한다.</td>
+                            <td>설비에서 데이터를 꺼낼 센서·통신 경로 확보</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">2단계</td>
+                            <td>데이터 연결 (섀도우)</td>
+                            <td>실제 설비 데이터를 가상 모델로 자동 동기화한다. 실시간 모니터링이 가능해진다.</td>
+                            <td>시뮬레이션 엔진 도입, 제어 피드백 경로 설계</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">3단계</td>
+                            <td>양방향 제어·시뮬레이션 (트윈)</td>
+                            <td>가상 모델의 분석·시뮬레이션 결과를 실제 설비 제어로 되돌린다.</td>
+                            <td>범위 확장 — 설비 → 공정 → 공장</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>대부분의 현장은 2단계(섀도우)에서 충분한 가치를 얻는다. 3단계 양방향 트윈은 제어 안전성·검증 부담이 커서, 정말 필요한 설비·공정에 한정해 신중하게 적용하는 것이 일반적이다.</p>
+
+                <h3 id="adoption-considerations"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 도입 시 고려사항</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">목적 명확화</span>
+                        <span class="term-desc">모니터링이 목적인가, 공정 최적화인가, 가상 시운전인가. 목적에 따라 필요한 단계(모델/섀도우/트윈)와 모델의 정밀도가 완전히 달라진다. 목적 없이 "트윈을 만들자"로 시작하면 방향을 잃는다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">데이터 품질</span>
+                        <span class="term-desc">트윈은 들어오는 데이터만큼만 정확하다. 센서값이 부정확하거나 연결이 자주 끊기면 트윈은 현실과 다른 상태를 보여 주고, 그 위의 모든 분석이 신뢰를 잃는다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">모델 정확도와 유지보수 비용</span>
+                        <span class="term-desc">모델이 정밀할수록 예측이 정확하지만, 만들고 유지하는 비용도 커진다. 실제 설비가 바뀔 때마다 모델도 갱신해야 한다. 목적에 필요한 만큼의 정확도를 정하고, 그 이상은 욕심내지 않는 절제가 필요하다.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>이 시리즈의 마지막 기술 편</strong>
+                        디지털 트윈은 이 시리즈가 다뤄 온 비전 검사·PLC 연동·OPC UA·MES·예지보전·엣지 컴퓨팅이 모두 한곳에 모이는 종착점에 가깝다. 현장의 데이터가 위로 올라가고, 분석된 결과가 다시 현장으로 내려오는 CPS 순환이 디지털 트윈에서 가장 또렷하게 보인다. 다음 편이자 마지막 편에서는 이 모든 것을 어떻게 실제로 단계적으로 도입할 것인가, 도입 전략을 다룬다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Werner Kritzinger et al. — "Digital Twin in manufacturing: A categorical literature review and classification" (IFAC-PapersOnLine, 2018)</li>
+                        <li>Michael Grieves &amp; John Vickers — "Digital Twin: Mitigating Unpredictable, Undesirable Emergent Behavior in Complex Systems" (2017)</li>
+                        <li>ISO 23247 — Automation systems and integration — Digital twin framework for manufacturing</li>
+                        <li>Plattform Industrie 4.0 — Asset Administration Shell (AAS) 사양</li>
+                        <li>NIST — Digital Twin 관련 제조 기술 문서</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-factory');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-factory');
+</script>
+
+</body>
+</html>

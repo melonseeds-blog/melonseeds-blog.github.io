@@ -1,0 +1,955 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>엣지 컴퓨팅과 데이터 파이프라인 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-edge" data-section="what-is-edge">엣지 컴퓨팅이란</a>
+        <a href="#cloud-edge-onprem" data-section="cloud-edge-onprem">클라우드 vs 엣지</a>
+        <a href="#what-runs-where" data-section="what-runs-where">무엇을 엣지에서</a>
+        <a href="#vision-edge" data-section="vision-edge">머신비전과 엣지</a>
+        <a href="#data-pipeline" data-section="data-pipeline">데이터 파이프라인</a>
+        <a href="#keep-or-drop" data-section="keep-or-drop">보낼 것과 버릴 것</a>
+        <a href="#edge-devices" data-section="edge-devices">엣지 디바이스</a>
+        <a href="#protocols" data-section="protocols">통신 프로토콜</a>
+        <a href="#pros-cons" data-section="pros-cons">장점과 과제</a>
+        <a href="#design" data-section="design">설계 고려사항</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">스마트 공장</span>
+                </div>
+                <h1>엣지 컴퓨팅과 데이터 파이프라인</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>엣지 컴퓨팅의 정의 — 데이터가 생기는 현장 근처에서 처리하는 이유</li>
+                        <li>클라우드 vs 엣지 vs 온프레미스 — 각각의 위치와 역할 비교</li>
+                        <li>스마트 공장에서 무엇을 엣지에서 처리하고 무엇을 클라우드로 보내는가</li>
+                        <li>머신비전이 대표적인 엣지 처리인 이유 — 대용량 이미지 문제</li>
+                        <li>데이터 파이프라인 — 수집부터 클라우드 저장까지의 단계별 흐름</li>
+                        <li>무엇을 보내고 무엇을 버리나 — 데이터 필터링과 보존 정책</li>
+                        <li>엣지 디바이스 종류와 엣지→클라우드 통신 프로토콜</li>
+                        <li>엣지 컴퓨팅의 장점·과제와 파이프라인 설계 시 고려사항</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-edge">엣지 컴퓨팅이란 무엇인가</a></li>
+                        <li><a href="#cloud-edge-onprem">클라우드 vs 엣지 vs 온프레미스</a></li>
+                        <li><a href="#what-runs-where">스마트 공장에서 무엇을 엣지에서 처리하나</a></li>
+                        <li><a href="#vision-edge">머신비전과 엣지</a></li>
+                        <li><a href="#data-pipeline">데이터 파이프라인</a></li>
+                        <li><a href="#keep-or-drop">무엇을 보내고 무엇을 버리나</a></li>
+                        <li><a href="#edge-devices">엣지 디바이스</a></li>
+                        <li><a href="#protocols">통신과 프로토콜</a></li>
+                        <li><a href="#pros-cons">엣지 컴퓨팅의 장점과 과제</a></li>
+                        <li><a href="#design">데이터 파이프라인 설계 시 고려사항</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 엣지 컴퓨팅이란 -->
+                <h2 id="what-is-edge"><i class="fa-solid fa-microchip"></i> 엣지 컴퓨팅이란 무엇인가</h2>
+
+                <p><strong>엣지 컴퓨팅</strong>(Edge Computing)은 데이터가 생기는 현장 근처에서 그 데이터를 바로 처리하는 방식을 말한다. "엣지"는 네트워크의 가장자리, 즉 클라우드 데이터센터에서 멀리 떨어진 현장 끝단을 가리킨다. 공장으로 좁히면 카메라·센서·설비가 놓인 라인 바로 옆에서 연산이 일어난다는 뜻이다.</p>
+
+                <p>왜 모든 데이터를 클라우드로 보내 처리하지 않는가. 클라우드는 저장 용량도 크고 연산 자원도 거의 무한하지만, 현장과 클라우드 사이에는 네트워크가 있다. 이 네트워크가 만드는 제약이 엣지 컴퓨팅이 필요한 이유다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 클라우드로 다 보내지 않는 다섯 가지 이유</div>
+                    <p><strong>1. 지연(Latency)</strong> — 현장에서 클라우드까지 데이터가 오가는 데 수십~수백 ms가 걸린다. 컨베이어 위를 지나가는 제품을 실시간으로 판정해 불량품을 밀어내야 하는데, 왕복 시간이 검사 주기보다 길면 제어 자체가 성립하지 않는다.<br>
+                    <strong>2. 대역폭(Bandwidth)</strong> — 머신비전 카메라 한 대가 초당 수십~수백 MB의 이미지를 만든다. 카메라가 여러 대면 이걸 전부 클라우드로 올리는 회선 자체가 비현실적이다.<br>
+                    <strong>3. 비용(Cost)</strong> — 클라우드는 데이터 전송량과 저장량에 따라 과금된다. 원본 이미지를 전부 올리고 보관하면 비용이 감당하기 어렵게 커진다.<br>
+                    <strong>4. 보안(Security)</strong> — 생산 공정 데이터와 검사 이미지는 기업의 핵심 자산이다. 외부망으로 내보내는 데이터를 최소화하는 것이 보안 관점에서 안전하다.<br>
+                    <strong>5. 가용성(Availability)</strong> — 인터넷 회선이 끊겨도 공장은 멈출 수 없다. 검사와 제어가 현장에서 자립적으로 돌아가야 라인이 계속 가동된다.</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>엣지는 클라우드의 반대가 아니라 짝이다</strong>
+                        엣지 컴퓨팅을 "클라우드를 안 쓰는 것"으로 오해하기 쉽다. 그러나 엣지와 클라우드는 경쟁 관계가 아니라 역할 분담 관계다. 빠른 판단이 필요한 일은 엣지가 맡고, 대규모 축적과 분석이 필요한 일은 클라우드가 맡는다. 둘을 어떻게 나누느냐가 스마트 공장 데이터 설계의 핵심이다.
+                    </div>
+                </div>
+
+                <!-- 2. 클라우드 vs 엣지 vs 온프레미스 -->
+                <h2 id="cloud-edge-onprem"><i class="fa-solid fa-server"></i> 클라우드 vs 엣지 vs 온프레미스</h2>
+
+                <p>스마트 공장에서 데이터를 처리하는 위치는 보통 세 곳으로 나뉜다. <strong>엣지</strong>는 현장 라인 옆, <strong>온프레미스</strong>는 공장 내 전산실의 자체 서버, <strong>클라우드</strong>는 외부 데이터센터다. 셋은 물리적 거리도 다르고 맡는 일도 다르다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>구분</th>
+                            <th>위치</th>
+                            <th>주 역할</th>
+                            <th>지연</th>
+                            <th>대표 처리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">엣지</td>
+                            <td>생산 라인 바로 옆</td>
+                            <td>실시간 검사·판정·제어</td>
+                            <td>ms 단위 (매우 낮음)</td>
+                            <td>비전 검사, 결함 판정, PLC 신호 응답</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">온프레미스</td>
+                            <td>공장 내 전산실 서버</td>
+                            <td>공장 단위 집계·운영 시스템</td>
+                            <td>수~수십 ms (낮음)</td>
+                            <td>MES, 라인별 데이터 통합, 단기 이력 저장</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">클라우드</td>
+                            <td>외부 데이터센터</td>
+                            <td>장기 저장·대규모 분석·학습</td>
+                            <td>수십~수백 ms (높음)</td>
+                            <td>전사 품질 분석, AI 모델 학습, 공장 간 비교</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>현실의 스마트 공장은 이 셋을 동시에 쓰는 <strong>하이브리드 구조</strong>다. 검사는 엣지에서, 공장 운영 데이터는 온프레미스 MES에서, 장기 추세 분석과 AI 학습은 클라우드에서 처리한다. 어느 하나만으로는 전체를 감당할 수 없다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-bolt" style="color:#e65100;"></i> 엣지가 강한 것</h4>
+                        <ul>
+                            <li>즉시 응답이 필요한 실시간 제어</li>
+                            <li>대용량 원본 데이터의 1차 처리</li>
+                            <li>네트워크가 끊겨도 자립 동작</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-cloud" style="color:#1565c0;"></i> 클라우드가 강한 것</h4>
+                        <ul>
+                            <li>대규모 데이터의 장기 축적</li>
+                            <li>여러 라인·공장을 묶은 통합 분석</li>
+                            <li>고연산이 필요한 AI 모델 학습</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 3. 무엇을 엣지에서 처리하나 -->
+                <h2 id="what-runs-where"><i class="fa-solid fa-code-branch"></i> 스마트 공장에서 무엇을 엣지에서 처리하나</h2>
+
+                <p>엣지와 클라우드의 역할을 가르는 기준은 단순하다. <strong>"얼마나 빨리 답이 필요한가"</strong>와 <strong>"얼마나 많은 데이터를 봐야 하는가"</strong>다. 즉시 답해야 하는 일은 엣지로, 많이 모아서 봐야 하는 일은 클라우드로 간다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#e65100; font-size:0.5rem;"></i> 엣지에서 처리</h4>
+                        <ul>
+                            <li>실시간 비전 검사와 결함 판정</li>
+                            <li>양품/불량 신호의 PLC 전달</li>
+                            <li>설비 인터록과 시퀀스 응답</li>
+                            <li>이상 징후 1차 감지와 즉시 알람</li>
+                            <li>원본 데이터의 필터링·집계</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle" style="color:#1565c0; font-size:0.5rem;"></i> 클라우드에서 처리</h4>
+                        <ul>
+                            <li>장기 품질 추세 분석</li>
+                            <li>불량 패턴 통계와 상관관계 도출</li>
+                            <li>AI 검사 모델의 학습·재학습</li>
+                            <li>여러 공장의 생산 데이터 비교</li>
+                            <li>경영 대시보드용 데이터 집계</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 id="responsibility"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 책임 분담의 원칙</h3>
+
+                <p>핵심은 <strong>"판단은 엣지, 학습은 클라우드"</strong>로 요약된다. 제품 하나를 양품으로 볼지 불량으로 볼지는 엣지가 그 자리에서 결정한다. 그러나 "어떤 기준으로 판단해야 하는가", 즉 검사 모델 자체를 만들고 개선하는 일은 대량의 데이터가 모인 클라우드에서 한다. 클라우드가 학습한 모델을 엣지로 내려보내면, 엣지는 그 모델로 다시 현장에서 빠르게 판단한다. 이 순환이 잘 돌아가는 것이 스마트 공장 데이터 구조의 목표다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>나누는 기준을 한 문장으로</strong>
+                        "라인을 멈추게 하거나 제품을 밀어내는 결정"은 엣지가 맡는다. 그 결정이 1초라도 늦으면 안 되기 때문이다. "여러 날·여러 라인의 데이터를 모아야 보이는 것"은 클라우드가 맡는다. 그 일은 빠를 필요는 없지만 많은 데이터가 필요하기 때문이다.
+                    </div>
+                </div>
+
+                <!-- 4. 머신비전과 엣지 -->
+                <h2 id="vision-edge"><i class="fa-solid fa-eye"></i> 머신비전과 엣지</h2>
+
+                <p>머신비전 검사는 그 자체가 <strong>가장 대표적인 엣지 처리</strong>다. 다른 무엇보다 비전이 엣지여야 하는 이유는 두 가지가 겹친다. 빠른 응답이 필요하고, 데이터가 너무 크다.</p>
+
+                <p>비전 검사는 컨베이어 위를 지나가는 제품을 그 자리에서 판정해야 한다. 검사 주기는 보통 수십 ms에서 수백 ms 사이다. 이미지를 클라우드로 보내 판정 결과를 받아오는 왕복 시간으로는 이 주기를 맞출 수 없다. 또 머신비전 카메라가 만드는 데이터의 양은 다른 센서와 비교가 안 된다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>데이터 종류</th>
+                            <th>대략적인 크기</th>
+                            <th>발생 빈도</th>
+                            <th>클라우드 직송 가능 여부</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">온도·진동 센서값</td>
+                            <td>수~수십 byte</td>
+                            <td>초당 수~수십 회</td>
+                            <td>가능 — 부담 거의 없음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">검사 결과 (판정·측정값)</td>
+                            <td>수백 byte ~ 수 KB</td>
+                            <td>제품당 1회</td>
+                            <td>가능 — 가벼움</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">압축 검사 이미지</td>
+                            <td>수백 KB ~ 수 MB</td>
+                            <td>제품당 1~수 장</td>
+                            <td>선별 전송 — 일부만</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">원본(비압축) 고해상도 이미지</td>
+                            <td>수 MB ~ 수십 MB</td>
+                            <td>초당 수~수십 장</td>
+                            <td>사실상 불가 — 엣지 보관</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>그래서 머신비전에서 엣지의 역할은 분명하다. <strong>이미지는 엣지에서 검사하고, 클라우드로는 결과와 일부 이미지만 보낸다.</strong> 원본 이미지는 엣지나 온프레미스 스토리지에 일정 기간 보관하고, 클라우드에는 판정 결과·측정값 같은 가벼운 데이터와 불량 이미지처럼 꼭 필요한 이미지만 선별해서 올린다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"전부 클라우드에 올려두면 나중에 분석하지" 라는 함정</strong>
+                        원본 이미지를 일단 다 클라우드에 쌓아두려는 시도는 거의 항상 실패한다. 회선 대역폭이 못 버티고, 저장 비용이 폭증하며, 정작 필요한 이미지를 그 더미에서 찾기도 어렵다. "무엇을 남길지"를 엣지에서 먼저 결정하는 것이 데이터 파이프라인 설계의 출발점이다.
+                    </div>
+                </div>
+
+                <!-- 5. 데이터 파이프라인 -->
+                <h2 id="data-pipeline"><i class="fa-solid fa-diagram-project"></i> 데이터 파이프라인</h2>
+
+                <p><strong>데이터 파이프라인</strong>은 현장에서 생긴 데이터가 클라우드에 저장·분석되기까지 거치는 단계별 흐름을 말한다. 물이 여러 관을 거쳐 흐르듯, 데이터도 수집 → 엣지 처리 → 필터링·집계 → 전송 → 클라우드 저장의 단계를 거친다. 각 단계에서 데이터의 양은 줄고 가치는 압축된다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 360" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrPipe" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                        </defs>
+                        <text x="360" y="26" text-anchor="middle" font-size="15" fill="#1b5e20" font-weight="700">스마트 공장 데이터 파이프라인 (수집 → 엣지 → 클라우드)</text>
+
+                        <!-- 영역 배경: 현장 -->
+                        <rect x="14" y="44" width="150" height="240" rx="10" fill="#fff8f0" stroke="#ffcc80" stroke-width="1.5" stroke-dasharray="5 4"/>
+                        <text x="89" y="62" text-anchor="middle" font-size="10" fill="#e65100" font-weight="700">현장</text>
+                        <!-- 영역 배경: 엣지 -->
+                        <rect x="178" y="44" width="370" height="240" rx="10" fill="#fdf2f6" stroke="#f48fb1" stroke-width="1.5" stroke-dasharray="5 4"/>
+                        <text x="363" y="62" text-anchor="middle" font-size="10" fill="#c2185b" font-weight="700">엣지 (현장 근처 처리)</text>
+                        <!-- 영역 배경: 클라우드 -->
+                        <rect x="562" y="44" width="144" height="240" rx="10" fill="#e9f7f9" stroke="#80deea" stroke-width="1.5" stroke-dasharray="5 4"/>
+                        <text x="634" y="62" text-anchor="middle" font-size="10" fill="#00838f" font-weight="700">클라우드</text>
+
+                        <!-- 1. 수집 -->
+                        <rect x="26" y="120" width="126" height="92" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="89" y="146" text-anchor="middle" font-size="11.5" fill="#e65100" font-weight="700">① 수집</text>
+                        <text x="89" y="166" text-anchor="middle" font-size="9" fill="#fb8c00">비전 카메라</text>
+                        <text x="89" y="180" text-anchor="middle" font-size="9" fill="#fb8c00">IoT 센서</text>
+                        <text x="89" y="194" text-anchor="middle" font-size="9" fill="#fb8c00">설비 신호</text>
+
+                        <line x1="152" y1="166" x2="188" y2="166" stroke="#4caf50" stroke-width="2" marker-end="url(#arrPipe)"/>
+
+                        <!-- 2. 엣지 처리 -->
+                        <rect x="192" y="120" width="110" height="92" rx="10" fill="#fce4ec" stroke="#e91e63" stroke-width="2"/>
+                        <text x="247" y="146" text-anchor="middle" font-size="11.5" fill="#c2185b" font-weight="700">② 엣지 처리</text>
+                        <text x="247" y="166" text-anchor="middle" font-size="9" fill="#d81b60">이미지 검사</text>
+                        <text x="247" y="180" text-anchor="middle" font-size="9" fill="#d81b60">결함 판정</text>
+                        <text x="247" y="194" text-anchor="middle" font-size="9" fill="#d81b60">실시간 응답</text>
+
+                        <line x1="302" y1="166" x2="334" y2="166" stroke="#4caf50" stroke-width="2" marker-end="url(#arrPipe)"/>
+
+                        <!-- 3. 필터링·집계 -->
+                        <rect x="338" y="120" width="110" height="92" rx="10" fill="#fce4ec" stroke="#e91e63" stroke-width="2"/>
+                        <text x="393" y="142" text-anchor="middle" font-size="11" fill="#c2185b" font-weight="700">③ 필터링</text>
+                        <text x="393" y="156" text-anchor="middle" font-size="11" fill="#c2185b" font-weight="700">·집계</text>
+                        <text x="393" y="176" text-anchor="middle" font-size="9" fill="#d81b60">원본 → 요약</text>
+                        <text x="393" y="190" text-anchor="middle" font-size="9" fill="#d81b60">NG만 선별</text>
+                        <text x="393" y="204" text-anchor="middle" font-size="9" fill="#d81b60">버퍼링</text>
+
+                        <line x1="448" y1="166" x2="480" y2="166" stroke="#4caf50" stroke-width="2" marker-end="url(#arrPipe)"/>
+
+                        <!-- 4. 전송 -->
+                        <rect x="484" y="120" width="64" height="92" rx="10" fill="#fce4ec" stroke="#e91e63" stroke-width="2"/>
+                        <text x="516" y="150" text-anchor="middle" font-size="10.5" fill="#c2185b" font-weight="700">④ 전송</text>
+                        <text x="516" y="170" text-anchor="middle" font-size="8.5" fill="#d81b60">MQTT</text>
+                        <text x="516" y="183" text-anchor="middle" font-size="8.5" fill="#d81b60">OPC UA</text>
+                        <text x="516" y="196" text-anchor="middle" font-size="8.5" fill="#d81b60">REST</text>
+
+                        <line x1="548" y1="166" x2="572" y2="166" stroke="#4caf50" stroke-width="2" marker-end="url(#arrPipe)"/>
+
+                        <!-- 5. 클라우드 저장·분석 -->
+                        <rect x="576" y="120" width="116" height="92" rx="10" fill="#e0f7fa" stroke="#00acc1" stroke-width="2"/>
+                        <text x="634" y="142" text-anchor="middle" font-size="10.5" fill="#00838f" font-weight="700">⑤ 저장·분석</text>
+                        <text x="634" y="162" text-anchor="middle" font-size="9" fill="#0097a7">장기 저장</text>
+                        <text x="634" y="176" text-anchor="middle" font-size="9" fill="#0097a7">추세 분석</text>
+                        <text x="634" y="190" text-anchor="middle" font-size="9" fill="#0097a7">AI 학습</text>
+
+                        <!-- 데이터량 표시 띠 -->
+                        <rect x="26" y="234" width="666" height="34" rx="8" fill="#eceff1" stroke="#90a4ae" stroke-width="1.2"/>
+                        <text x="60" y="255" text-anchor="middle" font-size="9.5" fill="#37474f" font-weight="700">데이터량 大</text>
+                        <path d="M 120 252 L 600 252" stroke="#78909c" stroke-width="2" marker-end="url(#arrPipe)"/>
+                        <text x="650" y="255" text-anchor="middle" font-size="9.5" fill="#37474f" font-weight="700">小 (가치 압축)</text>
+
+                        <!-- 모델 하향 피드백 -->
+                        <path d="M 634 212 Q 634 310 393 310 Q 247 310 247 214" fill="none" stroke="#673ab7" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrPipe)"/>
+                        <text x="420" y="330" text-anchor="middle" font-size="9.5" fill="#4527a0" font-weight="600">클라우드가 학습한 검사 모델이 엣지로 다시 내려온다 (모델 배포)</text>
+                    </svg>
+                    <div class="caption">그림 1. 데이터 파이프라인 5단계 — 현장에서 클라우드로 갈수록 데이터량은 줄고 가치는 압축되며, 학습된 모델은 다시 엣지로 내려온다</div>
+                </div>
+
+                <h3 id="pipeline-stages"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 단계별로 보는 파이프라인</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">① 수집</span>
+                        <span class="term-desc">비전 카메라, IoT 센서, 설비 신호에서 원천 데이터가 만들어진다. 이 단계의 데이터량이 가장 크고 가공되지 않은 상태다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">② 엣지 처리</span>
+                        <span class="term-desc">현장 근처에서 이미지를 검사하고 결함을 판정한다. 실시간 응답이 여기서 끝난다. 라인 제어에 필요한 결정은 클라우드를 거치지 않는다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">③ 필터링·집계</span>
+                        <span class="term-desc">원본을 요약으로 바꾸고, NG 데이터를 선별하고, 정상 데이터는 샘플링한다. 네트워크 장애에 대비한 버퍼링도 이 단계에서 일어난다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">④ 전송</span>
+                        <span class="term-desc">선별·압축된 데이터를 MQTT, OPC UA, REST 같은 프로토콜로 클라우드에 올린다. 가벼워진 데이터만 회선을 탄다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">⑤ 저장·분석</span>
+                        <span class="term-desc">클라우드가 데이터를 장기 보관하고 추세를 분석하며 AI 모델을 학습한다. 학습된 모델은 다시 엣지로 배포되어 순환이 닫힌다.</span>
+                    </div>
+                </div>
+
+                <!-- 6. 무엇을 보내고 무엇을 버리나 -->
+                <h2 id="keep-or-drop"><i class="fa-solid fa-filter"></i> 무엇을 보내고 무엇을 버리나</h2>
+
+                <p>파이프라인의 ③ 필터링·집계 단계가 사실상 데이터 설계에서 가장 머리를 써야 하는 곳이다. 모든 데이터를 다 남기면 비용과 회선이 못 버티고, 너무 많이 버리면 나중에 필요한 데이터가 없다. 그 사이의 균형을 잡는 것이 <strong>데이터 보존 정책</strong>이다.</p>
+
+                <h3 id="raw-vs-summary"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 원본이냐 요약이냐</h3>
+
+                <p>대부분의 데이터는 원본 그대로가 아니라 <strong>요약된 형태</strong>로 클라우드에 올린다. 진동 센서의 초당 수천 개 샘플은 1초 평균·최대·표준편차로 압축한다. 검사 이미지는 "결함 면적 0.4㎟, 위치 (x, y), 판정 NG" 같은 측정값으로 추출한다. 원본은 엣지에 두고, 클라우드에는 분석에 쓸 수 있는 숫자만 보낸다.</p>
+
+                <h3 id="sampling-ng"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정상은 샘플링, NG는 보존</h3>
+
+                <p>이미지 보존의 원칙은 비대칭이다. <strong>정상(OK) 이미지</strong>는 전부 보관할 필요가 없다. 일정 비율로 샘플링해서 일부만 남긴다. 반면 <strong>불량(NG) 이미지</strong>는 가능한 한 모두 보존한다. NG 이미지는 클레임 대응의 증거가 되고, AI 검사 모델을 재학습할 때 가장 귀한 데이터다. 정상 이미지는 흔하지만 불량 이미지는 드물기 때문에, 드문 쪽을 더 아껴 모은다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>데이터</th>
+                            <th>클라우드 전송</th>
+                            <th>보존 방식</th>
+                            <th>이유</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">판정 결과·측정값</td>
+                            <td>전량 전송</td>
+                            <td>장기 보존</td>
+                            <td>가볍고, 추세 분석의 핵심 재료</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">NG 이미지</td>
+                            <td>전량 전송</td>
+                            <td>장기 보존</td>
+                            <td>클레임 증거이자 모델 재학습 데이터</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">OK 이미지</td>
+                            <td>샘플링 전송 (일부)</td>
+                            <td>엣지 단기 보관 후 폐기</td>
+                            <td>양이 많고 대부분 분석 가치가 낮음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">원본 고해상도 이미지</td>
+                            <td>전송 안 함</td>
+                            <td>엣지/온프레미스 단기 보관</td>
+                            <td>대역폭·비용 부담이 너무 큼</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">고빈도 센서 원샘플</td>
+                            <td>집계 후 전송</td>
+                            <td>엣지에서 통계로 압축</td>
+                            <td>원샘플은 양이 많고 노이즈가 섞임</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>보존 정책은 "기간"과 "조건"으로 정의한다</strong>
+                        실무에서 데이터 보존 정책은 보통 이런 식으로 적힌다. "원본 이미지는 엣지에 7일 보관 후 삭제, NG 이미지는 클라우드에 3년 보관, OK 이미지는 1% 샘플링해 1년 보관, 판정 결과는 영구 보관." 무엇을 얼마나 남길지 미리 규칙으로 정해두지 않으면, 스토리지는 반드시 한계에 부딪힌다.
+                    </div>
+                </div>
+
+                <!-- 7. 엣지 디바이스 -->
+                <h2 id="edge-devices"><i class="fa-solid fa-hard-drive"></i> 엣지 디바이스</h2>
+
+                <p>엣지 처리를 실제로 수행하는 하드웨어를 <strong>엣지 디바이스</strong>라고 부른다. 공장 현장에서는 처리 성능, 설치 공간, 환경 내성(온도·진동·먼지)에 따라 여러 형태가 쓰인다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>디바이스</th>
+                            <th>특징</th>
+                            <th>처리 능력</th>
+                            <th>대표 용도</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">산업용 PC (IPC)</td>
+                            <td>일반 PC를 산업 환경용으로 강화. 팬리스, 광온도 동작</td>
+                            <td>중~높음 (CPU 중심)</td>
+                            <td>비전 검사 SW 구동, 다중 카메라 처리</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">엣지 게이트웨이</td>
+                            <td>여러 설비·센서의 데이터를 모아 프로토콜 변환·전송</td>
+                            <td>낮~중간</td>
+                            <td>데이터 수집·중계, 프로토콜 브리지</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">스마트 카메라</td>
+                            <td>카메라 안에 프로세서 내장. 촬영과 검사를 한 몸체에서</td>
+                            <td>낮~중간 (내장 연산)</td>
+                            <td>단순·정형 검사, 공간 제약이 큰 라인</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">GPU 엣지 박스</td>
+                            <td>GPU를 탑재한 소형 박스. 딥러닝 추론에 특화</td>
+                            <td>높음 (병렬 연산)</td>
+                            <td>AI 기반 결함 검사, 실시간 딥러닝 추론</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-camera" style="color:#e65100;"></i> 스마트 카메라의 장단</h4>
+                        <p>카메라에 처리가 내장되어 배선과 공간이 줄고 구성이 간단하다. 다만 연산 자원이 제한적이라 복잡한 검사나 딥러닝에는 한계가 있다. 정형화된 검사에 적합하다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-bolt" style="color:#7b1fa2;"></i> GPU 엣지 박스의 장단</h4>
+                        <p>딥러닝 추론을 현장에서 실시간으로 돌릴 수 있다. 대신 발열·소비전력·비용이 크고, 모델 관리라는 운영 부담이 따라온다. AI 검사가 필요한 라인의 선택지다.</p>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>"카메라에 검사를 넣을까, PC에서 처리할까"</strong>
+                        검사가 단순하고 정형적이며 공간이 빠듯하면 스마트 카메라가 낫다. 검사가 복잡하거나 여러 카메라를 묶어야 하거나 딥러닝이 필요하면 산업용 PC나 GPU 엣지 박스가 낫다. 정답은 검사 난이도와 현장 제약이 함께 정한다.
+                    </div>
+                </div>
+
+                <!-- 8. 통신·프로토콜 -->
+                <h2 id="protocols"><i class="fa-solid fa-network-wired"></i> 통신과 프로토콜</h2>
+
+                <p>엣지에서 처리·선별한 데이터를 클라우드(또는 상위 시스템)로 올릴 때는 정해진 통신 프로토콜을 쓴다. 스마트 공장에서 자주 쓰이는 것은 <code>MQTT</code>, <code>OPC UA</code>, <code>REST</code> 세 가지다. 각각 성격이 다르다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>프로토콜</th>
+                            <th>방식</th>
+                            <th>강점</th>
+                            <th>주 용도</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">MQTT</td>
+                            <td>발행/구독 (Pub/Sub)</td>
+                            <td>가볍고, 불안정한 회선에 강함</td>
+                            <td>다수 엣지 → 클라우드로 센서·결과 데이터 스트리밍</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">OPC UA</td>
+                            <td>표준 데이터 모델 기반</td>
+                            <td>제조사 독립적, 구조화된 정보 모델</td>
+                            <td>설비·제어 계층과 상위 시스템의 표준 연결</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">REST</td>
+                            <td>요청/응답 (HTTP)</td>
+                            <td>범용적, 구현·연동이 쉬움</td>
+                            <td>이미지 업로드, 클라우드 API 호출, 모델 배포</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="protocol-choice"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 어떻게 골라 쓰나</h3>
+
+                <p>실무에서는 한 가지만 쓰지 않고 섞어 쓴다. 검사 결과나 센서 집계값처럼 끊임없이 흐르는 가벼운 데이터는 <strong>MQTT</strong>로 스트리밍한다. 설비 데이터를 표준화된 모델로 상위에 올릴 때는 <strong>OPC UA</strong>를 쓴다. NG 이미지 파일을 클라우드 스토리지에 올리거나 클라우드가 학습한 모델을 엣지로 내려받을 때는 <strong>REST</strong>가 자연스럽다. OPC UA는 이 시리즈 7편에서 더 자세히 다룬다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>MQTT가 공장에서 인기 있는 이유</strong>
+                        MQTT는 메시지 헤더가 매우 작고, 회선이 끊겼다 붙어도 재연결과 메시지 보관(QoS)을 지원한다. 공장 네트워크는 완벽하게 안정적이지 않기 때문에, "끊겨도 데이터를 잃지 않는" 특성이 중요하다. 그래서 다수의 엣지 디바이스가 데이터를 올려보내는 구조에서 MQTT가 사실상 표준처럼 쓰인다.
+                    </div>
+                </div>
+
+                <!-- 9. 장점과 과제 -->
+                <h2 id="pros-cons"><i class="fa-solid fa-scale-balanced"></i> 엣지 컴퓨팅의 장점과 과제</h2>
+
+                <p>엣지 컴퓨팅은 분명한 이점을 주지만, 공짜는 아니다. 처리를 현장에 분산시킨 만큼 관리해야 할 대상도 분산된다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-thumbs-up" style="color:#2e7d32;"></i> 장점</h4>
+                        <ul>
+                            <li><strong>지연 감소</strong> — 현장에서 즉시 판단, 실시간 제어 가능</li>
+                            <li><strong>대역폭 절약</strong> — 선별된 데이터만 전송, 회선 부담 감소</li>
+                            <li><strong>오프라인 동작</strong> — 회선이 끊겨도 검사·제어 지속</li>
+                            <li><strong>보안</strong> — 민감 데이터를 현장 안에 머무르게 함</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-triangle-exclamation" style="color:#d97706;"></i> 과제</h4>
+                        <ul>
+                            <li><strong>관리 복잡도</strong> — 디바이스가 많아질수록 관리 대상 증가</li>
+                            <li><strong>분산 업데이트</strong> — 수십~수백 대의 SW·모델을 동기화</li>
+                            <li><strong>보안 면적</strong> — 현장 디바이스 하나하나가 공격 지점</li>
+                            <li><strong>장애 대응</strong> — 분산된 고장을 원격으로 진단·복구</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>엣지가 늘어날수록 "운영"이 문제가 된다</strong>
+                        엣지 디바이스 한 대를 설치하는 것은 쉽다. 그러나 그것이 50대, 100대가 되면 이야기가 달라진다. 어느 디바이스가 어떤 버전의 검사 모델을 돌리고 있는지, 누가 펌웨어를 언제 올렸는지, 고장 난 디바이스를 어떻게 원격으로 되살릴지 — 이 <strong>분산 디바이스 운영(fleet management)</strong>이 엣지 컴퓨팅 도입에서 가장 과소평가되는 과제다.
+                    </div>
+                </div>
+
+                <!-- 10. 설계 고려사항 -->
+                <h2 id="design"><i class="fa-solid fa-compass-drafting"></i> 데이터 파이프라인 설계 시 고려사항</h2>
+
+                <p>마지막으로, 스마트 공장의 데이터 파이프라인을 설계할 때 반드시 짚어야 하는 네 가지를 정리한다. 이것을 빼먹으면 처음에는 잘 돌아가다가 규모가 커질 때 문제가 터진다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-list-check"></i> 설계 체크리스트 네 가지</div>
+                    <p><strong>1. 장애 시 버퍼링</strong> — 클라우드로 가는 회선은 반드시 끊긴다고 가정한다. 회선이 끊긴 동안 엣지가 데이터를 로컬에 쌓아두었다가, 복구되면 순서대로 다시 보내는 버퍼링·재전송 구조가 필수다. 이것이 없으면 네트워크 장애 = 데이터 손실이다.<br>
+                    <strong>2. 시각 동기화</strong> — 여러 엣지 디바이스의 시계가 어긋나면, 클라우드에서 데이터를 합쳤을 때 사건의 순서가 뒤죽박죽이 된다. NTP 같은 시각 동기화로 모든 디바이스가 같은 시간 기준을 갖게 해야 한다.<br>
+                    <strong>3. 스키마 관리</strong> — 데이터의 형식(필드 이름, 단위, 타입)을 미리 정의하고 버전을 관리한다. 엣지가 보내는 데이터 형식과 클라우드가 기대하는 형식이 어긋나면 파이프라인이 조용히 깨진다.<br>
+                    <strong>4. 확장성</strong> — 카메라 10대로 시작했어도 100대로 늘어날 것을 가정해 설계한다. 디바이스가 늘어날 때 파이프라인 구조를 갈아엎지 않고 추가만으로 확장되도록 해야 한다.</p>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>고려사항</th>
+                            <th>빠뜨리면 생기는 문제</th>
+                            <th>대표 대응</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">장애 시 버퍼링</td>
+                            <td>회선 장애 때 데이터 영구 손실</td>
+                            <td>엣지 로컬 큐, 재전송, MQTT QoS</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">시각 동기화</td>
+                            <td>데이터 순서·인과 관계 붕괴</td>
+                            <td>NTP/PTP 시각 동기, 타임스탬프 표준화</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">스키마 관리</td>
+                            <td>형식 불일치로 파이프라인 무음 장애</td>
+                            <td>스키마 정의·버전 관리, 검증 단계</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">확장성</td>
+                            <td>디바이스 증가 시 구조 재설계 필요</td>
+                            <td>Pub/Sub 구조, 표준 프로토콜, 모듈화</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>정리 — 엣지와 파이프라인은 머신비전의 자연스러운 확장이다</strong>
+                        머신비전 엔지니어에게 엣지 컴퓨팅은 낯선 분야가 아니다. 현장에서 이미지를 검사하는 일 자체가 이미 엣지 처리다. 거기에서 한 걸음 더 나아가 "검사 결과를 어떻게 위로 올리고, 무엇을 남기고, 어떻게 안정적으로 흐르게 할 것인가"를 설계하는 것이 데이터 파이프라인이다. 다음 13편에서는 이렇게 모인 데이터로 공장을 디지털 공간에 복제하는 디지털 트윈을 다룬다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NIST — Special Publication 500-325, Fog Computing Conceptual Model</li>
+                        <li>ISO/IEC TR 23188 — Information technology, Cloud computing, Edge computing landscape</li>
+                        <li>OPC Foundation — OPC UA Specification (https://opcfoundation.org)</li>
+                        <li>OASIS — MQTT Version 5.0 Specification</li>
+                        <li>Industrial Internet Consortium — The Industrial Internet of Things Volume G1: Reference Architecture</li>
+                        <li>NVIDIA — Edge Computing for Industrial AI Inference 기술 자료</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-factory');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-factory');
+</script>
+
+</body>
+</html>

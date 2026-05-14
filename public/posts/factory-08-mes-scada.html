@@ -1,0 +1,864 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES / SCADA 연동 — 생산·검사 데이터의 수집과 활용 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#it-layers" data-section="it-layers">IT 계층 구조</a>
+        <a href="#scada" data-section="scada">SCADA란</a>
+        <a href="#mes" data-section="mes">MES란</a>
+        <a href="#compare" data-section="compare">SCADA vs MES vs ERP</a>
+        <a href="#vision-flow" data-section="vision-flow">비전 데이터 흐름</a>
+        <a href="#mes-use" data-section="mes-use">MES 활용</a>
+        <a href="#interface" data-section="interface">연동 인터페이스</a>
+        <a href="#standardization" data-section="standardization">데이터 표준화</a>
+        <a href="#design" data-section="design">연동 설계 고려사항</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">스마트 공장</span>
+                </div>
+                <h1>MES / SCADA 연동 — 생산·검사 데이터의 수집과 활용</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>ISA-95 자동화 피라미드 — 현장 설비부터 ERP까지 공장 IT 시스템의 계층 구조</li>
+                        <li>SCADA — 감시 제어 및 데이터 수집 시스템이 하는 일</li>
+                        <li>MES — 제조 실행 시스템의 역할과 SCADA와의 차이</li>
+                        <li>SCADA vs MES vs ERP — 시간 범위와 관심사로 본 비교</li>
+                        <li>비전 검사 결과가 MES로 올라가 품질 데이터가 되는 흐름</li>
+                        <li>비전 데이터로 MES에서 할 수 있는 분석 — 불량률, 공정 능력, 추적성</li>
+                        <li>연동 인터페이스 — 직접 DB 쓰기, REST API, OPC UA, 미들웨어의 장단점</li>
+                        <li>데이터 표준화의 어려움과 연동 설계 시 고려사항</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#it-layers">공장 IT 시스템의 계층 — ISA-95 자동화 피라미드</a></li>
+                        <li><a href="#scada">SCADA란 — 감시 제어 및 데이터 수집</a></li>
+                        <li><a href="#mes">MES란 — 제조 실행 시스템</a></li>
+                        <li><a href="#compare">SCADA vs MES vs ERP — 무엇이 다른가</a></li>
+                        <li><a href="#vision-flow">비전 검사 결과가 올라가는 흐름</a></li>
+                        <li><a href="#mes-use">비전 데이터로 MES에서 할 수 있는 것</a></li>
+                        <li><a href="#interface">연동 인터페이스 — 네 가지 방식</a></li>
+                        <li><a href="#standardization">데이터 표준화의 어려움</a></li>
+                        <li><a href="#design">연동 설계 시 고려사항</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. IT 계층 구조 -->
+                <h2 id="it-layers"><i class="fa-solid fa-layer-group"></i> 공장 IT 시스템의 계층 — ISA-95 자동화 피라미드</h2>
+
+                <p>비전 검사 시스템이 만든 데이터는 그 자체로 끝나지 않는다. 위쪽 시스템으로 올라가 품질 이력이 되고, 분석의 재료가 되고, 경영 의사결정의 근거가 된다. 이 "위쪽"이 정확히 어디인지를 이해하려면 공장 IT 시스템이 어떻게 층층이 쌓여 있는지부터 알아야 한다. 그 기준이 국제 표준 <code>ISA-95</code>가 정의하는 <strong>자동화 피라미드</strong>다.</p>
+
+                <p>ISA-95(IEC 62264)는 기업 경영 시스템과 제어 시스템을 어떻게 통합할 것인가를 다루는 표준이다. 공장의 기능을 Level 0부터 Level 4까지 다섯 계층으로 나누고, 각 계층이 무엇을 책임지는지를 규정한다. 아래로 갈수록 빠르고 물리적이며, 위로 갈수록 느리고 추상적이다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 470" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrUp" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#3a9a3e"/></marker>
+                            <marker id="arrDown" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#e65100"/></marker>
+                        </defs>
+                        <text x="360" y="26" text-anchor="middle" font-size="15" fill="#1b5e20" font-weight="700">ISA-95 자동화 피라미드</text>
+
+                        <!-- Level 4 ERP -->
+                        <polygon points="290,48 430,48 410,104 310,104" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="360" y="72" text-anchor="middle" font-size="13" fill="#4527a0" font-weight="700">ERP</text>
+                        <text x="360" y="90" text-anchor="middle" font-size="9" fill="#7e57c2">경영 — 수주·생산계획·자재·원가</text>
+                        <text x="455" y="80" font-size="9" fill="#9575cd">Level 4</text>
+
+                        <!-- Level 3 MES -->
+                        <polygon points="305,108 415,108 445,164 275,164" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="360" y="132" text-anchor="middle" font-size="13" fill="#2e7d32" font-weight="700">MES</text>
+                        <text x="360" y="150" text-anchor="middle" font-size="9" fill="#66bb6a">제조 실행 — 작업지시·실적·품질·추적성</text>
+                        <text x="455" y="140" font-size="9" fill="#81c784">Level 3</text>
+
+                        <!-- Level 2 SCADA -->
+                        <polygon points="270,168 450,168 480,224 240,224" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="360" y="192" text-anchor="middle" font-size="13" fill="#1565c0" font-weight="700">SCADA / HMI</text>
+                        <text x="360" y="210" text-anchor="middle" font-size="9" fill="#42a5f5">감시 제어 — 실시간 모니터링·알람</text>
+                        <text x="490" y="200" font-size="9" fill="#64b5f6">Level 2</text>
+
+                        <!-- Level 1 PLC -->
+                        <polygon points="235,228 485,228 515,284 205,284" fill="#e1f5fe" stroke="#0288d1" stroke-width="2"/>
+                        <text x="360" y="252" text-anchor="middle" font-size="13" fill="#0277bd" font-weight="700">PLC / 제어기</text>
+                        <text x="360" y="270" text-anchor="middle" font-size="9" fill="#4fc3f7">제어 — 시퀀스·인터록·실시간 로직</text>
+                        <text x="525" y="260" font-size="9" fill="#81d4fa">Level 1</text>
+
+                        <!-- Level 0 Field -->
+                        <polygon points="200,288 520,288 555,348 165,348" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="360" y="312" text-anchor="middle" font-size="13" fill="#e65100" font-weight="700">현장 설비 (Field)</text>
+                        <text x="360" y="330" text-anchor="middle" font-size="9" fill="#fb8c00">센서·액추에이터·로봇·머신비전 카메라</text>
+                        <text x="563" y="320" font-size="9" fill="#ffb74d">Level 0</text>
+
+                        <!-- 상향 화살표 -->
+                        <line x1="130" y1="345" x2="130" y2="58" stroke="#3a9a3e" stroke-width="2.5" marker-end="url(#arrUp)"/>
+                        <text x="112" y="205" font-size="10" fill="#2e7d32" font-weight="600" transform="rotate(-90 112 205)">데이터·실적 (상향)</text>
+
+                        <!-- 하향 화살표 -->
+                        <line x1="600" y1="58" x2="600" y2="345" stroke="#e65100" stroke-width="2.5" marker-end="url(#arrDown)"/>
+                        <text x="618" y="205" font-size="10" fill="#e65100" font-weight="600" transform="rotate(90 618 205)">지시·계획 (하향)</text>
+
+                        <!-- 시간 범위 띠 -->
+                        <rect x="165" y="364" width="390" height="42" rx="8" fill="#eceff1" stroke="#90a4ae" stroke-width="1.5"/>
+                        <text x="360" y="381" text-anchor="middle" font-size="10.5" fill="#455a64" font-weight="700">시간 범위 — 아래는 밀리초 단위, 위로 갈수록 교대·일·월 단위</text>
+                        <text x="360" y="398" text-anchor="middle" font-size="9.5" fill="#607d8b">Level 0~2: 실시간 / Level 3: 교대·로트 / Level 4: 일·주·월</text>
+
+                        <!-- 비전 위치 표시 -->
+                        <rect x="165" y="416" width="390" height="40" rx="8" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="360" y="433" text-anchor="middle" font-size="10" fill="#c2185b" font-weight="700">머신비전은 Level 0에서 데이터를 만들어 Level 3(MES)로 올린다</text>
+                        <text x="360" y="449" text-anchor="middle" font-size="9" fill="#d81b60">검사 결과 → SCADA/PLC 경유 또는 직접 → MES 품질 이력</text>
+                    </svg>
+                    <div class="caption">그림 1. ISA-95 자동화 피라미드 — 현장 설비의 데이터는 위로 올라가고, 경영의 계획은 아래로 내려온다</div>
+                </div>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">Level 0 — 현장</span>
+                        <span class="term-desc">실제 제조가 일어나는 물리적 계층이다. 센서, 액추에이터, 모터, 로봇, 그리고 머신비전 카메라가 여기 있다. 데이터의 원천이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Level 1 — 제어</span>
+                        <span class="term-desc">PLC와 전용 제어기가 설비의 동작 시퀀스와 인터록을 밀리초 단위로 제어한다. 현장을 직접 움직이는 두뇌다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Level 2 — 감시 제어</span>
+                        <span class="term-desc">SCADA와 HMI가 여러 PLC를 묶어 실시간으로 감시하고 운전한다. 작업자가 라인 전체 상태를 보는 화면이 이 계층이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Level 3 — 제조 실행</span>
+                        <span class="term-desc">MES가 작업 지시, 생산 실적, 품질 데이터, 추적성을 관리한다. 교대·로트 단위로 "무엇을 얼마나 어떻게 만들었는가"를 다룬다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Level 4 — 경영</span>
+                        <span class="term-desc">ERP가 수주, 생산계획, 자재, 원가 등 기업 전체 자원을 일·주·월 단위로 관리한다. 경영 의사결정의 시스템이다.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>피라미드의 경계는 점점 흐려진다</strong>
+                        전통적 ISA-95 피라미드는 계층이 명확히 구분되고 데이터가 한 단계씩 위로 올라간다고 본다. 그러나 IIoT와 OPC UA가 보급되면서 현장 설비가 클라우드나 MES로 직접 데이터를 보내기도 한다. 그래도 "누가 어떤 시간 범위의 무엇을 책임지는가"라는 계층의 본질은 여전히 유효하다.
+                    </div>
+                </div>
+
+                <!-- 2. SCADA -->
+                <h2 id="scada"><i class="fa-solid fa-desktop"></i> SCADA란 — 감시 제어 및 데이터 수집</h2>
+
+                <p><code>SCADA</code>는 Supervisory Control And Data Acquisition의 약자다. 우리말로는 "감시 제어 및 데이터 수집"이다. 이름 그대로 두 가지를 한다. 현장 설비를 <strong>감시하고 제어</strong>하며, 그 과정에서 나오는 데이터를 <strong>수집</strong>한다. ISA-95의 Level 2에 위치한다.</p>
+
+                <p>SCADA를 가장 쉽게 떠올리는 방법은 공장 관제실의 큰 모니터다. 라인 전체의 설비가 도식으로 그려져 있고, 각 설비의 상태가 색과 숫자로 실시간 표시된다. 어디선가 온도가 임계값을 넘으면 그 부분이 빨갛게 깜빡이고 알람이 울린다. 작업자는 화면을 보고 밸브를 열거나 라인을 멈춘다. 이 전체 그림이 SCADA다.</p>
+
+                <h3 id="scada-roles"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> SCADA가 하는 일</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> SCADA의 네 가지 핵심 기능</div>
+                    <p><strong>1. 실시간 모니터링</strong> — 여러 PLC와 설비에서 태그(tag) 값을 주기적으로 읽어와 현재 상태를 보여준다. 온도, 압력, 속도, 가동/정지 같은 값이 초 단위로 갱신된다.<br>
+                    <strong>2. 감시 제어</strong> — 작업자가 화면에서 설비에 명령을 내린다. 설정값 변경, 라인 기동/정지 같은 운전 조작이 SCADA를 통한다. 단, 밀리초 단위의 실시간 제어는 PLC의 몫이고 SCADA는 그 위의 "운전" 수준을 담당한다.<br>
+                    <strong>3. 알람 관리</strong> — 값이 정상 범위를 벗어나면 알람을 발생시키고 기록한다. 누가 언제 알람을 확인했는지까지 남긴다.<br>
+                    <strong>4. 데이터 수집과 이력</strong> — 수집한 태그 값을 시계열로 저장한다. 이 데이터가 추세 그래프와 트렌드 분석의 바탕이 된다.</p>
+                </div>
+
+                <p>SCADA의 작업자 인터페이스를 <code>HMI</code>(Human-Machine Interface)라고 부른다. 엄밀히는 HMI가 단일 설비의 조작 화면, SCADA가 라인·공장 규모의 감시 시스템이지만, 현장에서는 둘을 묶어 부르는 경우가 많다. 핵심은 SCADA가 다루는 시간 범위가 <strong>"지금 이 순간"</strong>이라는 점이다. SCADA는 지난달 불량률을 분석하지 않는다. 지금 라인이 정상으로 돌고 있는지를 본다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>SCADA를 한 문장으로</strong>
+                        SCADA는 "공장이 지금 어떻게 돌아가고 있는지를 실시간으로 보여주고, 이상이 생기면 즉시 알리는 시스템"이다. 관심사는 현재 상태이고, 시간 범위는 실시간이다.
+                    </div>
+                </div>
+
+                <!-- 3. MES -->
+                <h2 id="mes"><i class="fa-solid fa-clipboard-list"></i> MES란 — 제조 실행 시스템</h2>
+
+                <p><code>MES</code>는 Manufacturing Execution System, 제조 실행 시스템이다. ISA-95의 Level 3에 위치하며, ERP의 생산계획과 현장의 실제 제조 사이를 잇는다. ERP가 "이번 달에 제품 A를 10만 개 만든다"고 계획하면, MES는 그것을 "오늘 1번 라인에서 어떤 작업을 어떤 순서로 한다"는 실행 단위로 풀어내고 그 결과를 다시 집계한다.</p>
+
+                <h3 id="mes-roles"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> MES가 하는 일</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">작업 지시</span>
+                        <span class="term-desc">생산계획을 작업 오더로 분해해 어느 라인, 어느 설비, 어떤 순서로 무엇을 만들지 현장에 지시한다. 작업자는 MES 단말에서 오늘 할 일을 받는다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">생산 추적</span>
+                        <span class="term-desc">제품이 어느 공정을 언제 통과했는지, 현재 어디에 있는지를 추적한다. 시리얼·로트 단위로 생산 진행을 실시간 파악한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">품질 관리</span>
+                        <span class="term-desc">각 공정의 검사 결과와 측정값을 수집·저장한다. 머신비전의 검사 데이터가 모이는 곳이 바로 여기다. 불량 발생 시 원인 공정을 추적할 수 있게 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">설비 관리</span>
+                        <span class="term-desc">설비 가동률, 비가동 사유, 생산 실적을 집계한다. OEE(설비 종합 효율) 같은 지표가 MES에서 산출된다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">자재·이력 관리</span>
+                        <span class="term-desc">어떤 자재 로트가 어떤 제품에 투입되었는지 기록한다. 추적성(traceability)의 핵심 데이터다.</span>
+                    </div>
+                </div>
+
+                <h3 id="mes-vs-scada"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> MES와 SCADA의 차이</h3>
+
+                <p>둘 다 현장 데이터를 다루기 때문에 헷갈리기 쉽지만, 관심사가 다르다. SCADA의 질문은 <strong>"지금 설비가 정상인가"</strong>이고, MES의 질문은 <strong>"이 제품/로트가 계획대로 만들어지고 있는가"</strong>다. SCADA는 설비 중심이고 실시간이며, MES는 제품·오더 중심이고 교대·로트 단위다.</p>
+
+                <p>예를 들어 어떤 설비의 모터 온도가 75도라는 사실은 SCADA의 관심사다. 반면 "오늘 3번 라인에서 만든 로트 #2024-0514-03의 불량률이 2.1%"라는 사실은 MES의 관심사다. SCADA는 그 온도를 시계열로 쌓지만 제품별로 묶지 않는다. MES는 데이터를 항상 <strong>제품·오더·로트</strong>라는 맥락에 묶어 저장한다. 그래서 비전 검사 결과가 "어느 제품의 데이터인가"라는 의미를 가지려면 결국 MES로 올라가야 한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>SCADA가 MES로 데이터를 전달하기도 한다</strong>
+                        SCADA와 MES는 경쟁 관계가 아니라 협력 관계다. 많은 공장에서 SCADA가 현장 설비에서 데이터를 모으고, 그중 생산·품질에 의미 있는 값을 MES로 넘긴다. 즉 SCADA가 Level 1과 Level 3 사이의 데이터 게이트웨이 역할을 겸하기도 한다.
+                    </div>
+                </div>
+
+                <!-- 4. 비교 -->
+                <h2 id="compare"><i class="fa-solid fa-scale-balanced"></i> SCADA vs MES vs ERP — 무엇이 다른가</h2>
+
+                <p>세 시스템은 모두 공장을 다루지만, <strong>시간 범위</strong>와 <strong>관심사</strong>가 명확히 다르다. 아래로 갈수록 빠르고 구체적이며, 위로 갈수록 느리고 추상적이다. 이 차이를 한눈에 정리하면 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>구분</th>
+                            <th>SCADA</th>
+                            <th>MES</th>
+                            <th>ERP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">ISA-95 계층</td>
+                            <td>Level 2</td>
+                            <td>Level 3</td>
+                            <td>Level 4</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">한 줄 정의</td>
+                            <td>설비 감시 제어와 데이터 수집</td>
+                            <td>제조 실행 — 작업 지시와 실적·품질 관리</td>
+                            <td>기업 자원 계획 — 수주·자재·원가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">시간 범위</td>
+                            <td>실시간 (초·밀리초)</td>
+                            <td>교대·로트·일</td>
+                            <td>일·주·월·분기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">핵심 질문</td>
+                            <td>지금 설비가 정상인가</td>
+                            <td>이 제품이 계획대로 만들어지나</td>
+                            <td>회사 자원을 어떻게 배분하나</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">데이터 중심</td>
+                            <td>설비·태그·알람</td>
+                            <td>제품·오더·로트·품질</td>
+                            <td>주문·재고·비용·인력</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">주 사용자</td>
+                            <td>현장 운전원·설비 담당</td>
+                            <td>생산 관리·품질 담당</td>
+                            <td>경영·구매·재무</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">비전 데이터와의 관계</td>
+                            <td>검사 신호를 PLC 경유로 중계</td>
+                            <td>검사 결과가 품질 이력으로 축적</td>
+                            <td>불량률·수율이 원가·계획에 반영</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>머신비전 엔지니어 입장에서 가장 중요한 계층은 <strong>MES</strong>다. 검사 결과가 의미 있는 품질 데이터가 되는 곳이 MES이기 때문이다. SCADA는 검사 양품/불량 신호가 PLC를 거쳐 잠깐 지나가는 통로이고, ERP는 그렇게 쌓인 불량률이 경영 숫자로 요약되어 도달하는 종착점이다. 이 글의 나머지는 비전 데이터와 MES의 연동에 집중한다.</p>
+
+                <!-- 5. 비전 데이터 흐름 -->
+                <h2 id="vision-flow"><i class="fa-solid fa-diagram-project"></i> 비전 검사 결과가 올라가는 흐름</h2>
+
+                <p>비전 시스템이 한 장의 이미지를 검사하면 그 순간 여러 종류의 데이터가 만들어진다. 양품/불량 판정, 측정값(치수·각도·위치), 결함 정보(종류·면적·좌표), 그리고 검사 이미지 자체다. 이 데이터가 비전 시스템 PC에만 남아 있으면 추적성도 통계도 없다. MES로 올라가야 비로소 <strong>품질 데이터</strong>가 된다. 그 경로는 다음과 같다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 320" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrFlow" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                            <marker id="arrFlow2" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#1565c0"/></marker>
+                        </defs>
+                        <text x="360" y="24" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">비전 검사 결과 → MES 품질 데이터 흐름</text>
+
+                        <!-- 비전 시스템 -->
+                        <rect x="20" y="58" width="130" height="92" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="85" y="84" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">비전 시스템</text>
+                        <text x="85" y="103" text-anchor="middle" font-size="9" fill="#fb8c00">판정 (OK/NG)</text>
+                        <text x="85" y="118" text-anchor="middle" font-size="9" fill="#fb8c00">측정값·결함정보</text>
+                        <text x="85" y="133" text-anchor="middle" font-size="9" fill="#fb8c00">검사 이미지</text>
+
+                        <!-- 인터페이스 박스 -->
+                        <rect x="230" y="48" width="150" height="112" rx="10" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="305" y="72" text-anchor="middle" font-size="11" fill="#6a1b9a" font-weight="700">연동 인터페이스</text>
+                        <text x="305" y="92" text-anchor="middle" font-size="9" fill="#8e24aa">OPC UA</text>
+                        <text x="305" y="107" text-anchor="middle" font-size="9" fill="#8e24aa">REST API</text>
+                        <text x="305" y="122" text-anchor="middle" font-size="9" fill="#8e24aa">직접 DB 쓰기</text>
+                        <text x="305" y="137" text-anchor="middle" font-size="9" fill="#8e24aa">미들웨어</text>
+
+                        <line x1="150" y1="104" x2="228" y2="104" stroke="#4caf50" stroke-width="2" marker-end="url(#arrFlow)"/>
+
+                        <!-- MES -->
+                        <rect x="460" y="58" width="130" height="92" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="525" y="84" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">MES</text>
+                        <text x="525" y="103" text-anchor="middle" font-size="9" fill="#66bb6a">시리얼·로트와 결합</text>
+                        <text x="525" y="118" text-anchor="middle" font-size="9" fill="#66bb6a">품질 이력 DB 저장</text>
+                        <text x="525" y="133" text-anchor="middle" font-size="9" fill="#66bb6a">실적 집계</text>
+
+                        <line x1="380" y1="104" x2="458" y2="104" stroke="#4caf50" stroke-width="2" marker-end="url(#arrFlow)"/>
+
+                        <!-- PLC 경유 (점선 하단 경로) -->
+                        <rect x="230" y="190" width="150" height="50" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="305" y="211" text-anchor="middle" font-size="10.5" fill="#1565c0" font-weight="700">PLC / SCADA</text>
+                        <text x="305" y="227" text-anchor="middle" font-size="9" fill="#42a5f5">불량품 배출·라인 제어</text>
+                        <path d="M 85 150 L 85 215 L 228 215" fill="none" stroke="#1565c0" stroke-width="2" marker-end="url(#arrFlow2)"/>
+                        <text x="120" y="180" font-size="9" fill="#1565c0">실시간 신호</text>
+
+                        <!-- 분석 -->
+                        <rect x="460" y="190" width="130" height="50" rx="10" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="525" y="211" text-anchor="middle" font-size="10.5" fill="#4527a0" font-weight="700">분석·대시보드</text>
+                        <text x="525" y="227" text-anchor="middle" font-size="9" fill="#7e57c2">불량률·공정능력·추세</text>
+                        <path d="M 525 150 L 525 188" fill="none" stroke="#673ab7" stroke-width="2" marker-end="url(#arrFlow)" stroke-dasharray="0"/>
+
+                        <!-- 설명 -->
+                        <text x="360" y="278" text-anchor="middle" font-size="9.5" fill="#607d8b">두 갈래 — 실시간 제어 신호는 PLC로, 데이터로서의 검사 결과는 인터페이스를 거쳐 MES로</text>
+                        <text x="360" y="296" text-anchor="middle" font-size="9.5" fill="#607d8b">MES에 쌓인 데이터는 시리얼·로트 맥락을 가져 분석·추적의 재료가 된다</text>
+                    </svg>
+                    <div class="caption">그림 2. 비전 검사 결과의 두 갈래 경로 — 실시간 제어 신호는 PLC로, 품질 데이터는 인터페이스를 거쳐 MES로 올라간다</div>
+                </div>
+
+                <p>여기서 두 갈래를 구분하는 것이 중요하다. <strong>제어 신호</strong>는 PLC로 간다. 불량이 나오면 그 즉시 PLC가 실린더를 밀어 불량품을 배출해야 하므로, 이 경로는 빠르고 단순한 신호여야 한다(자세한 내용은 6편 PLC 연동에서 다뤘다). 반면 <strong>데이터로서의 검사 결과</strong>는 MES로 간다. 측정값 12.03mm, 결함 면적 0.4㎟, 검사 이미지가 시리얼 번호와 함께 MES DB에 저장된다. 이 경로는 빠를 필요는 없지만 정확하고 빠짐없어야 한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>판정과 데이터를 분리해서 생각한다</strong>
+                        비전 시스템 설계 시 흔한 실수가 "OK/NG 신호만 PLC로 보내면 끝"이라고 여기는 것이다. 그러면 측정값과 이미지가 휘발된다. 제어용 신호 경로와 데이터 축적 경로는 별개로 설계해야 한다. 전자는 6편, 후자가 이 글의 주제다.
+                    </div>
+                </div>
+
+                <!-- 6. MES 활용 -->
+                <h2 id="mes-use"><i class="fa-solid fa-chart-line"></i> 비전 데이터로 MES에서 할 수 있는 것</h2>
+
+                <p>검사 결과가 MES에 시리얼·로트 맥락과 함께 쌓이면, 한 장 한 장의 검사로는 보이지 않던 것들이 보이기 시작한다. 개별 검사는 "이 제품이 양품인가"만 답하지만, 축적된 데이터는 "공정이 어떤 상태인가"를 답한다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-percent" style="color:#ef4444;"></i> 불량률 통계</h4>
+                        <p>로트별·교대별·일별 불량률을 자동 집계한다. 불량 유형별 파레토 분석으로 어떤 결함이 가장 빈번한지 한눈에 본다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-chart-area" style="color:#1565c0;"></i> 공정 능력 분석</h4>
+                        <p>측정값의 분포로 Cp·Cpk 같은 공정 능력 지수를 계산한다. 규격을 벗어나기 전에 공정이 흔들리는 조짐을 SPC 관리도로 잡아낸다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-magnifying-glass" style="color:#2e7d32;"></i> 추적성</h4>
+                        <p>고객 클레임이 들어오면 해당 시리얼의 검사 이미지와 측정값을 즉시 조회한다. 같은 조건의 제품 범위를 좁혀 리콜 범위를 최소화한다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-bell" style="color:#e65100;"></i> 실시간 품질 알람</h4>
+                        <p>불량률이 임계치를 넘거나 측정값이 한쪽으로 치우치면 즉시 알린다. 불량이 대량 발생하기 전에 라인을 멈추거나 점검한다.</p>
+                    </div>
+                </div>
+
+                <p>여기에 더해 <strong>설비별·로트별 교차 분석</strong>이 가능해진다. 같은 제품인데 1번 설비의 불량률이 3번 설비보다 높다면 그 설비에 문제가 있다는 신호다. 특정 자재 로트가 투입된 제품에서만 불량이 몰린다면 자재 쪽을 의심할 수 있다. 이런 분석은 검사 데이터가 MES 안에서 설비 ID, 자재 로트, 작업 시간 같은 다른 데이터와 연결되어 있을 때만 가능하다. 비전 데이터 단독으로는 불가능하고, MES라는 맥락이 있어야 비로소 가능한 분석이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>검사기는 데이터의 생산자, MES는 데이터의 활용처</strong>
+                        비전 시스템은 좋은 데이터를 정확하게 만들어 올리는 데 집중하면 된다. 그 데이터를 어떻게 묶고 분석하고 보여줄지는 MES의 영역이다. 다만 MES가 제대로 분석하려면 비전 시스템이 올리는 데이터에 시리얼·설비 ID·타임스탬프 같은 식별 정보가 정확히 붙어 있어야 한다. 연동 설계의 핵심이 여기 있다.
+                    </div>
+                </div>
+
+                <!-- 7. 연동 인터페이스 -->
+                <h2 id="interface"><i class="fa-solid fa-plug"></i> 연동 인터페이스 — 네 가지 방식</h2>
+
+                <p>비전 시스템의 데이터를 MES로 보내는 방법은 크게 네 가지다. 각각 장단점이 뚜렷해서 공장의 상황, MES 벤더, 데이터 양에 따라 선택이 달라진다.</p>
+
+                <h3 id="if-db"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 직접 DB 쓰기</h3>
+                <p>비전 시스템이 MES의 데이터베이스에 직접 <code>INSERT</code> 쿼리를 날리는 방식이다. 구현이 가장 단순하고 빠르다. 그러나 MES의 테이블 구조에 강하게 결합되어, MES가 스키마를 바꾸면 비전 시스템도 깨진다. MES 벤더가 외부의 직접 DB 접근을 보안상 허용하지 않는 경우도 많다. 소규모 라인이나 사내 자체 MES에서 임시방편으로 쓰인다.</p>
+
+                <h3 id="if-rest"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> REST API</h3>
+                <p>MES가 제공하는 HTTP API에 검사 결과를 JSON으로 전송하는 방식이다. MES 내부 구조를 몰라도 정해진 API 규격만 지키면 되므로 결합도가 낮다. 디버깅과 로그 확인이 쉽고 방화벽 통과도 수월하다. 단, MES가 API를 제공해야 하고, 대량의 고빈도 전송에는 HTTP 오버헤드가 부담될 수 있다.</p>
+
+                <h3 id="if-opcua"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> OPC UA</h3>
+                <p>제조 현장의 표준 통신 프로토콜이다(7편에서 자세히 다뤘다). 비전 시스템이 OPC UA 서버로 검사 결과를 노출하면 MES가 클라이언트로 구독한다. 제조사·플랫폼에 독립적이고, 데이터 모델이 표준화되어 있으며, 보안과 신뢰성 기능을 갖췄다. 산업 표준을 따른다는 점이 가장 큰 강점이다. 단, 구현이 무겁고 측정값·신호 전달에는 적합하지만 큰 이미지 파일 전송에는 잘 쓰지 않는다.</p>
+
+                <h3 id="if-middleware"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 미들웨어</h3>
+                <p>비전 시스템과 MES 사이에 별도의 중계 소프트웨어를 두는 방식이다. 여러 검사기의 다양한 포맷을 미들웨어가 흡수해 표준 형태로 변환한 뒤 MES로 넘긴다. 검사기가 많고 종류가 다양한 대규모 공장에서 유리하다. 장애 시 버퍼링, 포맷 변환, 재전송 같은 기능을 한곳에서 처리할 수 있다. 단, 구축·운영 비용이 들고 시스템 구성이 복잡해진다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>방식</th>
+                            <th>장점</th>
+                            <th>단점</th>
+                            <th>적합한 상황</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">직접 DB 쓰기</td>
+                            <td>구현이 단순·빠름, 별도 인프라 불필요</td>
+                            <td>MES 스키마에 강결합, 보안상 차단되는 경우 많음</td>
+                            <td>소규모 라인, 사내 자체 MES</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">REST API</td>
+                            <td>결합도 낮음, 디버깅 쉬움, 방화벽 친화적</td>
+                            <td>MES가 API 제공해야 함, 고빈도 전송 시 오버헤드</td>
+                            <td>MES가 API를 갖춘 현대적 환경</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">OPC UA</td>
+                            <td>산업 표준, 플랫폼 독립, 보안·신뢰성 내장</td>
+                            <td>구현이 무거움, 대용량 이미지 전송엔 부적합</td>
+                            <td>표준 준수가 중요한 환경, 측정값·신호 전달</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">미들웨어</td>
+                            <td>다양한 포맷 흡수, 버퍼링·변환 중앙 처리</td>
+                            <td>구축·운영 비용, 시스템 복잡도 증가</td>
+                            <td>검사기가 많고 다양한 대규모 공장</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>이미지는 별도로 처리한다</strong>
+                        네 방식 모두 측정값·판정 같은 구조화된 데이터를 보내기엔 적합하지만, 수 MB짜리 검사 이미지를 그대로 실어 보내기엔 무겁다. 흔한 해법은 이미지를 공유 스토리지나 이미지 서버에 저장하고, MES에는 그 <strong>파일 경로나 URL만</strong> 전달하는 것이다. 데이터와 이미지의 전송 경로를 분리하는 것이 정석이다.
+                    </div>
+                </div>
+
+                <!-- 8. 데이터 표준화 -->
+                <h2 id="standardization"><i class="fa-solid fa-table-list"></i> 데이터 표준화의 어려움</h2>
+
+                <p>연동 방식을 정했다고 끝이 아니다. 실제로 가장 오래 걸리고 가장 골치 아픈 부분은 <strong>데이터 표준화</strong>다. 여러 검사기와 설비가 각자 다른 방식으로 데이터를 내보내기 때문이다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">포맷 불일치</span>
+                        <span class="term-desc">A 검사기는 판정을 "OK/NG"로, B 검사기는 "1/0"으로, C 검사기는 "Pass/Fail"로 내보낸다. 측정값의 단위도 mm와 um이 섞인다. 항목 이름도 제각각이다. 이것을 MES가 받아들이는 하나의 표준 포맷으로 매핑하는 작업이 필요하다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">시각 동기화</span>
+                        <span class="term-desc">검사기마다 내부 시계가 조금씩 다르면 "어느 검사가 먼저인가"가 어긋난다. 설비 데이터와 검사 데이터를 시간으로 묶어 분석하려면 NTP 같은 시각 동기화가 전제되어야 한다. 동기화가 안 되면 추적성 자체가 무너진다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">데이터 누락 처리</span>
+                        <span class="term-desc">네트워크 순단, MES 점검, 검사기 재부팅 등으로 일부 데이터가 빠질 수 있다. 누락을 검출하고, 빠진 구간을 채우거나 최소한 "여기 빠졌다"고 표시하는 장치가 없으면 통계가 조용히 왜곡된다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">식별자 정합성</span>
+                        <span class="term-desc">검사기가 인식한 시리얼 번호와 MES가 알고 있는 시리얼 번호가 일치해야 데이터가 올바른 제품에 붙는다. 바코드 오인식, 자릿수 차이, 채번 규칙 불일치가 흔한 사고 원인이다.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>표준 데이터 모델을 먼저 정한다</strong>
+                        검사기별로 MES와 1:1 매핑을 짜기 시작하면 검사기 수만큼 인터페이스가 늘어나 관리가 불가능해진다. 해법은 "검사 결과는 이런 필드를 이런 형식으로 담는다"는 사내 표준 데이터 모델을 먼저 정의하고, 각 검사기를 그 표준에 맞추는 것이다. ISA-95와 함께 쓰이는 B2MML 같은 표준 스키마가 참고가 된다.
+                    </div>
+                </div>
+
+                <!-- 9. 연동 설계 고려사항 -->
+                <h2 id="design"><i class="fa-solid fa-pen-ruler"></i> 연동 설계 시 고려사항</h2>
+
+                <p>마지막으로 비전-MES 연동을 실제로 설계할 때 미리 정해야 할 것들을 정리한다. 이 결정들은 나중에 바꾸기 어려우므로 초기에 신중히 잡아야 한다.</p>
+
+                <h3 id="design-what"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 무엇을 올릴 것인가 — 원본 vs 요약</h3>
+                <p>검사 한 건당 수십~수백 개의 측정 항목이 나올 수 있다. 이걸 전부 올릴지, 핵심 항목과 판정만 올릴지 정해야 한다. 전부 올리면 분석 여지는 넓어지지만 저장 용량과 전송 부하가 커진다. 일반적으로 <strong>판정과 핵심 측정값은 항상</strong> 올리고, 상세 원본 데이터는 불량 건이나 샘플링 건만 올리는 절충안을 쓴다.</p>
+
+                <h3 id="design-cycle"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 저장 주기와 단위</h3>
+                <p>검사 건마다 즉시 보낼지, 일정 건수를 모아 묶음으로 보낼지 정한다. 실시간 품질 알람이 필요하면 건별 전송이 맞고, 부하를 줄이려면 묶음 전송이 유리하다. 둘을 섞어 판정은 건별, 상세 데이터는 묶음으로 보내기도 한다.</p>
+
+                <h3 id="design-image"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 이미지 저장 정책</h3>
+                <p>모든 검사 이미지를 다 저장하면 용량이 폭발한다. 보통 <strong>불량 이미지는 전부, 양품 이미지는 일정 비율만 또는 일정 기간만</strong> 보관하는 정책을 쓴다. 보관 기간, 저장 위치, 압축 포맷, 그리고 MES에는 경로만 보낼지 썸네일도 보낼지를 미리 정한다.</p>
+
+                <h3 id="design-buffer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 장애 시 버퍼링</h3>
+                <p>MES가 점검 중이거나 네트워크가 끊겨도 라인은 계속 돈다. 그동안의 검사 데이터가 사라지면 안 된다. 비전 시스템은 전송 실패한 데이터를 <strong>로컬에 버퍼링</strong>해 두었다가 연결이 복구되면 재전송해야 한다. 버퍼 용량, 재전송 순서, 버퍼가 가득 찼을 때의 동작까지 설계 범위에 들어간다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>연동은 "정상일 때"가 아니라 "장애일 때"를 기준으로 설계한다</strong>
+                        네트워크가 멀쩡하고 MES가 잘 응답할 때는 어떤 방식이든 동작한다. 연동 설계의 진짜 실력은 장애 상황에서 드러난다. 데이터가 빠지지 않는가, 복구 후 자동으로 따라잡는가, 중복 없이 한 번만 들어가는가. 이 세 가지를 보장하도록 설계해야 신뢰할 수 있는 품질 데이터가 쌓인다.
+                    </div>
+                </div>
+
+                <p>비전 검사 시스템은 좋은 데이터를 만드는 것에서 끝나지 않는다. 그 데이터가 MES까지 정확하고 빠짐없이 도달해 시리얼·로트의 맥락을 입어야 비로소 공장의 품질 자산이 된다. MES / SCADA 연동은 그 마지막 다리이고, 머신비전을 스마트 공장의 일부로 완성하는 작업이다. 다음 편에서는 이렇게 쌓인 데이터로 제품 단위 이력을 관리하는 추적성(traceability)을 다룬다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>ISA-95 / IEC 62264 — Enterprise-Control System Integration 표준</li>
+                        <li>ISA-88 / IEC 61512 — Batch Control 표준 (ISA-95와 연계)</li>
+                        <li>MESA International — MES Functionalities and MOM(Manufacturing Operations Management) 모델</li>
+                        <li>B2MML (Business To Manufacturing Markup Language) — ISA-95 기반 XML 스키마</li>
+                        <li>OPC Foundation — OPC UA Specification</li>
+                        <li>NIST — Smart Manufacturing Systems 관련 자료</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-factory');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-factory');
+</script>
+
+</body>
+</html>
