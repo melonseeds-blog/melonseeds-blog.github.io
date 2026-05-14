@@ -1,0 +1,1233 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenCV DNN 모듈 실전 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-dnn" data-section="what-is-dnn">DNN 모듈</a>
+        <a href="#formats" data-section="formats">지원 포맷</a>
+        <a href="#load" data-section="load">모델 로딩</a>
+        <a href="#backend" data-section="backend">백엔드/타깃</a>
+        <a href="#blob" data-section="blob">전처리</a>
+        <a href="#forward" data-section="forward">추론</a>
+        <a href="#postprocess" data-section="postprocess">후처리</a>
+        <a href="#pipeline" data-section="pipeline">전체 예제</a>
+        <a href="#performance" data-section="performance">성능</a>
+        <a href="#vs-runtime" data-section="vs-runtime">전용 런타임</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>OpenCV DNN 모듈 실전</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>OpenCV DNN 모듈이란 무엇인가 — 학습은 못 하고 추론만 하는 내장 추론 엔진</li>
+                        <li>지원하는 모델 포맷 — ONNX, Caffe, TensorFlow, Darknet 중 무엇을 쓸 것인가</li>
+                        <li>모델 로딩 — <code>readNet</code> / <code>readNetFromONNX</code>와 <code>Net</code> 객체</li>
+                        <li>백엔드와 타깃 설정 — CPU, CUDA, OpenCL 전환과 주의점</li>
+                        <li>전처리 — <code>blobFromImage</code>로 이미지를 입력 텐서로 만드는 법</li>
+                        <li>추론 — <code>setInput</code> + <code>forward</code>와 출력 형태 해석</li>
+                        <li>후처리 — 분류 softmax·argmax, 검출 박스 디코딩·NMS, 세그멘테이션 마스크</li>
+                        <li>전체 추론 파이프라인 C++ 예제 — 이미지 분류와 YOLO 객체 검출</li>
+                        <li>성능 — 백엔드별 속도, CUDA 가속, 입력 크기와 배치</li>
+                        <li>OpenCV DNN vs ONNX Runtime vs TensorRT — 언제 무엇을 쓰는가</li>
+                        <li>흔한 함정 — 전처리 불일치, 입력 크기, 출력 형태 오해, NMS 누락</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-dnn">OpenCV DNN 모듈이란</a></li>
+                        <li><a href="#formats">지원 포맷</a></li>
+                        <li><a href="#load">모델 로딩</a></li>
+                        <li><a href="#backend">백엔드와 타깃</a></li>
+                        <li><a href="#blob">전처리 — blobFromImage</a></li>
+                        <li><a href="#forward">추론 — setInput과 forward</a></li>
+                        <li><a href="#postprocess">후처리</a></li>
+                        <li><a href="#pipeline">전체 추론 파이프라인 예제</a></li>
+                        <li><a href="#performance">성능</a></li>
+                        <li><a href="#vs-runtime">OpenCV DNN vs 전용 런타임</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. OpenCV DNN 모듈이란 -->
+                <h2 id="what-is-dnn"><i class="fa-solid fa-microchip"></i> OpenCV DNN 모듈이란</h2>
+
+                <p>11편에서 학습한 모델을 ONNX로 내보냈다. 그렇다면 그 모델을 실제 검사 소프트웨어에서 어떻게 실행하는가. 가장 손쉬운 답 하나가 <strong>OpenCV DNN 모듈</strong>이다. OpenCV 4.x에 기본 포함된 딥러닝 <strong>추론 전용</strong> 엔진으로, 별도의 딥러닝 프레임워크를 설치하지 않고도 C++ 코드에서 바로 모델을 돌릴 수 있다.</p>
+
+                <p>핵심 단어는 <strong>추론 전용</strong>이다. OpenCV DNN은 모델을 <strong>학습하지 못한다</strong>. 역전파도, 옵티마이저도, 손실 함수도 없다. 학습은 PyTorch나 TensorFlow에서 끝내고, 그 결과 가중치를 받아 순전파(forward pass)만 수행한다. 즉 "이미 다 만들어진 함수를 실행하는 도구"다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 검사 SW에서 OpenCV DNN을 쓰는가</div>
+                    <p>산업 검사 소프트웨어는 이미 OpenCV로 짜여 있는 경우가 대부분이다. 이미지 로딩, 전처리, 필터, 블롭 분석, 측정이 전부 <code>cv::Mat</code> 위에서 돈다. 여기에 딥러닝 판정을 끼워 넣으려는데, ONNX Runtime이나 TensorRT를 별도로 붙이려면 의존성·빌드·메모리 변환이 모두 새 일이 된다.<br><br>
+                    OpenCV DNN은 <strong>이미 있는 OpenCV 안의 한 모듈</strong>이다. 입력도 출력도 <code>cv::Mat</code>이라 전처리 파이프라인과 자연스럽게 이어진다. "전통 비전으로 정렬하고 딥러닝으로 판정"하는 하이브리드 구조를 한 라이브러리 안에서 끝낼 수 있다는 점이 가장 큰 장점이다.</p>
+                </div>
+
+                <p>대신 대가도 있다. 전용 런타임만큼 빠르지는 않고, 최신 모델 구조나 특이한 연산자(operator)는 지원이 늦거나 빠질 수 있다. 이 트레이드오프는 10장에서 다시 정리한다. 우선은 "OpenCV 파이프라인에 딥러닝을 가장 적은 마찰로 끼워 넣는 도구"라고 이해하면 된다.</p>
+
+                <!-- 2. 지원 포맷 -->
+                <h2 id="formats"><i class="fa-solid fa-file-import"></i> 지원 포맷</h2>
+
+                <p>OpenCV DNN은 여러 프레임워크의 모델 포맷을 읽을 수 있다. 하지만 실무에서 권장되는 답은 하나다 — <strong>ONNX</strong>. ONNX는 프레임워크 중립 포맷이라 PyTorch, TensorFlow, scikit-learn 등 어디서 학습했든 같은 형태로 받을 수 있고, OpenCV의 ONNX 파서가 가장 활발히 관리된다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>포맷</th>
+                            <th>로딩 함수</th>
+                            <th>필요 파일</th>
+                            <th>비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">ONNX</td>
+                            <td>readNetFromONNX / readNet</td>
+                            <td>.onnx 1개</td>
+                            <td>권장 — 프레임워크 중립, 범용성 최고</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Caffe</td>
+                            <td>readNetFromCaffe</td>
+                            <td>.prototxt + .caffemodel</td>
+                            <td>구형 모델에 많음, 신규 학습엔 비권장</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">TensorFlow</td>
+                            <td>readNetFromTensorflow</td>
+                            <td>.pb (+ .pbtxt)</td>
+                            <td>frozen graph 형태, 변환이 까다로움</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Darknet</td>
+                            <td>readNetFromDarknet</td>
+                            <td>.cfg + .weights</td>
+                            <td>YOLOv3/v4 원본 가중치</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">TF Lite</td>
+                            <td>readNetFromTFLite</td>
+                            <td>.tflite</td>
+                            <td>OpenCV 4.8+ 지원</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>고민하지 말고 ONNX로 통일한다</strong>
+                        어떤 프레임워크로 학습하든 마지막에 ONNX로 export 하면 OpenCV DNN 쪽 코드는 항상 동일해진다. 11편에서 ONNX export를 다룬 이유가 여기 있다. 이 글의 모든 예제도 ONNX 모델을 가정한다.
+                    </div>
+                </div>
+
+                <!-- 3. 모델 로딩 -->
+                <h2 id="load"><i class="fa-solid fa-folder-open"></i> 모델 로딩</h2>
+
+                <p>모델을 메모리에 올리는 것은 한 줄이다. <code>cv::dnn::readNet</code>은 파일 확장자를 보고 알아서 적절한 파서를 고르는 범용 함수다. 포맷이 확실하면 <code>readNetFromONNX</code>처럼 전용 함수를 써도 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/dnn.hpp&gt;
+#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;iostream&gt;
+
+using namespace cv;
+using namespace cv::dnn;
+
+int main()
+{
+    // 방법 1: 확장자로 포맷 자동 판별 (가장 무난)
+    Net net = readNet("model.onnx");
+
+    // 방법 2: ONNX 전용 함수
+    // Net net = readNetFromONNX("model.onnx");
+
+    // 로딩 실패는 빈 Net으로 돌아온다 — 반드시 확인한다
+    if (net.empty())
+    {
+        std::cerr &lt;&lt; "모델 로딩 실패: model.onnx" &lt;&lt; std::endl;
+        return -1;
+    }
+
+    std::cout &lt;&lt; "모델 로딩 성공" &lt;&lt; std::endl;
+    return 0;
+}</code></pre>
+
+                <p><code>Net</code> 객체는 모델 그래프 전체를 담는 핵심 자료구조다. 한 번 로딩하면 같은 <code>Net</code>으로 이미지를 계속 추론할 수 있으니, <strong>루프 안에서 매번 로딩하지 않는다</strong>. 로딩은 비싼 작업이라 프로그램 초기화 때 한 번만 한다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>readNet은 예외 대신 빈 Net을 줄 수도 있다</strong>
+                        파일이 없거나 파서가 지원하지 않는 연산자를 만나면 경우에 따라 예외를 던지기도 하고, 비어 있는 <code>Net</code>을 반환하기도 한다. 두 경우 모두 대비하려면 <code>try/catch</code>로 감싸고 <code>net.empty()</code>도 확인한다. ImagingLib 규칙대로라면 이 지점에서 예외를 잡아 <code>ErrorCode</code>로 변환하는 것이 맞다.
+                    </div>
+                </div>
+
+                <!-- 4. 백엔드와 타깃 -->
+                <h2 id="backend"><i class="fa-solid fa-server"></i> 백엔드와 타깃</h2>
+
+                <p>같은 모델이라도 <strong>어떤 연산 엔진으로</strong>, <strong>어떤 장치 위에서</strong> 돌릴지 고를 수 있다. 이것이 <strong>백엔드(backend)</strong>와 <strong>타깃(target)</strong>이다. 백엔드는 연산을 수행하는 구현체(OpenCV 내장, CUDA 등)이고, 타깃은 그 연산이 실행되는 하드웨어(CPU, GPU)다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">Net net = readNet("model.onnx");
+
+// 기본값: OpenCV 내장 백엔드 + CPU
+net.setPreferableBackend(DNN_BACKEND_OPENCV);
+net.setPreferableTarget(DNN_TARGET_CPU);
+
+// CUDA 가속 (CUDA 지원으로 빌드된 OpenCV 필요)
+net.setPreferableBackend(DNN_BACKEND_CUDA);
+net.setPreferableTarget(DNN_TARGET_CUDA);       // FP32
+// net.setPreferableTarget(DNN_TARGET_CUDA_FP16);  // 더 빠름, 정밀도 약간 손해
+
+// OpenCL (내장 GPU 등) — 효과는 환경마다 편차가 크다
+net.setPreferableBackend(DNN_BACKEND_OPENCV);
+net.setPreferableTarget(DNN_TARGET_OPENCL);</code></pre>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>타깃</th>
+                            <th>실행 장치</th>
+                            <th>전제 조건</th>
+                            <th>특징</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">DNN_TARGET_CPU</td>
+                            <td>CPU</td>
+                            <td>없음 (기본)</td>
+                            <td>어디서나 동작, 가장 안전한 기본값</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DNN_TARGET_CUDA</td>
+                            <td>NVIDIA GPU</td>
+                            <td>CUDA 빌드 OpenCV + NVIDIA GPU</td>
+                            <td>CPU 대비 수 배~수십 배 빠름 (FP32)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DNN_TARGET_CUDA_FP16</td>
+                            <td>NVIDIA GPU</td>
+                            <td>위와 동일 + FP16 지원 GPU</td>
+                            <td>CUDA보다 더 빠름, 정밀도 약간 손해</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DNN_TARGET_OPENCL</td>
+                            <td>GPU (벤더 무관)</td>
+                            <td>OpenCL 드라이버</td>
+                            <td>효과 편차 큼, CPU보다 느릴 때도 있음</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>CUDA 빌드가 안 된 OpenCV에 CUDA 타깃을 걸면 조용히 CPU로 떨어진다</strong>
+                        패키지 매니저로 받은 OpenCV는 대개 CUDA 없이 빌드돼 있다. 이때 <code>DNN_BACKEND_CUDA</code>를 설정해도 에러가 나지 않고 <strong>CPU 폴백</strong>이 일어나는 경우가 많다. "GPU를 켰는데 왜 안 빨라지지?"의 단골 원인이다. <code>cv::getBuildInformation()</code>을 출력해 CUDA 항목이 YES인지 먼저 확인한다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// OpenCV가 CUDA 지원으로 빌드됐는지 확인
+std::cout &lt;&lt; cv::getBuildInformation() &lt;&lt; std::endl;
+// 출력에서 "NVIDIA CUDA: YES" 같은 줄을 찾는다
+
+// CUDA 디바이스 개수로도 간단히 확인 가능
+int cudaCount = cv::cuda::getCudaEnabledDeviceCount();
+std::cout &lt;&lt; "CUDA devices: " &lt;&lt; cudaCount &lt;&lt; std::endl;  // 0이면 CUDA 없음</code></pre>
+
+                <!-- 5. 전처리 -->
+                <h2 id="blob"><i class="fa-solid fa-image"></i> 전처리 — blobFromImage</h2>
+
+                <p>모델은 <code>cv::Mat</code> 이미지를 그대로 먹지 않는다. 모델이 기대하는 형태의 <strong>4차원 텐서(blob)</strong>로 바꿔 줘야 한다. 이 변환을 담당하는 함수가 <code>cv::dnn::blobFromImage</code>다. blob의 형태는 <strong>NCHW</strong> — (배치 N, 채널 C, 높이 H, 너비 W) 순서다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> blobFromImage가 한 번에 하는 일</div>
+                    <p><strong>① 리사이즈</strong> — 모델 입력 크기(예: 224×224, 640×640)로 크기 조정<br>
+                    <strong>② 스케일</strong> — 픽셀값에 <code>scalefactor</code>를 곱함 (예: <code>1/255.0</code>으로 0~1 정규화)<br>
+                    <strong>③ 평균 빼기</strong> — <code>mean</code> 값을 빼서 중심을 0 근처로 (ImageNet 계열에서 흔함)<br>
+                    <strong>④ 채널 순서</strong> — <code>swapRB</code>로 BGR↔RGB 교환 (OpenCV는 BGR, 대부분 모델은 RGB 학습)<br>
+                    <strong>⑤ 레이아웃 변환</strong> — HWC 이미지를 NCHW 텐서로 재배치</p>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">Mat image = imread("input.jpg");
+
+// 분류 모델 예시 (ImageNet 계열, 224x224 입력)
+Mat blob = blobFromImage(
+    image,                       // 입력 이미지
+    1.0 / 255.0,                 // scalefactor: 0~255 -&gt; 0~1
+    Size(224, 224),              // 모델 입력 크기
+    Scalar(0.485, 0.456, 0.406), // mean (채널별로 뺄 값)
+    true,                        // swapRB: BGR -&gt; RGB
+    false                        // crop: 리사이즈만, 크롭 안 함
+);
+
+// blob.size = [1, 3, 224, 224]  (N, C, H, W)
+std::cout &lt;&lt; "blob shape: " &lt;&lt; blob.size &lt;&lt; std::endl;</code></pre>
+
+                <p>여기서 <strong>가장 중요한 원칙</strong>은 이것이다 — <strong>blobFromImage의 모든 인자는 학습 시 전처리와 정확히 일치해야 한다.</strong> 학습할 때 0~1로 정규화하고 RGB로 넣었다면, 추론에서도 똑같이 해야 한다. 하나라도 어긋나면 모델은 엉뚱한 입력을 받고 결과가 무의미해진다. 이 함정은 11장에서 다시 강조한다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>mean과 scalefactor의 적용 순서를 헷갈리지 않는다</strong>
+                        OpenCV는 <code>출력 = scalefactor × (입력 − mean)</code> 순서로 계산한다. 즉 평균을 먼저 빼고 스케일을 곱한다. PyTorch의 <code>Normalize(mean, std)</code>는 <code>(입력/255 − mean) / std</code> 형태라 식이 다르다. PyTorch 전처리를 OpenCV로 옮길 때는 이 식 차이를 계산해서 인자를 맞춰야 한다.
+                    </div>
+                </div>
+
+                <p>여러 장을 한 번에 처리하려면 <code>blobFromImages</code>(복수형)를 쓴다. 배치 차원 N이 1보다 커진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">std::vector&lt;Mat&gt; images = { img1, img2, img3, img4 };
+
+Mat batchBlob = blobFromImages(
+    images, 1.0 / 255.0, Size(224, 224),
+    Scalar(), true, false
+);
+// batchBlob.size = [4, 3, 224, 224]  (배치 4장)</code></pre>
+
+                <!-- 6. 추론 -->
+                <h2 id="forward"><i class="fa-solid fa-bolt"></i> 추론 — setInput과 forward</h2>
+
+                <p>blob이 준비되면 추론은 두 줄이다. <code>setInput</code>으로 blob을 모델 입력에 꽂고, <code>forward</code>로 순전파를 실행해 출력을 받는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">net.setInput(blob);          // 입력 텐서 설정
+Mat output = net.forward();  // 순전파 실행, 출력 Mat 반환
+
+// 출력 형태 확인 — 모델마다 다르다
+std::cout &lt;&lt; "output dims: " &lt;&lt; output.dims &lt;&lt; std::endl;
+std::cout &lt;&lt; "output size: " &lt;&lt; output.size &lt;&lt; std::endl;</code></pre>
+
+                <p>출력의 <strong>형태(shape)</strong>는 모델 종류에 따라 완전히 다르다. 이걸 모르면 후처리를 짤 수 없다. 대표적인 출력 형태는 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>모델 종류</th>
+                            <th>대표 출력 형태</th>
+                            <th>의미</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">분류</td>
+                            <td>[1, 1000]</td>
+                            <td>클래스별 점수(logit) 1000개</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">검출 (YOLOv5/v7)</td>
+                            <td>[1, 25200, 85]</td>
+                            <td>박스 25200개 × (x,y,w,h,obj + 클래스 80)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">검출 (YOLOv8)</td>
+                            <td>[1, 84, 8400]</td>
+                            <td>(x,y,w,h + 클래스 80) × 박스 8400개 — 축이 전치됨</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">세그멘테이션</td>
+                            <td>[1, C, H, W]</td>
+                            <td>픽셀별 클래스 C개 점수 맵</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>YOLOv5와 YOLOv8은 출력 축 순서가 다르다</strong>
+                        YOLOv5/v7은 <code>[1, 박스수, 속성수]</code>인데 YOLOv8은 <code>[1, 속성수, 박스수]</code>로 축이 전치돼 있다. 같은 "YOLO 후처리 코드"를 그대로 쓰면 한쪽은 박스가 전부 깨진다. 모델 버전에 맞춰 <code>output</code>을 <code>reshape</code>·<code>transpose</code> 해야 한다. 출력 형태를 먼저 찍어 보는 습관이 중요하다.
+                    </div>
+                </div>
+
+                <p>출력 노드가 여러 개인 모델(예: 마스크와 박스를 따로 내보내는 검출기)은 이름으로 특정 출력을 받거나, 여러 출력을 한 번에 받을 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 특정 출력 노드를 이름으로 지정
+Mat out = net.forward("output0");
+
+// 여러 출력을 한 번에 받기
+std::vector&lt;Mat&gt; outputs;
+std::vector&lt;String&gt; outNames = net.getUnconnectedOutLayersNames();
+net.forward(outputs, outNames);
+// outputs[0], outputs[1], ... 각 출력 노드 결과</code></pre>
+
+                <!-- 7. 후처리 -->
+                <h2 id="postprocess"><i class="fa-solid fa-wand-magic-sparkles"></i> 후처리</h2>
+
+                <p>모델의 raw 출력은 사람이 바로 쓸 수 없다. 분류는 점수에서 클래스를 뽑아야 하고, 검출은 수만 개 박스를 걸러야 하고, 세그멘테이션은 점수 맵을 마스크로 바꿔야 한다. 이것이 <strong>후처리</strong>다.</p>
+
+                <h3 id="post-cls"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 분류 — softmax와 argmax</h3>
+
+                <p>분류 출력 <code>[1, N]</code>은 클래스별 점수(logit)다. <code>argmax</code>로 가장 높은 클래스를 고르고, 확률이 필요하면 <code>softmax</code>로 변환한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// output: [1, 1000] 형태의 분류 점수
+Mat scores = output.reshape(1, 1);  // [1, 1000]로 평탄화
+
+// argmax — 가장 높은 점수의 클래스
+Point classIdPoint;
+double maxScore;
+minMaxLoc(scores, nullptr, &amp;maxScore, nullptr, &amp;classIdPoint);
+int classId = classIdPoint.x;
+
+// softmax — 점수를 확률로 변환
+Mat probs;
+exp(scores - maxScore, probs);          // 오버플로 방지로 max를 뺀다
+probs /= cv::sum(probs)[0];
+float confidence = probs.at&lt;float&gt;(0, classId);
+
+std::cout &lt;&lt; "class " &lt;&lt; classId
+          &lt;&lt; ", confidence " &lt;&lt; confidence &lt;&lt; std::endl;</code></pre>
+
+                <h3 id="post-det"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 검출 — 박스 디코딩과 NMS</h3>
+
+                <p>검출 모델은 후보 박스를 수만 개 쏟아낸다. 같은 물체에 박스가 여러 개 겹쳐 나오기 때문에, <strong>NMS(Non-Maximum Suppression, 비최대 억제)</strong>로 가장 신뢰도 높은 박스만 남기고 겹치는 것을 지운다. OpenCV는 <code>cv::dnn::NMSBoxes</code>를 제공한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// confidence threshold 이상인 박스만 모은다
+std::vector&lt;Rect&gt; boxes;
+std::vector&lt;float&gt; confidences;
+std::vector&lt;int&gt; classIds;
+
+// ... (모델 출력을 파싱해 boxes/confidences/classIds 채움) ...
+
+// NMS: 겹치는 박스 제거
+float confThreshold = 0.25f;
+float nmsThreshold  = 0.45f;   // IoU 임계값
+std::vector&lt;int&gt; keepIndices;
+NMSBoxes(boxes, confidences, confThreshold, nmsThreshold, keepIndices);
+
+// keepIndices에 살아남은 박스 인덱스만 들어 있다
+for (int idx : keepIndices)
+{
+    rectangle(image, boxes[idx], Scalar(0, 255, 0), 2);
+}</code></pre>
+
+                <h3 id="post-seg"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 세그멘테이션 — 마스크</h3>
+
+                <p>세그멘테이션 출력 <code>[1, C, H, W]</code>는 픽셀마다 클래스 C개의 점수를 가진다. 각 픽셀에서 <code>argmax</code>를 취하면 클래스 라벨 맵(마스크)이 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// output: [1, C, H, W]  — C개 클래스, H x W 점수 맵
+int numClasses = output.size[1];
+int h = output.size[2];
+int w = output.size[3];
+
+Mat maxClass(h, w, CV_8UC1, Scalar(0));
+Mat maxScore(h, w, CV_32FC1, Scalar(-FLT_MAX));
+
+for (int c = 0; c &lt; numClasses; ++c)
+{
+    // c번째 클래스의 H x W 점수 평면
+    Mat scorePlane(h, w, CV_32FC1, output.ptr&lt;float&gt;(0, c));
+    for (int y = 0; y &lt; h; ++y)
+    {
+        for (int x = 0; x &lt; w; ++x)
+        {
+            float s = scorePlane.at&lt;float&gt;(y, x);
+            if (s &gt; maxScore.at&lt;float&gt;(y, x))
+            {
+                maxScore.at&lt;float&gt;(y, x) = s;
+                maxClass.at&lt;uchar&gt;(y, x) = static_cast&lt;uchar&gt;(c);
+            }
+        }
+    }
+}
+// maxClass: 픽셀별 클래스 라벨 마스크 — 원본 크기로 resize 해서 사용</code></pre>
+
+                <!-- 8. 전체 파이프라인 -->
+                <h2 id="pipeline"><i class="fa-solid fa-diagram-project"></i> 전체 추론 파이프라인 예제</h2>
+
+                <p>지금까지의 단계를 하나로 이으면 추론 파이프라인이 된다. 흐름은 항상 같다 — <strong>모델 로딩 → blobFromImage 전처리 → forward 추론 → 후처리</strong>.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 760 230" style="width:100%; max-width:760px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrDnn" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                        </defs>
+                        <text x="380" y="26" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">OpenCV DNN 추론 파이프라인</text>
+
+                        <!-- 0. 입력 이미지 -->
+                        <rect x="12" y="74" width="118" height="80" rx="10" fill="#eceff1" stroke="#90a4ae" stroke-width="2"/>
+                        <text x="71" y="104" text-anchor="middle" font-size="11" fill="#455a64" font-weight="700">입력 이미지</text>
+                        <text x="71" y="123" text-anchor="middle" font-size="9" fill="#78909c">cv::Mat (BGR)</text>
+                        <text x="71" y="136" text-anchor="middle" font-size="9" fill="#78909c">H x W x 3</text>
+
+                        <line x1="130" y1="114" x2="158" y2="114" stroke="#4caf50" stroke-width="2" marker-end="url(#arrDnn)"/>
+
+                        <!-- 1. 모델 로딩 -->
+                        <rect x="160" y="74" width="118" height="80" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="219" y="100" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">모델 로딩</text>
+                        <text x="219" y="118" text-anchor="middle" font-size="9" fill="#fb8c00">readNet</text>
+                        <text x="219" y="131" text-anchor="middle" font-size="9" fill="#fb8c00">→ Net (초기 1회)</text>
+                        <text x="219" y="144" text-anchor="middle" font-size="9" fill="#fb8c00">backend / target</text>
+
+                        <line x1="278" y1="114" x2="306" y2="114" stroke="#4caf50" stroke-width="2" marker-end="url(#arrDnn)"/>
+
+                        <!-- 2. 전처리 -->
+                        <rect x="308" y="74" width="118" height="80" rx="10" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="367" y="100" text-anchor="middle" font-size="11" fill="#4527a0" font-weight="700">전처리</text>
+                        <text x="367" y="118" text-anchor="middle" font-size="9" fill="#7e57c2">blobFromImage</text>
+                        <text x="367" y="131" text-anchor="middle" font-size="9" fill="#7e57c2">scale·mean·swapRB</text>
+                        <text x="367" y="144" text-anchor="middle" font-size="9" fill="#7e57c2">→ blob (NCHW)</text>
+
+                        <line x1="426" y1="114" x2="454" y2="114" stroke="#4caf50" stroke-width="2" marker-end="url(#arrDnn)"/>
+
+                        <!-- 3. 추론 -->
+                        <rect x="456" y="74" width="118" height="80" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="515" y="100" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">추론</text>
+                        <text x="515" y="118" text-anchor="middle" font-size="9" fill="#42a5f5">setInput</text>
+                        <text x="515" y="131" text-anchor="middle" font-size="9" fill="#42a5f5">forward</text>
+                        <text x="515" y="144" text-anchor="middle" font-size="9" fill="#42a5f5">→ 출력 Mat</text>
+
+                        <line x1="574" y1="114" x2="602" y2="114" stroke="#4caf50" stroke-width="2" marker-end="url(#arrDnn)"/>
+
+                        <!-- 4. 후처리 -->
+                        <rect x="604" y="74" width="118" height="80" rx="10" fill="#fce4ec" stroke="#e91e63" stroke-width="2"/>
+                        <text x="663" y="100" text-anchor="middle" font-size="11" fill="#c2185b" font-weight="700">후처리</text>
+                        <text x="663" y="118" text-anchor="middle" font-size="9" fill="#ec407a">softmax / argmax</text>
+                        <text x="663" y="131" text-anchor="middle" font-size="9" fill="#ec407a">박스 디코딩·NMS</text>
+                        <text x="663" y="144" text-anchor="middle" font-size="9" fill="#ec407a">→ 최종 결과</text>
+
+                        <text x="380" y="190" text-anchor="middle" font-size="10" fill="#90a4ae">모델 로딩은 초기화 때 1회, 전처리·추론·후처리는 이미지마다 반복된다</text>
+                        <text x="380" y="210" text-anchor="middle" font-size="9.5" fill="#b0bec5">전처리 인자(scale·mean·swapRB·size)는 학습 시 전처리와 반드시 일치해야 한다</text>
+                    </svg>
+                    <div class="caption">그림 1. OpenCV DNN 추론 파이프라인 — 모델 로딩에서 후처리까지. 로딩은 한 번, 나머지는 이미지마다 반복된다</div>
+                </div>
+
+                <h3 id="pipe-cls"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 이미지 분류 전체 코드</h3>
+
+                <p>ONNX 분류 모델로 이미지 한 장을 판정하는 전체 흐름이다. 로딩 → 전처리 → 추론 → 후처리가 모두 들어 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;opencv2/dnn.hpp&gt;
+#include &lt;fstream&gt;
+#include &lt;iostream&gt;
+
+using namespace cv;
+using namespace cv::dnn;
+
+int main()
+{
+    // --- 1. 모델 로딩 (초기화 때 1회) ---
+    Net net = readNet("classifier.onnx");
+    if (net.empty())
+    {
+        std::cerr &lt;&lt; "모델 로딩 실패" &lt;&lt; std::endl;
+        return -1;
+    }
+    net.setPreferableBackend(DNN_BACKEND_OPENCV);
+    net.setPreferableTarget(DNN_TARGET_CPU);
+
+    // 클래스 이름 목록 로딩
+    std::vector&lt;std::string&gt; classNames;
+    std::ifstream ifs("labels.txt");
+    std::string line;
+    while (std::getline(ifs, line)) classNames.push_back(line);
+
+    // --- 2. 입력 이미지와 전처리 ---
+    Mat image = imread("sample.jpg");
+    if (image.empty())
+    {
+        std::cerr &lt;&lt; "이미지 로딩 실패" &lt;&lt; std::endl;
+        return -1;
+    }
+
+    Mat blob = blobFromImage(
+        image, 1.0 / 255.0, Size(224, 224),
+        Scalar(0.485, 0.456, 0.406), true, false);
+
+    // --- 3. 추론 ---
+    net.setInput(blob);
+    Mat output = net.forward();   // [1, numClasses]
+
+    // --- 4. 후처리: argmax + softmax ---
+    Mat scores = output.reshape(1, 1);
+
+    Point classIdPoint;
+    double maxScore;
+    minMaxLoc(scores, nullptr, &amp;maxScore, nullptr, &amp;classIdPoint);
+    int classId = classIdPoint.x;
+
+    Mat probs;
+    exp(scores - maxScore, probs);
+    probs /= cv::sum(probs)[0];
+    float confidence = probs.at&lt;float&gt;(0, classId);
+
+    // --- 5. 결과 출력 ---
+    std::cout &lt;&lt; "예측: " &lt;&lt; classNames[classId]
+              &lt;&lt; " (" &lt;&lt; confidence * 100.0f &lt;&lt; "%)" &lt;&lt; std::endl;
+
+    putText(image, classNames[classId], Point(10, 30),
+            FONT_HERSHEY_SIMPLEX, 0.9, Scalar(0, 255, 0), 2);
+    imwrite("result.jpg", image);
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+예측: scratch_defect (96.4%)</div>
+
+                <h3 id="pipe-det"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 객체 검출(YOLO ONNX) 전체 코드</h3>
+
+                <p>YOLOv5/v7 계열 ONNX 모델로 객체를 검출하고 NMS로 박스를 정리한 뒤 그려 주는 전체 코드다. 출력 형태는 <code>[1, 25200, 85]</code>를 가정한다 — 박스 25200개, 각 박스가 <code>(cx, cy, w, h, objectness, 클래스 80개)</code>.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;opencv2/dnn.hpp&gt;
+#include &lt;iostream&gt;
+
+using namespace cv;
+using namespace cv::dnn;
+
+// YOLO 입력 크기 (학습 설정과 일치해야 함)
+const int   kInputW       = 640;
+const int   kInputH       = 640;
+const float kConfThresh   = 0.25f;   // objectness 임계값
+const float kScoreThresh  = 0.25f;   // 클래스 점수 임계값
+const float kNmsThresh    = 0.45f;   // NMS IoU 임계값
+
+int main()
+{
+    // --- 1. 모델 로딩 ---
+    Net net = readNet("yolov5s.onnx");
+    if (net.empty())
+    {
+        std::cerr &lt;&lt; "모델 로딩 실패" &lt;&lt; std::endl;
+        return -1;
+    }
+    net.setPreferableBackend(DNN_BACKEND_OPENCV);
+    net.setPreferableTarget(DNN_TARGET_CPU);
+
+    Mat image = imread("street.jpg");
+    if (image.empty()) return -1;
+
+    // --- 2. 전처리 ---
+    Mat blob = blobFromImage(
+        image, 1.0 / 255.0, Size(kInputW, kInputH),
+        Scalar(), true, false);
+
+    // --- 3. 추론 ---
+    net.setInput(blob);
+    Mat output = net.forward();   // [1, 25200, 85]
+
+    // 출력을 2차원 [25200, 85]로 재배치
+    int numBoxes = output.size[1];
+    int numAttrs = output.size[2];   // 85 = 4(box) + 1(obj) + 80(class)
+    output = output.reshape(1, numBoxes);
+
+    // 원본 좌표로 되돌리기 위한 스케일 계수
+    float xFactor = static_cast&lt;float&gt;(image.cols) / kInputW;
+    float yFactor = static_cast&lt;float&gt;(image.rows) / kInputH;
+
+    // --- 4. 박스 디코딩 ---
+    std::vector&lt;Rect&gt;  boxes;
+    std::vector&lt;float&gt; confidences;
+    std::vector&lt;int&gt;   classIds;
+
+    for (int i = 0; i &lt; numBoxes; ++i)
+    {
+        float* row = output.ptr&lt;float&gt;(i);
+        float objectness = row[4];
+        if (objectness &lt; kConfThresh) continue;
+
+        // 클래스 점수 중 최댓값 찾기
+        Mat classScores(1, numAttrs - 5, CV_32FC1, row + 5);
+        Point classIdPoint;
+        double maxClassScore;
+        minMaxLoc(classScores, nullptr, &amp;maxClassScore,
+                  nullptr, &amp;classIdPoint);
+
+        float score = objectness * static_cast&lt;float&gt;(maxClassScore);
+        if (score &lt; kScoreThresh) continue;
+
+        // 중심 좌표(cx, cy, w, h) -&gt; 좌상단 기준 Rect
+        float cx = row[0], cy = row[1];
+        float w  = row[2], h  = row[3];
+        int left = static_cast&lt;int&gt;((cx - w / 2) * xFactor);
+        int top  = static_cast&lt;int&gt;((cy - h / 2) * yFactor);
+        int bw   = static_cast&lt;int&gt;(w * xFactor);
+        int bh   = static_cast&lt;int&gt;(h * yFactor);
+
+        boxes.emplace_back(left, top, bw, bh);
+        confidences.push_back(score);
+        classIds.push_back(classIdPoint.x);
+    }
+
+    // --- 5. NMS: 겹치는 박스 제거 ---
+    std::vector&lt;int&gt; keep;
+    NMSBoxes(boxes, confidences, kScoreThresh, kNmsThresh, keep);
+
+    // --- 6. 결과 그리기 ---
+    for (int idx : keep)
+    {
+        rectangle(image, boxes[idx], Scalar(0, 255, 0), 2);
+        std::string label = format("id %d: %.2f",
+                                   classIds[idx], confidences[idx]);
+        putText(image, label, boxes[idx].tl() + Point(0, -5),
+                FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
+    }
+
+    std::cout &lt;&lt; "검출된 객체: " &lt;&lt; keep.size() &lt;&lt; "개" &lt;&lt; std::endl;
+    imwrite("detected.jpg", image);
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+검출된 객체: 7개</div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>letterbox 처리는 단순화했다</strong>
+                        위 예제는 종횡비를 무시하고 단순 리사이즈했다. 실제로는 원본 종횡비를 유지한 채 빈 공간을 패딩으로 채우는 <strong>letterbox</strong> 전처리를 학습 설정과 똑같이 맞춰야 박스 위치가 정확해진다. ImagingLib처럼 OpenCV를 래핑하는 구조라면, 이 전처리 차이를 흡수하는 전용 블록을 두는 편이 유지보수에 유리하다.
+                    </div>
+                </div>
+
+                <!-- 9. 성능 -->
+                <h2 id="performance"><i class="fa-solid fa-gauge-high"></i> 성능</h2>
+
+                <p>검사 소프트웨어에서는 정확도만큼 <strong>속도(택트 타임)</strong>가 중요하다. OpenCV DNN의 추론 속도를 좌우하는 요소는 크게 백엔드/타깃, 입력 크기, 배치다.</p>
+
+                <h3 id="perf-backend"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 백엔드별 속도 차이</h3>
+
+                <p>같은 모델이라도 CPU와 CUDA의 차이는 크다. 모델·하드웨어마다 다르지만, 무거운 검출 모델에서 CUDA는 CPU 대비 수 배에서 수십 배까지 빨라지는 경우가 흔하다. <code>net.getPerfProfile</code>로 실제 추론 시간을 측정할 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">net.setInput(blob);
+Mat output = net.forward();
+
+// 레이어별 누적 추론 시간 측정
+std::vector&lt;double&gt; layerTimes;
+double freq = getTickFrequency() / 1000.0;   // ms 단위
+double totalTime = net.getPerfProfile(layerTimes) / freq;
+
+std::cout &lt;&lt; "추론 시간: " &lt;&lt; totalTime &lt;&lt; " ms" &lt;&lt; std::endl;</code></pre>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>설정</th>
+                            <th>상대 속도(경향)</th>
+                            <th>적합한 상황</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">CPU</td>
+                            <td>기준 (1×)</td>
+                            <td>가벼운 모델, GPU 없는 환경, 개발·디버깅</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">CUDA (FP32)</td>
+                            <td>수 배~수십 배</td>
+                            <td>무거운 검출/세그멘테이션, 고속 라인</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">CUDA (FP16)</td>
+                            <td>CUDA보다 추가로 빠름</td>
+                            <td>FP16 지원 GPU, 약간의 정밀도 손해 허용</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">OpenCL</td>
+                            <td>편차 큼</td>
+                            <td>NVIDIA GPU가 없을 때 차선책 (효과는 검증 필요)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="perf-size"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 입력 크기와 배치</h3>
+
+                <p>추론 비용은 입력 크기에 거의 제곱으로 비례한다. 640×640과 320×320은 픽셀 수가 4배 차이라 추론 시간도 그만큼 벌어진다. <strong>정확도가 허용하는 선에서 입력을 가장 작게</strong> 잡는 것이 가장 쉬운 최적화다.</p>
+
+                <p>여러 장을 처리할 때는 <code>blobFromImages</code>로 배치를 묶으면 장당 오버헤드가 줄어 처리량이 올라간다. 다만 모델이 동적 배치 차원을 지원하도록 export 돼 있어야 한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>첫 forward는 항상 느리다 — 워밍업을 한다</strong>
+                        모델 로딩 직후 첫 <code>forward</code>는 메모리 할당과 커널 초기화 때문에 유난히 느리다. 성능을 측정하거나 실가동에 들어가기 전, 더미 이미지로 <code>forward</code>를 한두 번 미리 돌려 워밍업하면 실제 추론부터는 안정적인 속도가 나온다.
+                    </div>
+                </div>
+
+                <!-- 10. vs 전용 런타임 -->
+                <h2 id="vs-runtime"><i class="fa-solid fa-scale-balanced"></i> OpenCV DNN vs 전용 런타임</h2>
+
+                <p>OpenCV DNN이 유일한 선택지는 아니다. <strong>ONNX Runtime</strong>, <strong>TensorRT</strong> 같은 전용 추론 런타임은 더 빠르고 더 많은 모델을 지원한다. 그렇다면 언제 무엇을 쓰는가.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>OpenCV DNN</th>
+                            <th>ONNX Runtime</th>
+                            <th>TensorRT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">속도</td>
+                            <td>보통</td>
+                            <td>빠름</td>
+                            <td>가장 빠름 (NVIDIA 전용)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">모델 호환성</td>
+                            <td>제한적 — 최신 연산자 지원 늦음</td>
+                            <td>넓음</td>
+                            <td>넓으나 변환·튜닝 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">OpenCV 통합</td>
+                            <td>매우 쉬움 — 같은 라이브러리</td>
+                            <td>Mat↔Tensor 변환 필요</td>
+                            <td>변환 + 빌드 부담 큼</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">의존성·설치</td>
+                            <td>OpenCV만 있으면 끝</td>
+                            <td>런타임 추가 설치</td>
+                            <td>CUDA/cuDNN/TensorRT 스택</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">하드웨어</td>
+                            <td>CPU·CUDA·OpenCL</td>
+                            <td>CPU·CUDA·기타 EP 다양</td>
+                            <td>NVIDIA GPU 전용</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">잘 맞는 경우</td>
+                            <td>OpenCV 파이프라인에 끼워 넣기, 빠른 프로토타입</td>
+                            <td>속도와 호환성의 균형</td>
+                            <td>최고 속도가 필요한 NVIDIA 양산 장비</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 판단 기준 — 마찰이냐 속도냐</div>
+                    <p>이미 OpenCV로 짜인 검사 SW에 딥러닝을 <strong>가장 적은 마찰로</strong> 넣고 싶다면 OpenCV DNN이 정답이다. 같은 <code>cv::Mat</code>으로 입출력이 흐르고, 추가 의존성이 없다.<br><br>
+                    반대로 택트 타임이 빠듯해서 <strong>마지막 한 방울의 속도</strong>까지 짜내야 하고 하드웨어가 NVIDIA로 고정돼 있다면 TensorRT가 맞다. CPU 환경에서 속도와 호환성의 균형을 원하면 ONNX Runtime이 무난하다.<br><br>
+                    실무에서 흔한 전략은 <strong>OpenCV DNN으로 먼저 만들어 검증</strong>하고, 속도가 부족할 때만 전용 런타임으로 옮기는 것이다. 전처리·후처리 코드는 거의 그대로 재사용되므로 옮기는 비용이 크지 않다.</p>
+                </div>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <p>OpenCV DNN에서 "모델은 정상인데 결과가 이상한" 문제는 거의 다 정해진 몇 가지 함정에서 나온다. 미리 알면 디버깅 시간을 크게 줄일 수 있다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>전처리 불일치 — 가장 흔하고 가장 조용한 버그</strong>
+                        <code>scalefactor</code>, <code>mean</code>, <code>swapRB</code>가 학습 때와 다르면 모델은 에러 없이 그냥 <strong>틀린 답</strong>을 낸다. 0~1 정규화로 학습한 모델에 0~255를 넣거나, RGB로 학습한 모델에 BGR을 넣는 식이다. 학습 코드의 전처리 설정을 그대로 베껴 와 한 줄씩 대조한다. 디버깅 1순위로 의심할 곳이다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>NMS 누락 — 박스가 한 물체에 잔뜩 겹쳐 나온다</strong>
+                        검출 후처리에서 <code>NMSBoxes</code>를 빼먹으면 같은 물체에 박스가 수십 개씩 중복으로 그려진다. "검출은 되는데 박스가 지저분하다"면 NMS가 빠졌거나 <code>nmsThreshold</code>가 잘못된 것이다. confidence 필터링과 NMS는 검출 후처리의 필수 짝이다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>입력 크기 불일치</strong>
+                        <code>blobFromImage</code>의 <code>Size</code>가 모델이 기대하는 입력과 다르면, 운이 좋으면 에러가 나고 운이 나쁘면 깨진 결과가 나온다. 고정 입력 모델은 정확히 그 크기를, 동적 입력 모델도 학습 해상도 근처를 써야 정확도가 유지된다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>출력 형태 오해</strong>
+                        앞서 봤듯 YOLOv5와 YOLOv8은 출력 축 순서가 다르고, 모델마다 <code>[배치, 박스, 속성]</code>인지 <code>[배치, 속성, 박스]</code>인지 제각각이다. 후처리 코드를 짜기 전에 <code>output.size</code>를 반드시 출력해 형태를 확인한다. 형태를 모르고 짠 인덱싱은 조용히 틀린다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>CUDA 빌드 안 된 OpenCV에 CUDA 타깃 설정</strong>
+                        4장에서 말한 그 함정이다. <code>DNN_BACKEND_CUDA</code>를 걸어도 OpenCV가 CUDA 없이 빌드됐으면 조용히 CPU로 폴백되어 "GPU를 켰는데 안 빨라진다". <code>getBuildInformation()</code>으로 CUDA 항목을 먼저 확인하는 것이 유일한 확실한 방법이다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다음 편 예고</strong>
+                        이번 편에서는 학습한 모델을 OpenCV DNN으로 검사 SW에 끼워 넣는 실전 방법을 봤다. 마지막 13편에서는 시리즈를 마무리하며 <strong>산업 비전에서의 딥러닝</strong> — 전통 비전과 딥러닝을 한 시스템 안에서 어떻게 역할을 나눠 공존시키는가, 그 하이브리드 전략을 정리한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>OpenCV 공식 문서 — Deep Neural Network (dnn) 모듈 (https://docs.opencv.org/4.x/d6/d0f/group__dnn.html)</li>
+                        <li>OpenCV 공식 튜토리얼 — Load Caffe framework models / DNN-based object detection (https://docs.opencv.org)</li>
+                        <li>OpenCV GitHub Wiki — Deep Learning in OpenCV (https://github.com/opencv/opencv/wiki/Deep-Learning-in-OpenCV)</li>
+                        <li>ONNX — Open Neural Network Exchange (https://onnx.ai)</li>
+                        <li>Ultralytics YOLOv5 / YOLOv8 — ONNX export 및 추론 문서 (https://docs.ultralytics.com)</li>
+                        <li>NVIDIA — TensorRT Developer Guide (https://docs.nvidia.com/deeplearning/tensorrt)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai');
+</script>
+
+</body>
+</html>

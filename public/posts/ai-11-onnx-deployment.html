@@ -1,0 +1,903 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONNX와 배포 — 모델 포맷 변환과 배포 파이프라인 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#gap" data-section="gap">학습과 배포의 간극</a>
+        <a href="#what-onnx" data-section="what-onnx">ONNX란</a>
+        <a href="#how-onnx" data-section="how-onnx">ONNX 동작</a>
+        <a href="#convert" data-section="convert">ONNX 변환</a>
+        <a href="#runtime" data-section="runtime">ONNX Runtime</a>
+        <a href="#opencv-dnn" data-section="opencv-dnn">OpenCV DNN</a>
+        <a href="#pipeline" data-section="pipeline">배포 파이프라인</a>
+        <a href="#considerations" data-section="considerations">배포 고려사항</a>
+        <a href="#industrial" data-section="industrial">산업 비전 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>ONNX와 배포 — 모델 포맷 변환과 배포 파이프라인</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>학습 환경과 배포 환경의 간극 — 프레임워크 종속을 끊어야 하는 이유</li>
+                        <li>ONNX란 무엇인가 — 프레임워크 독립적인 "모델의 공통어"</li>
+                        <li>ONNX의 동작 방식 — 연산 그래프와 가중치, 학습 프레임워크에서 런타임까지</li>
+                        <li>ONNX 변환 — torch.onnx.export, opset 버전, 동적 축, 변환 시 주의점</li>
+                        <li>ONNX Runtime — 고성능 추론 엔진과 Execution Provider</li>
+                        <li>OpenCV DNN과 ONNX의 관계 — 다음 12편으로의 연결</li>
+                        <li>배포 파이프라인 — 변환부터 검증·최적화·런타임 통합·양산까지</li>
+                        <li>배포 시 고려사항과 흔한 함정 — 전처리 불일치, opset 미지원, NCHW/NHWC 혼동</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#gap">학습과 배포의 간극</a></li>
+                        <li><a href="#what-onnx">ONNX란 무엇인가</a></li>
+                        <li><a href="#how-onnx">ONNX는 어떻게 동작하는가</a></li>
+                        <li><a href="#convert">ONNX 변환</a></li>
+                        <li><a href="#runtime">ONNX Runtime</a></li>
+                        <li><a href="#opencv-dnn">OpenCV DNN과의 관계</a></li>
+                        <li><a href="#pipeline">배포 파이프라인</a></li>
+                        <li><a href="#considerations">배포 시 고려사항</a></li>
+                        <li><a href="#industrial">산업 비전 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 학습과 배포의 간극 -->
+                <h2 id="gap"><i class="fa-solid fa-arrows-left-right-to-line"></i> 학습과 배포의 간극</h2>
+
+                <p>딥러닝 모델을 만드는 일과 그 모델을 현장에 올리는 일은 서로 다른 세계에서 일어난다. <strong>학습</strong>은 Python 환경에서 PyTorch나 TensorFlow로 진행한다. GPU가 달린 워크스테이션, 주피터 노트북, 풍부한 라이브러리가 학습의 무대다. 그런데 <strong>배포</strong>의 무대는 전혀 다르다. C++로 짠 산업 검사 소프트웨어, 메모리가 빠듯한 엣지 디바이스, Python 인터프리터를 띄울 수 없는 임베디드 보드가 모델이 실제로 돌아야 하는 곳이다.</p>
+
+                <p>이 간극을 그냥 두면 문제가 생긴다. 학습에 쓴 프레임워크를 배포 환경까지 그대로 끌고 가야 하기 때문이다. C++ 검사 SW 안에 PyTorch 런타임을 통째로 넣는 것은 무겁고, 의존성이 얽히고, 버전 관리가 악몽이 된다. 학습 팀이 프레임워크를 바꾸면 배포 코드도 따라 바뀌어야 한다. <strong>모델이 학습 프레임워크에 묶여 있는 한, 배포는 매번 그 프레임워크와 싸우는 일이 된다.</strong></p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 프레임워크 종속을 끊는다는 것</div>
+                    <p>학습 프레임워크는 모델을 <strong>만들기</strong> 좋게 설계되어 있다. 자동 미분, 동적 그래프, 디버깅 도구가 다 들어 있어 무겁다. 하지만 배포 단계에서는 그 기능이 대부분 필요 없다. 학습이 끝난 모델은 입력을 받아 출력을 내놓기만 하면 된다.<br><br>
+                    그래서 필요한 것은 <strong>모델을 학습 프레임워크와 분리해, 추론에만 집중하는 가벼운 형태로 옮기는 다리</strong>다. 학습은 PyTorch로 하되, 그 결과물을 프레임워크에 묶이지 않는 중립 포맷으로 꺼내면 배포 환경은 학습이 무엇으로 이루어졌는지 알 필요가 없어진다. 그 다리가 바로 ONNX다.</p>
+                </div>
+
+                <!-- 2. ONNX란 -->
+                <h2 id="what-onnx"><i class="fa-solid fa-cube"></i> ONNX란 무엇인가</h2>
+
+                <p><strong>ONNX</strong>는 Open Neural Network Exchange의 약자다. 이름 그대로 신경망을 <strong>주고받기</strong> 위한 열린 포맷이다. 특정 회사나 프레임워크의 소유물이 아니라, 여러 곳이 함께 정의한 공개 표준이다. ONNX 파일 하나에는 모델의 연산 구조와 학습된 가중치가 함께 담긴다.</p>
+
+                <p>비유하자면 ONNX는 <strong>모델의 공통어</strong>다. PyTorch가 한국어로, TensorFlow가 일본어로 모델을 표현한다면, ONNX는 둘 다 번역해 담을 수 있는 중립 언어다. 한쪽에서 ONNX로 옮겨 적으면, 그 언어를 읽을 줄 아는 어떤 런타임이든 모델을 실행할 수 있다. 학습 쪽과 배포 쪽이 직접 약속을 맞출 필요 없이, 둘 다 ONNX만 알면 된다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>ONNX는 "모델"이 아니라 "포맷"이다</strong>
+                        ONNX는 새로운 모델 아키텍처가 아니다. 이미 학습된 CNN, ResNet, YOLO 같은 모델을 <strong>어떤 형식으로 저장하느냐</strong>에 대한 규약이다. <code>.onnx</code> 확장자를 가진 파일은 그 규약을 따라 직렬화된 모델이다. 따라서 ONNX로 바꾼다고 모델의 성능이 좋아지거나 나빠지지 않는다. 단지 더 많은 환경에서 읽을 수 있는 형태가 될 뿐이다.
+                    </div>
+                </div>
+
+                <!-- 3. ONNX 동작 -->
+                <h2 id="how-onnx"><i class="fa-solid fa-diagram-project"></i> ONNX는 어떻게 동작하는가</h2>
+
+                <p>ONNX의 핵심 흐름은 단순하다. <strong>학습 프레임워크에서 모델을 ONNX로 내보내고(export), 다양한 런타임이 그 ONNX를 읽어 추론한다.</strong> 학습은 PyTorch든 TensorFlow든 상관없고, 추론은 ONNX Runtime이든 OpenCV DNN이든 TensorRT든 상관없다. ONNX가 그 사이에서 허브 역할을 한다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 760 320" style="width:100%; max-width:760px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrIn" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#673ab7"/></marker>
+                            <marker id="arrOut" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#4caf50"/></marker>
+                        </defs>
+                        <text x="380" y="28" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">ONNX 허브 — 학습 프레임워크에서 여러 런타임으로</text>
+
+                        <!-- 학습 프레임워크 (왼쪽) -->
+                        <text x="115" y="62" text-anchor="middle" font-size="10.5" fill="#4527a0" font-weight="700">학습 프레임워크</text>
+                        <rect x="40" y="76" width="150" height="46" rx="9" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="115" y="104" text-anchor="middle" font-size="11" fill="#4527a0" font-weight="700">PyTorch</text>
+                        <rect x="40" y="134" width="150" height="46" rx="9" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="115" y="162" text-anchor="middle" font-size="11" fill="#4527a0" font-weight="700">TensorFlow</text>
+                        <rect x="40" y="192" width="150" height="46" rx="9" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="115" y="220" text-anchor="middle" font-size="11" fill="#4527a0" font-weight="700">기타 (Keras 등)</text>
+
+                        <!-- export 화살표 -->
+                        <line x1="190" y1="99" x2="296" y2="142" stroke="#673ab7" stroke-width="2" marker-end="url(#arrIn)"/>
+                        <line x1="190" y1="157" x2="296" y2="157" stroke="#673ab7" stroke-width="2" marker-end="url(#arrIn)"/>
+                        <line x1="190" y1="215" x2="296" y2="172" stroke="#673ab7" stroke-width="2" marker-end="url(#arrIn)"/>
+                        <text x="240" y="120" text-anchor="middle" font-size="9" fill="#7e57c2" font-weight="600">export</text>
+
+                        <!-- ONNX 허브 (가운데) -->
+                        <rect x="300" y="118" width="160" height="80" rx="14" fill="#fff3e0" stroke="#ff9800" stroke-width="2.5"/>
+                        <text x="380" y="150" text-anchor="middle" font-size="13" fill="#e65100" font-weight="800">ONNX</text>
+                        <text x="380" y="170" text-anchor="middle" font-size="8.5" fill="#fb8c00">연산 그래프 + 가중치</text>
+                        <text x="380" y="184" text-anchor="middle" font-size="8.5" fill="#fb8c00">.onnx 파일 하나</text>
+
+                        <!-- 런타임으로 화살표 -->
+                        <line x1="460" y1="142" x2="566" y2="99" stroke="#4caf50" stroke-width="2" marker-end="url(#arrOut)"/>
+                        <line x1="460" y1="157" x2="566" y2="157" stroke="#4caf50" stroke-width="2" marker-end="url(#arrOut)"/>
+                        <line x1="460" y1="172" x2="566" y2="215" stroke="#4caf50" stroke-width="2" marker-end="url(#arrOut)"/>
+                        <text x="515" y="120" text-anchor="middle" font-size="9" fill="#66bb6a" font-weight="600">load</text>
+
+                        <!-- 런타임 (오른쪽) -->
+                        <text x="645" y="62" text-anchor="middle" font-size="10.5" fill="#2e7d32" font-weight="700">추론 런타임</text>
+                        <rect x="570" y="76" width="150" height="46" rx="9" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="645" y="104" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">ONNX Runtime</text>
+                        <rect x="570" y="134" width="150" height="46" rx="9" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="645" y="162" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">OpenCV DNN</text>
+                        <rect x="570" y="192" width="150" height="46" rx="9" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="645" y="220" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">TensorRT 등</text>
+
+                        <text x="380" y="278" text-anchor="middle" font-size="9.5" fill="#90a4ae">학습 쪽과 배포 쪽이 직접 맞출 필요 없이, 양쪽 모두 ONNX만 알면 된다 — 그래서 N×M이 N+M으로 줄어든다</text>
+                        <text x="380" y="300" text-anchor="middle" font-size="9.5" fill="#b0bec5">ONNX 파일에는 "어떤 연산을 어떤 순서로 하는가"(그래프)와 "각 연산의 학습된 값"(가중치)이 함께 들어 있다</text>
+                    </svg>
+                    <div class="caption">그림 1. ONNX는 학습 프레임워크와 추론 런타임 사이의 허브다 — 모든 프레임워크가 모든 런타임에 직접 다리를 놓는 대신, 모두가 ONNX 하나만 거치면 된다</div>
+                </div>
+
+                <p>ONNX 파일 안에는 두 가지가 들어 있다. 하나는 <strong>연산 그래프</strong>다. 합성곱, 활성화, 풀링 같은 연산들이 어떤 순서로 어떻게 연결되는지를 노드와 엣지로 표현한 구조다. 다른 하나는 <strong>가중치</strong>다. 학습으로 얻어진 각 연산의 파라미터 값이다. 그래프는 "무엇을 어떻게 계산하는가"를, 가중치는 "그 계산에 쓰는 값"을 담는다. 둘이 합쳐져야 모델이 완성된다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-sitemap"></i> 연산자(operator)와 opset</div>
+                    <p>ONNX 그래프의 노드 하나하나는 <code>Conv</code>, <code>Relu</code>, <code>MaxPool</code> 같은 <strong>표준 연산자</strong>다. ONNX는 이런 연산자들의 목록과 각각의 동작 규칙을 정의해 둔다. 이 연산자 집합의 버전이 <strong>opset</strong>(operator set)이다.<br><br>
+                    opset은 시간이 지나며 갱신된다. 새 연산자가 추가되고, 기존 연산자의 동작이 다듬어진다. 그래서 모델을 ONNX로 내보낼 때 "어떤 opset 버전으로 내보낼지"를 정해야 하고, 그 모델을 읽는 런타임도 그 opset을 지원해야 한다. opset 버전이 변환과 배포에서 자주 문제가 되는 이유가 여기에 있다.</p>
+                </div>
+
+                <!-- 4. ONNX 변환 -->
+                <h2 id="convert"><i class="fa-solid fa-right-left"></i> ONNX 변환</h2>
+
+                <p>학습이 끝난 모델을 ONNX로 옮기는 과정을 <strong>변환</strong> 또는 <strong>export</strong>라 한다. 프레임워크마다 방법이 다르지만, 가장 흔한 PyTorch의 경우 <code>torch.onnx.export</code> 한 줄로 시작한다.</p>
+
+                <h3 id="convert-pytorch"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PyTorch에서 내보내기</h3>
+
+                <pre><span class="keyword">import</span> torch
+
+<span class="comment"># 학습이 끝난 모델을 추론 모드로 전환한다</span>
+model = MyDefectClassifier()
+model.load_state_dict(torch.load(<span class="string">"best.pth"</span>))
+model.<span class="func">eval</span>()
+
+<span class="comment"># export에 쓸 더미 입력 — 실제 추론 때와 같은 형태(NCHW)여야 한다</span>
+dummy_input = torch.<span class="func">randn</span>(<span class="number">1</span>, <span class="number">3</span>, <span class="number">224</span>, <span class="number">224</span>)
+
+torch.onnx.<span class="func">export</span>(
+    model, dummy_input, <span class="string">"defect_model.onnx"</span>,
+    input_names=[<span class="string">"input"</span>], output_names=[<span class="string">"output"</span>],
+    opset_version=<span class="number">17</span>,                       <span class="comment"># 런타임이 지원하는 opset으로 맞춘다</span>
+    dynamic_axes={                            <span class="comment"># 배치 크기를 가변으로 둔다</span>
+        <span class="string">"input"</span>:  {<span class="number">0</span>: <span class="string">"batch"</span>},
+        <span class="string">"output"</span>: {<span class="number">0</span>: <span class="string">"batch"</span>},
+    },
+)</pre>
+
+                <p>PyTorch의 export는 <strong>더미 입력을 한 번 흘려보내며</strong> 모델이 수행하는 연산을 따라 기록하는 방식(tracing)으로 동작한다. 그래서 더미 입력의 형태가 중요하다. 실제 추론에서 모델이 받을 입력과 같은 차원 구조여야 한다. TensorFlow 모델은 <code>tf2onnx</code> 같은 별도 변환 도구를 거쳐 ONNX로 옮긴다. 출발 프레임워크는 달라도 도착지는 같은 <code>.onnx</code> 파일이다.</p>
+
+                <h3 id="convert-cautions"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 변환 시 주의점</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>무엇인가</th>
+                            <th>주의할 점</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">opset 버전</td>
+                            <td>변환에 사용할 연산자 집합의 버전</td>
+                            <td>너무 높으면 배포 런타임이 지원하지 않고, 너무 낮으면 모델의 일부 연산이 표현되지 않는다. 배포 런타임 기준으로 맞춘다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">동적 축</td>
+                            <td>배치·해상도처럼 추론 때 바뀔 수 있는 차원</td>
+                            <td><code>dynamic_axes</code>에 지정하지 않으면 export 당시 더미 입력 크기로 고정된다. 가변 배치가 필요하면 반드시 지정한다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">추론 모드</td>
+                            <td>Dropout·BatchNorm의 학습/추론 동작 차이</td>
+                            <td>export 전에 <code>model.eval()</code>을 호출하지 않으면 학습용 동작이 그래프에 박힌다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">미지원 연산</td>
+                            <td>ONNX 표준에 없는 커스텀 연산</td>
+                            <td>특이한 레이어나 직접 짠 연산은 export가 실패하거나 잘못 변환될 수 있다. 변환 후 검증이 필수다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">제어 흐름</td>
+                            <td>입력 값에 따라 분기하는 if·loop</td>
+                            <td>tracing 방식은 한 번의 실행 경로만 기록한다. 데이터 의존적 분기는 그대로 옮겨지지 않을 수 있다</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>변환은 "되었다"가 아니라 "맞다"를 확인해야 한다</strong>
+                        <code>torch.onnx.export</code>가 에러 없이 끝났다고 변환이 성공한 것은 아니다. tracing 과정에서 일부 연산이 다르게 기록되거나 동적 축이 누락되어도 파일은 멀쩡히 생성된다. 변환이 끝나면 같은 입력을 원본 모델과 ONNX 모델에 각각 넣어 출력이 일치하는지 반드시 비교한다. 이 검증을 건너뛰면 배포 후에야 문제를 발견하게 된다.
+                    </div>
+                </div>
+
+                <!-- 5. ONNX Runtime -->
+                <h2 id="runtime"><i class="fa-solid fa-gauge-high"></i> ONNX Runtime</h2>
+
+                <p>ONNX 파일이 있어도 그것을 실행할 엔진이 없으면 그림의 떡이다. <strong>ONNX Runtime</strong>은 Microsoft가 만든 고성능 추론 엔진으로, ONNX 모델을 읽어 실제로 연산을 수행한다. 그래프를 최적화하고, 메모리를 관리하고, 대상 하드웨어에 맞춰 연산을 분배하는 일을 맡는다.</p>
+
+                <h3 id="runtime-ep"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Execution Provider</h3>
+
+                <p>ONNX Runtime의 핵심 개념은 <strong>Execution Provider</strong>(EP)다. EP는 "이 연산을 어떤 하드웨어/백엔드로 실행할 것인가"를 결정하는 플러그인이다. 같은 ONNX 모델을 코드 변경 거의 없이 CPU에서 돌리다가 GPU로 옮길 수 있는 것이 이 구조 덕분이다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>Execution Provider</th>
+                            <th>대상 하드웨어</th>
+                            <th>특징</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">CPU EP</td>
+                            <td>일반 CPU</td>
+                            <td>기본 제공. 별도 하드웨어 없이 어디서나 동작. 이식성이 가장 좋다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">CUDA EP</td>
+                            <td>NVIDIA GPU</td>
+                            <td>GPU 병렬 연산으로 처리량을 크게 높인다. CUDA·cuDNN 설치 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">TensorRT EP</td>
+                            <td>NVIDIA GPU</td>
+                            <td>TensorRT로 추가 최적화. 같은 GPU에서 CUDA EP보다 더 빠를 수 있다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DirectML EP</td>
+                            <td>Windows GPU 전반</td>
+                            <td>DirectX 기반. NVIDIA가 아닌 GPU에서도 가속. Windows 산업 PC에 유용</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">OpenVINO EP</td>
+                            <td>Intel CPU·iGPU·VPU</td>
+                            <td>Intel 하드웨어에 특화된 최적화. 엣지 산업 PC에서 자주 쓰인다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">NPU 계열 EP</td>
+                            <td>전용 신경망 가속 칩</td>
+                            <td>저전력 고성능. 지원 연산·자료형에 제약이 있다</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="runtime-code"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 추론 코드</h3>
+
+                <p>ONNX Runtime은 Python과 C++ 양쪽에 API를 제공한다. 학습 검증은 Python으로, 산업 SW 통합은 C++로 같은 모델을 쓸 수 있다. 다음은 Python API로 추론하는 최소 예시다.</p>
+
+                <pre><span class="keyword">import</span> onnxruntime <span class="keyword">as</span> ort
+<span class="keyword">import</span> numpy <span class="keyword">as</span> np
+
+<span class="comment"># 세션 생성 — EP는 우선순위 순서로 지정한다 (GPU 없으면 CPU로 폴백)</span>
+session = ort.<span class="func">InferenceSession</span>(
+    <span class="string">"defect_model.onnx"</span>,
+    providers=[<span class="string">"CUDAExecutionProvider"</span>, <span class="string">"CPUExecutionProvider"</span>],
+)
+
+<span class="comment"># 전처리 — 학습 때와 동일한 정규화·리사이즈여야 한다</span>
+img = <span class="func">preprocess</span>(raw_image)          <span class="comment"># (1, 3, 224, 224), float32, NCHW</span>
+
+<span class="comment"># 추론 실행</span>
+outputs = session.<span class="func">run</span>(
+    [<span class="string">"output"</span>],
+    {<span class="string">"input"</span>: img.<span class="func">astype</span>(np.float32)},
+)
+score = outputs[<span class="number">0</span>]
+
+<span class="comment"># 후처리 — softmax, NMS 등도 학습 때 정의와 같아야 한다</span>
+result = <span class="func">postprocess</span>(score)</pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>EP는 우선순위 목록으로 준다</strong>
+                        <code>providers</code>에 EP를 여러 개 나열하면 ONNX Runtime이 앞에서부터 사용 가능한 것을 고른다. GPU가 있는 장비에서는 CUDA EP가, 없는 장비에서는 CPU EP가 자동으로 선택된다. 덕분에 같은 배포 바이너리를 하드웨어가 다른 여러 현장에 그대로 뿌릴 수 있다. 다만 EP에 따라 지원하는 연산이 다를 수 있어, 실제 배포 장비에서 한 번은 검증해야 한다.
+                    </div>
+                </div>
+
+                <!-- 6. OpenCV DNN과의 관계 -->
+                <h2 id="opencv-dnn"><i class="fa-solid fa-link"></i> OpenCV DNN과의 관계</h2>
+
+                <p>ONNX 모델을 읽을 수 있는 런타임은 ONNX Runtime만이 아니다. <strong>OpenCV의 DNN 모듈</strong>도 ONNX 모델을 직접 불러와 추론할 수 있다. 산업 비전 개발자에게 이것은 특별한 의미가 있다. 이미 전통 비전 처리를 OpenCV로 하고 있다면, <strong>딥러닝 추론을 위해 별도의 런타임을 추가하지 않고도</strong> 같은 OpenCV 안에서 모델을 돌릴 수 있기 때문이다.</p>
+
+                <pre><span class="comment"># OpenCV DNN으로 같은 ONNX 모델을 읽는다 (C++ / Python 공통 흐름)</span>
+net = cv2.dnn.<span class="func">readNetFromONNX</span>(<span class="string">"defect_model.onnx"</span>)
+
+<span class="comment"># blobFromImage가 리사이즈·정규화·NCHW 변환을 한 번에 처리한다</span>
+blob = cv2.dnn.<span class="func">blobFromImage</span>(
+    image, scalefactor=<span class="number">1</span>/<span class="number">255.0</span>, size=(<span class="number">224</span>, <span class="number">224</span>), swapRB=<span class="keyword">True</span>,
+)
+net.<span class="func">setInput</span>(blob)
+output = net.<span class="func">forward</span>()</pre>
+
+                <p>OpenCV DNN과 ONNX Runtime은 경쟁 관계라기보다 상황에 따라 고르는 선택지다. 전처리·후처리가 이미 OpenCV로 짜여 있고 모델이 비교적 표준적이면 OpenCV DNN이 통합 비용이 낮다. 반대로 다양한 EP, 최신 opset, 더 폭넓은 연산 지원이 필요하면 ONNX Runtime이 유리하다. 둘 다 <strong>같은 ONNX 파일을 입력으로 받는다</strong>는 점이 핵심이다 — 모델을 ONNX로 만들어 두면 두 길이 모두 열려 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>OpenCV DNN 실전은 다음 12편에서 자세히 다룬다</strong>
+                        이 글에서는 "OpenCV DNN도 ONNX 모델을 읽는 런타임 중 하나"라는 관계만 잡아 두면 된다. <code>blobFromImage</code>로 전처리를 맞추는 법, 분류·검출·세그멘테이션 모델별 출력 해석, 백엔드와 타깃 설정 같은 실전 내용은 다음 편에서 본격적으로 풀어간다. 산업 검사 SW가 OpenCV 기반이라면 12편이 가장 직접적인 배포 경로가 된다.
+                    </div>
+                </div>
+
+                <!-- 7. 배포 파이프라인 -->
+                <h2 id="pipeline"><i class="fa-solid fa-route"></i> 배포 파이프라인</h2>
+
+                <p>모델 하나를 현장에 올리기까지는 여러 단계를 거친다. 학습으로 끝나는 것이 아니라, 변환하고 검증하고 최적화하고 통합하고 나서야 양산에 들어간다. 이 흐름을 <strong>배포 파이프라인</strong>이라 부른다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 760 270" style="width:100%; max-width:760px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrP" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                            <marker id="arrPback" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#dc2626"/></marker>
+                        </defs>
+                        <text x="380" y="26" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">배포 파이프라인 — 학습에서 양산까지</text>
+
+                        <!-- 1. 학습 -->
+                        <rect x="12" y="74" width="108" height="78" rx="10" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="66" y="104" text-anchor="middle" font-size="10.5" fill="#4527a0" font-weight="700">학습</text>
+                        <text x="66" y="122" text-anchor="middle" font-size="8.5" fill="#7e57c2">PyTorch /</text>
+                        <text x="66" y="134" text-anchor="middle" font-size="8.5" fill="#7e57c2">TensorFlow</text>
+                        <line x1="120" y1="113" x2="142" y2="113" stroke="#4caf50" stroke-width="2" marker-end="url(#arrP)"/>
+
+                        <!-- 2. ONNX 변환 -->
+                        <rect x="144" y="74" width="108" height="78" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="198" y="100" text-anchor="middle" font-size="10.5" fill="#e65100" font-weight="700">ONNX 변환</text>
+                        <text x="198" y="118" text-anchor="middle" font-size="8.5" fill="#fb8c00">export</text>
+                        <text x="198" y="130" text-anchor="middle" font-size="8.5" fill="#fb8c00">opset · 동적 축</text>
+                        <line x1="252" y1="113" x2="274" y2="113" stroke="#4caf50" stroke-width="2" marker-end="url(#arrP)"/>
+
+                        <!-- 3. 검증 -->
+                        <rect x="276" y="74" width="108" height="78" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="330" y="100" text-anchor="middle" font-size="10.5" fill="#1565c0" font-weight="700">검증</text>
+                        <text x="330" y="118" text-anchor="middle" font-size="8.5" fill="#42a5f5">변환 전후</text>
+                        <text x="330" y="130" text-anchor="middle" font-size="8.5" fill="#42a5f5">출력 일치 확인</text>
+                        <line x1="384" y1="113" x2="406" y2="113" stroke="#4caf50" stroke-width="2" marker-end="url(#arrP)"/>
+
+                        <!-- 4. 최적화 -->
+                        <rect x="408" y="74" width="108" height="78" rx="10" fill="#e0f2f1" stroke="#00897b" stroke-width="2"/>
+                        <text x="462" y="100" text-anchor="middle" font-size="10.5" fill="#00695c" font-weight="700">최적화</text>
+                        <text x="462" y="118" text-anchor="middle" font-size="8.5" fill="#26a69a">양자화 등</text>
+                        <text x="462" y="130" text-anchor="middle" font-size="8.5" fill="#26a69a">(10편 연결)</text>
+                        <line x1="516" y1="113" x2="538" y2="113" stroke="#4caf50" stroke-width="2" marker-end="url(#arrP)"/>
+
+                        <!-- 5. 런타임 통합 -->
+                        <rect x="540" y="74" width="108" height="78" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="594" y="100" text-anchor="middle" font-size="10.5" fill="#2e7d32" font-weight="700">런타임 통합</text>
+                        <text x="594" y="118" text-anchor="middle" font-size="8.5" fill="#66bb6a">C++ 검사 SW에</text>
+                        <text x="594" y="130" text-anchor="middle" font-size="8.5" fill="#66bb6a">추론 엔진 결합</text>
+                        <line x1="648" y1="113" x2="670" y2="113" stroke="#4caf50" stroke-width="2" marker-end="url(#arrP)"/>
+
+                        <!-- 6. 양산 -->
+                        <rect x="672" y="74" width="78" height="78" rx="10" fill="#fce4ec" stroke="#e91e63" stroke-width="2"/>
+                        <text x="711" y="104" text-anchor="middle" font-size="10.5" fill="#c2185b" font-weight="700">양산</text>
+                        <text x="711" y="122" text-anchor="middle" font-size="8.5" fill="#ec407a">현장</text>
+                        <text x="711" y="134" text-anchor="middle" font-size="8.5" fill="#ec407a">추론 수행</text>
+
+                        <!-- 검증 실패 되돌림 -->
+                        <path d="M 330 152 Q 330 200 198 200 Q 100 200 100 154" fill="none" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arrPback)"/>
+                        <text x="250" y="220" text-anchor="middle" font-size="9" fill="#b91c1c" font-weight="600">검증 실패 시 — 변환 설정을 고쳐 다시 export</text>
+
+                        <text x="380" y="250" text-anchor="middle" font-size="9.5" fill="#90a4ae">각 단계는 다음 단계로 넘기기 전에 통과 조건을 확인한다 — 특히 검증을 통과하지 못하면 양산으로 갈 수 없다</text>
+                    </svg>
+                    <div class="caption">그림 2. 배포 파이프라인 — 학습 → ONNX 변환 → 검증 → 최적화 → 런타임 통합 → 양산. 검증이 실패하면 변환 단계로 되돌아간다</div>
+                </div>
+
+                <p>이 파이프라인에서 가장 자주 생략되는 단계가 <strong>검증</strong>이다. 변환이 에러 없이 끝나면 다음으로 넘어가고 싶은 유혹이 크다. 하지만 변환 전후 출력이 일치하는지 확인하지 않으면, 미세하게 어긋난 모델이 그대로 양산까지 흘러간다. 검증은 같은 입력 여러 개를 원본 모델과 ONNX 모델에 넣어 출력 차이가 허용 오차 안에 드는지 보는, 어렵지 않지만 반드시 거쳐야 하는 단계다.</p>
+
+                <p><strong>최적화</strong> 단계는 10편에서 다룬 양자화·프루닝과 이어진다. ONNX로 변환한 뒤 양자화를 적용해 모델을 더 가볍게 만들거나, ONNX Runtime의 그래프 최적화를 켜는 식이다. 최적화는 선택 단계지만, 택트 타임이 빡빡한 산업 현장에서는 사실상 필수가 되는 경우가 많다.</p>
+
+                <!-- 8. 배포 시 고려사항 -->
+                <h2 id="considerations"><i class="fa-solid fa-list-check"></i> 배포 시 고려사항</h2>
+
+                <p>모델 파일만 옮긴다고 배포가 끝나는 것이 아니다. 모델 주변을 둘러싼 여러 가지가 함께 옮겨져야 학습 때와 같은 결과가 나온다.</p>
+
+                <h3 id="consider-prepost"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 전처리와 후처리도 함께 옮겨야 한다</h3>
+
+                <p>모델은 파이프라인의 가운데 토막일 뿐이다. 그 앞에는 <strong>전처리</strong>가, 뒤에는 <strong>후처리</strong>가 붙어 있다. 학습 때 입력 이미지를 리사이즈하고 0~1 또는 특정 평균·표준편차로 정규화했다면, 배포 환경에서도 <strong>똑같은 전처리</strong>를 거쳐야 한다. 출력 쪽도 마찬가지다. softmax, 경계 상자 디코딩, NMS 같은 후처리 정의가 학습 때와 어긋나면 모델은 멀쩡해도 최종 결과가 틀린다.</p>
+
+                <h3 id="consider-checklist"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 배포 체크리스트</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>점검 항목</th>
+                            <th>확인 내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">전처리 일치</td>
+                            <td>리사이즈 크기·보간 방식, 정규화 평균·표준편차, 채널 순서(RGB/BGR)가 학습과 동일한가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">후처리 일치</td>
+                            <td>softmax 적용 여부, NMS 임계값, 경계 상자 디코딩 방식이 학습 정의와 같은가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">입출력 형태</td>
+                            <td>입력 텐서가 NCHW인가, 자료형(float32 등)과 차원이 모델 기대와 맞는가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">동적 축</td>
+                            <td>배치·해상도가 가변이어야 한다면 ONNX에 동적 축이 지정되어 있는가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">opset 호환</td>
+                            <td>배포 런타임이 변환에 쓴 opset 버전을 지원하는가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">출력 검증</td>
+                            <td>변환 전후 모델 출력이 허용 오차 안에서 일치하는가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">재현성</td>
+                            <td>모델·전처리·후처리·런타임 버전이 함께 버전 관리되고 있는가</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">목표 장비 검증</td>
+                            <td>실제 배포 하드웨어와 EP에서 추론이 정상 동작하고 택트 타임을 만족하는가</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-layer-group"></i> NCHW와 NHWC — 차원 순서</div>
+                    <p>이미지 텐서는 보통 네 개의 차원을 가진다 — 배치(N), 채널(C), 높이(H), 너비(W). 문제는 이 차원을 <strong>어떤 순서로 배열하느냐</strong>가 환경마다 다르다는 것이다. PyTorch와 ONNX는 <strong>NCHW</strong>(채널이 앞)를 쓰고, TensorFlow는 흔히 <strong>NHWC</strong>(채널이 뒤)를 쓴다.<br><br>
+                    이 순서가 맞지 않으면 런타임이 입력을 잘못 해석한다. 에러가 나면 그나마 다행이고, 차원 크기가 우연히 맞아떨어지면 에러 없이 엉뚱한 결과를 낸다. 배포 시에는 모델이 기대하는 차원 순서를 명확히 알고, 전처리에서 그 형태로 맞춰 넣어야 한다.</p>
+                </div>
+
+                <!-- 9. 산업 비전 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전 관점</h2>
+
+                <p>산업 비전에서 ONNX 배포는 추상적인 이야기가 아니라 매일 부딪히는 현실이다. 학습은 데이터 사이언티스트가 Python으로 하지만, 그 모델이 최종적으로 도는 곳은 <strong>C++로 짠 검사 소프트웨어</strong>다. ONNX는 이 둘을 잇는 표준 다리다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-microchip" style="color:#1565c0;"></i> C++ 검사 SW 통합</h4>
+                        <p>검사 SW는 카메라 입력, 전통 비전 처리, 판정 로직이 C++로 묶여 있다. ONNX 모델을 ONNX Runtime이나 OpenCV DNN의 C++ API로 불러 그 안에 딥러닝 추론 블록을 끼워 넣는다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-server" style="color:#7b1fa2;"></i> 엣지 디바이스 배포</h4>
+                        <p>현장의 작은 박스에는 GPU가 없거나 임베디드 GPU·NPU만 있다. ONNX Runtime의 EP를 장비에 맞게 골라, 같은 모델 파일을 다양한 엣지 환경에 배포한다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-stopwatch" style="color:#c2185b;"></i> 추론 속도와 택트 타임</h4>
+                        <p>라인은 정해진 주기(택트 타임) 안에 한 장을 처리해야 한다. 추론이 그 예산을 넘기면 모델이 아무리 정확해도 쓸 수 없다. EP 선택과 최적화가 정확도만큼 중요하다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-diagram-project" style="color:#e65100;"></i> 블록 에디터 통합</h4>
+                        <p>ImagingLib의 데이터 플로우 에디터에서 ONNX 추론은 하나의 블록이 된다. 전통 비전 블록과 같은 캔버스에서 연결되어 하이브리드 파이프라인을 이룬다.</p>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>ImagingLib에서 ONNX의 자리</strong>
+                        이 블로그가 따라가는 산업 이미징 SDK <strong>ImagingLib</strong>에서 Deep Learning 솔루션의 추론 진입점이 ONNX다. 학습은 외부 프레임워크에서 하더라도, SDK 안으로 들어오는 모델은 ONNX 형태로 통일된다. 그러면 SDK는 학습이 무엇으로 이루어졌는지 신경 쓸 필요 없이, ONNX 추론 블록 하나만 잘 만들어 두면 어떤 모델이든 받아들일 수 있다. 프레임워크 종속을 끊는다는 ONNX의 가치가 SDK 설계 차원에서 그대로 드러나는 지점이다.
+                    </div>
+                </div>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <p>ONNX 배포에서 사고는 대부분 정해진 몇 군데에서 난다. 미리 알아 두면 대부분 피할 수 있는 함정들이다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>함정 1 — 전처리 불일치로 정확도가 급락한다</strong>
+                        가장 흔하고 가장 잡기 어려운 함정이다. 학습 때는 ImageNet 평균·표준편차로 정규화했는데 배포에서는 그냥 0~1로 나누거나, 학습은 RGB인데 OpenCV는 BGR로 읽거나, 리사이즈 보간 방식이 다른 경우다. 모델도 멀쩡하고 코드도 에러가 없는데 정확도만 떨어진다. 학습 코드의 전처리를 한 줄씩 그대로 옮겨 적고, 변환 전후 출력으로 검증해야 한다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>함정 2 — 변환 후 출력 검증을 생략한다</strong>
+                        <code>export</code>가 에러 없이 끝났다는 사실에 안심하고 검증을 건너뛰는 경우다. tracing 과정에서 연산이 어긋나거나 동적 축이 누락되어도 파일은 정상적으로 생성된다. 같은 입력을 원본 모델과 ONNX 모델에 넣어 출력이 일치하는지 비교하는 단계를 파이프라인에 고정으로 넣어야 한다. 이 검증 없이는 어떤 배포도 신뢰할 수 없다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>함정 3 — opset 버전 미지원 연산</strong>
+                        최신 opset으로 변환했더니 배포 런타임이 그 버전을 지원하지 않거나, 모델에 쓰인 특정 연산자가 런타임에 구현되어 있지 않은 경우다. 변환 단계에서 배포 런타임의 지원 범위를 먼저 확인하고, 그에 맞는 opset 버전으로 export해야 한다. 미지원 연산이 있다면 모델 구조를 바꾸거나 다른 런타임을 검토한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>함정 4 — 동적 축 설정 누락</strong>
+                        <code>dynamic_axes</code>를 지정하지 않으면 ONNX 모델은 export 당시 더미 입력의 크기로 차원이 고정된다. 배치 크기 1로 export한 모델에 배치 8을 넣으면 에러가 난다. 가변 배치나 가변 해상도가 필요하다면 변환 시점에 반드시 동적 축을 지정해야 한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>함정 5 — NCHW와 NHWC 혼동</strong>
+                        모델은 NCHW를 기대하는데 전처리에서 NHWC로 텐서를 만들어 넣는 경우다. 차원 크기가 우연히 맞으면 에러도 없이 엉뚱한 결과가 나와 원인을 찾기 어렵다. 모델이 기대하는 차원 순서를 명확히 확인하고 전처리에서 그 형태로 맞춰야 한다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>함정의 공통 해법은 "검증"이다</strong>
+                        다섯 가지 함정을 들여다보면 해법이 하나로 모인다 — 변환 전후 출력을 같은 입력으로 비교하는 검증이다. 전처리가 어긋났든, opset이 안 맞든, 차원 순서가 틀렸든, 검증 단계에서 출력 불일치로 드러난다. 검증을 파이프라인의 필수 관문으로 만들어 두면 대부분의 배포 사고는 양산 전에 걸러진다. 다음 12편에서는 OpenCV DNN으로 ONNX 모델을 실제로 추론하는 구체적인 방법을 다룬다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>ONNX — Open Neural Network Exchange 공식 사이트 (https://onnx.ai)</li>
+                        <li>ONNX — Operators 및 opset 명세, GitHub onnx/onnx 저장소 (https://github.com/onnx/onnx)</li>
+                        <li>ONNX Runtime 공식 문서 — Execution Providers, C++/Python API (https://onnxruntime.ai)</li>
+                        <li>PyTorch 공식 문서 — torch.onnx, Exporting a Model to ONNX (https://pytorch.org/docs/stable/onnx.html)</li>
+                        <li>OpenCV 공식 문서 — Deep Neural Networks (dnn) 모듈 (https://docs.opencv.org)</li>
+                        <li>Microsoft — ONNX Runtime: cross-platform inference and training accelerator (https://github.com/microsoft/onnxruntime)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai');
+</script>
+
+</body>
+</html>
