@@ -1,0 +1,900 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모델 경량화·최적화 — 양자화·프루닝·증류 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why" data-section="why">왜 경량화</a>
+        <a href="#metrics" data-section="metrics">성능 지표</a>
+        <a href="#quantization" data-section="quantization">양자화</a>
+        <a href="#pruning" data-section="pruning">프루닝</a>
+        <a href="#distillation" data-section="distillation">지식 증류</a>
+        <a href="#light-arch" data-section="light-arch">경량 아키텍처</a>
+        <a href="#hardware" data-section="hardware">하드웨어 가속</a>
+        <a href="#combine" data-section="combine">기법 조합</a>
+        <a href="#industrial" data-section="industrial">산업 비전</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>모델 경량화·최적화 — 양자화·프루닝·증류</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>왜 경량화가 필요한가 — 정확도와 속도·크기 사이의 균형</li>
+                        <li>추론 성능 지표 — 지연, 처리량, 모델 크기, 메모리, FLOPs</li>
+                        <li>양자화 — FP32를 INT8로 낮춰 크기와 속도를 얻는 기법, PTQ와 QAT</li>
+                        <li>프루닝 — 중요도 낮은 가중치·채널을 잘라내기, 비구조적 vs 구조적</li>
+                        <li>지식 증류 — 큰 teacher의 출력을 작은 student가 모방하는 학습</li>
+                        <li>경량 아키텍처 선택 — 처음부터 가벼운 모델을 고르는 길</li>
+                        <li>하드웨어 가속 — TensorRT, ONNX Runtime, NPU와 하드웨어 맞춤 최적화</li>
+                        <li>기법 조합과 산업 비전 관점, 그리고 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">왜 경량화가 필요한가</a></li>
+                        <li><a href="#metrics">추론 성능 지표</a></li>
+                        <li><a href="#quantization">양자화</a></li>
+                        <li><a href="#pruning">프루닝</a></li>
+                        <li><a href="#distillation">지식 증류</a></li>
+                        <li><a href="#light-arch">경량 아키텍처 선택</a></li>
+                        <li><a href="#hardware">하드웨어 가속</a></li>
+                        <li><a href="#combine">최적화 기법의 조합</a></li>
+                        <li><a href="#industrial">산업 비전에서의 모델 최적화</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 경량화 -->
+                <h2 id="why"><i class="fa-solid fa-weight-hanging"></i> 왜 경량화가 필요한가</h2>
+
+                <p>학습을 마친 딥러닝 모델은 대개 <strong>크고 느리다</strong>. 학습 단계에서는 정확도를 끌어올리는 것이 최우선이라 파라미터를 넉넉하게 쌓고, 연산량을 따지지 않는다. GPU 서버 위에서 한 장을 몇십 밀리초에 처리하면 충분하다고 본다. 그러나 그 모델을 그대로 산업 현장에 가져가면 이야기가 달라진다.</p>
+
+                <p>산업 비전 현장은 <strong>실시간성, 엣지 디바이스, 제한된 자원</strong>이라는 세 가지 제약을 동시에 건다. 검사 라인은 정해진 택트 타임 안에 판정을 끝내야 하고, 카메라 옆에 놓인 작은 산업용 PC나 임베디드 보드는 데스크톱 GPU만큼의 연산력이 없으며, 메모리와 전력 예산도 빠듯하다. 학습장에서 잘 돌던 모델이 현장에서 "너무 느려서 못 쓴다"가 되는 일은 흔하다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-scale-balanced"></i> 경량화는 정확도와 속도·크기의 거래다</div>
+                    <p>모델 경량화의 본질은 공짜 점심이 아니라 <strong>거래</strong>다. 모델을 작고 빠르게 만들면 대개 정확도가 조금 떨어진다. 핵심 질문은 "정확도를 떨어뜨릴 것인가 말 것인가"가 아니라 <strong>"얼마만큼의 정확도 손실을 받아들이고 얼마만큼의 속도·크기를 얻을 것인가"</strong>이다.<br><br>
+                    다행히 이 거래는 보통 유리하다. 잘 설계된 경량화는 정확도를 1% 안쪽으로만 깎으면서 모델 크기를 1/4로, 추론 속도를 2~4배로 끌어올린다. 거래가 유리한 지점을 찾아내는 것이 이 글이 다루는 기법들의 목표다.</p>
+                </div>
+
+                <p>경량화 기법은 크게 세 갈래다. 비트 수를 낮추는 <strong>양자화</strong>, 불필요한 부분을 잘라내는 <strong>프루닝</strong>, 큰 모델의 지식을 작은 모델에 옮기는 <strong>지식 증류</strong>다. 여기에 처음부터 가벼운 모델을 고르는 <strong>경량 아키텍처 선택</strong>과, 하드웨어에 맞춰 실행을 최적화하는 <strong>하드웨어 가속</strong>이 더해진다. 아래에서 하나씩 본다.</p>
+
+                <!-- 2. 추론 성능 지표 -->
+                <h2 id="metrics"><i class="fa-solid fa-gauge-high"></i> 추론 성능 지표</h2>
+
+                <p>경량화를 이야기하려면 먼저 <strong>무엇을 측정할지</strong>를 정해야 한다. "빠르다", "가볍다"는 말은 모호하다. 산업 현장에서 최적화의 성과를 따질 때 쓰는 지표는 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>지표</th>
+                            <th>의미</th>
+                            <th>왜 중요한가</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">지연 (latency)</td>
+                            <td>한 장을 입력해서 결과가 나올 때까지 걸리는 시간</td>
+                            <td>검사 한 건의 응답 속도 — 택트 타임과 직결</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">처리량 (throughput)</td>
+                            <td>단위 시간당 처리하는 이미지 수 (FPS, img/s)</td>
+                            <td>라인 전체의 검사 속도 — 배치 처리 시 중요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">모델 크기</td>
+                            <td>저장된 가중치 파일의 용량 (MB)</td>
+                            <td>엣지 디바이스의 저장 공간·배포 비용</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">메모리 사용량</td>
+                            <td>추론 중 점유하는 RAM·VRAM 양</td>
+                            <td>임베디드 보드의 빠듯한 메모리 예산</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">FLOPs</td>
+                            <td>추론 1회에 필요한 부동소수점 연산 횟수</td>
+                            <td>하드웨어 독립적인 연산량 추정치</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>지연과 처리량은 같은 것이 아니다</strong>
+                        지연이 낮다고 처리량이 높은 것은 아니다. 한 장씩 처리하면 지연은 낮지만 GPU가 놀고, 여러 장을 묶어 배치로 처리하면 처리량은 올라가지만 한 장의 지연은 길어진다. 검사 라인이 "부품 하나가 카메라를 지나갈 때마다 즉시 판정"을 요구하면 지연이 중요하고, "한 트레이를 모아 한꺼번에 검사"하면 처리량이 중요하다. 무엇을 최적화할지는 라인 구조가 정한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>FLOPs가 적다고 반드시 빠른 것은 아니다</strong>
+                        FLOPs는 연산량의 이론적 추정치일 뿐, 실제 속도와 비례하지 않을 때가 많다. 메모리 접근 패턴, 연산의 병렬화 가능성, 하드웨어의 특정 연산 지원 여부가 실제 지연을 좌우한다. FLOPs를 절반으로 줄였는데 실측 속도는 거의 그대로인 경우가 드물지 않다. 최종 판단은 항상 <strong>목표 하드웨어에서의 실측</strong>으로 한다.
+                    </div>
+                </div>
+
+                <!-- 3. 양자화 -->
+                <h2 id="quantization"><i class="fa-solid fa-compress"></i> 양자화 (Quantization)</h2>
+
+                <p>양자화는 모델의 숫자를 <strong>더 낮은 비트로 표현</strong>하는 기법이다. 학습된 모델의 가중치와 활성값은 보통 32비트 부동소수점(FP32)으로 저장된다. 이것을 8비트 정수(INT8)처럼 더 작은 자료형으로 바꾸면, 같은 모델이 차지하는 공간이 1/4로 줄고, 정수 연산이 부동소수점 연산보다 빠른 하드웨어에서는 속도까지 함께 오른다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 300" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="360" y="26" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">양자화 — FP32 연속값을 INT8 격자에 맞춰 옮긴다</text>
+
+                        <!-- FP32 수직선 -->
+                        <text x="60" y="78" font-size="11" fill="#4527a0" font-weight="700">FP32 (연속적인 실수)</text>
+                        <line x1="60" y1="100" x2="660" y2="100" stroke="#9575cd" stroke-width="2"/>
+                        <circle cx="120" cy="100" r="3.5" fill="#673ab7"/>
+                        <circle cx="175" cy="100" r="3.5" fill="#673ab7"/>
+                        <circle cx="210" cy="100" r="3.5" fill="#673ab7"/>
+                        <circle cx="295" cy="100" r="3.5" fill="#673ab7"/>
+                        <circle cx="340" cy="100" r="3.5" fill="#673ab7"/>
+                        <circle cx="420" cy="100" r="3.5" fill="#673ab7"/>
+                        <circle cx="480" cy="100" r="3.5" fill="#673ab7"/>
+                        <circle cx="545" cy="100" r="3.5" fill="#673ab7"/>
+                        <circle cx="600" cy="100" r="3.5" fill="#673ab7"/>
+                        <text x="360" y="124" text-anchor="middle" font-size="9" fill="#7e57c2">값이 거의 무한히 촘촘하다 — 32비트로 한 값을 표현</text>
+
+                        <!-- 화살표 -->
+                        <line x1="360" y1="138" x2="360" y2="170" stroke="#ff9800" stroke-width="2.5" marker-end="url(#arrQ)"/>
+                        <defs>
+                            <marker id="arrQ" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8Z" fill="#ff9800"/></marker>
+                        </defs>
+                        <text x="378" y="158" font-size="9.5" fill="#e65100" font-weight="600">반올림</text>
+
+                        <!-- INT8 격자 -->
+                        <text x="60" y="198" font-size="11" fill="#1565c0" font-weight="700">INT8 (256단계 격자)</text>
+                        <line x1="60" y1="220" x2="660" y2="220" stroke="#64b5f6" stroke-width="2"/>
+                        <!-- 격자 눈금 -->
+                        <line x1="120" y1="213" x2="120" y2="227" stroke="#1565c0" stroke-width="2"/>
+                        <line x1="195" y1="213" x2="195" y2="227" stroke="#1565c0" stroke-width="2"/>
+                        <line x1="270" y1="213" x2="270" y2="227" stroke="#1565c0" stroke-width="2"/>
+                        <line x1="345" y1="213" x2="345" y2="227" stroke="#1565c0" stroke-width="2"/>
+                        <line x1="420" y1="213" x2="420" y2="227" stroke="#1565c0" stroke-width="2"/>
+                        <line x1="495" y1="213" x2="495" y2="227" stroke="#1565c0" stroke-width="2"/>
+                        <line x1="570" y1="213" x2="570" y2="227" stroke="#1565c0" stroke-width="2"/>
+                        <line x1="600" y1="213" x2="600" y2="227" stroke="#1565c0" stroke-width="2"/>
+                        <circle cx="120" cy="220" r="4" fill="#1565c0"/>
+                        <circle cx="195" cy="220" r="4" fill="#1565c0"/>
+                        <circle cx="270" cy="220" r="4" fill="#1565c0"/>
+                        <circle cx="345" cy="220" r="4" fill="#1565c0"/>
+                        <circle cx="420" cy="220" r="4" fill="#1565c0"/>
+                        <circle cx="495" cy="220" r="4" fill="#1565c0"/>
+                        <circle cx="600" cy="220" r="4" fill="#1565c0"/>
+                        <text x="360" y="246" text-anchor="middle" font-size="9" fill="#1976d2">정해진 눈금에만 값이 놓인다 — 8비트로 한 값을 표현, 크기 1/4</text>
+                        <text x="360" y="278" text-anchor="middle" font-size="9.5" fill="#90a4ae">FP32 값이 가장 가까운 INT8 눈금으로 반올림되며 미세한 오차(양자화 오차)가 생긴다</text>
+                    </svg>
+                    <div class="caption">그림 1. 양자화의 원리 — 연속적인 FP32 값을 256단계의 INT8 격자에 반올림해 옮긴다. 표현력은 줄지만 크기와 연산 비용이 크게 떨어진다</div>
+                </div>
+
+                <p>양자화로 얻는 것은 분명하다. <strong>모델 크기가 약 1/4로 줄고</strong>, INT8 연산을 가속하는 하드웨어(대부분의 최신 CPU·GPU·NPU)에서 <strong>추론 속도가 2~4배</strong> 빨라진다. 메모리 대역폭 부담도 함께 줄어든다. 대신 그림에서 보듯 값을 격자에 반올림하면서 <strong>양자화 오차</strong>가 쌓이고, 이것이 정확도를 조금 갉아먹는다. 보통 잘 처리하면 1% 안쪽의 손실로 끝나지만, 모델과 데이터에 따라 더 크게 떨어질 수도 있다.</p>
+
+                <h3 id="ptq-qat"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PTQ와 QAT — 양자화를 적용하는 두 시점</h3>
+
+                <p>양자화를 언제 적용하느냐에 따라 두 갈래로 나뉜다. 학습이 다 끝난 모델에 사후에 적용하는 <strong>PTQ</strong>와, 학습 과정 자체에 양자화를 끼워 넣는 <strong>QAT</strong>다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-bolt" style="color:#059669;"></i> PTQ (Post-Training Quantization)</h4>
+                        <p>이미 학습된 FP32 모델을 그대로 받아 양자화한다. 재학습이 필요 없고, 대표 이미지 몇백 장으로 값의 범위만 보정(calibration)하면 끝난다. 빠르고 간단하지만, 정확도 손실을 통제하기 어렵다.</p>
+                        <ul>
+                            <li>장점 — 빠름, 학습 데이터·코드 불필요</li>
+                            <li>단점 — 정확도 손실이 클 수 있음</li>
+                            <li>적합 — 손실에 여유가 있는 경우, 1차 시도</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-screwdriver-wrench" style="color:#7b1fa2;"></i> QAT (Quantization-Aware Training)</h4>
+                        <p>학습 단계에서 양자화 오차를 흉내 내며 모델을 학습시킨다. 모델이 "어차피 INT8로 갈 것"을 알고 적응하므로 정확도 손실이 훨씬 작다. 대신 학습 데이터와 재학습 과정이 필요하다.</p>
+                        <ul>
+                            <li>장점 — 정확도 손실 최소화</li>
+                            <li>단점 — 재학습 비용, 데이터 필요</li>
+                            <li>적합 — PTQ로 정확도가 무너졌을 때</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>양자화로 정확도가 급락하면 PTQ를 고집하지 않는다</strong>
+                        PTQ는 간편해서 먼저 손이 가지만, 모델에 따라 정확도가 몇 퍼센트씩 떨어지거나 특정 클래스에서 무너지기도 한다. 이때 calibration 데이터를 더 모으거나 양자화 범위를 손보는 데 매달리기보다, QAT로 갈아타는 편이 빠른 경우가 많다. "양자화했더니 정확도가 떨어졌다"는 PTQ의 한계 신호이지 양자화 자체의 한계가 아니다. 손실이 크면 QAT가 정답이다.
+                    </div>
+                </div>
+
+                <!-- 4. 프루닝 -->
+                <h2 id="pruning"><i class="fa-solid fa-scissors"></i> 프루닝 (Pruning)</h2>
+
+                <p>프루닝은 모델에서 <strong>중요도가 낮은 부분을 잘라내는</strong> 기법이다. 학습된 신경망에는 결과에 거의 기여하지 않는 가중치가 많다. 값이 0에 가까운 가중치, 출력에 영향이 미미한 채널 등을 찾아 제거하면, 모델이 작아지고 연산량이 줄어든다. 가지치기를 하듯 불필요한 가지를 쳐내는 것이다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 320" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="360" y="26" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">비구조적 프루닝 vs 구조적 프루닝</text>
+
+                        <!-- 왼쪽: 비구조적 -->
+                        <text x="180" y="58" text-anchor="middle" font-size="11.5" fill="#c2185b" font-weight="700">비구조적 — 개별 가중치 제거</text>
+                        <!-- 노드 2층 -->
+                        <circle cx="100" cy="100" r="14" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <circle cx="100" cy="160" r="14" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <circle cx="100" cy="220" r="14" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <circle cx="260" cy="120" r="14" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <circle cx="260" cy="200" r="14" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/>
+                        <!-- 연결선: 일부만 남고 일부는 점선 -->
+                        <line x1="114" y1="100" x2="246" y2="120" stroke="#e91e63" stroke-width="2"/>
+                        <line x1="114" y1="100" x2="246" y2="200" stroke="#ddd" stroke-width="1.5" stroke-dasharray="3 3"/>
+                        <line x1="114" y1="160" x2="246" y2="120" stroke="#ddd" stroke-width="1.5" stroke-dasharray="3 3"/>
+                        <line x1="114" y1="160" x2="246" y2="200" stroke="#e91e63" stroke-width="2"/>
+                        <line x1="114" y1="220" x2="246" y2="120" stroke="#e91e63" stroke-width="2"/>
+                        <line x1="114" y1="220" x2="246" y2="200" stroke="#ddd" stroke-width="1.5" stroke-dasharray="3 3"/>
+                        <text x="180" y="262" text-anchor="middle" font-size="9" fill="#ad1457">연결이 듬성듬성 비워진다 (희소 행렬)</text>
+                        <text x="180" y="282" text-anchor="middle" font-size="9" fill="#90a4ae">모델 크기는 줄지만 일반 하드웨어에선</text>
+                        <text x="180" y="296" text-anchor="middle" font-size="9" fill="#90a4ae">실제 속도 이득이 작다</text>
+
+                        <!-- 구분선 -->
+                        <line x1="360" y1="50" x2="360" y2="300" stroke="#e0e0e0" stroke-width="1.5"/>
+
+                        <!-- 오른쪽: 구조적 -->
+                        <text x="540" y="58" text-anchor="middle" font-size="11.5" fill="#1565c0" font-weight="700">구조적 — 채널·필터 통째로 제거</text>
+                        <circle cx="460" cy="100" r="14" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <circle cx="460" cy="160" r="14" fill="#eceff1" stroke="#b0bec5" stroke-width="1.5" stroke-dasharray="3 3"/>
+                        <circle cx="460" cy="220" r="14" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <circle cx="620" cy="120" r="14" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <circle cx="620" cy="200" r="14" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <!-- 중간 노드 제거: 관련 연결 전부 점선 -->
+                        <line x1="474" y1="100" x2="606" y2="120" stroke="#1565c0" stroke-width="2"/>
+                        <line x1="474" y1="100" x2="606" y2="200" stroke="#1565c0" stroke-width="2"/>
+                        <line x1="474" y1="160" x2="606" y2="120" stroke="#cfd8dc" stroke-width="1.5" stroke-dasharray="3 3"/>
+                        <line x1="474" y1="160" x2="606" y2="200" stroke="#cfd8dc" stroke-width="1.5" stroke-dasharray="3 3"/>
+                        <line x1="474" y1="220" x2="606" y2="120" stroke="#1565c0" stroke-width="2"/>
+                        <line x1="474" y1="220" x2="606" y2="200" stroke="#1565c0" stroke-width="2"/>
+                        <text x="540" y="262" text-anchor="middle" font-size="9" fill="#1976d2">뉴런·채널이 통째로 사라진다 (작아진 밀집 모델)</text>
+                        <text x="540" y="282" text-anchor="middle" font-size="9" fill="#90a4ae">행렬 크기 자체가 줄어 일반 하드웨어에서도</text>
+                        <text x="540" y="296" text-anchor="middle" font-size="9" fill="#90a4ae">실제 속도 이득이 크다</text>
+                    </svg>
+                    <div class="caption">그림 2. 비구조적 프루닝과 구조적 프루닝 — 개별 가중치를 비우면 희소 행렬이 되고, 채널·필터를 통째로 제거하면 행렬 자체가 작아진다. 실제 속도 이득은 구조적 쪽이 크다</div>
+                </div>
+
+                <h3 id="pruning-types"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 비구조적 vs 구조적 프루닝</h3>
+
+                <p><strong>비구조적 프루닝</strong>은 개별 가중치 단위로 잘라낸다. 값이 작은 가중치를 0으로 만들어 행렬을 듬성듬성하게(희소하게) 만든다. 이론상 가장 많은 파라미터를 제거할 수 있지만, 결과물이 희소 행렬이라 일반적인 CPU·GPU에서는 이를 빠르게 처리하지 못한다. 모델 파일은 작아져도 실제 추론 속도는 거의 그대로인 경우가 많다.</p>
+
+                <p><strong>구조적 프루닝</strong>은 채널, 필터, 레이어처럼 <strong>구조 단위로 통째로</strong> 잘라낸다. 중요도가 낮은 채널을 통째로 제거하면 행렬의 크기 자체가 줄어든, 그냥 더 작은 밀집 모델이 된다. 특별한 희소 연산 지원 없이도 일반 하드웨어에서 그대로 빨라진다. 그래서 <strong>실무에서 실제 속도 이득을 노린다면 구조적 프루닝</strong>이 답이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>프루닝 후에는 보통 재학습(fine-tuning)이 따라온다</strong>
+                        가중치나 채널을 잘라내면 모델의 출력이 흔들린다. 그래서 프루닝 직후 약간의 재학습으로 남은 파라미터들이 빈자리를 메우도록 회복시킨다. "프루닝 → 재학습 → 다시 프루닝"을 점진적으로 반복하면, 한 번에 크게 잘라낼 때보다 정확도를 더 잘 지키면서 모델을 줄일 수 있다.
+                    </div>
+                </div>
+
+                <!-- 5. 지식 증류 -->
+                <h2 id="distillation"><i class="fa-solid fa-flask"></i> 지식 증류 (Knowledge Distillation)</h2>
+
+                <p>지식 증류는 접근 방식이 다르다. 기존 모델을 깎거나 줄이는 대신, <strong>처음부터 작은 모델을 따로 학습시키되 큰 모델을 선생으로 삼는다</strong>. 크고 정확한 모델을 <strong>teacher</strong>, 작고 빠른 모델을 <strong>student</strong>라 부른다. student는 정답 라벨만 보고 배우는 것이 아니라, teacher가 내놓는 출력까지 함께 모방하며 배운다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 290" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrD" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                            <marker id="arrSoft" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#9c27b0"/></marker>
+                        </defs>
+                        <text x="360" y="26" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">지식 증류 — teacher의 soft label을 student가 모방한다</text>
+
+                        <!-- 입력 이미지 -->
+                        <rect x="30" y="110" width="90" height="70" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="2"/>
+                        <text x="75" y="142" text-anchor="middle" font-size="10" fill="#e65100" font-weight="700">입력 이미지</text>
+                        <text x="75" y="160" text-anchor="middle" font-size="9" fill="#fb8c00">학습 데이터</text>
+
+                        <!-- teacher -->
+                        <rect x="200" y="50" width="150" height="70" rx="10" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="275" y="80" text-anchor="middle" font-size="11" fill="#4527a0" font-weight="700">Teacher (큰 모델)</text>
+                        <text x="275" y="100" text-anchor="middle" font-size="9" fill="#7e57c2">정확하지만 무겁다 · 학습 끝, 고정</text>
+
+                        <!-- student -->
+                        <rect x="200" y="170" width="150" height="70" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="275" y="200" text-anchor="middle" font-size="11" fill="#1565c0" font-weight="700">Student (작은 모델)</text>
+                        <text x="275" y="220" text-anchor="middle" font-size="9" fill="#42a5f5">가볍고 빠르다 · 지금 학습 중</text>
+
+                        <line x1="120" y1="135" x2="196" y2="95" stroke="#4caf50" stroke-width="2" marker-end="url(#arrD)"/>
+                        <line x1="120" y1="155" x2="196" y2="200" stroke="#4caf50" stroke-width="2" marker-end="url(#arrD)"/>
+
+                        <!-- soft label 출력 -->
+                        <rect x="430" y="55" width="160" height="60" rx="8" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.8"/>
+                        <text x="510" y="79" text-anchor="middle" font-size="9.5" fill="#7b1fa2" font-weight="700">Soft label (확률 분포)</text>
+                        <text x="510" y="97" text-anchor="middle" font-size="8.5" fill="#ab47bc">고양이 0.7 · 개 0.2 · 여우 0.1</text>
+
+                        <!-- hard label -->
+                        <rect x="430" y="180" width="160" height="50" rx="8" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.8"/>
+                        <text x="510" y="200" text-anchor="middle" font-size="9.5" fill="#2e7d32" font-weight="700">Hard label (정답)</text>
+                        <text x="510" y="217" text-anchor="middle" font-size="8.5" fill="#66bb6a">고양이 1 · 개 0 · 여우 0</text>
+
+                        <line x1="350" y1="85" x2="426" y2="85" stroke="#9c27b0" stroke-width="2" marker-end="url(#arrSoft)"/>
+
+                        <!-- teacher soft label -> student 로 학습 신호 -->
+                        <path d="M 510 115 Q 510 150 360 195" fill="none" stroke="#9c27b0" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrSoft)"/>
+                        <text x="600" y="150" font-size="8.5" fill="#7b1fa2" font-weight="600">모방</text>
+
+                        <path d="M 510 230 Q 470 255 360 222" fill="none" stroke="#4caf50" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrD)"/>
+
+                        <text x="360" y="278" text-anchor="middle" font-size="9.5" fill="#90a4ae">student는 정답(hard label)과 teacher의 확률 분포(soft label)를 함께 배우며, soft label에 담긴 "클래스 간 유사도" 정보까지 흡수한다</text>
+                    </svg>
+                    <div class="caption">그림 3. 지식 증류의 구조 — teacher의 soft label은 정답뿐 아니라 "고양이는 개와 비슷하고 여우와는 덜 비슷하다" 같은 부가 정보를 담고 있고, student가 이를 함께 학습한다</div>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> soft label이 왜 더 풍부한가</div>
+                    <p>정답 라벨(hard label)은 "이건 고양이"라고만 말한다 — 고양이 1, 나머지 0. 반면 teacher가 내놓는 <strong>soft label</strong>은 "고양이 0.7, 개 0.2, 여우 0.1" 같은 확률 분포다. 이 분포에는 정답 외에 <strong>"고양이는 개와 헷갈릴 만하고 여우와는 덜 헷갈린다"</strong>는 클래스 사이의 관계 정보가 담겨 있다.<br><br>
+                    student는 이 부가 정보까지 흡수하기 때문에, 같은 크기의 모델을 정답 라벨만으로 학습시킬 때보다 더 잘 배운다. teacher가 오랜 학습으로 알아낸 "세상의 구조"를 작은 모델에 농축해 옮긴다는 뜻에서 "증류"라 부른다.</p>
+                </div>
+
+                <p>지식 증류의 장점은 결과물이 <strong>처음부터 작게 설계된 평범한 밀집 모델</strong>이라는 점이다. 희소 행렬도, 특수한 자료형도 아니라서 어떤 하드웨어에서든 그대로 빠르다. 단점은 teacher 모델과 student를 학습시킬 데이터·시간이 모두 필요하다는 것이다. 양자화·프루닝과 달리 별도의 학습 과정을 한 번 더 거쳐야 한다.</p>
+
+                <!-- 6. 경량 아키텍처 -->
+                <h2 id="light-arch"><i class="fa-solid fa-feather"></i> 경량 아키텍처 선택</h2>
+
+                <p>지금까지의 세 기법은 모두 "이미 있는 모델을 작게 만드는" 사후 작업이다. 그런데 가장 확실한 경량화는 <strong>처음부터 가벼운 모델을 고르는 것</strong>이다. 큰 모델을 깎느라 고생하기 전에, 애초에 산업용 임베디드 환경을 겨냥해 설계된 아키텍처가 있는지 본다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-mobile-screen" style="color:#1565c0;"></i> MobileNet 계열</h4>
+                        <p>depthwise separable convolution으로 합성곱의 연산량을 대폭 줄인 구조다. 모바일·엣지 환경을 처음부터 목표로 설계되어, 작은 크기에 비해 정확도가 잘 나온다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrows-up-down-left-right" style="color:#7b1fa2;"></i> EfficientNet 계열</h4>
+                        <p>모델의 깊이·너비·입력 해상도를 균형 있게 함께 키우는 compound scaling으로, 같은 연산 예산에서 더 높은 정확도를 끌어낸다. 정확도와 효율의 곡선이 우수하다.</p>
+                    </div>
+                </div>
+
+                <p>이 외에도 ShuffleNet, GhostNet 등 효율을 노린 경량 아키텍처가 여럿 있다. 4편에서 다룬 CNN 아키텍처의 흐름 속에서, 이들은 "정확도 최대화"가 아니라 <strong>"제한된 연산 예산 안에서의 정확도 최대화"</strong>라는 다른 목표를 가진 갈래다. 검사 대상이 그렇게 복잡하지 않다면, 큰 모델을 경량화하는 것보다 경량 아키텍처에서 출발하는 편이 훨씬 수월하다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>경량화의 첫 질문은 "이 모델을 어떻게 줄이지"가 아니다</strong>
+                        많은 경우 더 나은 첫 질문은 "굳이 이 큰 모델이 필요한가"이다. 산업 검사 태스크는 ImageNet 1000종 분류보다 단순할 때가 많다. 양품·불량 2종 판정에 무거운 백본을 쓰고 있었다면, 경량 아키텍처로 바꾸는 것만으로 양자화·프루닝 없이도 충분히 가벼워지기도 한다. 기법을 동원하기 전에 모델 선택을 먼저 점검한다.
+                    </div>
+                </div>
+
+                <!-- 7. 하드웨어 가속 -->
+                <h2 id="hardware"><i class="fa-solid fa-microchip"></i> 하드웨어 가속</h2>
+
+                <p>모델 자체를 줄이는 것과는 별개로, <strong>같은 모델을 목표 하드웨어에서 더 빠르게 실행</strong>하는 길도 있다. 학습용 프레임워크는 범용성을 위해 만들어졌을 뿐, 특정 하드웨어에서 최적으로 도는 형태가 아니다. 추론 전용 런타임은 모델을 대상 하드웨어에 맞춰 다시 컴파일하고 최적화한다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">GPU</span>
+                        <span class="term-desc">대규모 병렬 연산에 강해 딥러닝 추론의 기본 가속기다. 다만 산업 현장의 작은 박스에 데스크톱 GPU를 넣기 어려운 경우가 많아, 임베디드용 GPU 보드를 쓰기도 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">TensorRT</span>
+                        <span class="term-desc">NVIDIA GPU 전용 추론 최적화 엔진이다. 레이어 융합, 커널 자동 선택, INT8 양자화를 묶어 적용해 같은 GPU에서 추론 속도를 크게 끌어올린다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">ONNX Runtime</span>
+                        <span class="term-desc">ONNX 포맷 모델을 여러 하드웨어에서 실행하는 범용 추론 엔진이다. CPU·GPU·NPU 등 다양한 백엔드를 같은 모델로 지원해 이식성이 좋다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">NPU</span>
+                        <span class="term-desc">신경망 연산에 특화된 전용 칩이다. 저전력으로 높은 추론 성능을 내, 전력·발열 예산이 빠듯한 엣지 디바이스에 적합하다. 대신 지원하는 연산·자료형에 제약이 있다.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>하드웨어 가속은 11편 ONNX와 이어진다</strong>
+                        하드웨어 가속의 출발점은 대개 모델을 ONNX 같은 중립 포맷으로 내보내는 것이다. 학습은 PyTorch로 하더라도, 배포는 ONNX로 변환한 뒤 TensorRT나 ONNX Runtime에 올리는 흐름이 표준에 가깝다. 모델 포맷 변환과 배포 파이프라인은 다음 편(11편)에서 본격적으로 다룬다. 이 글에서는 "경량화는 모델을 줄이는 것과 하드웨어에 맞추는 것, 두 축이 있다"는 점만 잡아 두면 된다.
+                    </div>
+                </div>
+
+                <!-- 8. 기법 조합 -->
+                <h2 id="combine"><i class="fa-solid fa-layer-group"></i> 최적화 기법의 조합</h2>
+
+                <p>실무에서는 한 기법만 쓰지 않는다. <strong>경량 아키텍처에서 출발해, 양자화를 적용하고, 필요하면 프루닝까지 더하는</strong> 식으로 기법을 쌓는다. 각 기법이 줄이는 대상이 조금씩 달라서, 함께 쓰면 효과가 곱해진다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>기법</th>
+                            <th>줄이는 것</th>
+                            <th>크기·속도 효과</th>
+                            <th>정확도 손실</th>
+                            <th>적용 난이도</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">경량 아키텍처</td>
+                            <td>모델 구조 자체</td>
+                            <td>매우 큼 — 처음부터 작음</td>
+                            <td>태스크가 단순하면 거의 없음</td>
+                            <td>낮음 — 모델만 교체</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">양자화 (PTQ)</td>
+                            <td>숫자의 비트 수</td>
+                            <td>큼 — 크기 1/4, 속도 2~4배</td>
+                            <td>작음~중간 (모델 따라 큼)</td>
+                            <td>낮음 — 재학습 불필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">양자화 (QAT)</td>
+                            <td>숫자의 비트 수</td>
+                            <td>큼 — 크기 1/4, 속도 2~4배</td>
+                            <td>매우 작음</td>
+                            <td>중간 — 재학습 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">구조적 프루닝</td>
+                            <td>채널·필터·레이어</td>
+                            <td>중간~큼 — 실제 속도 이득</td>
+                            <td>작음~중간 (재학습으로 회복)</td>
+                            <td>중간 — 중요도 평가·재학습</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">비구조적 프루닝</td>
+                            <td>개별 가중치</td>
+                            <td>작음 — 크기만, 속도 이득 미미</td>
+                            <td>작음</td>
+                            <td>중간 — 희소 연산 지원 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">지식 증류</td>
+                            <td>모델 용량 전체</td>
+                            <td>큼 — student를 자유롭게 작게</td>
+                            <td>작음 — soft label로 보강</td>
+                            <td>높음 — teacher + student 학습</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>현실적인 조합 순서 — 쉬운 것부터, 측정하며</strong>
+                        보통은 이렇게 쌓는다. ① 경량 아키텍처를 고른다(가장 큰 효과, 가장 낮은 비용). ② PTQ 양자화를 적용하고 정확도를 본다. ③ 손실이 크면 QAT로 바꾼다. ④ 그래도 속도가 모자라면 구조적 프루닝을 더한다. ⑤ 정확도 여유가 정 부족하면 지식 증류로 student를 다시 짠다. 핵심은 <strong>한 단계 적용할 때마다 목표 하드웨어에서 정확도와 속도를 둘 다 측정</strong>하는 것이다. 측정 없이 기법을 쌓으면 어디서 무너졌는지 알 수 없다.
+                    </div>
+                </div>
+
+                <!-- 9. 산업 비전 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전에서의 모델 최적화</h2>
+
+                <p>산업 비전에서 모델 최적화는 학술적 관심사가 아니라 <strong>배포 가능 여부를 가르는 실무 관문</strong>이다. 아무리 정확한 모델이라도 검사 라인의 제약을 못 맞추면 쓸 수 없다. 현장의 시선에서 최적화는 다음 세 가지 질문으로 정리된다.</p>
+
+                <h3 id="tact-time"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 택트 타임 안에 추론이 끝나는가</h3>
+
+                <p>검사 라인은 부품 하나에 허락된 시간(택트 타임)이 정해져 있다. 이미지 입력, 전처리, 추론, 후처리, 결과 전송까지 모두 그 안에 들어가야 한다. 추론이 택트 타임을 넘기면 라인 속도를 늦추거나 모델을 못 쓰거나 둘 중 하나다. 그래서 최적화의 1차 목표는 늘 <strong>"목표 하드웨어에서 측정한 추론 지연이 예산 안에 드는가"</strong>이다.</p>
+
+                <h3 id="edge-deploy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 엣지 디바이스에 배포할 수 있는가</h3>
+
+                <p>검사 장비는 보통 카메라 옆의 작은 산업용 PC나 임베디드 보드에서 돈다. 데스크톱 GPU가 없고, 메모리와 저장 공간이 빠듯하다. 모델 크기와 메모리 사용량을 그 예산 안으로 줄이는 일은 선택이 아니라 배포의 전제 조건이다. 경량 아키텍처와 양자화가 여기서 핵심 역할을 한다.</p>
+
+                <h3 id="acc-budget"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정확도 손실은 어디까지 허용되는가</h3>
+
+                <p>경량화는 정확도를 깎는다. 그래서 최적화를 시작하기 전에 <strong>"이 검사에서 받아들일 수 있는 정확도 손실의 한계"</strong>를 먼저 정해야 한다. 안전 부품 검사라면 미검출 한 건도 치명적이라 손실 여유가 거의 없고, 외관 등급 분류처럼 오류 비용이 낮은 검사라면 여유가 크다. 이 한계선이 PTQ로 충분한지 QAT까지 가야 하는지, 프루닝을 얼마나 공격적으로 할지를 결정한다. 한계선 없이 "최대한 빠르게"만 좇으면 쓸 수 없는 모델이 된다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>ImagingLib 관점 — 경량화는 배포 파이프라인의 한 단계다</strong>
+                        이 블로그가 따라가는 산업 이미징 SDK <strong>ImagingLib</strong>의 Deep Learning 솔루션에서, 모델 경량화는 학습과 배포 사이에 놓인 정규 단계다. 학습된 모델을 그대로 추론 블록에 꽂는 것이 아니라, 경량화·최적화를 거쳐 목표 하드웨어 기준으로 검증한 모델을 배포한다. 데이터 플로우 에디터에서 추론 블록이 약속하는 속도는 이 최적화를 전제로 한 수치다.
+                    </div>
+                </div>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <p>경량화는 기법 자체보다 <strong>적용 과정에서의 판단 실수</strong>로 망가지는 경우가 많다. 자주 반복되는 함정을 정리한다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">양자화 정확도 급락</span>
+                        <span class="term-desc">PTQ를 적용했더니 정확도가 크게 떨어지는데도 PTQ 안에서 calibration만 만지작거리는 경우다. 모델에 따라 PTQ로는 한계가 명확하다. 손실이 크면 QAT가 정답이라는 것을 인정하고 갈아타야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">비구조적 프루닝의 헛된 기대</span>
+                        <span class="term-desc">"파라미터를 90% 잘랐다"는 숫자에 만족하지만, 비구조적 프루닝은 일반 하드웨어에서 실제 속도가 거의 안 빨라진다. 모델 파일 크기와 실제 추론 속도를 혼동하지 않아야 한다. 속도가 목표면 구조적 프루닝을 쓴다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">최적화 후 재검증 생략</span>
+                        <span class="term-desc">양자화·프루닝은 모델의 동작을 바꾼다. 전체 정확도는 비슷해 보여도 특정 클래스나 특정 결함 유형에서만 성능이 무너질 수 있다. 최적화 후에는 반드시 검증셋 전체로, 가능하면 클래스별로 다시 평가해야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">속도 측정 누락</span>
+                        <span class="term-desc">정확도만 보고 "최적화 성공"이라 판단하는 경우다. 정작 목표 하드웨어에서 추론 지연을 안 재면, 정확도는 지켰는데 속도 목표는 못 맞춘 모델이 나온다. 정확도와 속도는 항상 함께 측정한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">개발 환경에서만 측정</span>
+                        <span class="term-desc">데스크톱 GPU에서 잰 속도는 엣지 디바이스에서의 속도와 전혀 다르다. FLOPs나 개발 PC 측정값을 근거로 배포를 결정하면 현장에서 어긋난다. 측정은 반드시 배포될 하드웨어에서 한다.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"최적화 후 재검증"과 "정확도만 보고 속도 측정 생략"은 가장 비싼 함정이다</strong>
+                        이 두 함정은 문제가 양산 단계에 가서야 드러난다는 점에서 특히 위험하다. 재검증을 생략하면 특정 불량 유형을 놓치는 모델이 현장에 깔리고, 속도 측정을 빼먹으면 택트 타임을 못 맞추는 모델이 라인에 올라간다. 둘 다 "최적화 작업이 끝났다"고 착각한 뒤에 터진다. 경량화의 마지막 단계는 기법 적용이 아니라 <strong>목표 하드웨어에서 정확도와 속도를 함께 재검증하는 것</strong>이다 — 이걸 빼면 앞의 작업이 전부 무의미해진다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>다음 편 예고</strong>
+                        이번 글에서는 모델을 작고 빠르게 만드는 기법들을 봤다. 그런데 경량화한 모델을 실제 현장에 올리려면 학습 프레임워크에 묶인 모델을 운영 환경이 이해하는 포맷으로 옮겨야 한다. 다음 11편에서는 <strong>ONNX</strong>를 통한 모델 포맷 변환과 배포 파이프라인을 다룬다. 경량화와 배포는 한 묶음으로 이어지는 과정이다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Geoffrey Hinton, Oriol Vinyals, Jeff Dean — Distilling the Knowledge in a Neural Network (NeurIPS Workshop, 2015)</li>
+                        <li>Benoit Jacob et al. — Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference (CVPR 2018)</li>
+                        <li>Song Han, Huizi Mao, William J. Dally — Deep Compression: Compressing Deep Neural Networks with Pruning, Trained Quantization and Huffman Coding (ICLR 2016)</li>
+                        <li>Andrew G. Howard et al. — MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications (arXiv, 2017)</li>
+                        <li>Mingxing Tan, Quoc V. Le — EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks (ICML 2019)</li>
+                        <li>NVIDIA — TensorRT 개발자 문서 (https://docs.nvidia.com/deeplearning/tensorrt)</li>
+                        <li>ONNX Runtime 공식 문서 — Performance and Quantization (https://onnxruntime.ai)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai');
+</script>
+
+</body>
+</html>

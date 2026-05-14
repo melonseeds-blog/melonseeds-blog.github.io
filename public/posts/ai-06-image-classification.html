@@ -1,0 +1,835 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이미지 분류 — 태스크와 평가지표 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 수식 블록 */
+        .formula {
+            background: #f8fafc; border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0;
+            padding: 16px 20px; margin: 16px 0;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.95rem;
+            color: var(--text); text-align: center;
+            overflow-x: auto; line-height: 1.9;
+        }
+        .formula .formula-note {
+            display: block; margin-top: 6px;
+            font-family: 'Pretendard', sans-serif; font-size: 0.78rem;
+            color: var(--text-muted); text-align: center;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 그림 */
+        .figure {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 24px 0;
+        }
+        .figure .caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 12px;
+            text-align: center; line-height: 1.6;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+            .formula { font-size: 0.85rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">이미지 분류란</a>
+        <a href="#types" data-section="types">분류의 종류</a>
+        <a href="#softmax" data-section="softmax">출력과 Softmax</a>
+        <a href="#confusion" data-section="confusion">혼동 행렬</a>
+        <a href="#metrics" data-section="metrics">평가지표</a>
+        <a href="#tradeoff" data-section="tradeoff">PR 트레이드오프</a>
+        <a href="#roc" data-section="roc">ROC와 AUC</a>
+        <a href="#topk" data-section="topk">Top-1 / Top-5</a>
+        <a href="#industrial" data-section="industrial">산업 비전 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>이미지 분류 — 태스크와 평가지표</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>이미지 분류란 무엇인가 — 이미지 한 장에 클래스 라벨 하나를 붙이는 가장 기본 태스크</li>
+                        <li>분류의 종류 — 이진 분류, 다중 클래스 분류, 다중 라벨 분류</li>
+                        <li>출력과 Softmax — FC 출력을 확률 분포로 바꾸고 argmax로 예측 클래스를 정하는 흐름</li>
+                        <li>혼동 행렬 — TP·TN·FP·FN과 산업 검사에서의 과검출·미검출</li>
+                        <li>평가지표 — 정확도의 한계, 정밀도·재현율·F1 점수의 의미와 수식</li>
+                        <li>Precision-Recall 트레이드오프와 임계값 조절</li>
+                        <li>ROC 곡선과 AUC — 임계값 전체에 걸친 성능</li>
+                        <li>Top-1 / Top-5 정확도와 산업 비전 관점의 지표 선택</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">이미지 분류란 무엇인가</a></li>
+                        <li><a href="#types">분류의 종류</a></li>
+                        <li><a href="#softmax">출력과 Softmax</a></li>
+                        <li><a href="#confusion">혼동 행렬</a></li>
+                        <li><a href="#metrics">평가지표 — 정확도·정밀도·재현율·F1</a></li>
+                        <li><a href="#tradeoff">Precision-Recall 트레이드오프</a></li>
+                        <li><a href="#roc">ROC 곡선과 AUC</a></li>
+                        <li><a href="#topk">Top-1 / Top-5 정확도</a></li>
+                        <li><a href="#industrial">산업 비전 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 이미지 분류란 -->
+                <h2 id="what-is"><i class="fa-solid fa-image"></i> 이미지 분류란 무엇인가</h2>
+
+                <p>이미지 분류(image classification)는 <strong>이미지 한 장에 하나의 클래스 라벨</strong>을 붙이는 태스크다. "이 사진은 고양이다", "이 부품은 불량이다"처럼 이미지 전체를 한 단어로 답한다. 위치도 개수도 묻지 않는다. 오직 "이것은 무엇인가"라는 질문 하나에 답한다.</p>
+
+                <p>분류는 딥러닝 비전의 <strong>가장 기본적인 태스크</strong>다. 검출, 세그멘테이션 같은 더 복잡한 태스크도 내부적으로는 "이 영역이 어떤 클래스인가"를 판단하는 분류기를 품고 있다. CNN 아키텍처의 발전사가 곧 ImageNet 분류 성능 경쟁의 역사였던 것도 이 때문이다. 분류를 제대로 이해하면 그 위에 쌓이는 태스크들이 훨씬 잘 보인다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 분류는 "전체를 한 단어로" 답한다</div>
+                    <p>분류 모델의 입력은 이미지 한 장이고 출력은 클래스 라벨 하나다. 모델 내부에서는 CNN이 이미지를 특징 벡터로 압축하고, 마지막 완전연결층(FC, fully connected layer)이 그 벡터를 클래스 개수만큼의 점수로 바꾼다. 그 점수 중 가장 높은 클래스가 답이 된다. 산업 현장에서는 이 단순한 구조가 양품/불량 판정, 제품 종류 구분, 결함 유형 분류에 그대로 쓰인다.</p>
+                </div>
+
+                <!-- 2. 분류의 종류 -->
+                <h2 id="types"><i class="fa-solid fa-layer-group"></i> 분류의 종류</h2>
+
+                <p>"분류"라고 다 같은 분류가 아니다. 클래스가 몇 개인지, 한 이미지에 라벨이 하나만 붙는지 여러 개 붙는지에 따라 세 가지로 나뉜다. 이 구분은 출력층 설계와 손실 함수 선택에 직접 영향을 준다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">이진 분류</span>
+                        <span class="term-desc">클래스가 둘인 경우다. 양품/불량, 정상/이상이 대표적이다. 출력 뉴런 하나에 Sigmoid를 걸어 "불량일 확률"을 직접 내보내는 식으로 구현한다. 산업 검사의 가장 흔한 형태다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">다중 클래스 분류</span>
+                        <span class="term-desc">클래스가 셋 이상이고 한 이미지에 라벨이 정확히 하나 붙는다. 결함 유형을 "스크래치 / 찍힘 / 오염 / 정상" 중 하나로 가르는 경우다. 출력층은 클래스 수만큼의 뉴런에 Softmax를 건다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">다중 라벨 분류</span>
+                        <span class="term-desc">한 이미지에 여러 라벨이 동시에 붙을 수 있다. 한 부품에 스크래치와 오염이 함께 있는 경우다. 라벨들이 서로 배타적이지 않으므로 Softmax 대신 각 클래스마다 독립적인 Sigmoid를 쓴다.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다중 클래스와 다중 라벨을 헷갈리지 않는다</strong>
+                        다중 클래스는 "여러 선택지 중 하나만" 고른다 — 라벨이 서로 배타적이다. 다중 라벨은 "여러 선택지를 동시에" 고를 수 있다 — 라벨이 독립적이다. 이 차이가 출력층을 Softmax로 할지 Sigmoid 여러 개로 할지를 결정한다. 검사 대상에 결함이 둘 이상 겹칠 수 있다면 다중 라벨로 설계해야 한다.
+                    </div>
+                </div>
+
+                <!-- 3. 출력과 Softmax -->
+                <h2 id="softmax"><i class="fa-solid fa-calculator"></i> 출력과 Softmax</h2>
+
+                <p>분류 모델의 마지막 FC 층은 클래스 개수만큼의 숫자를 뱉는다. 이 숫자들을 <strong>로짓(logit)</strong>이라 부르는데, 그 자체로는 크기만 있고 의미가 분명하지 않다. 어떤 클래스의 로짓이 5.2, 다른 클래스가 1.1이라고 해서 "5.2배 더 그럴듯하다"는 뜻은 아니다. 그래서 로짓을 <strong>확률 분포</strong>로 바꾸는 단계가 필요하다. 다중 클래스 분류에서 이 역할을 하는 것이 Softmax다.</p>
+
+                <div class="formula">
+                    Softmax(z<sub>i</sub>) = e<sup>z<sub>i</sub></sup> / &#931;<sub>j</sub> e<sup>z<sub>j</sub></sup>
+                    <span class="formula-note">각 로짓 z를 지수로 키운 뒤 전체 합으로 나눈다 — 결과는 모두 0~1이고 합이 정확히 1인 확률 분포</span>
+                </div>
+
+                <p>Softmax를 통과하면 출력은 "각 클래스일 확률"이 된다. 모두 더하면 1이 되므로 확률로 해석할 수 있다. 여기서 <strong>argmax</strong> — 가장 큰 값을 가진 클래스 — 가 모델의 <strong>예측 클래스</strong>가 된다. 그리고 그 클래스에 할당된 확률값을 <strong>confidence</strong>(신뢰도)라 부른다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-arrow-right-arrow-left"></i> 로짓에서 예측까지의 흐름</div>
+                    <p>예를 들어 "스크래치 / 오염 / 정상" 3-클래스 분류기가 로짓 <code>[3.2, 0.8, 1.0]</code>을 출력했다고 하자. Softmax를 통과하면 대략 <code>[0.78, 0.07, 0.15]</code>가 된다. argmax는 첫 번째 — 스크래치다. confidence는 0.78이다. 즉 모델은 "78% 확신으로 스크래치"라고 답한 것이다. confidence가 낮으면(예: 최고 확률이 0.4) 모델이 헷갈리고 있다는 신호이고, 이 값을 임계값과 비교해 "애매하면 사람이 재검토"로 흘려보낼 수 있다.</p>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>confidence는 "정답일 확률"이 아니다</strong>
+                        Softmax 출력은 보기에 확률 같지만, 모델이 실제로 맞을 확률과는 다르다. 딥러닝 분류기는 흔히 <strong>과신(overconfidence)</strong> 경향이 있어 틀린 예측에도 0.99 같은 높은 confidence를 붙인다. confidence를 의사결정 임계값으로 쓸 수는 있지만, "0.9면 90% 맞는다"는 식으로 곧이곧대로 믿으면 안 된다. 신뢰도 보정(calibration)은 별도의 과제다.
+                    </div>
+                </div>
+
+                <!-- 4. 혼동 행렬 -->
+                <h2 id="confusion"><i class="fa-solid fa-table-cells"></i> 혼동 행렬</h2>
+
+                <p>모델이 잘 하는지 못 하는지를 보려면 예측과 정답을 맞대어 봐야 한다. <strong>혼동 행렬(confusion matrix)</strong>은 그 결과를 한 표에 정리한 것이다. 이진 분류 — 불량을 Positive, 양품을 Negative로 두는 산업 검사 — 를 기준으로 보면 칸은 네 개다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">TP (True Positive)</span>
+                        <span class="term-desc">불량을 불량으로 맞게 판정. 잡아야 할 것을 잡았다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">TN (True Negative)</span>
+                        <span class="term-desc">양품을 양품으로 맞게 판정. 통과시켜야 할 것을 통과시켰다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">FP (False Positive)</span>
+                        <span class="term-desc">양품을 불량으로 잘못 판정. 산업 검사에서는 <strong>과검출(overkill)</strong>이다. 멀쩡한 제품을 버리거나 재검사를 부른다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">FN (False Negative)</span>
+                        <span class="term-desc">불량을 양품으로 잘못 판정. 산업 검사에서는 <strong>미검출(escape)</strong>이다. 불량품이 고객에게 흘러간다.</span>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 420" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrM" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#1565c0"/></marker>
+                        </defs>
+                        <text x="360" y="26" text-anchor="middle" font-size="15" fill="#1b5e20" font-weight="700">혼동 행렬과 Precision / Recall의 관계</text>
+
+                        <!-- 축 라벨 -->
+                        <text x="250" y="58" text-anchor="middle" font-size="11" fill="#455a64" font-weight="700">예측</text>
+                        <text x="245" y="78" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">불량 (Positive)</text>
+                        <text x="375" y="78" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">양품 (Negative)</text>
+                        <text x="92" y="180" text-anchor="middle" font-size="11" fill="#455a64" font-weight="700" transform="rotate(-90 92 180)">실제 정답</text>
+                        <text x="130" y="120" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="600">불량</text>
+                        <text x="130" y="210" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600">양품</text>
+
+                        <!-- 2x2 행렬 -->
+                        <rect x="170" y="88" width="150" height="80" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                        <text x="245" y="120" text-anchor="middle" font-size="13" fill="#15803d" font-weight="700">TP</text>
+                        <text x="245" y="140" text-anchor="middle" font-size="9.5" fill="#166534">불량을 불량으로</text>
+                        <text x="245" y="154" text-anchor="middle" font-size="9.5" fill="#166534">맞게 판정</text>
+
+                        <rect x="322" y="88" width="150" height="80" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+                        <text x="397" y="116" text-anchor="middle" font-size="13" fill="#b91c1c" font-weight="700">FN</text>
+                        <text x="397" y="135" text-anchor="middle" font-size="9.5" fill="#991b1b">미검출 (escape)</text>
+                        <text x="397" y="149" text-anchor="middle" font-size="9.5" fill="#991b1b">불량이 빠져나감</text>
+
+                        <rect x="170" y="170" width="150" height="80" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                        <text x="245" y="198" text-anchor="middle" font-size="13" fill="#b45309" font-weight="700">FP</text>
+                        <text x="245" y="217" text-anchor="middle" font-size="9.5" fill="#92400e">과검출 (overkill)</text>
+                        <text x="245" y="231" text-anchor="middle" font-size="9.5" fill="#92400e">양품을 버림</text>
+
+                        <rect x="322" y="170" width="150" height="80" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+                        <text x="397" y="202" text-anchor="middle" font-size="13" fill="#1d4ed8" font-weight="700">TN</text>
+                        <text x="397" y="221" text-anchor="middle" font-size="9.5" fill="#1e40af">양품을 양품으로</text>
+                        <text x="397" y="235" text-anchor="middle" font-size="9.5" fill="#1e40af">맞게 판정</text>
+
+                        <!-- Precision: 예측 불량 열 -->
+                        <line x1="245" y1="262" x2="245" y2="300" stroke="#1565c0" stroke-width="2" marker-end="url(#arrM)"/>
+                        <rect x="120" y="305" width="250" height="46" rx="8" fill="#eff6ff" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="245" y="324" text-anchor="middle" font-size="10.5" fill="#1e3a5f" font-weight="700">Precision = TP / (TP + FP)</text>
+                        <text x="245" y="341" text-anchor="middle" font-size="9" fill="#1e3a5f">불량이라 한 것 중 진짜 불량의 비율 — 과검출을 줄이면 올라감</text>
+
+                        <!-- Recall: 실제 불량 행 -->
+                        <line x1="488" y1="128" x2="528" y2="128" stroke="#1565c0" stroke-width="2" marker-end="url(#arrM)"/>
+                        <rect x="490" y="148" width="220" height="60" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+                        <text x="600" y="170" text-anchor="middle" font-size="10.5" fill="#14532d" font-weight="700">Recall = TP / (TP + FN)</text>
+                        <text x="600" y="187" text-anchor="middle" font-size="9" fill="#14532d">실제 불량 중 잡아낸 비율</text>
+                        <text x="600" y="200" text-anchor="middle" font-size="9" fill="#14532d">미검출을 줄이면 올라감</text>
+
+                        <!-- 설명 띠 -->
+                        <rect x="60" y="372" width="600" height="34" rx="8" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+                        <text x="360" y="394" text-anchor="middle" font-size="10.5" fill="#78350f" font-weight="700">Precision은 "예측 불량 열"을, Recall은 "실제 불량 행"을 본다 — 보는 방향이 다르다</text>
+                    </svg>
+                    <div class="caption">그림 1. 혼동 행렬의 네 칸과 Precision·Recall의 관계 — Precision은 예측 불량 열을 따라 과검출(FP)을 보고, Recall은 실제 불량 행을 따라 미검출(FN)을 본다</div>
+                </div>
+
+                <p>네 칸 중 대각선(TP, TN)이 맞춘 것이고 나머지 둘(FP, FN)이 틀린 것이다. 중요한 점은 <strong>FP와 FN이 같은 무게가 아니라는 것</strong>이다. 과검출은 멀쩡한 제품을 버리는 비용이고, 미검출은 불량을 고객에게 보내는 비용이다. 어느 쪽이 더 비싼지는 제품과 산업에 따라 다르며, 이 판단이 곧 평가지표 선택으로 이어진다.</p>
+
+                <!-- 5. 평가지표 -->
+                <h2 id="metrics"><i class="fa-solid fa-chart-simple"></i> 평가지표 — 정확도·정밀도·재현율·F1</h2>
+
+                <p>혼동 행렬의 네 숫자를 조합하면 모델을 한 숫자로 요약하는 여러 지표가 나온다. 각 지표는 보는 각도가 다르고, 어떤 지표를 우선할지가 시스템 설계의 핵심 결정이다.</p>
+
+                <h3 id="accuracy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정확도와 그 한계</h3>
+
+                <p><strong>정확도(Accuracy)</strong>는 전체 중 맞춘 비율이다. 가장 직관적이지만, <strong>클래스 불균형</strong> 앞에서 무력해진다.</p>
+
+                <div class="formula">
+                    Accuracy = (TP + TN) / (TP + TN + FP + FN)
+                    <span class="formula-note">전체 샘플 중 맞게 판정한 비율 — 클래스가 균형 잡혀 있을 때만 믿을 만하다</span>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>정확도 99%가 쓸모없을 수 있다</strong>
+                        불량률이 1%인 라인을 생각해 보자. 모델이 모든 제품을 무조건 "양품"이라고만 답해도 정확도는 99%다. 불량은 단 하나도 못 잡았는데 숫자만 보면 훌륭해 보인다. 클래스가 한쪽으로 크게 치우친 산업 검사에서 정확도만 보고 모델을 판단하는 것은 사실상 아무것도 보지 않는 것과 같다. 그래서 정밀도와 재현율이 필요하다.
+                    </div>
+                </div>
+
+                <h3 id="precision-recall"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정밀도와 재현율</h3>
+
+                <p><strong>정밀도(Precision)</strong>는 "불량이라고 한 것 중 진짜 불량의 비율"이다. 모델이 불량 판정을 얼마나 신중하게 했는지를 본다. 정밀도가 낮으면 과검출(FP)이 많다는 뜻이다.</p>
+
+                <div class="formula">
+                    Precision = TP / (TP + FP)
+                    <span class="formula-note">불량이라 예측한 것 중 실제 불량의 비율 — 과검출(FP)이 많으면 낮아진다</span>
+                </div>
+
+                <p><strong>재현율(Recall)</strong>은 "실제 불량 중 모델이 잡아낸 비율"이다. 잡아야 할 것을 얼마나 놓치지 않았는지를 본다. 재현율이 낮으면 미검출(FN)이 많다는 뜻이다.</p>
+
+                <div class="formula">
+                    Recall = TP / (TP + FN)
+                    <span class="formula-note">실제 불량 중 모델이 잡아낸 비율 — 미검출(FN)이 많으면 낮아진다</span>
+                </div>
+
+                <h3 id="f1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> F1 점수</h3>
+
+                <p>정밀도와 재현율은 보통 한쪽을 올리면 다른 쪽이 내려간다. 둘을 하나의 숫자로 합치고 싶을 때 <strong>F1 점수</strong>를 쓴다. F1은 두 지표의 <strong>조화 평균</strong>이다. 산술 평균이 아니라 조화 평균을 쓰는 이유는, 한쪽이 0에 가까우면 F1도 0에 가까워지도록 — 즉 두 지표가 모두 높아야만 F1이 높도록 — 만들기 위해서다.</p>
+
+                <div class="formula">
+                    F1 = 2 &#215; (Precision &#215; Recall) / (Precision + Recall)
+                    <span class="formula-note">정밀도와 재현율의 조화 평균 — 한쪽만 높아서는 F1이 오르지 않는다</span>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>지표</th>
+                            <th>수식</th>
+                            <th>무엇을 보는가</th>
+                            <th>언제 우선하는가</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Accuracy</td>
+                            <td>(TP+TN) / 전체</td>
+                            <td>전체 중 맞춘 비율</td>
+                            <td>클래스가 균형 잡혔을 때만</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Precision</td>
+                            <td>TP / (TP+FP)</td>
+                            <td>예측 불량 중 진짜 비율</td>
+                            <td>과검출(FP) 비용이 클 때</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Recall</td>
+                            <td>TP / (TP+FN)</td>
+                            <td>실제 불량 중 잡은 비율</td>
+                            <td>미검출(FN) 비용이 클 때</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">F1 Score</td>
+                            <td>2PR / (P+R)</td>
+                            <td>정밀도·재현율의 균형</td>
+                            <td>둘 다 중요하고 불균형이 있을 때</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다중 클래스에서는 평균 방식을 정해야 한다</strong>
+                        정밀도·재현율·F1은 본래 이진 분류의 지표다. 클래스가 셋 이상이면 클래스별로 따로 계산한 뒤 평균낸다. 클래스마다 똑같은 무게를 주는 <strong>macro 평균</strong>, 샘플 수에 비례해 무게를 주는 <strong>weighted 평균</strong>, 전체 TP·FP·FN을 합쳐 계산하는 <strong>micro 평균</strong>이 있다. 불균형 데이터에서 소수 클래스 성능을 보려면 macro 평균이 정직하다.
+                    </div>
+                </div>
+
+                <!-- 6. PR 트레이드오프 -->
+                <h2 id="tradeoff"><i class="fa-solid fa-scale-balanced"></i> Precision-Recall 트레이드오프</h2>
+
+                <p>정밀도와 재현율을 동시에 1로 만들 수 있다면 좋겠지만, 현실에서는 둘이 서로 당긴다. 이 줄다리기를 조정하는 손잡이가 <strong>임계값(threshold)</strong>이다.</p>
+
+                <p>모델은 "불량일 확률"을 0~1 사이 숫자로 내놓고, 우리는 어떤 값을 넘으면 불량으로 판정할지 임계값을 정한다. 기본값은 흔히 0.5지만, 이건 그저 관습일 뿐 정답이 아니다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrow-down" style="color:#16a34a;"></i> 임계값을 낮추면</h4>
+                        <p>조금만 의심스러워도 불량으로 본다. 놓치는 불량이 줄어 <strong>재현율이 오른다</strong>. 대신 멀쩡한 것도 불량으로 찍어 <strong>정밀도가 내려간다</strong>. 과검출이 늘어난다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrow-up" style="color:#dc2626;"></i> 임계값을 높이면</h4>
+                        <p>확실할 때만 불량으로 본다. 불량 판정이 정확해져 <strong>정밀도가 오른다</strong>. 대신 애매한 불량을 통과시켜 <strong>재현율이 내려간다</strong>. 미검출이 늘어난다.</p>
+                    </div>
+                </div>
+
+                <p>그래서 임계값은 기술적 선택이 아니라 <strong>비즈니스 결정</strong>이다. 산업 검사에서 질문은 이렇게 바뀐다 — "미검출을 줄일 것인가, 과검출을 줄일 것인가." 불량 하나가 고객에게 흘러가면 리콜·안전 사고로 이어지는 제품이라면 임계값을 낮춰 재현율을 끌어올린다. 검사 후 재가공 비용이 크고 멀쩡한 제품을 버리는 손실이 큰 라인이라면 임계값을 높여 정밀도를 지킨다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>임계값 0.5는 "정해진 값"이 아니다</strong>
+                        많은 코드가 0.5를 그대로 쓰지만, 0.5는 클래스가 균형 잡히고 두 오류의 비용이 같다는 가정에서만 합리적이다. 산업 검사는 거의 항상 그 가정을 어긴다. 검증셋에서 Precision-Recall 곡선을 그려 보고, 우리 라인의 비용 구조에 맞는 임계값을 직접 골라야 한다.
+                    </div>
+                </div>
+
+                <!-- 7. ROC와 AUC -->
+                <h2 id="roc"><i class="fa-solid fa-chart-line"></i> ROC 곡선과 AUC</h2>
+
+                <p>임계값 하나에서의 성능은 그 임계값에서의 한 점일 뿐이다. 임계값을 0부터 1까지 쭉 움직이면서 성능이 어떻게 변하는지 전체를 보고 싶을 때 <strong>ROC 곡선(Receiver Operating Characteristic)</strong>을 그린다.</p>
+
+                <p>ROC 곡선은 가로축에 <strong>거짓 양성률(FPR, False Positive Rate)</strong>, 세로축에 <strong>참 양성률(TPR, 곧 재현율)</strong>을 놓고, 임계값을 바꿔 가며 찍은 점들을 잇는다. 임계값이 낮으면 오른쪽 위(많이 잡지만 과검출도 많음), 높으면 왼쪽 아래(신중하지만 많이 놓침)에 점이 찍힌다.</p>
+
+                <div class="formula">
+                    FPR = FP / (FP + TN) &nbsp;&nbsp;&nbsp; TPR = TP / (TP + FN)
+                    <span class="formula-note">ROC 곡선의 두 축 — TPR은 재현율과 같고, FPR은 양품을 불량으로 잘못 판정한 비율</span>
+                </div>
+
+                <p><strong>AUC(Area Under the Curve)</strong>는 그 곡선 아래 면적이다. 0.5는 동전 던지기 수준, 1.0은 완벽한 분류기다. AUC의 장점은 <strong>임계값에 의존하지 않는다</strong>는 것이다. 특정 임계값을 고르기 전에 "이 모델이 양품과 불량을 분별하는 본질적 능력이 얼마나 되는가"를 한 숫자로 비교할 수 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> ROC/AUC와 PR 곡선, 무엇을 볼까</div>
+                    <p>AUC는 모델끼리 본질적 분별력을 비교할 때 유용하다. 다만 클래스가 극단적으로 불균형하면 ROC 곡선은 실제보다 낙관적으로 보이는 경향이 있다 — TN이 워낙 많아 FPR이 잘 안 오르기 때문이다. 불량이 매우 드문 산업 검사에서는 ROC보다 <strong>Precision-Recall 곡선</strong>이 모델의 약점을 더 정직하게 드러낸다. 임계값을 실제로 정할 때도 PR 곡선이 더 직접적인 근거가 된다.</p>
+                </div>
+
+                <!-- 8. Top-1 / Top-5 -->
+                <h2 id="topk"><i class="fa-solid fa-ranking-star"></i> Top-1 / Top-5 정확도</h2>
+
+                <p>클래스가 수백, 수천 개로 많은 분류 문제 — 대표적으로 1,000개 클래스를 가진 ImageNet — 에서는 정확도를 두 가지로 나눠 본다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">Top-1 정확도</span>
+                        <span class="term-desc">모델이 가장 확신한 클래스(argmax) 하나가 정답과 일치한 비율. 우리가 보통 말하는 "정확도"가 이것이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Top-5 정확도</span>
+                        <span class="term-desc">모델이 확률 상위 5개로 꼽은 클래스 안에 정답이 들어 있으면 맞춘 것으로 친다. ImageNet 논문들이 관행적으로 함께 보고하는 지표다.</span>
+                    </div>
+                </div>
+
+                <p>Top-5를 함께 보는 이유는, ImageNet 같은 데이터셋에는 "사모예드"와 "그레이트 피레니즈"처럼 사람도 헷갈리는 미세한 클래스가 많기 때문이다. Top-1만 보면 모델이 거의 정답에 닿았는데도 틀린 것으로 처리되어, 모델의 실제 능력을 과소평가하게 된다. Top-5는 그 가혹함을 누그러뜨린다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>산업 검사에서는 Top-5가 거의 무의미하다</strong>
+                        Top-5는 클래스가 많고 서로 비슷한 학술 벤치마크에서나 의미가 있다. 양품/불량처럼 클래스가 둘뿐인 산업 검사에서 "상위 5개 안에 정답이 있으면 맞춘 것"이라는 기준은 성립하지 않는다. 산업 현장에서 중요한 것은 Top-5가 아니라 정밀도·재현율, 그리고 우리 라인의 비용 구조에 맞춘 임계값이다.
+                    </div>
+                </div>
+
+                <!-- 9. 산업 비전 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전 관점</h2>
+
+                <p>지금까지의 지표들을 산업 비전의 언어로 다시 정리한다. 분류는 산업 현장에서 주로 두 가지 모습으로 쓰인다 — <strong>양품/불량 분류</strong>(이진 분류)와 <strong>결함 종류 분류</strong>(다중 클래스 분류)다. 어느 쪽이든 핵심 질문은 "어떤 지표를 우선할 것인가"다.</p>
+
+                <h3 id="metric-choice"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 미검출 비용 vs 과검출 비용</h3>
+
+                <p>지표 선택의 기준은 단순하다. <strong>미검출(FN)의 비용이 크면 Recall을 우선</strong>하고, <strong>과검출(FP)이 비싸면 Precision을 우선</strong>한다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-shield-halved" style="color:#dc2626;"></i> Recall 우선 — 미검출이 치명적</h4>
+                        <p>자동차 부품, 의료 기기처럼 불량 하나가 안전 사고나 리콜로 이어지는 제품. 멀쩡한 것 몇 개를 더 버리더라도 불량은 절대 놓치지 않아야 한다. 임계값을 낮추고 재현율을 끌어올린다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-coins" style="color:#d97706;"></i> Precision 우선 — 과검출이 비쌈</h4>
+                        <p>고가 소재이거나 재검사·재가공 비용이 큰 라인. 멀쩡한 제품을 버리는 손실이 크므로, 확실한 불량만 골라낸다. 임계값을 높이고 정밀도를 지킨다.</p>
+                    </div>
+                </div>
+
+                <h3 id="imbalance"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 클래스 불균형 대응</h3>
+
+                <p>잘 돌아가는 양산 라인일수록 불량률이 낮다. 즉 <strong>학습 데이터에서 불량이 드물다</strong>. 이 불균형은 모델 학습과 평가 양쪽을 모두 어렵게 만든다. 모델은 다수 클래스인 양품으로 쏠리기 쉽고, 정확도는 앞서 본 대로 무의미해진다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">평가 측면</span>
+                        <span class="term-desc">정확도 대신 정밀도·재현율·F1을 본다. 다중 클래스라면 macro 평균으로 소수 클래스 성능을 정직하게 본다. PR 곡선으로 임계값을 정한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">학습 측면</span>
+                        <span class="term-desc">소수 클래스에 더 큰 손실 가중치를 주거나, 불량 샘플을 증강·오버샘플링한다. 불량이 극단적으로 드물면 분류 대신 이상 탐지(9편)로 접근하는 것도 방법이다.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>지표는 "라인의 비용"에서 거꾸로 정한다</strong>
+                        좋은 지표를 먼저 고르고 라인을 거기 맞추는 것이 아니다. 우리 라인에서 미검출 한 건과 과검출 한 건의 실제 비용이 각각 얼마인지를 먼저 따지고, 그 비용 구조에서 거꾸로 우선 지표와 임계값을 정한다. 같은 모델이라도 어느 공정에 놓이느냐에 따라 운영 임계값이 달라지는 게 정상이다.
+                    </div>
+                </div>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <p>분류 평가에서 초보자가 반복해서 빠지는 함정들을 모았다. 대부분 "숫자 하나를 잘못 믿는 것"에서 출발한다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">정확도만 보고 판단</span>
+                        <span class="term-desc">클래스가 불균형하면 정확도는 거짓말을 한다. 불량률 1% 라인에서 99% 정확도는 "아무것도 안 잡아도" 나온다. 항상 정밀도·재현율을 함께 본다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">검증셋과 테스트셋 혼동</span>
+                        <span class="term-desc">검증셋으로 임계값·하이퍼파라미터를 튜닝하고, 테스트셋으로는 마지막에 단 한 번만 평가한다. 테스트셋을 튜닝에 쓰면 그 성능 숫자는 부풀려진 거짓이다(5편 참고).</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">임계값 0.5 고정</span>
+                        <span class="term-desc">0.5는 관습일 뿐이다. 클래스 불균형과 비용 비대칭이 있는 산업 검사에서는 PR 곡선을 보고 임계값을 직접 골라야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">클래스 불균형 무시</span>
+                        <span class="term-desc">불량이 드문 것은 산업 데이터의 기본 성질이다. 이를 무시하고 일반 분류기를 그대로 학습·평가하면 소수 클래스인 불량을 거의 못 잡는 모델이 "성능 좋은 모델"로 둔갑한다.</span>
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"숫자 하나로 모델을 믿지 않는다"</strong>
+                        분류 평가의 함정은 거의 다 같은 뿌리에서 나온다 — 맥락 없는 숫자 하나를 그대로 믿는 것이다. 정확도 한 줄, 임계값 0.5, 테스트셋 점수 한 번. 혼동 행렬을 펼쳐 네 칸을 직접 보고, 정밀도와 재현율을 함께 읽고, 우리 라인의 비용 구조에 비춰 해석하는 습관이 모델을 제대로 평가하는 길이다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다음 편 예고</strong>
+                        이번 편에서는 "이미지 전체에 라벨 하나"를 붙이는 분류와 그 평가 방법을 다뤘다. 다음 7편에서는 한 걸음 더 나아가 <strong>객체 검출</strong> — "무엇이 어디에 있는가"를 묻는 태스크 — 를 다룬다. YOLO 계열 모델, 검출 전용 지표인 mAP, 그리고 겹친 박스를 정리하는 NMS가 주제다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Ian Goodfellow, Yoshua Bengio, Aaron Courville — Deep Learning (MIT Press, 2016)</li>
+                        <li>Aurélien Géron — Hands-On Machine Learning with Scikit-Learn, Keras &amp; TensorFlow, 3rd ed. (O'Reilly, 2022)</li>
+                        <li>Tom Fawcett — An Introduction to ROC Analysis (Pattern Recognition Letters, 2006)</li>
+                        <li>Olga Russakovsky et al. — ImageNet Large Scale Visual Recognition Challenge (IJCV, 2015)</li>
+                        <li>scikit-learn 공식 문서 — Metrics and scoring: classification report, confusion matrix (https://scikit-learn.org)</li>
+                        <li>Chuan Guo et al. — On Calibration of Modern Neural Networks (ICML 2017)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai');
+</script>
+
+</body>
+</html>

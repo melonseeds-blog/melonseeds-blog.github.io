@@ -1,0 +1,926 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이상 탐지 — 산업 결함 검사 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#problem" data-section="problem">불량 데이터 문제</a>
+        <a href="#idea" data-section="idea">이상 탐지의 발상</a>
+        <a href="#output" data-section="output">이상 탐지의 출력</a>
+        <a href="#approaches" data-section="approaches">주요 접근법</a>
+        <a href="#patchcore" data-section="patchcore">PatchCore·PaDiM</a>
+        <a href="#mvtec" data-section="mvtec">MVTec AD</a>
+        <a href="#evaluation" data-section="evaluation">평가</a>
+        <a href="#industrial" data-section="industrial">산업 적용</a>
+        <a href="#reality" data-section="reality">한계와 현실</a>
+        <a href="#choice" data-section="choice">언제 쓰는가</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>이상 탐지 — 산업 결함 검사</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>산업 결함 검사의 근본 문제 — 불량 데이터가 너무 적고 유형도 예측 불가</li>
+                        <li>이상 탐지의 발상 — 불량을 학습하지 않고 정상만 학습하는 one-class 접근</li>
+                        <li>이상 탐지의 출력 — 이상 점수와 이상 위치 히트맵</li>
+                        <li>주요 접근법 — 재구성 기반(오토인코더)과 임베딩 기반(PaDiM·PatchCore)</li>
+                        <li>PatchCore·PaDiM의 원리와 MVTec AD 벤치마크</li>
+                        <li>평가지표 — 이미지 단위 AUROC, 픽셀 단위 AUROC·PRO</li>
+                        <li>산업 적용 사례와 이상 탐지의 한계, 현실적 제약</li>
+                        <li>전통 비전·일반 딥러닝과 이상 탐지의 선택 기준, 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#problem">불량 데이터가 너무 적다</a></li>
+                        <li><a href="#idea">이상 탐지의 발상 — 정상만 학습한다</a></li>
+                        <li><a href="#output">이상 탐지의 출력 — 점수와 위치</a></li>
+                        <li><a href="#approaches">주요 접근법 — 재구성과 임베딩</a></li>
+                        <li><a href="#patchcore">PatchCore와 PaDiM</a></li>
+                        <li><a href="#mvtec">MVTec AD 데이터셋</a></li>
+                        <li><a href="#evaluation">이상 탐지의 평가</a></li>
+                        <li><a href="#industrial">산업 적용</a></li>
+                        <li><a href="#reality">이상 탐지의 한계와 현실</a></li>
+                        <li><a href="#choice">언제 이상 탐지를 쓰는가</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 불량 데이터 문제 -->
+                <h2 id="problem"><i class="fa-solid fa-scale-unbalanced"></i> 불량 데이터가 너무 적다</h2>
+
+                <p>산업 결함 검사를 딥러닝으로 풀려고 하면 누구나 같은 벽에 부딪힌다. <strong>학습할 불량 데이터가 거의 없다.</strong> 양산 라인이 정상이라면 양품은 하루에도 수만 장씩 쌓이지만, 불량은 며칠을 모아도 수십 장에 그친다. 분류나 검출 모델은 양품과 불량을 모두 충분히 보여줘야 그 둘을 가르는 경계를 학습하는데, 한쪽 데이터가 압도적으로 부족하면 학습 자체가 성립하지 않는다.</p>
+
+                <p>더 곤란한 것은 <strong>불량 유형을 미리 알 수 없다</strong>는 점이다. 스크래치, 찍힘, 이물, 변형, 색 얼룩 — 결함은 끝없이 새로운 모습으로 나타난다. 오늘 데이터셋에 담은 불량 10종을 모델이 잘 잡아도, 내일 라인에서 11번째 유형이 나오면 모델은 그것을 본 적이 없어 놓친다. 불량을 일일이 학습시키는 방식은 "이미 아는 불량"만 잡는 한계를 태생적으로 안고 있다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>불량 데이터 부족은 "더 모으면 된다"로 해결되지 않는다</strong>
+                        불량률이 낮은 좋은 라인일수록 불량 데이터가 적다는 역설이 있다. 불량을 충분히 모으려면 라인이 한참 망가져야 하는데, 그런 상황 자체가 비정상이다. 게다가 새로운 불량 유형은 정의상 "아직 본 적 없는 것"이라 사전에 데이터셋에 담을 방법이 없다. 데이터 부족은 수집 노력으로 메우는 문제가 아니라, <strong>접근 방식을 바꿔야 하는 문제</strong>다.
+                    </div>
+                </div>
+
+                <p>일반적인 지도학습 분류·검출이 산업 결함 검사에서 자주 막히는 이유가 여기 있다. 클래스 불균형이 수천 대 1 수준이고, "불량" 클래스의 내부 다양성은 사실상 무한하다. 이 막다른 길에서 발상을 뒤집은 것이 이상 탐지다.</p>
+
+                <!-- 2. 이상 탐지의 발상 -->
+                <h2 id="idea"><i class="fa-solid fa-lightbulb"></i> 이상 탐지의 발상 — 정상만 학습한다</h2>
+
+                <p>이상 탐지(anomaly detection)의 핵심 발상은 한 문장으로 요약된다. <strong>불량을 학습하지 말고, 정상만 학습하라.</strong> 그리고 정상의 모습에서 벗어나는 모든 것을 이상으로 본다. 불량이 무엇인지 정의하지 않고, 정상이 무엇인지만 정의하는 것이다.</p>
+
+                <p>이 방식은 데이터 문제를 정면으로 해소한다. 정상 데이터는 양산 라인에 차고 넘친다. 불량 샘플은 한 장도 필요 없다. 그리고 "정상이 아닌 것"이라는 정의에는 아직 본 적 없는 새로운 불량 유형도 자동으로 포함된다. 11번째 불량 유형이 나와도, 그것이 정상 분포에서 벗어나기만 하면 잡힌다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> one-class 학습 — 한 클래스만 보고 경계를 긋는다</div>
+                    <p>일반 분류는 양품과 불량 <strong>두 클래스</strong>의 경계를 학습한다. 두 클래스의 예시가 모두 있어야 그 사이에 선을 그을 수 있다.<br><br>
+                    이상 탐지는 <strong>정상 한 클래스</strong>만 학습한다. 정상 데이터가 특징 공간에서 차지하는 영역을 모델링하고, 그 영역 바깥을 모두 이상으로 간주한다. 불량의 예시가 없어도 "정상의 영역"만 알면 경계가 그어진다. 이것이 one-class 학습이고, 산업 결함 검사처럼 한쪽 데이터만 풍부한 문제에 본질적으로 맞는 틀이다.</p>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 320" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="360" y="26" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">이상 탐지의 발상 — 정상의 영역을 배우고, 그 바깥을 이상으로 본다</text>
+
+                        <!-- 일반 분류 -->
+                        <text x="180" y="58" text-anchor="middle" font-size="11.5" fill="#7b1fa2" font-weight="700">일반 분류 (two-class)</text>
+                        <rect x="44" y="70" width="272" height="170" rx="10" fill="#faf5ff" stroke="#ce93d8" stroke-width="1.5"/>
+                        <!-- 양품 점들 -->
+                        <circle cx="100" cy="120" r="5" fill="#4caf50"/><circle cx="130" cy="150" r="5" fill="#4caf50"/>
+                        <circle cx="95" cy="180" r="5" fill="#4caf50"/><circle cx="140" cy="110" r="5" fill="#4caf50"/>
+                        <circle cx="115" cy="205" r="5" fill="#4caf50"/><circle cx="160" cy="170" r="5" fill="#4caf50"/>
+                        <!-- 불량 점들 -->
+                        <circle cx="250" cy="115" r="5" fill="#e53935"/><circle cx="270" cy="155" r="5" fill="#e53935"/>
+                        <circle cx="240" cy="195" r="5" fill="#e53935"/><circle cx="285" cy="125" r="5" fill="#e53935"/>
+                        <!-- 경계선 -->
+                        <line x1="195" y1="78" x2="205" y2="232" stroke="#9c27b0" stroke-width="2.5" stroke-dasharray="6 4"/>
+                        <text x="180" y="262" text-anchor="middle" font-size="9" fill="#7b1fa2">두 클래스 예시가 모두 있어야</text>
+                        <text x="180" y="275" text-anchor="middle" font-size="9" fill="#7b1fa2">사이에 경계를 그을 수 있다</text>
+
+                        <!-- 이상 탐지 -->
+                        <text x="540" y="58" text-anchor="middle" font-size="11.5" fill="#2e7d32" font-weight="700">이상 탐지 (one-class)</text>
+                        <rect x="404" y="70" width="272" height="170" rx="10" fill="#f1f8f4" stroke="#a5d6a7" stroke-width="1.5"/>
+                        <!-- 정상 영역 -->
+                        <ellipse cx="510" cy="155" rx="78" ry="62" fill="#c8e6c9" fill-opacity="0.55" stroke="#43a047" stroke-width="2.5" stroke-dasharray="6 4"/>
+                        <text x="510" y="150" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="700">정상의 영역</text>
+                        <text x="510" y="165" text-anchor="middle" font-size="8.5" fill="#2e7d32">정상 데이터로만 모델링</text>
+                        <!-- 정상 점들 -->
+                        <circle cx="480" cy="130" r="4.5" fill="#4caf50"/><circle cx="540" cy="140" r="4.5" fill="#4caf50"/>
+                        <circle cx="500" cy="180" r="4.5" fill="#4caf50"/><circle cx="535" cy="185" r="4.5" fill="#4caf50"/>
+                        <circle cx="465" cy="165" r="4.5" fill="#4caf50"/>
+                        <!-- 이상 점 (영역 바깥) -->
+                        <circle cx="630" cy="105" r="5.5" fill="#e53935"/>
+                        <text x="630" y="92" text-anchor="middle" font-size="8.5" fill="#c62828" font-weight="700">이상</text>
+                        <circle cx="620" cy="210" r="5.5" fill="#e53935"/>
+                        <text x="620" y="228" text-anchor="middle" font-size="8.5" fill="#c62828" font-weight="700">이상</text>
+                        <text x="540" y="262" text-anchor="middle" font-size="9" fill="#2e7d32">정상만 보고 영역을 배운다 —</text>
+                        <text x="540" y="275" text-anchor="middle" font-size="9" fill="#2e7d32">처음 보는 불량도 "바깥"이면 잡힌다</text>
+
+                        <text x="360" y="305" text-anchor="middle" font-size="9.5" fill="#90a4ae">불량의 정의가 아니라 정상의 정의가 경계를 만든다 — 그래서 불량 데이터 없이도 검사가 성립한다</text>
+                    </svg>
+                    <div class="caption">그림 1. 일반 분류는 두 클래스의 예시로 사이에 경계를 긋지만, 이상 탐지는 정상 한 클래스의 영역만 배우고 그 바깥을 모두 이상으로 본다</div>
+                </div>
+
+                <!-- 3. 이상 탐지의 출력 -->
+                <h2 id="output"><i class="fa-solid fa-bullseye"></i> 이상 탐지의 출력 — 점수와 위치</h2>
+
+                <p>이상 탐지 모델은 두 가지를 함께 내놓는다. 하나는 <strong>이상 점수</strong>(anomaly score)이고, 다른 하나는 <strong>이상 위치</strong>(anomaly map)다. 전자는 "이 이미지가 얼마나 정상에서 벗어났는가"를 하나의 숫자로 답하고, 후자는 "그 이상이 이미지의 어디에 있는가"를 픽셀 단위 히트맵으로 답한다.</p>
+
+                <p>이상 점수는 임계값과 비교해 양품/불량 판정으로 이어진다. 점수가 임계값을 넘으면 불량이다. 이상 맵은 점수가 높게 나온 근거를 시각적으로 보여준다. 결함이 의심되는 영역이 히트맵에서 밝게 타오르고, 정상 영역은 어둡게 가라앉는다. 판정만 하는 것이 아니라 어디가 문제인지 짚어 주기 때문에, 작업자가 결과를 확인하고 결함을 분류하는 데 바로 쓸 수 있다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 280" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrOut" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                            <radialGradient id="heat" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#ff1744" stop-opacity="0.95"/>
+                                <stop offset="35%" stop-color="#ff9100" stop-opacity="0.85"/>
+                                <stop offset="70%" stop-color="#2962ff" stop-opacity="0.35"/>
+                                <stop offset="100%" stop-color="#1a237e" stop-opacity="0.05"/>
+                            </radialGradient>
+                        </defs>
+                        <text x="360" y="26" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">이상 탐지의 출력 — 입력 이미지에서 점수와 히트맵으로</text>
+
+                        <!-- 입력 이미지 -->
+                        <text x="96" y="62" text-anchor="middle" font-size="10.5" fill="#37474f" font-weight="700">입력 이미지</text>
+                        <rect x="34" y="72" width="124" height="124" rx="8" fill="#eceff1" stroke="#90a4ae" stroke-width="1.5"/>
+                        <!-- 표면 결함 표현 -->
+                        <line x1="62" y1="100" x2="92" y2="135" stroke="#5d4037" stroke-width="3" stroke-linecap="round"/>
+                        <circle cx="120" cy="160" r="7" fill="#6d4c41"/>
+                        <text x="96" y="214" text-anchor="middle" font-size="8.5" fill="#78909c">검사 대상 표면 (스크래치 + 이물)</text>
+
+                        <!-- 모델 -->
+                        <line x1="158" y1="134" x2="190" y2="134" stroke="#4caf50" stroke-width="2" marker-end="url(#arrOut)"/>
+                        <rect x="192" y="104" width="118" height="60" rx="10" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="251" y="130" text-anchor="middle" font-size="10.5" fill="#4527a0" font-weight="700">이상 탐지 모델</text>
+                        <text x="251" y="146" text-anchor="middle" font-size="8.5" fill="#7e57c2">정상만 학습된 상태</text>
+                        <line x1="310" y1="134" x2="342" y2="134" stroke="#4caf50" stroke-width="2" marker-end="url(#arrOut)"/>
+
+                        <!-- 출력 1: 이상 점수 -->
+                        <text x="455" y="62" text-anchor="middle" font-size="10.5" fill="#c62828" font-weight="700">출력 ① 이상 점수</text>
+                        <rect x="356" y="74" width="198" height="48" rx="8" fill="#fff3e0" stroke="#fb8c00" stroke-width="1.5"/>
+                        <text x="386" y="103" font-size="15" fill="#e65100" font-weight="800">0.87</text>
+                        <text x="430" y="98" font-size="8.5" fill="#bf360c">임계값 0.30 초과</text>
+                        <text x="430" y="111" font-size="9.5" fill="#c62828" font-weight="700">→ 불량 판정</text>
+
+                        <!-- 출력 2: 이상 맵 -->
+                        <text x="455" y="146" text-anchor="middle" font-size="10.5" fill="#1565c0" font-weight="700">출력 ② 이상 맵 (히트맵)</text>
+                        <rect x="378" y="156" width="86" height="86" rx="6" fill="#1a237e" stroke="#3949ab" stroke-width="1.5"/>
+                        <!-- 히트맵 핫스팟: 스크래치 + 이물 위치에 대응 -->
+                        <ellipse cx="408" cy="182" rx="22" ry="20" fill="url(#heat)"/>
+                        <ellipse cx="440" cy="220" rx="16" ry="15" fill="url(#heat)"/>
+                        <text x="500" y="186" font-size="8.5" fill="#37474f">밝은 영역 = 이상</text>
+                        <text x="500" y="200" font-size="8.5" fill="#37474f">어두운 영역 = 정상</text>
+                        <text x="500" y="220" font-size="8.5" fill="#78909c">결함 위치가</text>
+                        <text x="500" y="232" font-size="8.5" fill="#78909c">픽셀 단위로 드러난다</text>
+
+                        <text x="360" y="268" text-anchor="middle" font-size="9.5" fill="#90a4ae">분류(양/불)와 위치(어디가 이상한가)를 한 번에 — 판정 근거가 눈에 보인다</text>
+                    </svg>
+                    <div class="caption">그림 2. 이상 탐지는 이미지 하나에서 이상 점수(양품/불량 판정용)와 이상 맵(결함 위치 히트맵)을 함께 출력한다</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이상 맵은 "공짜로 얻는 세그멘테이션"에 가깝다</strong>
+                        세그멘테이션 모델은 결함 영역을 픽셀 단위로 라벨링한 데이터가 있어야 학습한다. 이상 탐지는 정상 데이터만으로 학습했는데도 이상 맵이라는 형태로 결함 위치를 픽셀 단위로 짚어 준다. 정밀한 경계 품질은 전용 세그멘테이션 모델에 못 미치지만, 라벨링 비용 없이 위치 정보를 얻는다는 점은 산업 현장에서 큰 이점이다.
+                    </div>
+                </div>
+
+                <!-- 4. 주요 접근법 -->
+                <h2 id="approaches"><i class="fa-solid fa-sitemap"></i> 주요 접근법 — 재구성과 임베딩</h2>
+
+                <p>"정상만 학습한다"는 발상을 실제 모델로 구현하는 방법은 여러 갈래다. 크게 <strong>재구성 기반</strong>과 <strong>임베딩 기반</strong>으로 나뉘고, 그 외에 정규화 흐름 같은 변형도 있다.</p>
+
+                <h3 id="reconstruction"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 재구성 기반 — 오토인코더</h3>
+
+                <p>재구성 기반 접근은 <strong>오토인코더</strong>(autoencoder)를 쓴다. 오토인코더는 입력 이미지를 작은 잠재 표현으로 압축했다가 다시 원본으로 복원하도록 학습하는 신경망이다. 정상 이미지만으로 학습하면, 이 신경망은 정상의 모습을 복원하는 데에는 능숙해지지만 한 번도 본 적 없는 불량의 모습은 잘 복원하지 못한다.</p>
+
+                <p>그래서 추론할 때 입력과 복원 결과의 <strong>차이</strong>를 본다. 정상 영역은 잘 복원되어 차이가 작고, 결함 영역은 복원에 실패해 차이가 크게 남는다. 이 복원 오차(reconstruction error)를 픽셀 단위로 계산하면 그대로 이상 맵이 되고, 전체를 모으면 이상 점수가 된다. 직관적이고 구현이 단순하다는 장점이 있다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>오토인코더는 "불량을 너무 잘 복원"하는 함정이 있다</strong>
+                        오토인코더가 일반화를 잘하면 학습하지 않은 불량까지 그럭저럭 복원해 버려서 복원 오차가 충분히 커지지 않는다. 반대로 압축을 너무 세게 하면 정상도 흐릿하게 복원되어 정상 영역에서까지 오차가 생긴다. 이 균형을 잡기가 까다로워서, 순수 재구성 기반은 최신 임베딩 기반 기법에 정확도가 밀리는 경우가 많다.
+                    </div>
+                </div>
+
+                <h3 id="embedding"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 임베딩 기반 — 사전학습 특징 공간</h3>
+
+                <p>임베딩 기반 접근은 이미지를 직접 복원하지 않는다. 대신 ImageNet 등으로 <strong>사전학습된 CNN</strong>에 정상 이미지를 통과시켜 나오는 특징 벡터(임베딩)를 모은다. 이 특징 공간에서 <strong>정상 데이터의 분포</strong>를 모델링해 두고, 추론할 때 새 이미지의 특징이 그 정상 분포에서 얼마나 떨어져 있는지를 잰다. 멀면 이상이다.</p>
+
+                <p>핵심 통찰은 사전학습 CNN의 특징이 이미 충분히 풍부해서, 그 위에서 정상 분포만 잘 잡아도 결함을 잘 가려낸다는 것이다. 모델을 새로 학습시킬 필요 없이 특징 추출기는 그대로 쓰고, "정상 분포 모델링"만 하면 된다. 대표적인 기법이 <strong>PaDiM</strong>과 <strong>PatchCore</strong>이며, 다음 절에서 자세히 본다.</p>
+
+                <h3 id="flow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정규화 흐름 등 그 외</h3>
+
+                <p><strong>정규화 흐름</strong>(normalizing flow)을 쓰는 기법도 있다. 정상 특징의 복잡한 분포를 다루기 쉬운 단순한 분포(예: 가우시안)로 가역 변환하도록 학습하고, 추론할 때 새 특징이 그 변환 아래에서 얼마나 그럴듯한지(확률 밀도)를 이상 점수로 쓴다. CFLOW, FastFlow 같은 기법이 이 계열이다. 그 밖에 학생-교사 신경망의 출력 차이를 쓰는 방식, 정상 이미지에 인공 결함을 합성해 보조 학습에 쓰는 방식 등 변형이 활발히 연구되고 있다. 큰 그림에서 이들은 모두 "정상 분포를 어떻게 모델링하고, 벗어남을 어떻게 잴 것인가"의 서로 다른 답이다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>접근법</th>
+                            <th>정상을 어떻게 모델링하는가</th>
+                            <th>이상을 어떻게 재는가</th>
+                            <th>특징</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">재구성 기반<br>(오토인코더)</td>
+                            <td>정상 이미지를 압축·복원하도록 신경망 학습</td>
+                            <td>입력과 복원 결과의 픽셀 차이(복원 오차)</td>
+                            <td>직관적·단순하나 균형 잡기 까다로움</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">임베딩 기반<br>(PaDiM·PatchCore)</td>
+                            <td>사전학습 CNN 특징 공간에서 정상 분포·메모리뱅크 구성</td>
+                            <td>새 특징이 정상 분포에서 떨어진 거리</td>
+                            <td>적은 정상 데이터로도 강력, 학습 부담 작음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">정규화 흐름</td>
+                            <td>정상 특징 분포를 단순 분포로 가역 변환하도록 학습</td>
+                            <td>변환 아래에서의 확률 밀도(그럴듯함)</td>
+                            <td>확률적 해석이 명확, 학습 비용 존재</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 5. PatchCore와 PaDiM -->
+                <h2 id="patchcore"><i class="fa-solid fa-database"></i> PatchCore와 PaDiM</h2>
+
+                <p>임베딩 기반 이상 탐지의 대표 주자가 <strong>PaDiM</strong>과 <strong>PatchCore</strong>다. 둘 다 사전학습 CNN의 특징을 쓰지만, 정상 분포를 저장하고 비교하는 방식이 다르다.</p>
+
+                <h3 id="padim"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PaDiM — 위치별 가우시안 분포</h3>
+
+                <p>PaDiM(Patch Distribution Modeling)은 이미지를 격자로 나누고, <strong>각 격자 위치마다</strong> 정상 이미지들의 특징이 어떻게 분포하는지를 가우시안 분포로 모델링한다. 위치 (i, j)의 정상 특징들을 모아 평균과 공분산을 구해 두는 것이다. 추론할 때는 새 이미지 같은 위치의 특징이 그 가우시안에서 얼마나 떨어졌는지를 마할라노비스 거리로 재고, 이 거리가 곧 그 위치의 이상 점수가 된다.</p>
+
+                <p>위치별로 따로 모델링하기 때문에 "이 자리에는 원래 이런 패턴이 있어야 한다"는 정보를 자연스럽게 담는다. 정렬이 잘 된 산업 이미지에서 특히 잘 맞는다.</p>
+
+                <h3 id="patchcore-detail"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PatchCore — 정상 패치 메모리뱅크</h3>
+
+                <p>PatchCore는 분포를 수식으로 가정하지 않는다. 대신 정상 이미지들에서 추출한 패치 단위 특징들을 <strong>메모리뱅크</strong>(memory bank)에 그대로 저장해 둔다. 추론할 때는 새 이미지의 각 패치 특징이 메모리뱅크 안의 가장 가까운 정상 특징과 얼마나 떨어졌는지를 재고, 그 최근접 거리가 이상 점수가 된다. 정상 패치들과 닮았으면 가깝고, 닮지 않았으면 멀다.</p>
+
+                <p>메모리뱅크가 너무 커지지 않도록 PatchCore는 <strong>coreset 서브샘플링</strong>으로 전체를 잘 대표하는 일부 패치만 골라 남긴다. 이렇게 하면 정상 이미지가 수십 장 수준으로 적어도 강력한 성능이 나오고, MVTec AD 벤치마크에서 매우 높은 정확도를 기록하면서 임베딩 기반 이상 탐지의 사실상 표준이 되었다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 왜 적은 정상 데이터로도 강력한가</div>
+                    <p>PaDiM과 PatchCore는 특징 추출기를 <strong>새로 학습하지 않는다.</strong> ImageNet으로 이미 잘 학습된 CNN을 그대로 쓰고, 그 위에서 "정상이 특징 공간 어디에 모여 있는가"만 정리한다. 학습해야 할 파라미터가 사실상 없으니, 정상 이미지 수십 장만으로도 정상 분포를 충분히 그릴 수 있다. 대량의 라벨링된 데이터로 모델을 처음부터 학습시키는 일반 딥러닝과 결정적으로 다른 지점이고, 산업 현장에서 "양품 데이터만 모으면 바로 시작 가능"하다는 실용성의 근거다.</p>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>PaDiM</th>
+                            <th>PatchCore</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">정상 분포 표현</td>
+                            <td>위치별 가우시안 분포(평균·공분산)</td>
+                            <td>정상 패치 특징의 메모리뱅크</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">이상 점수</td>
+                            <td>가우시안과의 마할라노비스 거리</td>
+                            <td>메모리뱅크 내 최근접 특징과의 거리</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">분포 가정</td>
+                            <td>가우시안 분포를 가정</td>
+                            <td>분포 가정 없음(저장된 샘플로 직접 비교)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">위치 정합 의존성</td>
+                            <td>높음 — 정렬된 이미지에 유리</td>
+                            <td>상대적으로 낮음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">메모리·연산</td>
+                            <td>위치마다 공분산 저장 필요</td>
+                            <td>coreset 서브샘플링으로 메모리 절감</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 6. MVTec AD -->
+                <h2 id="mvtec"><i class="fa-solid fa-images"></i> MVTec AD 데이터셋</h2>
+
+                <p>이상 탐지 연구가 빠르게 발전한 데에는 공통 벤치마크의 역할이 컸다. 그 표준이 <strong>MVTec AD</strong>(MVTec Anomaly Detection)다. 2019년 공개된 이 데이터셋은 산업 이상 탐지를 위해 설계되었고, 지금도 새 기법이 나오면 가장 먼저 성능을 보고하는 기준점이다.</p>
+
+                <p>MVTec AD는 15개 카테고리로 구성된다. 금속 너트, 나사, 가죽, 직물, 타일, 트랜지스터, 알약, 칫솔 등 실제 산업 대상을 닮은 물체와 표면 텍스처가 섞여 있다. 각 카테고리는 <strong>학습용으로는 정상 이미지만</strong> 제공하고, <strong>테스트용으로는 정상과 다양한 결함 유형</strong>을 함께 제공한다. 결함에는 픽셀 단위 정답 마스크가 붙어 있어서 이상 맵의 위치 정확도까지 평가할 수 있다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>MVTec AD의 구성이 곧 이상 탐지의 문제 설정이다</strong>
+                        학습에는 정상만, 테스트에는 정상과 결함을 — 이 데이터셋 구성 자체가 "정상만 학습하고 결함을 잡는다"는 이상 탐지의 문제 설정을 그대로 반영한다. 그래서 MVTec AD에서의 성능은 단순한 점수가 아니라 실제 산업 결함 검사 시나리오에서의 성능을 가늠하는 지표로 받아들여진다. 이후 MVTec LOCO AD(논리적 결함), VisA 등 후속 데이터셋도 나왔다.
+                    </div>
+                </div>
+
+                <!-- 7. 평가 -->
+                <h2 id="evaluation"><i class="fa-solid fa-chart-line"></i> 이상 탐지의 평가</h2>
+
+                <p>이상 탐지는 출력이 두 가지(점수와 맵)이므로, 평가도 두 수준에서 한다. <strong>이미지 단위</strong>로 "이 이미지가 양품인가 불량인가"를 얼마나 잘 맞히는지, 그리고 <strong>픽셀 단위</strong>로 "결함 위치를 얼마나 정확히 짚는지"를 본다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">이미지 AUROC</span>
+                        <span class="term-desc">이미지 단위 이상 점수로 정상/불량을 가르는 능력을 임계값과 무관하게 평가한다. ROC 곡선 아래 면적으로, 1에 가까울수록 좋다. "임계값을 어디에 두든 평균적으로 얼마나 잘 가르는가"를 보는 지표다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">픽셀 AUROC</span>
+                        <span class="term-desc">이상 맵이 결함 픽셀과 정상 픽셀을 얼마나 잘 구분하는지를 픽셀 단위로 평가한다. 위치 정확도를 본다. 다만 결함이 작으면 정상 픽셀이 압도적으로 많아 점수가 낙관적으로 나오는 경향이 있다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">PRO</span>
+                        <span class="term-desc">Per-Region Overlap. 결함 영역별로 얼마나 겹치는지를 영역 크기에 무관하게 평균낸다. 작은 결함과 큰 결함을 동등하게 취급하므로, 픽셀 AUROC가 큰 결함에 쏠리는 문제를 보완한다. 미세 결함 탐지를 제대로 보려면 PRO를 함께 봐야 한다.</span>
+                    </div>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>평가 수준</th>
+                            <th>지표</th>
+                            <th>무엇을 보는가</th>
+                            <th>주의점</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">이미지 단위</td>
+                            <td>이미지 AUROC</td>
+                            <td>양품/불량 판정 능력</td>
+                            <td>위치 정확도는 보지 못함</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">픽셀 단위</td>
+                            <td>픽셀 AUROC</td>
+                            <td>결함 위치 탐지 정확도</td>
+                            <td>작은 결함에서 낙관적으로 나옴</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">픽셀 단위</td>
+                            <td>PRO</td>
+                            <td>영역 크기에 무관한 위치 정확도</td>
+                            <td>미세 결함 평가에 더 신뢰할 만함</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>AUROC가 높다고 현장에서 바로 잘 되는 것은 아니다</strong>
+                        AUROC는 임계값과 무관한 지표라서 "운영 임계값을 어디에 둘 것인가"는 따로 정해야 한다. 산업 현장에서는 미검(불량을 양품으로 통과)과 과검(양품을 불량으로 버림)의 비용이 다르므로, 그 균형에 맞춰 임계값을 잡는 일이 별도의 과제다. 벤치마크 점수와 현장 성능 사이에는 임계값 설정이라는 다리가 있다.
+                    </div>
+                </div>
+
+                <!-- 8. 산업 적용 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 적용</h2>
+
+                <p>이상 탐지가 산업 현장에서 빛을 보는 곳은 <strong>불량이 드물고 유형을 예측하기 어려운 외관 검사</strong>다. 표면 결함, 이물, 스크래치, 변형, 색 얼룩, 인쇄 불량 — 이런 검사들의 공통점은 양품은 일정하지만 불량의 모습은 제각각이라는 것이다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-layer-group" style="color:#c2185b;"></i> 표면 결함·스크래치</h4>
+                        <p>금속·플라스틱·유리 표면의 긁힘, 찍힘, 균열을 잡는다. 결함 모양이 일정하지 않아 규칙화가 어렵지만, 매끈한 정상 표면은 모델링하기 쉽다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-bug" style="color:#1565c0;"></i> 이물·오염</h4>
+                        <p>표면에 묻은 먼지, 부스러기, 얼룩처럼 "원래 거기 없어야 할 것"을 탐지한다. 정상에 없던 것이 끼어든 상황이라 이상 탐지의 발상에 잘 맞는다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-shapes" style="color:#7b1fa2;"></i> 변형·형상 이상</h4>
+                        <p>찌그러짐, 휘어짐, 누락처럼 형상이 정상에서 벗어난 경우를 잡는다. 정렬이 잘 된 이미지라면 위치별 모델링이 특히 효과적이다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-question" style="color:#e65100;"></i> 새로운 불량 유형</h4>
+                        <p>한 번도 본 적 없는 결함도 "정상이 아님"으로 잡힌다. 학습 시점에 존재하지 않던 불량까지 커버하는 것이 이상 탐지의 가장 큰 강점이다.</p>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>양품 데이터만 모이면 시작할 수 있다</strong>
+                        이상 탐지의 도입 장벽이 낮은 결정적 이유다. 불량 샘플을 며칠씩 모으거나 픽셀 단위 라벨링에 사람을 붙일 필요 없이, 라인에 이미 쌓여 있는 양품 이미지만으로 검사를 시작할 수 있다. 일단 정상 기준으로 돌리면서 현장에서 나오는 불량 사례를 모아 임계값을 조정하고, 필요하면 나중에 전용 분류·세그멘테이션으로 발전시키는 단계적 전략이 가능하다.
+                    </div>
+                </div>
+
+                <h3 id="imaginglib-link"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ImagingLib 로드맵과의 연결</h3>
+
+                <p>이 블로그가 따라가는 산업 이미징 SDK <strong>ImagingLib</strong>의 Deep Learning 솔루션에서 이상 탐지는 우선순위가 높은 기능이다. 산업 고객 대부분이 "불량 데이터가 없다"는 같은 벽 앞에 서 있기 때문이다. 데이터 플로우 블록 에디터 위에서 보면, 전통 비전 블록이 대상을 정렬·크롭하고, 그 결과를 이상 탐지 블록이 받아 이상 점수와 히트맵을 내놓는 파이프라인이 자연스럽게 그려진다. PatchCore처럼 학습 부담이 작은 기법은 SDK가 제공하기에도 적합하다.</p>
+
+                <!-- 9. 한계와 현실 -->
+                <h2 id="reality"><i class="fa-solid fa-triangle-exclamation"></i> 이상 탐지의 한계와 현실</h2>
+
+                <p>이상 탐지는 강력하지만 만능이 아니다. "정상만 학습하면 된다"는 말이 "쉽다"는 뜻은 아니다. 실제로는 정상을 제대로 정의하는 일 자체가 어렵다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">정상의 다양성</span>
+                        <span class="term-desc">정상도 한 가지 모습이 아니다. 조명 변화, 허용 범위 안의 색·질감 편차, 정상으로 인정되는 위치 변동까지 모두 "정상"이다. 이 다양성을 학습 데이터에 충분히 담지 못하면, 모델은 정상 변동을 이상으로 오인한다. 정상 데이터를 다양한 조건에서 충분히 모으는 것이 핵심 과제다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">미세 결함</span>
+                        <span class="term-desc">아주 작거나 미묘한 결함은 정상 변동에 묻혀 이상 점수가 충분히 올라가지 않는다. 전체 이미지에서 결함이 차지하는 비율이 작을수록 어렵다. 고해상도 입력, 패치 단위 처리 등으로 완화하지만 여전히 까다로운 영역이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">경계의 모호함</span>
+                        <span class="term-desc">정상과 이상의 경계가 본질적으로 흐린 경우가 있다. "이 정도 얼룩은 양품인가 불량인가"가 사람 검사자끼리도 갈리면, 모델에게 일관된 기준을 기대할 수 없다. 이런 문제는 모델 이전에 검사 기준 자체를 명확히 하는 일이 선행되어야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">오검출률 관리</span>
+                        <span class="term-desc">임계값을 낮추면 미세 결함을 더 잡지만 양품을 불량으로 버리는 과검이 늘고, 높이면 과검은 줄지만 미검이 는다. 이 트레이드오프를 현장의 비용 구조에 맞춰 조율하고 지속적으로 모니터링하는 운영 체계가 필요하다.</span>
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"정상만 학습" = "정상을 다 안다"가 전제다</strong>
+                        이상 탐지의 모든 성능은 "정상 데이터가 정상의 전 범위를 대표한다"는 가정 위에 서 있다. 조명 한 가지 조건에서만 정상을 모았는데 현장 조명이 바뀌면, 모델은 바뀐 조명을 이상으로 본다. 정상의 다양성을 다 못 모으는 것은 이상 탐지에서 가장 흔하고 치명적인 실패 원인이다. 정상 데이터 수집은 "많이"가 아니라 "골고루"가 핵심이다.
+                    </div>
+                </div>
+
+                <!-- 10. 언제 쓰는가 -->
+                <h2 id="choice"><i class="fa-solid fa-scale-balanced"></i> 언제 이상 탐지를 쓰는가</h2>
+
+                <p>이상 탐지, 일반 딥러닝(검출·세그멘테이션), 전통 비전 중 무엇을 쓸지는 결국 <strong>결함 패턴이 얼마나 명확한가</strong>와 <strong>불량 데이터를 얼마나 모을 수 있는가</strong>로 갈린다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle-exclamation" style="color:#e65100;"></i> 이상 탐지가 맞는 경우</h4>
+                        <ul>
+                            <li>불량 샘플이 거의 없다 — 수십 장 수준</li>
+                            <li>불량 유형이 다양하고 예측 불가능하다</li>
+                            <li>새로운 불량 유형이 계속 나타난다</li>
+                            <li>양품 데이터는 풍부하다</li>
+                            <li>일단 빠르게 검사를 시작해야 한다</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-layer-group" style="color:#7b1fa2;"></i> 검출·세그멘테이션이 맞는 경우</h4>
+                        <ul>
+                            <li>결함 패턴이 명확하고 종류가 한정적이다</li>
+                            <li>불량 데이터를 충분히 모을 수 있다</li>
+                            <li>결함 유형별 분류가 필요하다</li>
+                            <li>결함 위치·면적의 정밀한 경계가 중요하다</li>
+                            <li>라벨링에 자원을 투입할 수 있다</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>일반 분류·검출 (지도학습)</th>
+                            <th>이상 탐지 (one-class)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">학습 데이터</td>
+                            <td>양품 + 불량 모두 충분히 필요</td>
+                            <td>정상(양품)만 필요</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">불량 라벨링</td>
+                            <td>필요 — 클래스·위치·마스크</td>
+                            <td>불필요 — 정상 데이터만 모으면 됨</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">새로운 불량 유형</td>
+                            <td>학습하지 않으면 놓침</td>
+                            <td>"정상 아님"으로 잡힘</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">결함 유형 구분</td>
+                            <td>가능 — 클래스별로 분류</td>
+                            <td>어려움 — 이상/정상만 구분</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">위치·경계 정밀도</td>
+                            <td>높음 — 전용 마스크 학습</td>
+                            <td>중간 — 이상 맵 수준</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">잘 맞는 상황</td>
+                            <td>결함 패턴 명확·데이터 충분</td>
+                            <td>불량 부족·유형 다양</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>셋은 경쟁이 아니라 단계로 이어진다</strong>
+                        실무에서는 이상 탐지로 검사를 시작해 불량 사례를 모으고, 데이터가 쌓이면 그 유형을 분류·세그멘테이션으로 정밀하게 다루는 식으로 발전시킨다. 정렬·크롭 같은 전처리는 전통 비전이 맡는다. 1편에서 말한 "도구를 먼저 정하지 말고 문제를 먼저 정의한다"는 원칙이 여기서도 그대로 적용된다 — 데이터 상황이 곧 도구 선택이다.
+                    </div>
+                </div>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bomb"></i> 흔한 함정</h2>
+
+                <p>이상 탐지 프로젝트가 현장에서 무너지는 패턴은 대체로 정해져 있다. 모델이 약해서가 아니라, 정상을 잘못 정의하거나 운영을 잘못해서다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">정상에 불량 섞임</span>
+                        <span class="term-desc">학습용 정상 데이터에 불량이 몇 장 섞여 들어가면, 모델은 그 불량까지 "정상"으로 학습해 버린다. 그러면 현장에서 같은 불량이 나와도 잡지 못한다. 정상 데이터셋의 청결함을 검증하는 일이 학습 전 필수 단계다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">정상 변동 미수집</span>
+                        <span class="term-desc">조명, 정상 색·질감 편차, 허용 위치 변동 등 정상의 다양성을 다 모으지 못하면, 모델이 정상 변동을 이상으로 오인해 과검이 폭증한다. "정상이 한 가지 모습일 것"이라는 착각이 가장 흔한 출발점이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">임계값 방치</span>
+                        <span class="term-desc">벤치마크 AUROC만 보고 운영 임계값을 대충 잡거나, 한 번 잡고 다시 안 본다. 미검·과검 비용 구조에 맞춰 임계값을 정하고, 라인 조건이 변하면 다시 조정하는 운영이 필요하다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">미세 결함 과소평가</span>
+                        <span class="term-desc">데모 이미지의 큰 결함이 잘 잡히는 것을 보고 "다 된다"고 판단하지만, 현장의 진짜 문제는 정상 변동에 묻히는 미세 결함인 경우가 많다. 픽셀 AUROC만 믿지 말고 PRO와 실제 미세 결함 샘플로 검증해야 한다.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>이상 탐지의 성패는 모델보다 정상 데이터의 품질에서 갈린다</strong>
+                        PatchCore든 PaDiM이든 최신 기법을 쓰는 것보다, 정상 데이터를 깨끗하게 그리고 골고루 모으는 일이 결과를 더 크게 좌우한다. 불량이 섞이지 않았는가, 정상의 모든 변동을 담았는가 — 이 두 질문에 자신 있게 답할 수 있을 때 비로소 모델 선택이 의미를 갖는다. 다음 편에서는 이렇게 학습한 모델을 현장 속도에 맞추는 모델 경량화·최적화를 다룬다.</strong>
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Karsten Roth et al. — Towards Total Recall in Industrial Anomaly Detection (PatchCore, CVPR 2022)</li>
+                        <li>Thomas Defard et al. — PaDiM: A Patch Distribution Modeling Framework for Anomaly Detection and Localization (ICPR 2021)</li>
+                        <li>Paul Bergmann et al. — MVTec AD: A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection (CVPR 2019)</li>
+                        <li>Paul Bergmann et al. — The MVTec Anomaly Detection Dataset: A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection (IJCV, 2021)</li>
+                        <li>Marco Rudolph et al. — Same Same But DifferNet: Semi-Supervised Defect Detection with Normalizing Flows (WACV 2021)</li>
+                        <li>anomalib — 산업 이상 탐지 라이브러리 (https://github.com/openvinotoolkit/anomalib)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai');
+</script>
+
+</body>
+</html>

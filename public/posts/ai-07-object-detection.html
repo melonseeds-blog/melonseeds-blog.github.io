@@ -1,0 +1,911 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>객체 검출 — YOLO·mAP·NMS — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 수식 */
+        .formula {
+            background: #f8fafc; border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0;
+            padding: 14px 22px; margin: 16px 0;
+            font-family: 'Consolas', 'D2Coding', 'Cambria Math', serif;
+            font-size: 0.98rem; color: var(--text); text-align: center;
+            overflow-x: auto; line-height: 1.9;
+        }
+        .formula .formula-note {
+            display: block; margin-top: 6px;
+            font-family: 'Pretendard', sans-serif; font-size: 0.78rem;
+            color: var(--text-muted); text-align: center;
+        }
+
+        /* 그림 */
+        .figure {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px 24px; margin: 24px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .figure .caption {
+            margin-top: 12px; font-size: 0.82rem; color: var(--text-muted);
+            text-align: center; line-height: 1.6;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+            .formula { font-size: 0.85rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">객체 검출이란</a>
+        <a href="#bbox" data-section="bbox">바운딩 박스</a>
+        <a href="#two-stage" data-section="two-stage">2-stage 검출기</a>
+        <a href="#one-stage" data-section="one-stage">1-stage 검출기</a>
+        <a href="#yolo" data-section="yolo">YOLO</a>
+        <a href="#anchor" data-section="anchor">앵커 박스</a>
+        <a href="#iou-nms" data-section="iou-nms">IoU와 NMS</a>
+        <a href="#map" data-section="map">mAP</a>
+        <a href="#industrial" data-section="industrial">산업 비전</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>객체 검출 — YOLO·mAP·NMS</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>객체 검출이란 무엇인가 — 분류에 위치를 더한 태스크</li>
+                        <li>바운딩 박스 표현 — xywh·xyxy 좌표, 클래스, confidence</li>
+                        <li>2-stage 검출기 — R-CNN 계열, 영역 제안 후 분류</li>
+                        <li>1-stage 검출기 — YOLO·SSD, 한 번에 검출</li>
+                        <li>YOLO — 그리드 기반 검출, 앵커 박스, 버전 발전</li>
+                        <li>앵커 박스와 anchor-free 방식</li>
+                        <li>IoU와 NMS — 겹친 박스를 정리하고 정답을 판정하는 기준</li>
+                        <li>mAP — 객체 검출의 표준 평가지표</li>
+                        <li>산업 비전 관점과 검출에서 흔히 빠지는 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">객체 검출이란 무엇인가</a></li>
+                        <li><a href="#bbox">바운딩 박스 — 무엇을 어디에</a></li>
+                        <li><a href="#two-stage">2-stage 검출기 — R-CNN 계열</a></li>
+                        <li><a href="#one-stage">1-stage 검출기 — 한 번에 검출</a></li>
+                        <li><a href="#yolo">YOLO — You Only Look Once</a></li>
+                        <li><a href="#anchor">앵커 박스와 anchor-free</a></li>
+                        <li><a href="#iou-nms">IoU와 NMS</a></li>
+                        <li><a href="#map">mAP — 검출의 표준 평가지표</a></li>
+                        <li><a href="#industrial">산업 비전에서의 객체 검출</a></li>
+                        <li><a href="#pitfalls">객체 검출의 흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 객체 검출이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-crosshairs"></i> 객체 검출이란 무엇인가</h2>
+
+                <p>이미지 분류는 "이 이미지는 어떤 종류인가"라는 질문에 한 단어로 답한다. 객체 검출은 거기에 결정적인 정보를 하나 더한다. <strong>무엇이</strong> 있는지뿐 아니라 <strong>어디에</strong> 있는지를 함께 답한다. 즉 객체 검출은 <strong>분류 + 위치 추정</strong>이 합쳐진 태스크다.</p>
+
+                <p>출력 형태가 다르다는 점이 핵심이다. 분류기는 이미지 한 장에 라벨 하나를 내놓는다. 검출기는 이미지 한 장에서 여러 개의 객체를 찾아내고, 각 객체마다 <strong>바운딩 박스</strong>(경계 상자), <strong>클래스</strong>, <strong>confidence</strong>(신뢰도 점수)를 묶어 내놓는다. 객체가 다섯 개 있으면 다섯 묶음이 나온다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 분류와 검출은 푸는 질문이 다르다</div>
+                    <p><strong>분류</strong>는 "이 이미지에 고양이가 있는가"에 답한다. 출력은 클래스 라벨 하나다. <strong>검출</strong>은 "고양이가 어디에 몇 마리 있는가"에 답한다. 출력은 박스 + 클래스 + 점수의 목록이다.<br><br>
+                    산업 현장으로 옮겨 보면 차이가 분명해진다. "이 부품에 결함이 있다/없다"는 분류로 충분하다. 그러나 "결함이 부품의 어느 위치에 있는가", "트레이에 부품이 몇 개 놓였는가"처럼 위치와 개수가 필요해지는 순간 검출이 필요하다. 위치 정보가 필요한가 — 이것이 분류와 검출을 가르는 기준이다.</p>
+                </div>
+
+                <p>검출은 분류보다 어렵다. 한 이미지 안에 객체가 몇 개 있을지 미리 알 수 없고, 크기도 위치도 제각각이며, 서로 겹치기도 한다. 이 어려움을 어떻게 푸느냐에 따라 검출기 구조가 갈라진다. 그 전에 출력의 기본 단위인 바운딩 박스부터 본다.</p>
+
+                <!-- 2. 바운딩 박스 -->
+                <h2 id="bbox"><i class="fa-solid fa-vector-square"></i> 바운딩 박스 — 무엇을 어디에</h2>
+
+                <p>바운딩 박스는 객체를 둘러싸는 가장 작은 직사각형이다. 검출기가 내놓는 결과 하나는 박스의 위치, 그 안에 든 객체의 클래스, 그리고 그 판단이 얼마나 확실한지를 나타내는 confidence로 구성된다.</p>
+
+                <h3 id="bbox-coord"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 좌표 표현 — xyxy와 xywh</h3>
+
+                <p>박스의 위치를 숫자로 적는 방식은 크게 두 가지다. 둘은 같은 박스를 다르게 적을 뿐이고, 라이브러리마다 쓰는 규약이 달라 변환 실수가 자주 난다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-border-top-left" style="color:#1565c0;"></i> xyxy 방식</h4>
+                        <p>좌상단 좌표와 우하단 좌표로 적는다. <code>(x1, y1, x2, y2)</code>. 두 꼭짓점을 직접 지정하므로 박스끼리 겹침을 계산할 때 편하다. IoU 계산이 이 형식과 잘 맞는다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-up-down-left-right" style="color:#7b1fa2;"></i> xywh 방식</h4>
+                        <p>중심 좌표와 너비·높이로 적는다. <code>(x_center, y_center, w, h)</code>. YOLO 계열이 쓰는 형식이다. 박스 크기를 직접 다루므로 회귀(regression) 학습에 자연스럽다.</p>
+                    </div>
+                </div>
+
+                <p>좌표는 픽셀 단위 절대값으로 적기도 하고, 이미지 크기로 나눈 0~1 사이의 정규화 값으로 적기도 한다. YOLO의 라벨 파일은 보통 정규화된 xywh를 쓴다. 어떤 규약인지 모르고 데이터를 섞으면 박스가 엉뚱한 곳에 그려진다.</p>
+
+                <h3 id="bbox-conf"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 클래스와 confidence</h3>
+
+                <p>박스마다 그 안에 든 객체의 <strong>클래스</strong>가 붙는다. "스크래치", "정상 부품", "이물" 같은 라벨이다. 그리고 <strong>confidence</strong>는 "이 위치에 이 클래스의 객체가 정말 있을 확률"을 0~1로 나타내는 점수다. 검출기는 보통 수천 개의 후보 박스를 내놓는데, confidence가 낮은 것을 임계값으로 걸러내고 남은 것만 결과로 쓴다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>confidence 임계값은 결과를 좌우하는 손잡이다</strong>
+                        같은 모델이라도 confidence 임계값을 0.25로 두느냐 0.6으로 두느냐에 따라 검출 개수가 크게 달라진다. 임계값이 낮으면 놓치는 객체는 줄지만 오검출이 늘고, 높으면 그 반대다. 이 손잡이를 어디에 두느냐는 모델 성능과 별개로 운영자가 정하는 선택이며, 산업 검사에서는 미검(놓침)과 과검(오경보) 중 무엇이 더 치명적인지에 따라 결정한다.
+                    </div>
+                </div>
+
+                <!-- 3. 2-stage 검출기 -->
+                <h2 id="two-stage"><i class="fa-solid fa-layer-group"></i> 2-stage 검출기 — R-CNN 계열</h2>
+
+                <p>검출기를 설계하는 첫 번째 갈래는 <strong>2-stage</strong> 방식이다. 이름 그대로 두 단계로 나눠 푼다. 먼저 "객체가 있을 만한 영역"을 추려내고(영역 제안, Region Proposal), 그다음 각 영역을 분류한다. "찾고 나서 본다"는 순서다.</p>
+
+                <h3 id="rcnn-evolution"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> R-CNN에서 Faster R-CNN까지</h3>
+
+                <p>2-stage 계열은 R-CNN에서 출발해 속도를 개선하는 방향으로 발전했다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">R-CNN</span>
+                        <span class="term-desc">Selective Search로 후보 영역 약 2,000개를 뽑고, 각 영역을 일일이 잘라 CNN에 넣어 분류한다. 정확도는 당시 기준으로 뛰어났지만, 영역마다 CNN을 따로 돌려 느리고 무겁다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Fast R-CNN</span>
+                        <span class="term-desc">이미지 전체를 CNN에 한 번만 통과시켜 특징 맵을 만들고, 후보 영역은 그 특징 맵 위에서 잘라 쓴다(RoI Pooling). CNN 반복 연산을 없애 R-CNN보다 크게 빨라졌다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Faster R-CNN</span>
+                        <span class="term-desc">느린 Selective Search마저 신경망으로 대체했다. RPN(Region Proposal Network)이 영역 제안 자체를 학습으로 수행한다. 영역 제안과 분류가 하나의 네트워크로 통합되어 2-stage 검출기의 표준이 됐다.</span>
+                    </div>
+                </div>
+
+                <p>발전의 방향은 일관된다. 매번 따로 하던 일을 하나의 신경망 안으로 끌어들여 중복 연산을 없애는 것이다. 그럼에도 2-stage 방식은 본질적으로 "제안 후 분류"라는 두 단계를 거치므로, 정확하지만 1-stage 방식보다 느리다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>2-stage가 강한 자리는 따로 있다</strong>
+                        2-stage 검출기는 영역을 먼저 추리고 정성껏 분류하므로, 작은 객체나 정밀한 위치가 중요한 문제에서 일반적으로 1-stage보다 정확하다. 실시간성이 덜 중요하고 정확도가 우선인 검사, 혹은 후처리 단계에서 정밀 재검을 맡기는 용도로는 여전히 유효한 선택이다.
+                    </div>
+                </div>
+
+                <!-- 4. 1-stage 검출기 -->
+                <h2 id="one-stage"><i class="fa-solid fa-bolt"></i> 1-stage 검출기 — 한 번에 검출</h2>
+
+                <p>두 번째 갈래는 <strong>1-stage</strong> 방식이다. 영역 제안이라는 별도 단계를 두지 않고, 이미지를 한 번 통과시키면서 위치와 클래스를 <strong>동시에</strong> 내놓는다. "찾으면서 본다"는 순서다. <strong>YOLO</strong>와 <strong>SSD</strong>가 대표 주자다.</p>
+
+                <p>제안 단계가 없어진 만큼 빠르다. 검출을 하나의 회귀 문제로 보고 신경망 한 번의 추론으로 끝내기 때문에 실시간 처리가 가능하다. 대신 후보를 정성껏 추리는 단계가 없으니, 전통적으로는 2-stage보다 정확도가 조금 낮고 특히 작은 객체에 약하다는 평을 받았다. 다만 최근 YOLO 계열은 이 격차를 상당히 좁혔다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 320" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr1" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                        </defs>
+                        <text x="360" y="26" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">2-stage vs 1-stage 검출 흐름</text>
+
+                        <!-- 2-stage -->
+                        <text x="40" y="64" font-size="11" fill="#7b1fa2" font-weight="700">2-stage (R-CNN 계열)</text>
+                        <rect x="40" y="76" width="96" height="58" rx="9" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="88" y="100" text-anchor="middle" font-size="10" fill="#6a1b9a" font-weight="700">입력 이미지</text>
+                        <text x="88" y="116" text-anchor="middle" font-size="8.5" fill="#9c27b0">한 장</text>
+
+                        <line x1="136" y1="105" x2="166" y2="105" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <rect x="168" y="76" width="120" height="58" rx="9" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="228" y="98" text-anchor="middle" font-size="10" fill="#6a1b9a" font-weight="700">영역 제안</text>
+                        <text x="228" y="113" text-anchor="middle" font-size="8.5" fill="#9c27b0">객체 있을 만한</text>
+                        <text x="228" y="125" text-anchor="middle" font-size="8.5" fill="#9c27b0">후보 영역 추출</text>
+
+                        <line x1="288" y1="105" x2="318" y2="105" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <rect x="320" y="76" width="120" height="58" rx="9" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
+                        <text x="380" y="98" text-anchor="middle" font-size="10" fill="#6a1b9a" font-weight="700">분류 + 박스 보정</text>
+                        <text x="380" y="113" text-anchor="middle" font-size="8.5" fill="#9c27b0">각 후보 영역을</text>
+                        <text x="380" y="125" text-anchor="middle" font-size="8.5" fill="#9c27b0">개별 처리</text>
+
+                        <line x1="440" y1="105" x2="470" y2="105" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <rect x="472" y="76" width="96" height="58" rx="9" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="520" y="100" text-anchor="middle" font-size="10" fill="#4527a0" font-weight="700">검출 결과</text>
+                        <text x="520" y="116" text-anchor="middle" font-size="8.5" fill="#673ab7">정확하지만 느림</text>
+
+                        <!-- 1-stage -->
+                        <text x="40" y="196" font-size="11" fill="#1565c0" font-weight="700">1-stage (YOLO·SSD 계열)</text>
+                        <rect x="40" y="208" width="96" height="58" rx="9" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="88" y="232" text-anchor="middle" font-size="10" fill="#0d47a1" font-weight="700">입력 이미지</text>
+                        <text x="88" y="248" text-anchor="middle" font-size="8.5" fill="#1565c0">한 장</text>
+
+                        <line x1="136" y1="237" x2="166" y2="237" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <rect x="168" y="208" width="272" height="58" rx="9" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="304" y="232" text-anchor="middle" font-size="10" fill="#0d47a1" font-weight="700">단일 신경망 — 위치와 클래스를 동시에 예측</text>
+                        <text x="304" y="249" text-anchor="middle" font-size="8.5" fill="#1565c0">제안 단계 없이 한 번의 추론으로 끝</text>
+
+                        <line x1="440" y1="237" x2="470" y2="237" stroke="#4caf50" stroke-width="2" marker-end="url(#arr1)"/>
+
+                        <rect x="472" y="208" width="96" height="58" rx="9" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="520" y="232" text-anchor="middle" font-size="10" fill="#2e7d32" font-weight="700">검출 결과</text>
+                        <text x="520" y="248" text-anchor="middle" font-size="8.5" fill="#43a047">빠르고 실시간</text>
+
+                        <text x="600" y="170" text-anchor="middle" font-size="9" fill="#90a4ae">두 방식 모두 마지막에</text>
+                        <text x="600" y="184" text-anchor="middle" font-size="9" fill="#90a4ae">NMS로 겹친 박스 정리</text>
+                    </svg>
+                    <div class="caption">그림 1. 2-stage는 영역 제안 후 분류라는 두 단계를 거치고, 1-stage는 단일 신경망이 위치와 클래스를 한 번에 예측한다. 두 방식 모두 마지막에 NMS로 겹친 박스를 정리한다</div>
+                </div>
+
+                <h3 id="stage-compare"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2-stage vs 1-stage 비교</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>2-stage (R-CNN 계열)</th>
+                            <th>1-stage (YOLO·SSD 계열)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">동작 방식</td>
+                            <td>영역 제안 후 분류 — 두 단계</td>
+                            <td>위치와 클래스를 한 번에 예측</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">속도</td>
+                            <td>상대적으로 느림</td>
+                            <td>빠름 — 실시간 가능</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">정확도</td>
+                            <td>전통적으로 우위</td>
+                            <td>과거엔 열세, 최근 격차 축소</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">작은 객체</td>
+                            <td>상대적으로 강함</td>
+                            <td>약한 편 — 버전 발전으로 개선 중</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">대표 모델</td>
+                            <td>R-CNN, Fast R-CNN, Faster R-CNN</td>
+                            <td>YOLO 계열, SSD, RetinaNet</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">잘 맞는 자리</td>
+                            <td>정확도 우선, 정밀 재검</td>
+                            <td>실시간 검사, 고속 라인, 카운팅</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 5. YOLO -->
+                <h2 id="yolo"><i class="fa-solid fa-eye"></i> YOLO — You Only Look Once</h2>
+
+                <p><strong>YOLO</strong>는 이름이 곧 설계 철학이다. <strong>You Only Look Once</strong> — 이미지를 단 한 번만 본다. 영역 제안을 거치지 않고 신경망 한 번의 통과로 검출을 끝내는 1-stage 검출기의 대표 모델이다. 빠른 속도 덕분에 산업 현장과 실시간 응용에서 가장 널리 쓰인다.</p>
+
+                <h3 id="yolo-grid"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 그리드 기반 검출</h3>
+
+                <p>YOLO의 발상은 이렇다. 이미지를 격자(그리드)로 나누고, 각 셀이 "내 영역에 객체의 중심이 있다면 그 박스와 클래스를 책임지고 예측하라"고 맡긴다. 이미지 전체를 격자 단위로 분담시켜 한 번에 푸는 것이다. 셀마다 여러 개의 박스 후보를 내놓고, 각 후보에는 위치·크기·confidence·클래스 확률이 붙는다.</p>
+
+                <p>이렇게 하면 검출이 하나의 회귀 문제가 된다. 입력 이미지 한 장이 들어가면 출력 텐서 하나가 나오고, 그 안에 모든 셀의 예측이 담겨 있다. 후보 박스가 수없이 겹쳐 나오므로, 마지막에 NMS로 정리해 최종 결과를 만든다.</p>
+
+                <h3 id="yolo-versions"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 버전의 발전</h3>
+
+                <p>YOLO는 v1 이후 여러 팀의 손을 거치며 빠르게 발전해 왔다. 큰 흐름만 짚으면 다음과 같다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">YOLOv1</span>
+                        <span class="term-desc">그리드 기반 단일 신경망 검출이라는 개념을 처음 제시했다. 빠르지만 작은 객체와 밀집된 객체에 약했다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">v2~v3</span>
+                        <span class="term-desc">앵커 박스 도입, 다중 스케일 예측 등으로 정확도를 끌어올렸다. 여러 크기의 객체를 동시에 다루는 구조가 자리 잡았다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">v4~v8</span>
+                        <span class="term-desc">백본·학습 기법·데이터 증강이 정교해지고, anchor-free 설계가 들어왔다. 사용 편의성이 크게 좋아져 산업 도입이 본격화됐다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">최신 버전</span>
+                        <span class="term-desc">검출뿐 아니라 세그멘테이션·포즈 추정까지 한 프레임워크로 묶이고, 경량 모델부터 고정밀 모델까지 크기를 골라 쓸 수 있다.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>버전 번호를 정확도 순위로 오해하지 않는다</strong>
+                        YOLO 버전은 여러 팀이 각자 개발해 번호가 곧 우열을 뜻하지 않는다. 또 같은 버전 안에도 nano·small·medium·large처럼 크기 변형이 있어, 어느 모델을 쓸지는 검사 속도(택트 타임)와 하드웨어 제약을 함께 보고 정해야 한다. "최신 버전 = 무조건 최선"이 아니라, 현장 조건에 맞는 크기를 고르는 것이 먼저다.
+                    </div>
+                </div>
+
+                <!-- 6. 앵커 박스 -->
+                <h2 id="anchor"><i class="fa-solid fa-table-cells"></i> 앵커 박스와 anchor-free</h2>
+
+                <p>객체는 크기와 종횡비가 제각각이다. 가로로 긴 부품, 세로로 긴 핀, 작고 동그란 나사가 한 이미지에 섞여 있다. 검출기가 이 다양성을 어떻게 다루느냐를 푸는 장치가 <strong>앵커 박스</strong>다.</p>
+
+                <h3 id="anchor-what"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기준 박스를 미리 깔아 둔다</h3>
+
+                <p>앵커 박스는 다양한 크기와 종횡비를 가진 <strong>기준 박스</strong>들을 이미지 곳곳에 미리 깔아 두는 방식이다. 검출기는 박스를 맨바닥에서 만들지 않고, "이 앵커를 기준으로 얼마나 옮기고 얼마나 키울까"라는 보정값만 학습한다. 빈 종이에 그림을 그리는 대신, 밑그림 위에 덧칠하는 셈이다. 이렇게 하면 학습이 안정되고, 한 위치에서 크기가 다른 여러 객체를 동시에 잡을 수 있다.</p>
+
+                <h3 id="anchor-free"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> anchor-free의 등장</h3>
+
+                <p>앵커 방식에는 비용이 따른다. 앵커의 크기·종횡비·개수를 사람이 정해 줘야 하고, 이 설정이 데이터의 실제 객체 분포와 맞지 않으면 성능이 떨어진다. 그래서 최근에는 앵커를 아예 두지 않는 <strong>anchor-free</strong> 방식이 늘었다. 객체의 중심점이나 키포인트를 직접 예측하는 식으로, 사람이 손댈 하이퍼파라미터를 줄인다. 최신 YOLO 계열 상당수가 anchor-free 설계를 채택했다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>앵커 설정과 데이터 분포의 불일치를 조심한다</strong>
+                        앵커 기반 모델을 쓸 때 흔한 실수가, 일반 데이터셋용 기본 앵커를 그대로 두고 학습하는 것이다. 만약 검사 대상이 유난히 가늘고 긴 부품들인데 앵커는 정사각형 위주로 깔려 있다면, 모델은 처음부터 불리한 밑그림 위에서 학습한다. 앵커 기반 모델을 쓴다면 자신의 데이터에서 객체 크기·종횡비 분포를 확인하고 앵커를 맞추거나, 아예 anchor-free 모델을 고려한다.
+                    </div>
+                </div>
+
+                <!-- 7. IoU와 NMS -->
+                <h2 id="iou-nms"><i class="fa-solid fa-object-group"></i> IoU와 NMS</h2>
+
+                <p>검출기는 한 객체 주위에 박스를 하나만 깔끔하게 내놓지 않는다. 같은 객체를 두고 위치가 조금씩 다른 박스 수십 개가 겹쳐 나온다. 이 겹친 박스들을 정리해 객체당 하나만 남기는 후처리가 <strong>NMS</strong>이고, 그 판단의 잣대가 되는 겹침 측정이 <strong>IoU</strong>다. 둘은 짝으로 움직인다.</p>
+
+                <h3 id="iou"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> IoU — 두 박스가 얼마나 겹치는가</h3>
+
+                <p><strong>IoU</strong>(Intersection over Union)는 두 박스의 <strong>겹친 넓이</strong>를 <strong>합친 넓이</strong>로 나눈 값이다. 0이면 전혀 안 겹친 것이고, 1이면 완전히 포개진 것이다.</p>
+
+                <div class="formula">
+                    IoU = (A ∩ B의 넓이) / (A ∪ B의 넓이)
+                    <span class="formula-note">두 박스의 교집합 넓이를 합집합 넓이로 나눈다 — 0에 가까울수록 어긋나고, 1에 가까울수록 일치한다</span>
+                </div>
+
+                <p>IoU는 두 군데에서 쓰인다. 하나는 지금 볼 NMS에서 "이 두 박스가 같은 객체를 가리키는가"를 판단하는 잣대로, 다른 하나는 뒤에 나올 정답 판정에서 "예측 박스가 정답 박스와 충분히 맞는가"를 판단하는 기준으로 쓰인다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 300" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="360" y="26" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">IoU — 겹침 정도에 따른 값</text>
+
+                        <!-- 낮은 IoU -->
+                        <rect x="40" y="70" width="80" height="80" fill="none" stroke="#1565c0" stroke-width="2.5"/>
+                        <rect x="95" y="105" width="80" height="80" fill="none" stroke="#e91e63" stroke-width="2.5"/>
+                        <rect x="95" y="105" width="25" height="45" fill="#9c27b0" fill-opacity="0.35"/>
+                        <text x="107" y="220" text-anchor="middle" font-size="11" fill="#37474f" font-weight="700">IoU ≈ 0.15</text>
+                        <text x="107" y="238" text-anchor="middle" font-size="9" fill="#90a4ae">거의 안 겹침</text>
+                        <text x="107" y="252" text-anchor="middle" font-size="9" fill="#90a4ae">다른 객체로 봄</text>
+
+                        <!-- 중간 IoU -->
+                        <rect x="280" y="70" width="80" height="80" fill="none" stroke="#1565c0" stroke-width="2.5"/>
+                        <rect x="320" y="100" width="80" height="80" fill="none" stroke="#e91e63" stroke-width="2.5"/>
+                        <rect x="320" y="100" width="40" height="50" fill="#9c27b0" fill-opacity="0.35"/>
+                        <text x="335" y="220" text-anchor="middle" font-size="11" fill="#37474f" font-weight="700">IoU ≈ 0.5</text>
+                        <text x="335" y="238" text-anchor="middle" font-size="9" fill="#90a4ae">절반쯤 겹침</text>
+                        <text x="335" y="252" text-anchor="middle" font-size="9" fill="#90a4ae">흔한 판정 임계값</text>
+
+                        <!-- 높은 IoU -->
+                        <rect x="510" y="75" width="80" height="80" fill="none" stroke="#1565c0" stroke-width="2.5"/>
+                        <rect x="522" y="85" width="80" height="80" fill="none" stroke="#e91e63" stroke-width="2.5"/>
+                        <rect x="522" y="85" width="68" height="70" fill="#9c27b0" fill-opacity="0.35"/>
+                        <text x="558" y="220" text-anchor="middle" font-size="11" fill="#37474f" font-weight="700">IoU ≈ 0.85</text>
+                        <text x="558" y="238" text-anchor="middle" font-size="9" fill="#90a4ae">거의 포개짐</text>
+                        <text x="558" y="252" text-anchor="middle" font-size="9" fill="#90a4ae">같은 객체로 봄</text>
+
+                        <text x="40" y="285" font-size="9.5" fill="#1565c0" font-weight="600">■ 박스 A</text>
+                        <text x="120" y="285" font-size="9.5" fill="#e91e63" font-weight="600">■ 박스 B</text>
+                        <text x="200" y="285" font-size="9.5" fill="#9c27b0" font-weight="600">■ 교집합 영역</text>
+                    </svg>
+                    <div class="caption">그림 2. IoU는 두 박스의 교집합을 합집합으로 나눈 값이다. 겹침이 거의 없으면 0에 가깝고, 거의 포개지면 1에 가까워진다</div>
+                </div>
+
+                <h3 id="nms"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> NMS — 가장 확실한 박스만 남긴다</h3>
+
+                <p><strong>NMS</strong>(Non-Maximum Suppression, 비최대 억제)는 겹친 박스 무리에서 가장 확실한 것 하나만 남기고 나머지를 지우는 절차다. 동작은 단순하다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-list-ol"></i> NMS의 동작 순서</div>
+                    <p><strong>1.</strong> 모든 후보 박스를 confidence 점수가 높은 순으로 정렬한다.<br>
+                    <strong>2.</strong> 가장 점수가 높은 박스를 하나 골라 최종 결과로 채택한다.<br>
+                    <strong>3.</strong> 그 박스와 IoU가 임계값(예: 0.5)보다 높은 다른 박스들은 "같은 객체를 가리킨다"고 보고 모두 제거한다.<br>
+                    <strong>4.</strong> 남은 박스들 중에서 다시 가장 점수 높은 것을 골라 2~3을 반복한다.<br>
+                    <strong>5.</strong> 더 처리할 박스가 없으면 끝. 채택된 박스들이 최종 검출 결과다.</p>
+                </div>
+
+                <p>핵심은 IoU 임계값이다. 이 값이 낮으면 조금만 겹쳐도 제거하므로 가까이 붙은 두 객체 중 하나가 지워질 수 있고, 높으면 같은 객체에 대한 중복 박스가 살아남는다. NMS는 모델 바깥의 후처리지만 최종 결과 품질을 크게 좌우한다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>NMS 임계값을 잘못 잡으면 멀쩡한 검출이 사라진다</strong>
+                        부품이 트레이에 빽빽이 붙어 있는 카운팅 작업을 떠올려 보자. NMS의 IoU 임계값이 너무 낮으면, 서로 가까이 놓여 박스가 살짝 겹친 이웃 부품들이 하나로 합쳐져 개수가 모자라게 센다. 반대로 너무 높으면 한 부품에 박스가 둘씩 남아 개수가 넘친다. 밀집 객체를 다룰 때는 NMS 임계값을 데이터에 맞춰 조정하거나, 겹침을 부드럽게 처리하는 Soft-NMS 같은 변형을 검토한다.
+                    </div>
+                </div>
+
+                <!-- 8. mAP -->
+                <h2 id="map"><i class="fa-solid fa-chart-line"></i> mAP — 검출의 표준 평가지표</h2>
+
+                <p>검출기가 얼마나 잘하는지를 한 숫자로 말할 때 쓰는 것이 <strong>mAP</strong>(mean Average Precision)다. 객체 검출 논문과 벤치마크가 거의 공통으로 쓰는 표준 지표다. 이름이 길지만 뜯어보면 단계적으로 쌓인 개념이다.</p>
+
+                <h3 id="map-build"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정답 판정에서 mAP까지</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">정답 판정</span>
+                        <span class="term-desc">예측 박스가 정답(ground truth) 박스와 IoU가 임계값 이상이고 클래스도 맞으면 옳은 검출(True Positive)로 친다. 그 미만이면 오검출(False Positive)이다. 여기서 IoU 임계값이 등장한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Precision·Recall</span>
+                        <span class="term-desc">Precision은 "검출한 것 중 맞은 비율", Recall은 "실제 객체 중 찾아낸 비율"이다. confidence 임계값을 낮춰 가며 둘의 변화를 추적하면 Precision-Recall 곡선이 그려진다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">AP</span>
+                        <span class="term-desc">Average Precision — Precision-Recall 곡선 아래 넓이다. 한 클래스에 대해 "여러 임계값에 걸쳐 종합한 검출 성능"을 하나의 숫자로 요약한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">mAP</span>
+                        <span class="term-desc">mean AP — 모든 클래스의 AP를 평균낸 값이다. 검출기 전체 성능을 대표하는 단일 숫자가 된다.</span>
+                    </div>
+                </div>
+
+                <h3 id="map-threshold"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> mAP@0.5와 mAP@0.5:0.95</h3>
+
+                <p>mAP에는 꼭 IoU 임계값이 따라붙는다. 정답 판정 기준이 달라지면 점수도 달라지기 때문이다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>표기</th>
+                            <th>의미</th>
+                            <th>특징</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">mAP@0.5</td>
+                            <td>IoU 0.5를 정답 기준으로 둔 mAP</td>
+                            <td>위치가 대략 맞으면 인정 — 비교적 관대</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">mAP@0.75</td>
+                            <td>IoU 0.75를 정답 기준으로 둔 mAP</td>
+                            <td>위치가 꽤 정확해야 인정 — 엄격</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">mAP@0.5:0.95</td>
+                            <td>IoU 0.5부터 0.95까지 0.05 간격 평균</td>
+                            <td>COCO 표준 — 위치 정밀도까지 종합 평가</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>mAP 한 숫자만 보고 판단하지 않는다</strong>
+                        mAP는 전체 클래스를 평균낸 값이라, 특정 클래스가 유독 못 잡혀도 다른 클래스가 잘 되면 평균에 묻힌다. 산업 검사에서 정작 중요한 "치명적 결함 클래스"의 성능이 평균 뒤에 가려질 수 있다. 또 mAP@0.5가 높아도 mAP@0.5:0.95가 낮으면 위치가 엉성하다는 뜻이다. 평가할 때는 클래스별 AP, 정밀도/재현율, 위치 정밀도를 함께 봐야 한다. 단일 숫자는 요약일 뿐 진단이 아니다.
+                    </div>
+                </div>
+
+                <!-- 9. 산업 비전 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전에서의 객체 검출</h2>
+
+                <p>산업 현장에서 객체 검출은 "위치와 개수가 필요한 모든 일"에 쓰인다. 분류로는 답할 수 없는 질문들이 검출의 자리다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-puzzle-piece" style="color:#1565c0;"></i> 부품 검출·위치 파악</h4>
+                        <p>트레이나 컨베이어 위 부품의 위치와 자세를 찾아 로봇 픽업이나 정렬의 기준으로 쓴다. 후속 정밀 검사를 위한 영역 지정에도 쓰인다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-bug" style="color:#c2185b;"></i> 결함 위치 검출</h4>
+                        <p>스크래치·찍힘·이물이 제품의 어디에 있는지 박스로 표시한다. "불량이다"를 넘어 "어디가 불량인가"까지 답해 원인 분석과 공정 피드백을 돕는다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-hashtag" style="color:#7b1fa2;"></i> 카운팅</h4>
+                        <p>한 이미지에 있는 부품·제품의 개수를 센다. 빽빽이 놓인 객체를 정확히 세려면 검출 성능과 NMS 설정이 함께 맞아야 한다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-gauge-high" style="color:#e65100;"></i> 실시간 검사</h4>
+                        <p>고속 라인에서 흐르는 제품을 놓치지 않고 검출해야 한다. 택트 타임이 빡빡하면 1-stage YOLO 계열이 현실적인 선택이다.</p>
+                    </div>
+                </div>
+
+                <p>현장 조건에 따라 검출기 선택이 갈린다. <strong>실시간성이 중요하면</strong> 1-stage YOLO 계열이 사실상 표준이다. 추론이 빠르고, 경량 모델부터 고정밀 모델까지 크기를 골라 하드웨어에 맞출 수 있기 때문이다. <strong>정확도가 우선이고 시간 여유가 있다면</strong> 2-stage 계열이나 큰 모델을 쓰거나, 검출로 영역을 추린 뒤 정밀 재검을 붙이는 2단 구성을 택한다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>작은 결함 검출은 객체 검출의 가장 어려운 영역이다</strong>
+                        고해상도 이미지 안의 미세한 스크래치나 이물처럼 작은 결함은 검출기가 특히 약한 대상이다. 신경망이 다운샘플링을 거치면서 작은 객체의 특징이 사라지기 때문이다. 입력 해상도를 키우거나, 이미지를 타일로 잘라 검출하거나, 작은 객체에 강한 구조를 고르는 등의 대응이 필요하다. "검출기를 붙였는데 작은 결함을 못 잡는다"는 흔한 일이며, 모델 탓이라기보다 구조적 한계다.
+                    </div>
+                </div>
+
+                <h3 id="imaginglib-link"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ImagingLib에서의 자리</h3>
+
+                <p>이 블로그가 따라가는 산업 이미징 SDK <strong>ImagingLib</strong>에서 객체 검출은 Deep Learning 솔루션의 한 블록으로 들어간다. 전통 비전 블록이 이미지를 전처리하고 대상을 정렬하면, 검출 블록이 객체 위치를 찾아 박스를 내놓고, 그 박스 영역을 다시 측정 블록이나 분류 블록으로 넘기는 식이다. 데이터 플로우 캔버스 위에서 검출은 "위치를 만들어 다음 블록에 넘기는" 중간 다리 역할을 자주 맡는다.</p>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 객체 검출의 흔한 함정</h2>
+
+                <p>검출 모델을 붙였는데 현장에서 기대만큼 안 되는 경우, 원인은 대개 모델 자체보다 그 주변 설정과 데이터에 있다. 자주 반복되는 함정들을 정리한다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">NMS 임계값 부적절</span>
+                        <span class="term-desc">IoU 임계값이 데이터에 안 맞으면 밀집 객체가 합쳐지거나 한 객체에 박스가 중복으로 남는다. 카운팅 정확도가 흔들리는 주범이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">작은 객체에 약함</span>
+                        <span class="term-desc">다운샘플링 과정에서 작은 객체의 특징이 소실된다. 미세 결함 검출에서 미검이 발생하면 해상도·타일링·구조 선택을 먼저 점검한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">앵커와 데이터 분포 불일치</span>
+                        <span class="term-desc">기본 앵커 설정이 실제 객체의 크기·종횡비와 어긋나면 학습이 불리하게 시작된다. 앵커 기반 모델은 데이터 분포 확인이 필수다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">mAP 한 숫자만 신뢰</span>
+                        <span class="term-desc">전체 평균인 mAP는 특정 클래스의 부진을 가린다. 클래스별 AP와 정밀도/재현율, 위치 정밀도를 함께 봐야 진단이 된다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">confidence 임계값 방치</span>
+                        <span class="term-desc">기본값을 그대로 두면 현장에서 미검 또는 과검이 늘 수 있다. 미검과 과검 중 무엇이 더 치명적인지에 따라 임계값을 운영자가 정해야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">학습·현장 데이터 불일치</span>
+                        <span class="term-desc">학습 데이터의 조명·배경·객체 분포가 현장과 다르면 mAP가 높아도 실제로는 무너진다. 평가셋이 현장을 대표하는지 먼저 확인한다.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>검출은 모델 + 후처리 + 평가가 한 묶음이다</strong>
+                        객체 검출을 잘 쓰려면 모델 정확도만 보아서는 안 된다. NMS와 confidence 같은 후처리 설정이 최종 결과를 좌우하고, mAP를 어떻게 읽느냐가 판단을 좌우한다. 모델·후처리·평가 셋을 한 묶음으로 다루는 시야가 검출을 현장에 안착시키는 핵심이다. 다음 편에서는 픽셀 단위로 경계를 그리는 세그멘테이션 — U-Net과 Mask R-CNN을 다룬다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Joseph Redmon et al. — You Only Look Once: Unified, Real-Time Object Detection (CVPR 2016)</li>
+                        <li>Ross Girshick et al. — Rich Feature Hierarchies for Accurate Object Detection and Semantic Segmentation (R-CNN, CVPR 2014)</li>
+                        <li>Ross Girshick — Fast R-CNN (ICCV 2015)</li>
+                        <li>Shaoqing Ren et al. — Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks (NIPS 2015)</li>
+                        <li>Wei Liu et al. — SSD: Single Shot MultiBox Detector (ECCV 2016)</li>
+                        <li>Tsung-Yi Lin et al. — Microsoft COCO: Common Objects in Context (ECCV 2014)</li>
+                        <li>Ultralytics — YOLO 공식 문서 (https://docs.ultralytics.com)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai');
+</script>
+
+</body>
+</html>

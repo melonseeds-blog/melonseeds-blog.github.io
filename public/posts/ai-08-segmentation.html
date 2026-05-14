@@ -1,0 +1,842 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>세그멘테이션 — U-Net·Mask R-CNN — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 수식 */
+        .formula {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 10px; padding: 18px 24px; margin: 18px 0;
+            text-align: center; font-family: 'Consolas', 'D2Coding', monospace;
+            font-size: 0.95rem; color: var(--text); overflow-x: auto;
+        }
+        .formula .formula-label {
+            display: block; font-family: 'Pretendard', sans-serif;
+            font-size: 0.78rem; color: var(--text-muted); margin-top: 8px;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-seg" data-section="what-is-seg">세그멘테이션이란</a>
+        <a href="#semantic" data-section="semantic">시맨틱</a>
+        <a href="#instance" data-section="instance">인스턴스</a>
+        <a href="#panoptic" data-section="panoptic">파놉틱</a>
+        <a href="#unet" data-section="unet">U-Net</a>
+        <a href="#encoder-decoder" data-section="encoder-decoder">인코더-디코더</a>
+        <a href="#mask-rcnn" data-section="mask-rcnn">Mask R-CNN</a>
+        <a href="#metrics" data-section="metrics">평가지표</a>
+        <a href="#industrial" data-section="industrial">산업 적용</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>세그멘테이션 — U-Net·Mask R-CNN</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>세그멘테이션이란 — 픽셀 단위 분류, 분류·검출과의 정밀도 차이</li>
+                        <li>시맨틱 세그멘테이션 — 같은 클래스를 한 덩어리로 본다</li>
+                        <li>인스턴스 세그멘테이션 — 같은 클래스라도 개별 객체를 구분한다</li>
+                        <li>파놉틱 세그멘테이션 — 시맨틱과 인스턴스를 하나로 통합한다</li>
+                        <li>U-Net — 인코더-디코더와 스킵 연결, 적은 데이터에 강한 구조</li>
+                        <li>인코더-디코더와 업샘플링 — transposed convolution으로 해상도 복원</li>
+                        <li>Mask R-CNN — Faster R-CNN에 마스크 분기를 더한 인스턴스 세그멘테이션</li>
+                        <li>평가지표 — IoU, mIoU, Dice 계수로 픽셀 단위 평가</li>
+                        <li>산업 비전 관점과 세그멘테이션의 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-seg">세그멘테이션이란 무엇인가</a></li>
+                        <li><a href="#semantic">시맨틱 세그멘테이션</a></li>
+                        <li><a href="#instance">인스턴스 세그멘테이션</a></li>
+                        <li><a href="#panoptic">파놉틱 세그멘테이션</a></li>
+                        <li><a href="#unet">U-Net — 인코더-디코더와 스킵 연결</a></li>
+                        <li><a href="#encoder-decoder">인코더-디코더와 업샘플링</a></li>
+                        <li><a href="#mask-rcnn">Mask R-CNN</a></li>
+                        <li><a href="#metrics">평가지표 — IoU·mIoU·Dice</a></li>
+                        <li><a href="#industrial">산업 비전에서의 세그멘테이션</a></li>
+                        <li><a href="#pitfalls">세그멘테이션의 흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 세그멘테이션이란 -->
+                <h2 id="what-is-seg"><i class="fa-solid fa-table-cells"></i> 세그멘테이션이란 무엇인가</h2>
+
+                <p>세그멘테이션(segmentation)은 이미지의 <strong>모든 픽셀 하나하나를 어떤 클래스에 속하는지 분류</strong>하는 태스크다. "이 이미지에 결함이 있는가"도 아니고 "결함이 어느 박스 안에 있는가"도 아니라, "이 픽셀이 결함인가 아닌가"를 픽셀 단위로 답한다. 출력은 입력 이미지와 같은 크기의 <strong>마스크</strong>(mask)이고, 각 위치에 클래스 번호가 채워진다.</p>
+
+                <p>앞선 7편까지 다룬 분류·검출과 나란히 놓으면 흐름이 분명해진다. 같은 이미지를 두고 세 태스크가 던지는 질문의 정밀도가 단계적으로 올라간다 — 이미지 한 장에 라벨 하나, 그 다음 박스, 그 다음 픽셀이다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 250" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="360" y="24" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">분류 → 검출 → 세그멘테이션 — 점점 정밀해지는 질문</text>
+
+                        <!-- 분류 -->
+                        <rect x="40" y="56" width="160" height="120" rx="8" fill="#f1f8e9" stroke="#7cb342" stroke-width="2"/>
+                        <circle cx="105" cy="110" r="26" fill="#aed581" stroke="#558b2f" stroke-width="1.5"/>
+                        <circle cx="150" cy="135" r="20" fill="#aed581" stroke="#558b2f" stroke-width="1.5"/>
+                        <text x="120" y="200" text-anchor="middle" font-size="11" fill="#33691e" font-weight="700">이미지 분류</text>
+                        <text x="120" y="216" text-anchor="middle" font-size="9" fill="#689f38">"결함 있음" — 라벨 1개</text>
+
+                        <!-- 검출 -->
+                        <rect x="280" y="56" width="160" height="120" rx="8" fill="#fff8e1" stroke="#ffb300" stroke-width="2"/>
+                        <circle cx="345" cy="110" r="26" fill="#ffe082" stroke="#ff8f00" stroke-width="1.5"/>
+                        <circle cx="390" cy="135" r="20" fill="#ffe082" stroke="#ff8f00" stroke-width="1.5"/>
+                        <rect x="315" y="80" width="60" height="60" fill="none" stroke="#e65100" stroke-width="2.5"/>
+                        <rect x="367" y="113" width="46" height="46" fill="none" stroke="#e65100" stroke-width="2.5"/>
+                        <text x="360" y="200" text-anchor="middle" font-size="11" fill="#e65100" font-weight="700">객체 검출</text>
+                        <text x="360" y="216" text-anchor="middle" font-size="9" fill="#f57c00">박스 + 클래스</text>
+
+                        <!-- 세그멘테이션 -->
+                        <rect x="520" y="56" width="160" height="120" rx="8" fill="#fce4ec" stroke="#ec407a" stroke-width="2"/>
+                        <circle cx="585" cy="110" r="26" fill="#f06292" stroke="#ad1457" stroke-width="2.5"/>
+                        <circle cx="630" cy="135" r="20" fill="#ce93d8" stroke="#6a1b9a" stroke-width="2.5"/>
+                        <text x="600" y="200" text-anchor="middle" font-size="11" fill="#ad1457" font-weight="700">세그멘테이션</text>
+                        <text x="600" y="216" text-anchor="middle" font-size="9" fill="#c2185b">픽셀 단위 마스크</text>
+
+                        <!-- 화살표 -->
+                        <path d="M205 116 L274 116" fill="none" stroke="#9e9e9e" stroke-width="2" marker-end="url(#segArr)"/>
+                        <path d="M445 116 L514 116" fill="none" stroke="#9e9e9e" stroke-width="2" marker-end="url(#segArr)"/>
+                        <defs>
+                            <marker id="segArr" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#9e9e9e"/></marker>
+                        </defs>
+                        <text x="240" y="108" text-anchor="middle" font-size="9" fill="#757575">위치 추가</text>
+                        <text x="480" y="108" text-anchor="middle" font-size="9" fill="#757575">경계 추가</text>
+                    </svg>
+                    <div class="caption">그림 1. 같은 이미지를 두고 세 태스크가 답하는 정밀도 — 분류는 라벨, 검출은 박스, 세그멘테이션은 픽셀 단위 경계까지 답한다</div>
+                </div>
+
+                <p>검출의 박스는 객체를 사각형으로 감쌀 뿐, 박스 안에는 배경 픽셀도 섞여 있다. 세그멘테이션은 그 박스 안에서 한 걸음 더 들어가 객체의 <strong>실제 윤곽</strong>을 픽셀 단위로 따낸다. 그래서 면적이나 형상을 정확히 재야 하는 산업 검사에서는 검출만으로는 부족하고 세그멘테이션이 필요해진다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 세그멘테이션은 "픽셀마다 푸는 분류 문제"다</div>
+                    <p>이미지 분류가 이미지 한 장에 대해 클래스를 한 번 예측한다면, 세그멘테이션은 그 분류를 <strong>픽셀 수만큼 반복</strong>하는 것으로 볼 수 있다. 1024×1024 이미지라면 약 100만 개의 픽셀 각각에 대해 "결함 / 배경" 같은 클래스를 예측한다. 다만 픽셀들을 따로따로 보는 것이 아니라, 신경망이 주변 맥락을 함께 보며 한 번의 추론으로 전체 마스크를 만든다. 이 "맥락을 보면서 픽셀 해상도를 지킨다"는 두 요구를 어떻게 동시에 만족시키느냐가 세그멘테이션 모델 설계의 핵심 과제다.</p>
+                </div>
+
+                <!-- 2. 시맨틱 -->
+                <h2 id="semantic"><i class="fa-solid fa-fill-drip"></i> 시맨틱 세그멘테이션</h2>
+
+                <p>시맨틱 세그멘테이션(semantic segmentation)은 <strong>같은 클래스에 속하는 픽셀을 개별 객체로 구분하지 않고 한 덩어리로 묶는다</strong>. 이미지 안에 결함이 세 군데 있어도, 시맨틱 세그멘테이션의 출력에서는 그 셋이 모두 똑같은 "결함" 클래스 픽셀로 칠해진다. 어디까지가 결함 1이고 어디부터 결함 2인지는 구분하지 않는다.</p>
+
+                <p>질문은 단순하다 — "이 픽셀의 클래스는 무엇인가". 개수를 세거나 개체를 분리할 필요가 없고 영역의 종류만 알면 되는 문제에 잘 맞는다. 산업 비전에서는 "오염된 영역이 전체의 몇 퍼센트인가", "코팅이 벗겨진 면적이 얼마인가"처럼 <strong>영역의 종류와 넓이</strong>가 중요한 검사에 적합하다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>시맨틱 세그멘테이션의 출력은 컬러맵 한 장이다</strong>
+                        출력 마스크는 입력과 같은 크기이고, 각 픽셀에 클래스 번호가 들어간다. 클래스가 N개면 픽셀값은 0부터 N-1까지다. 이것을 클래스별 색으로 칠하면 이미지 위에 영역이 색으로 구분된 컬러맵이 된다. U-Net을 비롯한 대부분의 인코더-디코더 모델이 기본적으로 푸는 것이 이 시맨틱 세그멘테이션이다.
+                    </div>
+                </div>
+
+                <!-- 3. 인스턴스 -->
+                <h2 id="instance"><i class="fa-solid fa-object-group"></i> 인스턴스 세그멘테이션</h2>
+
+                <p>인스턴스 세그멘테이션(instance segmentation)은 한 걸음 더 나간다. <strong>같은 클래스라도 개별 객체를 각각 다른 인스턴스로 구분</strong>한다. 결함이 세 군데 있으면 결함 1, 결함 2, 결함 3으로 따로 마스크를 만든다. 각 인스턴스는 자기만의 픽셀 마스크를 가진다.</p>
+
+                <p>이렇게 하면 단순히 "결함 영역이 얼마나 되는가"를 넘어 <strong>"결함이 몇 개인가", "각 결함의 크기와 형상은 어떤가"</strong>를 답할 수 있다. 객체를 세고, 하나하나의 속성을 측정해야 하는 검사에서는 시맨틱으로는 부족하고 인스턴스 세그멘테이션이 필요하다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>구분</th>
+                            <th>시맨틱 세그멘테이션</th>
+                            <th>인스턴스 세그멘테이션</th>
+                            <th>파놉틱 세그멘테이션</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">푸는 질문</td>
+                            <td>이 픽셀의 클래스는 무엇인가</td>
+                            <td>이 픽셀은 어느 객체에 속하는가</td>
+                            <td>둘 다 — 클래스와 객체를 모두</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">같은 클래스 객체 구분</td>
+                            <td>구분하지 않음 — 한 덩어리</td>
+                            <td>구분함 — 결함 1, 결함 2</td>
+                            <td>셀 수 있는 것만 구분</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">배경·비정형 영역</td>
+                            <td>클래스로 다룸</td>
+                            <td>보통 다루지 않음</td>
+                            <td>"stuff"로 함께 다룸</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">대표 모델</td>
+                            <td>U-Net, FCN, DeepLab</td>
+                            <td>Mask R-CNN, YOLACT</td>
+                            <td>Panoptic FPN, Mask2Former</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">산업 검사 예</td>
+                            <td>오염 면적률, 코팅 영역 측정</td>
+                            <td>결함 개수·개별 크기 측정</td>
+                            <td>표면 영역 + 개별 결함 동시 분석</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> "stuff"와 "thing" — 셀 수 있느냐의 차이</div>
+                    <p>세그멘테이션 분야에서는 픽셀을 두 부류로 나눈다. <strong>thing</strong>은 셀 수 있는 개별 객체다 — 부품 하나, 결함 하나. 경계가 분명하고 "몇 개"라고 셀 수 있다. <strong>stuff</strong>는 셀 수 없는 비정형 영역이다 — 배경, 표면, 하늘. 형태가 일정하지 않고 개수를 세는 것이 의미가 없다. 시맨틱 세그멘테이션은 thing이든 stuff든 클래스로만 보고, 인스턴스 세그멘테이션은 thing만 개체로 분리한다. 이 둘을 합치려는 시도가 다음에 볼 파놉틱 세그멘테이션이다.</p>
+                </div>
+
+                <!-- 4. 파놉틱 -->
+                <h2 id="panoptic"><i class="fa-solid fa-layer-group"></i> 파놉틱 세그멘테이션</h2>
+
+                <p>파놉틱 세그멘테이션(panoptic segmentation)은 <strong>시맨틱과 인스턴스를 하나로 통합</strong>한 태스크다. 이미지의 모든 픽셀에 대해, 셀 수 있는 객체(thing)는 인스턴스 단위로 구분하고 셀 수 없는 영역(stuff)은 시맨틱하게 클래스로 칠한다. 한 장의 출력 안에 "이 픽셀은 배경 표면", "이 픽셀은 결함 1", "이 픽셀은 결함 2"가 모두 담긴다.</p>
+
+                <p>시맨틱은 stuff를 잘 다루지만 객체를 못 세고, 인스턴스는 객체를 잘 세지만 배경을 다루지 않는다. 파놉틱은 그 빈틈을 메워 <strong>이미지 전체를 빠짐없이, 그리고 개체까지 구분해서</strong> 설명하려는 시도다. 산업 검사에서는 "제품 표면 전체 영역을 파악하면서 그 위의 개별 결함도 따로 세는" 식의 통합 분석에 어울린다. 다만 모델과 라벨링이 가장 무겁기 때문에, 실무에서는 문제가 시맨틱이나 인스턴스 하나로 충분한지를 먼저 따져 보는 편이 낫다.</p>
+
+                <!-- 5. U-Net -->
+                <h2 id="unet"><i class="fa-solid fa-bezier-curve"></i> U-Net — 인코더-디코더와 스킵 연결</h2>
+
+                <p>U-Net은 2015년 의료 영상 세그멘테이션을 위해 제안된 모델로, 이름 그대로 구조가 알파벳 <strong>U자 모양</strong>이다. 왼쪽은 이미지를 점점 줄여 가며 의미를 추출하는 <strong>인코더</strong>(수축 경로), 오른쪽은 다시 키워 가며 픽셀 해상도를 복원하는 <strong>디코더</strong>(확장 경로)다. 그리고 같은 높이의 인코더와 디코더를 가로질러 잇는 <strong>스킵 연결</strong>(skip connection)이 U자의 가로줄을 이룬다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 380" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="uArrDown" markerWidth="8" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7Z" fill="#5e35b1"/></marker>
+                            <marker id="uArrUp" markerWidth="8" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7Z" fill="#00897b"/></marker>
+                            <marker id="uArrSkip" markerWidth="8" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7Z" fill="#d97706"/></marker>
+                        </defs>
+                        <text x="360" y="24" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">U-Net — 인코더·디코더와 스킵 연결</text>
+
+                        <!-- 인코더 (왼쪽, 아래로) -->
+                        <rect x="50" y="56" width="120" height="34" rx="5" fill="#ede7f6" stroke="#5e35b1" stroke-width="2"/>
+                        <text x="110" y="77" text-anchor="middle" font-size="10" fill="#4527a0" font-weight="700">입력 이미지 (큰 해상도)</text>
+
+                        <rect x="70" y="116" width="100" height="30" rx="5" fill="#d1c4e9" stroke="#5e35b1" stroke-width="2"/>
+                        <text x="120" y="135" text-anchor="middle" font-size="9" fill="#4527a0" font-weight="600">Conv + 다운샘플</text>
+
+                        <rect x="90" y="172" width="80" height="30" rx="5" fill="#b39ddb" stroke="#5e35b1" stroke-width="2"/>
+                        <text x="130" y="191" text-anchor="middle" font-size="9" fill="#4527a0" font-weight="600">Conv + 다운샘플</text>
+
+                        <rect x="110" y="228" width="60" height="30" rx="5" fill="#9575cd" stroke="#5e35b1" stroke-width="2"/>
+                        <text x="140" y="247" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">Conv + 다운</text>
+
+                        <!-- 병목 -->
+                        <rect x="280" y="290" width="160" height="40" rx="6" fill="#37474f" stroke="#263238" stroke-width="2"/>
+                        <text x="360" y="308" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">병목 (Bottleneck)</text>
+                        <text x="360" y="322" text-anchor="middle" font-size="8.5" fill="#b0bec5">가장 압축된 의미 표현</text>
+
+                        <!-- 디코더 (오른쪽, 위로) -->
+                        <rect x="550" y="228" width="60" height="30" rx="5" fill="#80cbc4" stroke="#00897b" stroke-width="2"/>
+                        <text x="580" y="247" text-anchor="middle" font-size="9" fill="#004d40" font-weight="600">업샘플 + Conv</text>
+
+                        <rect x="550" y="172" width="80" height="30" rx="5" fill="#4db6ac" stroke="#00897b" stroke-width="2"/>
+                        <text x="590" y="191" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">업샘플 + Conv</text>
+
+                        <rect x="550" y="116" width="100" height="30" rx="5" fill="#26a69a" stroke="#00897b" stroke-width="2"/>
+                        <text x="600" y="135" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">업샘플 + Conv</text>
+
+                        <rect x="550" y="56" width="120" height="34" rx="5" fill="#b2dfdb" stroke="#00897b" stroke-width="2"/>
+                        <text x="610" y="77" text-anchor="middle" font-size="10" fill="#004d40" font-weight="700">출력 마스크 (입력과 동일 크기)</text>
+
+                        <!-- 인코더 하강 화살표 -->
+                        <line x1="110" y1="90" x2="120" y2="114" stroke="#5e35b1" stroke-width="2" marker-end="url(#uArrDown)"/>
+                        <line x1="120" y1="146" x2="130" y2="170" stroke="#5e35b1" stroke-width="2" marker-end="url(#uArrDown)"/>
+                        <line x1="130" y1="202" x2="140" y2="226" stroke="#5e35b1" stroke-width="2" marker-end="url(#uArrDown)"/>
+                        <line x1="155" y1="258" x2="290" y2="298" stroke="#5e35b1" stroke-width="2" marker-end="url(#uArrDown)"/>
+
+                        <!-- 디코더 상승 화살표 -->
+                        <line x1="430" y1="298" x2="565" y2="258" stroke="#00897b" stroke-width="2" marker-end="url(#uArrUp)"/>
+                        <line x1="580" y1="228" x2="590" y2="204" stroke="#00897b" stroke-width="2" marker-end="url(#uArrUp)"/>
+                        <line x1="590" y1="172" x2="600" y2="148" stroke="#00897b" stroke-width="2" marker-end="url(#uArrUp)"/>
+                        <line x1="600" y1="116" x2="610" y2="92" stroke="#00897b" stroke-width="2" marker-end="url(#uArrUp)"/>
+
+                        <!-- 스킵 연결 -->
+                        <line x1="170" y1="73" x2="548" y2="73" stroke="#d97706" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#uArrSkip)"/>
+                        <line x1="170" y1="131" x2="548" y2="131" stroke="#d97706" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#uArrSkip)"/>
+                        <line x1="170" y1="187" x2="548" y2="187" stroke="#d97706" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#uArrSkip)"/>
+                        <line x1="170" y1="243" x2="548" y2="243" stroke="#d97706" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#uArrSkip)"/>
+                        <text x="360" y="66" text-anchor="middle" font-size="9" fill="#b45309" font-weight="700">스킵 연결 — 인코더의 위치·경계 정보를 디코더로 직접 전달</text>
+
+                        <text x="110" y="355" text-anchor="middle" font-size="9.5" fill="#5e35b1" font-weight="600">인코더 (수축 경로) — 의미 추출</text>
+                        <text x="610" y="355" text-anchor="middle" font-size="9.5" fill="#00897b" font-weight="600">디코더 (확장 경로) — 해상도 복원</text>
+                    </svg>
+                    <div class="caption">그림 2. U-Net 구조 — 인코더로 내려가며 의미를 압축하고 디코더로 올라가며 해상도를 복원하며, 스킵 연결이 양쪽 같은 높이를 이어 위치 정보를 직접 전달한다</div>
+                </div>
+
+                <p>스킵 연결이 U-Net의 핵심이다. 인코더가 이미지를 계속 줄이는 과정에서 "무엇이 있는가"라는 의미는 잘 뽑히지만 "정확히 어디인가"라는 위치·경계 정보는 흐려진다. 디코더가 해상도를 복원할 때 이 흐려진 정보만으로는 윤곽을 또렷하게 살리기 어렵다. 스킵 연결은 인코더의 같은 높이에서 아직 선명한 특징 맵을 디코더로 <strong>직접 가로질러 전달</strong>해, 디코더가 의미와 위치를 함께 보며 마스크를 그릴 수 있게 한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>U-Net이 의료·산업 결함에 강한 이유</strong>
+                        U-Net은 적은 학습 데이터로도 잘 동작하는 것으로 유명하다. 원 논문도 수십 장 규모의 의료 영상으로 좋은 결과를 냈다. 구조가 비교적 단순하고 스킵 연결 덕분에 경계를 잘 살리며, 데이터 증강과 궁합이 좋기 때문이다. 산업 현장에서 결함 샘플을 많이 모으기 어렵다는 점을 떠올리면, 이 "적은 데이터로 학습 가능"이라는 특성이 산업 결함 세그멘테이션에서 U-Net이 사실상 기본 선택지가 된 큰 이유다.
+                    </div>
+                </div>
+
+                <!-- 6. 인코더-디코더 -->
+                <h2 id="encoder-decoder"><i class="fa-solid fa-down-up-across-line"></i> 인코더-디코더와 업샘플링</h2>
+
+                <p>U-Net뿐 아니라 대부분의 시맨틱 세그멘테이션 모델은 <strong>인코더-디코더</strong> 구조를 공유한다. 이 구조가 풀려는 문제는 앞서 말한 "맥락도 봐야 하고 픽셀 해상도도 지켜야 한다"는 모순이다. 두 단계로 나눠 푼다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">인코더 (다운샘플링)</span>
+                        <span class="term-desc">합성곱과 풀링으로 이미지를 점점 작게 줄인다. 해상도는 잃지만 그 대신 넓은 영역을 한눈에 보는 수용 영역이 커져, "이게 무엇인가"라는 의미·맥락 정보가 깊은 채널에 압축된다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">디코더 (업샘플링)</span>
+                        <span class="term-desc">압축된 특징 맵을 다시 키워 입력과 같은 크기로 되돌린다. 인코더가 잃어버린 픽셀 해상도를 복원해, 의미 정보를 픽셀 단위 마스크로 펼쳐 낸다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">스킵 연결</span>
+                        <span class="term-desc">디코더가 키우기만 해서는 경계가 뭉개진다. 인코더의 선명한 중간 특징을 같은 높이의 디코더에 더해, 위치·경계 정보를 보강한다.</span>
+                    </div>
+                </div>
+
+                <h3 id="transposed-conv"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 업샘플링 — transposed convolution</h3>
+
+                <p>그렇다면 작아진 특징 맵을 어떻게 다시 키우는가. 가장 단순한 방법은 최근접 이웃이나 양선형 보간 같은 고정된 규칙으로 픽셀을 늘리는 것이다. 동작은 하지만 학습되는 파라미터가 없어 경계를 정교하게 살리기 어렵다.</p>
+
+                <p>딥러닝 세그멘테이션에서 널리 쓰는 방법은 <strong>transposed convolution</strong>(전치 합성곱, deconvolution이라고도 부른다)이다. 일반 합성곱이 큰 입력을 작은 출력으로 줄인다면, transposed convolution은 반대로 작은 입력의 각 픽셀을 학습된 커널로 펼쳐 <strong>큰 출력을 만든다</strong>. 핵심은 키우는 방식 자체가 학습된다는 점이다. 모델이 "이 의미 표현을 어떻게 픽셀로 펼치면 마스크가 정확해지는가"를 데이터로부터 배운다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>transposed convolution의 체커보드 아티팩트</strong>
+                        transposed convolution은 커널과 stride 설정이 맞지 않으면 출력에 격자무늬 얼룩(체커보드 아티팩트)을 남기는 것으로 알려져 있다. 커널 크기를 stride로 나누어떨어지게 잡거나, 아예 "보간으로 키운 뒤 일반 합성곱"으로 대체하는 식으로 피한다. 업샘플링 방식을 무심코 고르면 마스크 품질이 미세하게 나빠질 수 있다는 점을 기억해 둔다.
+                    </div>
+                </div>
+
+                <!-- 7. Mask R-CNN -->
+                <h2 id="mask-rcnn"><i class="fa-solid fa-vector-square"></i> Mask R-CNN</h2>
+
+                <p>U-Net이 시맨틱 세그멘테이션의 대표라면, <strong>Mask R-CNN</strong>은 인스턴스 세그멘테이션의 대표다. 이름에서 짐작되듯 객체 검출 모델인 <strong>Faster R-CNN</strong> 위에 세웠다. 7편에서 본 검출의 흐름 — 후보 영역을 찾고, 각 영역을 분류하고 박스를 정교화한다 — 을 그대로 가져온 다음, 거기에 <strong>마스크 분기</strong>(mask branch)를 하나 더 붙인 것이 Mask R-CNN이다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-diagram-project"></i> Mask R-CNN의 구조 — 검출에 마스크 한 갈래를 더한다</div>
+                    <p>Mask R-CNN은 각 후보 영역에 대해 세 가지를 동시에 예측한다. <strong>(1) 클래스</strong> — 이 객체가 무엇인가, <strong>(2) 박스</strong> — 정확한 경계 상자는 어디인가, <strong>(3) 마스크</strong> — 박스 안에서 객체에 해당하는 픽셀은 어디인가. 앞의 둘은 Faster R-CNN과 같고, 세 번째가 새로 추가된 작은 합성곱 분기다. 각 후보 영역마다 별도의 마스크가 나오므로, 같은 클래스라도 객체별로 마스크가 분리된다 — 이것이 인스턴스 세그멘테이션이 되는 원리다.</p>
+                </div>
+
+                <p>Mask R-CNN이 정확한 마스크를 얻기 위해 도입한 핵심 장치가 <strong>RoIAlign</strong>이다. Faster R-CNN의 RoIPooling은 후보 영역을 격자에 맞추느라 좌표를 반올림했는데, 이 미세한 어긋남이 분류에는 큰 문제가 안 되지만 픽셀 단위 마스크에는 치명적이다. RoIAlign은 반올림 없이 정확한 위치에서 특징을 보간해 뽑아, 마스크가 픽셀 단위로 정렬되게 한다. "검출은 박스라 좀 어긋나도 되지만 세그멘테이션은 픽셀이라 어긋나면 안 된다"는 차이가 이 장치를 낳았다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>U-Net</th>
+                            <th>Mask R-CNN</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">세그멘테이션 종류</td>
+                            <td>시맨틱 — 클래스별 영역</td>
+                            <td>인스턴스 — 객체별 마스크</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">구조</td>
+                            <td>인코더-디코더 + 스킵 연결</td>
+                            <td>Faster R-CNN + 마스크 분기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">접근 방식</td>
+                            <td>이미지 전체를 한 번에 픽셀 분류</td>
+                            <td>후보 영역을 찾고 영역별로 마스크 예측</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">객체 개수·개별 측정</td>
+                            <td>어려움 — 같은 클래스는 한 덩어리</td>
+                            <td>가능 — 객체별로 분리</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">데이터 요구량</td>
+                            <td>상대적으로 적음</td>
+                            <td>상대적으로 많음 — 박스+마스크 라벨</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">속도·구조 복잡도</td>
+                            <td>가볍고 단순</td>
+                            <td>무겁고 단계가 많음</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">잘 맞는 검사</td>
+                            <td>오염·코팅 등 영역 면적률</td>
+                            <td>결함 개수·개별 크기·형상</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>둘 중 무엇을 고를지는 "질문"이 정한다</strong>
+                        U-Net과 Mask R-CNN은 우열 관계가 아니라 푸는 질문이 다르다. "결함 픽셀이 전체의 몇 퍼센트인가"를 알고 싶으면 시맨틱 세그멘테이션, 즉 U-Net 계열로 충분하다. "결함이 몇 개이고 각각 얼마나 큰가"를 알아야 하면 인스턴스 세그멘테이션, 즉 Mask R-CNN 계열이 필요하다. 1편에서 강조한 "도구 먼저가 아니라 문제 먼저"가 여기서도 그대로 적용된다.
+                    </div>
+                </div>
+
+                <!-- 8. 평가지표 -->
+                <h2 id="metrics"><i class="fa-solid fa-ruler"></i> 평가지표 — IoU·mIoU·Dice</h2>
+
+                <p>세그멘테이션은 픽셀 단위 태스크이므로 평가도 픽셀 단위로 한다. "예측한 마스크와 정답 마스크가 얼마나 겹치는가"를 재는 것이 기본이다. 단순 정확도(맞춘 픽셀 비율)는 쓰지 않는데, 결함 픽셀이 전체의 1%뿐이라면 모든 픽셀을 배경이라고 찍어도 정확도 99%가 나오기 때문이다. 그래서 겹침을 직접 재는 지표를 쓴다.</p>
+
+                <h3 id="iou-metric"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> IoU와 mIoU</h3>
+
+                <p><strong>IoU</strong>(Intersection over Union)는 예측 영역과 정답 영역의 <strong>교집합을 합집합으로 나눈 값</strong>이다. 7편에서 검출의 박스 겹침을 잴 때 본 IoU와 개념이 같고, 다만 대상이 박스가 아니라 픽셀 마스크다. 0이면 전혀 안 겹치고 1이면 완벽히 일치한다.</p>
+
+                <div class="formula">
+                    IoU = |예측 ∩ 정답| / |예측 ∪ 정답|
+                    <span class="formula-label">교집합 픽셀 수를 합집합 픽셀 수로 나눈다 — 1에 가까울수록 정확</span>
+                </div>
+
+                <p>클래스가 여러 개일 때는 각 클래스별로 IoU를 구한 뒤 평균을 낸다. 이것이 <strong>mIoU</strong>(mean IoU)이고, 시맨틱 세그멘테이션의 표준 평가지표다. 클래스별로 따로 재고 평균하므로, 면적이 작은 결함 클래스가 성능이 나쁘면 mIoU가 떨어진다 — 클래스 불균형을 가리지 못한다는 점이 장점이다.</p>
+
+                <div class="formula">
+                    mIoU = (1 / N) × Σ IoU<sub>클래스 i</sub>
+                    <span class="formula-label">N개 클래스 각각의 IoU를 구해 평균한다</span>
+                </div>
+
+                <h3 id="dice-metric"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Dice 계수</h3>
+
+                <p><strong>Dice 계수</strong>(Dice coefficient, F1 점수와 동일)는 교집합을 두 배 한 값을 두 영역 크기의 합으로 나눈다. IoU와 측정하려는 바는 같지만 식이 조금 다르고, 작은 영역의 겹침에 IoU보다 후하게 점수를 준다. 의료·산업처럼 <strong>대상이 작은</strong> 세그멘테이션에서 즐겨 쓰이며, 그대로 손실 함수(Dice loss)로도 자주 쓴다.</p>
+
+                <div class="formula">
+                    Dice = 2 × |예측 ∩ 정답| / (|예측| + |정답|)
+                    <span class="formula-label">교집합의 두 배를 두 영역 크기의 합으로 나눈다 — 작은 영역에 IoU보다 관대</span>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>IoU와 Dice는 항상 같은 방향으로 움직인다</strong>
+                        두 지표는 수학적으로 단조 관계라, 한쪽이 오르면 다른 쪽도 오른다. 순위를 매기는 데는 어느 쪽을 써도 결론이 같다. 다만 같은 마스크라도 Dice 값이 IoU보다 항상 크거나 같으므로, 논문이나 리포트의 숫자를 비교할 때는 어떤 지표인지 반드시 확인한다. 인스턴스 세그멘테이션에서는 여기에 더해 검출에서 본 mAP를 마스크 IoU 기준으로 계산한 <strong>mask AP</strong>를 함께 본다.
+                    </div>
+                </div>
+
+                <!-- 9. 산업 적용 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전에서의 세그멘테이션</h2>
+
+                <p>산업 비전에서 세그멘테이션이 빛나는 지점은 분명하다. 검출의 박스로는 알 수 없는 <strong>결함의 정확한 면적과 형상</strong>을 픽셀 단위로 따낼 수 있다는 점이다. 박스는 "이 근처에 결함이 있다"까지만 말하지만, 마스크는 "결함이 정확히 이 모양이고 면적은 0.32㎟"라고 답한다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-ruler-combined" style="color:#c2185b;"></i> 결함 면적·형상 측정</h4>
+                        <p>마스크의 픽셀 수를 세면 면적이, 윤곽을 따면 형상이 나온다. 합격·불합격 기준을 면적이나 길이로 정량화할 수 있어, 검출보다 한 단계 엄밀한 판정 근거가 된다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-wave-square" style="color:#1565c0;"></i> 비정형 결함</h4>
+                        <p>스크래치, 오염, 얼룩처럼 모양이 일정하지 않아 박스로 감싸기 어색한 결함에 강하다. 가늘고 휘어진 스크래치를 박스로 잡으면 대부분이 배경이지만, 마스크는 선 자체를 따낸다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-object-ungroup" style="color:#7b1fa2;"></i> 개별 결함 분리</h4>
+                        <p>인스턴스 세그멘테이션이면 붙어 있는 여러 결함도 개별로 나눈다. 결함 개수, 개별 크기 분포, 가장 큰 결함의 크기 같은 통계를 검사 결과로 낼 수 있다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-layer-group" style="color:#e65100;"></i> 전통 비전과의 연계</h4>
+                        <p>세그멘테이션 마스크를 전통 비전 측정 블록에 넘기면 면적·둘레·종횡비를 정밀 계산한다. 딥러닝이 "어디"를 찾고 전통 비전이 "얼마나"를 재는 분업이다.</p>
+                    </div>
+                </div>
+
+                <h3 id="imaginglib-seg"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ImagingLib 관점 — 세그멘테이션과 측정의 연결</h3>
+
+                <p>이 블로그가 따라가는 산업 이미징 SDK <strong>ImagingLib</strong>의 구도에서 세그멘테이션은 Deep Learning 솔루션과 Measurement 솔루션이 만나는 자리에 놓인다. 딥러닝 세그멘테이션 블록이 결함 영역의 마스크를 만들면, 그 마스크를 Measurement 블록이 받아 면적·형상·위치를 정밀 측정한다. 데이터 플로우 에디터 위에서 두 블록이 한 캔버스에 놓여 연결되는 셈이다. 검출은 박스라 측정으로 넘기기 애매하지만, 세그멘테이션의 마스크는 곧바로 정량 측정의 입력이 된다는 점이 산업 관점에서 세그멘테이션의 큰 가치다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>정밀한 만큼 라벨링 비용이 크다</strong>
+                        세그멘테이션의 장점은 픽셀 단위 정밀함이지만, 그 정밀함은 라벨링에서도 그대로 비용이 된다. 분류는 이미지당 클릭 한 번, 검출은 박스 하나면 되지만, 세그멘테이션은 결함의 윤곽을 픽셀 단위로 일일이 칠해야 한다. 한 장에 분 단위가 걸리고 작업자마다 경계 해석이 달라 일관성 확보도 어렵다. 도입을 검토할 때는 "픽셀 정밀도가 정말 필요한가, 검출 박스로 충분하지 않은가"를 먼저 따져 보는 것이 현실적이다.
+                    </div>
+                </div>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 세그멘테이션의 흔한 함정</h2>
+
+                <p>세그멘테이션은 강력하지만, 처음 다룰 때 빠지기 쉬운 함정이 몇 가지 있다. 대부분 "픽셀 단위"라는 특성에서 비롯된다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">시맨틱·인스턴스 혼동</span>
+                        <span class="term-desc">"세그멘테이션을 쓰자"고만 정하고 시맨틱인지 인스턴스인지를 안 정하면, 라벨링을 다 해 놓고 나서 "개수를 못 센다"는 사실을 깨닫게 된다. 개체를 세거나 개별 측정해야 하면 인스턴스, 영역 종류만 알면 되면 시맨틱이다. 이 결정을 라벨링 전에 해야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">라벨링 비용 과소평가</span>
+                        <span class="term-desc">픽셀 라벨링은 분류·검출과는 비교가 안 되게 비싸다. 일정과 인력을 분류 기준으로 잡으면 데이터 단계에서 프로젝트가 멈춘다. 마스크 라벨링 도구, 작업자 가이드, 검수 체계를 처음부터 비용에 포함해야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">클래스 불균형</span>
+                        <span class="term-desc">산업 결함 이미지는 결함 픽셀이 전체의 1% 미만인 경우가 흔하다. 보통의 손실 함수로 학습하면 모델이 "전부 배경"으로 찍는 쪽으로 쏠린다. Dice loss나 가중 손실로 소수 클래스에 무게를 주고, 평가는 정확도가 아니라 IoU·Dice로 해야 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">경계 부정확</span>
+                        <span class="term-desc">세그멘테이션이 가장 자주 틀리는 곳이 객체의 경계다. 다운샘플링으로 흐려진 정보를 업샘플링으로 되살리는 과정에서 경계가 한두 픽셀씩 어긋나기 쉽다. 스킵 연결, 적절한 업샘플링, 경계에 가중치를 주는 손실 등으로 보완한다. 정답 라벨의 경계 자체가 작업자마다 다르다는 점도 함께 고려한다.</span>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"더 정밀하니까 더 좋다"는 함정</strong>
+                        세그멘테이션은 검출보다 정밀하지만, 정밀함에는 라벨링 비용·학습 난이도·클래스 불균형이라는 대가가 따라온다. 검사가 "결함이 있는가 없는가"만 물으면 분류로 충분하고, "어디에 있는가"까지면 검출로 충분하다. 면적·형상을 정량적으로 재야 할 때 비로소 세그멘테이션이 필요하다. 1편의 원칙 — 도구가 아니라 문제를 먼저 정의한다 — 가 여기서도 가장 중요하다. 다음 9편에서는 불량 샘플이 드문 상황을 정면으로 다루는 이상 탐지로 넘어간다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Olaf Ronneberger, Philipp Fischer, Thomas Brox — U-Net: Convolutional Networks for Biomedical Image Segmentation (MICCAI 2015)</li>
+                        <li>Kaiming He, Georgia Gkioxari, Piotr Dollár, Ross Girshick — Mask R-CNN (ICCV 2017)</li>
+                        <li>Jonathan Long, Evan Shelhamer, Trevor Darrell — Fully Convolutional Networks for Semantic Segmentation (CVPR 2015)</li>
+                        <li>Liang-Chieh Chen et al. — DeepLab: Semantic Image Segmentation with Deep Convolutional Nets, Atrous Convolution, and Fully Connected CRFs (TPAMI 2018)</li>
+                        <li>Alexander Kirillov et al. — Panoptic Segmentation (CVPR 2019)</li>
+                        <li>Richard Szeliski — Computer Vision: Algorithms and Applications, 2nd ed. (Springer, 2022)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai');
+</script>
+
+</body>
+</html>
