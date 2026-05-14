@@ -1,0 +1,895 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>형태학 연산 — 침식·팽창·열림·닫힘 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 형태학 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#morphology" data-section="morphology">형태학이란</a>
+        <a href="#kernel" data-section="kernel">구조 요소</a>
+        <a href="#erode" data-section="erode">침식</a>
+        <a href="#dilate" data-section="dilate">팽창</a>
+        <a href="#opening" data-section="opening">열림</a>
+        <a href="#closing" data-section="closing">닫힘</a>
+        <a href="#gradient" data-section="gradient">그래디언트</a>
+        <a href="#tophat" data-section="tophat">탑햇·블랙햇</a>
+        <a href="#morphologyex" data-section="morphologyex">morphologyEx</a>
+        <a href="#practice" data-section="practice">실전</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>형태학 연산 — 침식·팽창·열림·닫힘</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>형태학 연산이 이진 영상의 형태를 다듬는 방식과 구조 요소의 역할</li>
+                        <li>침식(erode)과 팽창(dilate) — 객체를 깎고 키우는 두 기본 연산</li>
+                        <li>열림(opening)·닫힘(closing) — 침식과 팽창을 조합해 크기를 유지하며 정리</li>
+                        <li>그래디언트·탑햇·블랙햇과 morphologyEx 통합 인터페이스</li>
+                        <li>임계화 결과 정리, 결함·텍스트 추출 같은 실전 활용과 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#morphology">형태학(Morphology)이란?</a></li>
+                        <li><a href="#kernel">구조 요소 (Structuring Element)</a></li>
+                        <li><a href="#erode">침식 (erode)</a></li>
+                        <li><a href="#dilate">팽창 (dilate)</a></li>
+                        <li><a href="#opening">열림 (opening)</a></li>
+                        <li><a href="#closing">닫힘 (closing)</a></li>
+                        <li><a href="#gradient">그래디언트 (gradient)</a></li>
+                        <li><a href="#tophat">탑햇 · 블랙햇 (tophat / blackhat)</a></li>
+                        <li><a href="#morphologyex">morphologyEx와 iterations</a></li>
+                        <li><a href="#practice">실전 — 임계화 정리, 결함·텍스트 추출</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 형태학이란 -->
+                <h2 id="morphology"><i class="fa-solid fa-shapes"></i> 형태학(Morphology)이란?</h2>
+                <p><strong>형태학 연산</strong>(Morphological Operation)은 이진 영상이나 그레이스케일 영상의 <strong>형태(shape)</strong>를 다듬는 처리다. 픽셀값을 평균 내거나 미분하는 일반 필터와 달리, 형태학은 영상 속 객체의 윤곽을 깎거나 키우거나 다듬는다. 산업 검사에서 임계화 직후의 지저분한 결과를 정리하거나, 끊긴 선을 잇거나, 작은 잡티를 떼어내는 데 거의 항상 쓰인다.</p>
+
+                <p>형태학의 동작은 <strong>구조 요소</strong>(structuring element, 줄여서 커널)가 결정한다. 작은 모양 패턴 하나를 영상 위에서 미끄러뜨리며, 그 패턴이 객체와 어떻게 맞물리는지에 따라 픽셀을 켜거나 끈다. 구조 요소의 모양과 크기가 곧 연산의 성격이 된다.</p>
+
+                <p>형태학에서 가장 중요한 전제는 <strong>관심 객체가 흰색(밝은 값, 255), 배경이 검은색(0)</strong>이라는 약속이다. 침식은 흰 영역을 깎고 팽창은 흰 영역을 키운다. 검은 객체를 다루려면 먼저 영상을 반전해야 한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>형태학은 imgproc 모듈에 들어 있다</strong>
+                        <code>erode</code>, <code>dilate</code>, <code>morphologyEx</code>, <code>getStructuringElement</code>가 모두 <code>opencv2/imgproc.hpp</code>에 정의되어 있다. 별도 모듈을 링크할 필요 없이 기본 구성으로 바로 쓸 수 있다.
+                    </div>
+                </div>
+
+                <!-- 2. 구조 요소 -->
+                <h2 id="kernel"><i class="fa-solid fa-table-cells-large"></i> 구조 요소 (Structuring Element)</h2>
+                <p>구조 요소는 형태학 연산이 영상 위를 훑을 때 쓰는 작은 행렬이다. 값이 1인 칸이 "검사 대상" 영역을 뜻한다. OpenCV는 <code>getStructuringElement</code>로 표준 모양을 만들어 준다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+// 사각형 구조 요소 — 가장 흔하게 쓴다
+cv::Mat rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+
+// 타원(원형에 가까움) — 둥근 객체에 자연스럽다
+cv::Mat ellipse = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+
+// 십자 모양 — 가로/세로 방향만 다룬다
+cv::Mat cross = cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(5, 5));
+
+std::cout &lt;&lt; "cross =\n" &lt;&lt; cross &lt;&lt; std::endl;</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+cross =<br>
+[  0,   0,   1,   0,   0;<br>
+&nbsp;&nbsp;&nbsp;0,   0,   1,   0,   0;<br>
+&nbsp;&nbsp;&nbsp;1,   1,   1,   1,   1;<br>
+&nbsp;&nbsp;&nbsp;0,   0,   1,   0,   0;<br>
+&nbsp;&nbsp;&nbsp;0,   0,   1,   0,   0]</div>
+
+                <p>모양마다 객체에 미치는 영향이 다르다. 사각형은 모서리를 각지게 다루고, 타원은 둥글게 다루며, 십자는 대각선 방향을 거의 건드리지 않는다.</p>
+
+                <table>
+                    <tr><th>모양</th><th>플래그</th><th>특징</th><th>적합한 경우</th></tr>
+                    <tr><td>사각형</td><td><code>MORPH_RECT</code></td><td>모든 칸이 1, 가장 강하게 작용</td><td>일반적인 노이즈 제거, 기본 선택</td></tr>
+                    <tr><td>타원</td><td><code>MORPH_ELLIPSE</code></td><td>원형에 가까워 등방적</td><td>둥근 객체, 모서리를 둥글게 유지</td></tr>
+                    <tr><td>십자</td><td><code>MORPH_CROSS</code></td><td>가로·세로 축만 1</td><td>방향성 구조, 가는 선 보존</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>구조 요소를 따로 만들지 않아도 된다</strong>
+                        <code>erode</code>나 <code>dilate</code>에 빈 <code>cv::Mat()</code>을 커널로 넘기면 OpenCV가 3×3 사각형 구조 요소를 기본값으로 쓴다. 모양·크기를 조절하고 싶을 때만 <code>getStructuringElement</code>로 명시적으로 만든다.
+                    </div>
+                </div>
+
+                <!-- 3. 침식 -->
+                <h2 id="erode"><i class="fa-solid fa-minimize"></i> 침식 (erode)</h2>
+                <p><strong>침식</strong>은 흰 객체를 <strong>깎는</strong> 연산이다. 구조 요소를 영상 위에서 미끄러뜨리며, 구조 요소가 덮는 영역이 <strong>전부 흰색일 때만</strong> 중심 픽셀을 흰색으로 남긴다. 하나라도 검은 픽셀이 닿으면 중심 픽셀은 검게 바뀐다. 결과적으로 객체의 외곽이 한 겹씩 벗겨진다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <text x="160" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#334155">원본 객체</text>
+                        <text x="480" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#334155">침식 결과 (외곽 한 겹 제거)</text>
+                        <!-- 원본 격자 -->
+                        <g stroke="#cbd5e1" stroke-width="1">
+                            <!-- 6x6 격자, 흰 객체는 안쪽 4x4 -->
+                            <!-- row labels not needed -->
+                        </g>
+                        <g>
+                            <!-- 원본: 안쪽 4x4가 흰 객체 -->
+                            <!-- 전체 6x6 배경 -->
+                            <rect x="40" y="42" width="240" height="180" fill="#1e293b"/>
+                            <!-- 흰 객체 4x4 (좌표: x 80~240, y 72~192) -->
+                            <rect x="80" y="72" width="160" height="120" fill="#f8fafc"/>
+                            <!-- 격자선 -->
+                            <g stroke="#475569" stroke-width="1">
+                                <line x1="80" y1="42" x2="80" y2="222"/><line x1="120" y1="42" x2="120" y2="222"/>
+                                <line x1="160" y1="42" x2="160" y2="222"/><line x1="200" y1="42" x2="200" y2="222"/>
+                                <line x1="240" y1="42" x2="240" y2="222"/>
+                                <line x1="40" y1="72" x2="280" y2="72"/><line x1="40" y1="102" x2="280" y2="102"/>
+                                <line x1="40" y1="132" x2="280" y2="132"/><line x1="40" y1="162" x2="280" y2="162"/>
+                                <line x1="40" y1="192" x2="280" y2="192"/>
+                            </g>
+                            <rect x="40" y="42" width="240" height="180" fill="none" stroke="#475569" stroke-width="1.5"/>
+                        </g>
+                        <!-- 화살표 -->
+                        <line x1="300" y1="132" x2="358" y2="132" stroke="#d97706" stroke-width="3" marker-end="url(#arrowE)"/>
+                        <defs>
+                            <marker id="arrowE" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#d97706"/>
+                            </marker>
+                        </defs>
+                        <text x="329" y="122" text-anchor="middle" font-size="11" fill="#d97706" font-weight="700">erode</text>
+                        <!-- 침식 결과: 안쪽 2x2만 남음 -->
+                        <g>
+                            <rect x="380" y="42" width="240" height="180" fill="#1e293b"/>
+                            <!-- 남은 흰 객체 2x2 (x 460~540, y 102~162) -->
+                            <rect x="460" y="102" width="80" height="60" fill="#f8fafc"/>
+                            <!-- 깎인 자리 표시 (반투명 주황 테두리) -->
+                            <rect x="420" y="72" width="160" height="120" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4"/>
+                            <g stroke="#475569" stroke-width="1">
+                                <line x1="420" y1="42" x2="420" y2="222"/><line x1="460" y1="42" x2="460" y2="222"/>
+                                <line x1="500" y1="42" x2="500" y2="222"/><line x1="540" y1="42" x2="540" y2="222"/>
+                                <line x1="580" y1="42" x2="580" y2="222"/>
+                                <line x1="380" y1="72" x2="620" y2="72"/><line x1="380" y1="102" x2="620" y2="102"/>
+                                <line x1="380" y1="132" x2="620" y2="132"/><line x1="380" y1="162" x2="620" y2="162"/>
+                                <line x1="380" y1="192" x2="620" y2="192"/>
+                            </g>
+                            <rect x="380" y="42" width="240" height="180" fill="none" stroke="#475569" stroke-width="1.5"/>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">침식은 객체 외곽을 한 겹 벗겨낸다. 점선은 침식 전 객체 경계다.</div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat binary = cv::imread("binary.png", cv::IMREAD_GRAYSCALE);
+if (binary.empty())
+{
+    std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+    return -1;
+}
+
+cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+
+cv::Mat eroded;
+cv::erode(binary, eroded, kernel);
+
+cv::imshow("eroded", eroded);
+cv::waitKey(0);</code></pre>
+
+                <p>침식의 대표 용도는 두 가지다. 첫째, 객체 주변에 흩어진 <strong>작은 흰색 잡티를 제거</strong>한다 — 잡티는 작아서 침식 한두 번이면 완전히 사라진다. 둘째, 가늘게 <strong>붙어 있는 객체를 분리</strong>한다 — 연결 다리가 얇으면 침식이 먼저 끊어 준다.</p>
+
+                <!-- 4. 팽창 -->
+                <h2 id="dilate"><i class="fa-solid fa-maximize"></i> 팽창 (dilate)</h2>
+                <p><strong>팽창</strong>은 침식의 반대다. 흰 객체를 <strong>키운다</strong>. 구조 요소가 덮는 영역에 <strong>흰 픽셀이 하나라도 있으면</strong> 중심 픽셀을 흰색으로 만든다. 객체 외곽이 한 겹씩 두꺼워지고, 작은 검은 구멍은 메워진다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <text x="160" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#334155">원본 객체</text>
+                        <text x="480" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#334155">팽창 결과 (외곽 한 겹 추가)</text>
+                        <!-- 원본: 안쪽 2x2 흰 객체 -->
+                        <g>
+                            <rect x="40" y="42" width="240" height="180" fill="#1e293b"/>
+                            <rect x="120" y="102" width="80" height="60" fill="#f8fafc"/>
+                            <g stroke="#475569" stroke-width="1">
+                                <line x1="80" y1="42" x2="80" y2="222"/><line x1="120" y1="42" x2="120" y2="222"/>
+                                <line x1="160" y1="42" x2="160" y2="222"/><line x1="200" y1="42" x2="200" y2="222"/>
+                                <line x1="240" y1="42" x2="240" y2="222"/>
+                                <line x1="40" y1="72" x2="280" y2="72"/><line x1="40" y1="102" x2="280" y2="102"/>
+                                <line x1="40" y1="132" x2="280" y2="132"/><line x1="40" y1="162" x2="280" y2="162"/>
+                                <line x1="40" y1="192" x2="280" y2="192"/>
+                            </g>
+                            <rect x="40" y="42" width="240" height="180" fill="none" stroke="#475569" stroke-width="1.5"/>
+                        </g>
+                        <line x1="300" y1="132" x2="358" y2="132" stroke="#2563eb" stroke-width="3" marker-end="url(#arrowD)"/>
+                        <defs>
+                            <marker id="arrowD" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+                            </marker>
+                        </defs>
+                        <text x="329" y="122" text-anchor="middle" font-size="11" fill="#2563eb" font-weight="700">dilate</text>
+                        <!-- 팽창 결과: 안쪽 4x4 흰 객체 -->
+                        <g>
+                            <rect x="380" y="42" width="240" height="180" fill="#1e293b"/>
+                            <rect x="420" y="72" width="160" height="120" fill="#f8fafc"/>
+                            <!-- 원래 객체 자리 표시 -->
+                            <rect x="460" y="102" width="80" height="60" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="4"/>
+                            <g stroke="#475569" stroke-width="1">
+                                <line x1="420" y1="42" x2="420" y2="222"/><line x1="460" y1="42" x2="460" y2="222"/>
+                                <line x1="500" y1="42" x2="500" y2="222"/><line x1="540" y1="42" x2="540" y2="222"/>
+                                <line x1="580" y1="42" x2="580" y2="222"/>
+                                <line x1="380" y1="72" x2="620" y2="72"/><line x1="380" y1="102" x2="620" y2="102"/>
+                                <line x1="380" y1="132" x2="620" y2="132"/><line x1="380" y1="162" x2="620" y2="162"/>
+                                <line x1="380" y1="192" x2="620" y2="192"/>
+                            </g>
+                            <rect x="380" y="42" width="240" height="180" fill="none" stroke="#475569" stroke-width="1.5"/>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">팽창은 객체 외곽에 한 겹을 더한다. 점선은 팽창 전 객체 경계다.</div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+
+cv::Mat dilated;
+cv::dilate(binary, dilated, kernel);
+
+// 객체를 더 크게 키우려면 같은 연산을 여러 번 반복한다
+cv::Mat dilatedMore;
+cv::dilate(binary, dilatedMore, kernel, cv::Point(-1, -1), 3);  // 3회 반복</code></pre>
+
+                <p>팽창은 <strong>끊긴 부분을 잇거나</strong>, 객체 내부의 <strong>작은 구멍을 메우는</strong> 데 쓴다. 글자 획이 가늘게 끊겼을 때 팽창으로 다시 연결하거나, 임계화 때문에 객체 안에 생긴 검은 점을 채울 수 있다. <code>cv::Point(-1, -1)</code>은 구조 요소의 기준점을 중심으로 둔다는 의미의 기본값이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>침식과 팽창은 쌍대(dual) 관계다</strong>
+                        흰 객체를 침식하는 것은 검은 배경을 팽창하는 것과 같다. 그래서 검은 객체에 침식 효과를 주고 싶으면 영상을 반전한 뒤 팽창하거나, 그냥 <code>dilate</code>를 호출하면 된다. 이 대칭성이 다음의 열림·닫힘으로 이어진다.
+                    </div>
+                </div>
+
+                <!-- 5. 열림 -->
+                <h2 id="opening"><i class="fa-solid fa-door-open"></i> 열림 (opening)</h2>
+                <p>침식과 팽창을 한 번씩만 쓰면 객체 크기가 변한다. 침식은 객체를 줄이고 팽창은 키운다. <strong>열림</strong>은 이 둘을 순서대로 — <strong>침식 다음 팽창</strong> — 적용해서, 작은 잡티는 없애되 살아남은 객체의 크기는 거의 원래대로 되돌린다.</p>
+
+                <p>원리는 단순하다. 침식 단계에서 작은 흰 잡티는 완전히 사라진다. 이미 사라진 것은 이어지는 팽창으로도 되살아나지 않는다. 반면 큰 객체는 침식으로 한 겹 깎였다가 팽창으로 다시 한 겹 붙으므로 크기가 보존된다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 1단계 원본 -->
+                        <text x="90" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">원본 (큰 객체 + 잡티)</text>
+                        <rect x="30" y="38" width="120" height="120" fill="#1e293b"/>
+                        <rect x="50" y="58" width="60" height="60" fill="#f8fafc"/>
+                        <rect x="120" y="46" width="12" height="12" fill="#f8fafc"/>
+                        <rect x="40" y="130" width="10" height="10" fill="#f8fafc"/>
+                        <rect x="30" y="38" width="120" height="120" fill="none" stroke="#475569" stroke-width="1.5"/>
+                        <text x="90" y="178" text-anchor="middle" font-size="10" fill="#64748b">잡티가 붙어 있음</text>
+                        <!-- 화살표 침식 -->
+                        <line x1="160" y1="98" x2="195" y2="98" stroke="#d97706" stroke-width="2.5" marker-end="url(#arrowO)"/>
+                        <text x="177" y="90" text-anchor="middle" font-size="10" fill="#d97706" font-weight="700">erode</text>
+                        <defs>
+                            <marker id="arrowO" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L8,3 z" fill="#d97706"/>
+                            </marker>
+                            <marker id="arrowO2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/>
+                            </marker>
+                        </defs>
+                        <!-- 2단계 침식 후 -->
+                        <text x="265" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">침식 후</text>
+                        <rect x="205" y="38" width="120" height="120" fill="#1e293b"/>
+                        <rect x="245" y="78" width="20" height="20" fill="#f8fafc"/>
+                        <rect x="205" y="38" width="120" height="120" fill="none" stroke="#475569" stroke-width="1.5"/>
+                        <text x="265" y="178" text-anchor="middle" font-size="10" fill="#64748b">잡티 소멸, 객체 축소</text>
+                        <!-- 화살표 팽창 -->
+                        <line x1="335" y1="98" x2="370" y2="98" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrowO2)"/>
+                        <text x="352" y="90" text-anchor="middle" font-size="10" fill="#2563eb" font-weight="700">dilate</text>
+                        <!-- 3단계 결과 -->
+                        <text x="445" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">열림 결과</text>
+                        <rect x="385" y="38" width="120" height="120" fill="#1e293b"/>
+                        <rect x="405" y="58" width="60" height="60" fill="#f8fafc"/>
+                        <rect x="385" y="38" width="120" height="120" fill="none" stroke="#475569" stroke-width="1.5"/>
+                        <text x="445" y="178" text-anchor="middle" font-size="10" fill="#64748b">잡티 없고 크기 유지</text>
+                        <!-- 설명 -->
+                        <text x="575" y="94" text-anchor="middle" font-size="11" fill="#065f46" font-weight="700">opening</text>
+                        <text x="575" y="112" text-anchor="middle" font-size="10" fill="#475569">= 침식 → 팽창</text>
+                    </svg>
+                    <div class="diagram-caption">열림은 침식으로 잡티를 없앤 뒤 팽창으로 큰 객체의 크기를 복원한다.</div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+
+// 방법 1 — 직접 침식 후 팽창
+cv::Mat tmp, opened;
+cv::erode(binary, tmp, kernel);
+cv::dilate(tmp, opened, kernel);
+
+// 방법 2 — morphologyEx로 한 번에 (권장)
+cv::Mat openedEx;
+cv::morphologyEx(binary, openedEx, cv::MORPH_OPEN, kernel);</code></pre>
+
+                <p>열림은 <strong>밝은 잡티 제거</strong>의 표준 도구다. 임계화 결과에 흩어진 자잘한 흰 점, 센서 노이즈로 생긴 알갱이를 객체 크기를 건드리지 않고 깨끗하게 걷어낸다.</p>
+
+                <!-- 6. 닫힘 -->
+                <h2 id="closing"><i class="fa-solid fa-door-closed"></i> 닫힘 (closing)</h2>
+                <p><strong>닫힘</strong>은 열림의 반대 순서다. <strong>팽창 다음 침식</strong>을 적용한다. 팽창 단계에서 객체 안의 작은 검은 구멍과 객체 사이의 좁은 틈이 메워지고, 이어지는 침식이 부풀어 오른 외곽을 다시 깎아 원래 크기로 되돌린다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 1단계 원본 (구멍 뚫린 객체) -->
+                        <text x="90" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">원본 (구멍·틈 있음)</text>
+                        <rect x="30" y="38" width="120" height="120" fill="#1e293b"/>
+                        <rect x="50" y="58" width="80" height="80" fill="#f8fafc"/>
+                        <rect x="78" y="86" width="16" height="16" fill="#1e293b"/>
+                        <rect x="30" y="38" width="120" height="120" fill="none" stroke="#475569" stroke-width="1.5"/>
+                        <text x="90" y="178" text-anchor="middle" font-size="10" fill="#64748b">내부에 검은 구멍</text>
+                        <!-- 화살표 팽창 -->
+                        <line x1="160" y1="98" x2="195" y2="98" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrowC)"/>
+                        <text x="177" y="90" text-anchor="middle" font-size="10" fill="#2563eb" font-weight="700">dilate</text>
+                        <defs>
+                            <marker id="arrowC" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/>
+                            </marker>
+                            <marker id="arrowC2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L8,3 z" fill="#d97706"/>
+                            </marker>
+                        </defs>
+                        <!-- 2단계 팽창 후 -->
+                        <text x="265" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">팽창 후</text>
+                        <rect x="205" y="38" width="120" height="120" fill="#1e293b"/>
+                        <rect x="213" y="46" width="104" height="104" fill="#f8fafc"/>
+                        <rect x="205" y="38" width="120" height="120" fill="none" stroke="#475569" stroke-width="1.5"/>
+                        <text x="265" y="178" text-anchor="middle" font-size="10" fill="#64748b">구멍 메워짐, 객체 확대</text>
+                        <!-- 화살표 침식 -->
+                        <line x1="335" y1="98" x2="370" y2="98" stroke="#d97706" stroke-width="2.5" marker-end="url(#arrowC2)"/>
+                        <text x="352" y="90" text-anchor="middle" font-size="10" fill="#d97706" font-weight="700">erode</text>
+                        <!-- 3단계 결과 -->
+                        <text x="445" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">닫힘 결과</text>
+                        <rect x="385" y="38" width="120" height="120" fill="#1e293b"/>
+                        <rect x="405" y="58" width="80" height="80" fill="#f8fafc"/>
+                        <rect x="385" y="38" width="120" height="120" fill="none" stroke="#475569" stroke-width="1.5"/>
+                        <text x="445" y="178" text-anchor="middle" font-size="10" fill="#64748b">구멍 없고 크기 유지</text>
+                        <text x="575" y="94" text-anchor="middle" font-size="11" fill="#065f46" font-weight="700">closing</text>
+                        <text x="575" y="112" text-anchor="middle" font-size="10" fill="#475569">= 팽창 → 침식</text>
+                    </svg>
+                    <div class="diagram-caption">닫힘은 팽창으로 구멍·틈을 메운 뒤 침식으로 객체 크기를 복원한다.</div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+
+// 방법 1 — 직접 팽창 후 침식
+cv::Mat tmp, closed;
+cv::dilate(binary, tmp, kernel);
+cv::erode(tmp, closed, kernel);
+
+// 방법 2 — morphologyEx로 한 번에 (권장)
+cv::Mat closedEx;
+cv::morphologyEx(binary, closedEx, cv::MORPH_CLOSE, kernel);</code></pre>
+
+                <p>닫힘은 <strong>객체 내부의 구멍을 메우거나 끊긴 부분을 잇는</strong> 데 쓴다. 임계화로 객체 안에 생긴 검은 얼룩, 글자 획 사이의 가는 틈을 객체 크기를 키우지 않고 채운다. 열림과 닫힘은 보통 짝으로 기억한다 — <strong>열림은 흰 잡티 제거, 닫힘은 검은 구멍 메우기</strong>.</p>
+
+                <table>
+                    <tr><th>연산</th><th>순서</th><th>효과</th><th>크기 변화</th></tr>
+                    <tr><td>침식</td><td>erode</td><td>흰 객체 깎기, 잡티 제거, 객체 분리</td><td>줄어듦</td></tr>
+                    <tr><td>팽창</td><td>dilate</td><td>흰 객체 키우기, 구멍 메우기, 연결</td><td>커짐</td></tr>
+                    <tr><td>열림</td><td>침식 → 팽창</td><td>작은 흰 잡티 제거</td><td>거의 유지</td></tr>
+                    <tr><td>닫힘</td><td>팽창 → 침식</td><td>작은 검은 구멍·틈 메우기</td><td>거의 유지</td></tr>
+                </table>
+
+                <!-- 7. 그래디언트 -->
+                <h2 id="gradient"><i class="fa-solid fa-border-style"></i> 그래디언트 (gradient)</h2>
+                <p>형태학 <strong>그래디언트</strong>는 <strong>팽창 결과에서 침식 결과를 뺀</strong> 영상이다. 팽창된 객체는 원본보다 한 겹 크고, 침식된 객체는 한 겹 작다. 둘의 차이는 정확히 객체의 <strong>외곽선 띠</strong>가 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+
+// morphologyEx로 바로 구한다
+cv::Mat gradient;
+cv::morphologyEx(binary, gradient, cv::MORPH_GRADIENT, kernel);
+
+// 원리 확인 — 팽창 - 침식과 같다
+cv::Mat dil, ero, manual;
+cv::dilate(binary, dil, kernel);
+cv::erode(binary, ero, kernel);
+cv::subtract(dil, ero, manual);   // gradient와 동일한 결과</code></pre>
+
+                <p>그래디언트는 객체의 윤곽을 두께가 균일한 띠로 뽑아낸다. <code>Canny</code> 같은 엣지 검출기와 달리 입력이 이진 영상이고 구조 요소 크기로 외곽선 두께를 직접 조절할 수 있다. 구조 요소가 클수록 외곽선이 두껍게 나온다.</p>
+
+                <!-- 8. 탑햇 블랙햇 -->
+                <h2 id="tophat"><i class="fa-solid fa-hat-cowboy"></i> 탑햇 · 블랙햇 (tophat / blackhat)</h2>
+                <p><strong>탑햇</strong>(top hat)은 <strong>원본에서 열림 결과를 뺀</strong> 영상이다. 열림은 작은 밝은 요소를 지운다. 그러니 원본에서 열림을 빼면 <strong>열림 때 사라진 작은 밝은 요소들</strong>만 남는다.</p>
+
+                <p><strong>블랙햇</strong>(black hat)은 <strong>닫힘 결과에서 원본을 뺀</strong> 영상이다. 닫힘은 작은 어두운 요소를 메운다. 닫힘에서 원본을 빼면 <strong>닫힘 때 메워진 작은 어두운 요소들</strong>만 남는다.</p>
+
+                <table>
+                    <tr><th>연산</th><th>정의</th><th>추출 대상</th><th>대표 용도</th></tr>
+                    <tr><td>탑햇</td><td>원본 − 열림</td><td>배경보다 밝은 작은 요소</td><td>불균일 배경 위 밝은 결함·입자</td></tr>
+                    <tr><td>블랙햇</td><td>닫힘 − 원본</td><td>배경보다 어두운 작은 요소</td><td>밝은 표면의 어두운 흠집·글자</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// 조명이 고르지 않은 그레이스케일 영상에서 작은 밝은 결함 추출
+cv::Mat gray = cv::imread("surface.png", cv::IMREAD_GRAYSCALE);
+
+// 결함보다 큰 구조 요소를 쓴다 — 결함이 열림에서 사라지도록
+cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(15, 15));
+
+cv::Mat tophat, blackhat;
+cv::morphologyEx(gray, tophat, cv::MORPH_TOPHAT, kernel);     // 밝은 요소
+cv::morphologyEx(gray, blackhat, cv::MORPH_BLACKHAT, kernel); // 어두운 요소</code></pre>
+
+                <p>탑햇과 블랙햇의 진짜 가치는 <strong>배경 불균일 보정</strong>에 있다. 조명이 한쪽으로 치우쳐 배경 밝기가 서서히 변하는 영상에서는 단순 임계화가 잘 안 된다. 탑햇은 큰 구조 요소가 잡아내는 "완만한 배경"을 빼버리므로, 그 위에 얹힌 작고 날카로운 요소만 평평한 배경 위에 남는다. 그 결과에 임계화를 걸면 훨씬 안정적이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>구조 요소는 "찾으려는 요소보다 크게"</strong>
+                        탑햇·블랙햇에서는 구조 요소 크기가 핵심이다. 추출하려는 결함·글자보다 구조 요소가 커야 그 요소가 열림/닫힘 단계에서 제거되고, 차 영상에 남는다. 너무 작으면 요소가 그대로 살아남아 차 영상이 비게 된다.
+                    </div>
+                </div>
+
+                <!-- 9. morphologyEx -->
+                <h2 id="morphologyex"><i class="fa-solid fa-layer-group"></i> morphologyEx와 iterations</h2>
+                <p><code>morphologyEx</code>는 형태학 연산의 <strong>통합 인터페이스</strong>다. 연산 종류를 플래그로 받아서 침식·팽창을 포함한 모든 형태학 연산을 하나의 함수로 처리한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// op 인자만 바꾸면 연산이 바뀐다
+cv::morphologyEx(src, dst, cv::MORPH_OPEN, kernel);      // 열림
+cv::morphologyEx(src, dst, cv::MORPH_CLOSE, kernel);     // 닫힘
+cv::morphologyEx(src, dst, cv::MORPH_GRADIENT, kernel);  // 그래디언트
+cv::morphologyEx(src, dst, cv::MORPH_TOPHAT, kernel);    // 탑햇
+cv::morphologyEx(src, dst, cv::MORPH_BLACKHAT, kernel);  // 블랙햇
+cv::morphologyEx(src, dst, cv::MORPH_ERODE, kernel);     // 침식 (erode와 동일)
+cv::morphologyEx(src, dst, cv::MORPH_DILATE, kernel);    // 팽창 (dilate와 동일)</code></pre>
+
+                <p><code>iterations</code> 인자는 연산을 <strong>몇 번 반복할지</strong> 지정한다. <code>erode</code>, <code>dilate</code>, <code>morphologyEx</code> 모두 받는다. 효과를 더 강하게 주고 싶을 때 구조 요소를 키우는 대신 반복 횟수를 늘리는 선택지가 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+
+// anchor는 기본값 Point(-1,-1), iterations만 3으로
+cv::morphologyEx(binary, dst, cv::MORPH_OPEN, kernel,
+                 cv::Point(-1, -1), 3);
+
+// erode / dilate도 같은 자리에 iterations를 받는다
+cv::erode(binary, dst, kernel, cv::Point(-1, -1), 2);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>열림·닫힘의 iterations는 의미가 다르다</strong>
+                        <code>MORPH_OPEN</code>에 <code>iterations=2</code>를 주면 "(침식, 침식, 팽창, 팽창)"이 아니라 "(침식→팽창)을 2회"가 된다. 침식 2번 후 팽창 2번과는 결과가 다르다. 강한 효과가 필요하면 보통 반복 횟수보다 <strong>구조 요소 크기</strong>를 키우는 편이 예측하기 쉽다.
+                    </div>
+                </div>
+
+                <!-- 10. 실전 -->
+                <h2 id="practice"><i class="fa-solid fa-flask"></i> 실전 — 임계화 정리, 결함·텍스트 추출</h2>
+                <p>형태학이 실제로 가장 많이 쓰이는 곳은 <strong>임계화 직후</strong>다. 임계화 결과는 거의 항상 지저분하다 — 배경에 흰 잡티가 흩어져 있고, 객체 안에는 검은 구멍이 뚫려 있다. 열림으로 잡티를 걷고 닫힘으로 구멍을 메우면 깨끗한 마스크가 된다.</p>
+
+                <h3 id="practice-clean"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 임계화 결과 정리</h3>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat gray = cv::imread("part.png", cv::IMREAD_GRAYSCALE);
+if (gray.empty())
+{
+    std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+    return -1;
+}
+
+// 1) 임계화 — 결과는 잡티와 구멍이 많다
+cv::Mat binary;
+cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
+cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+
+// 2) 열림으로 배경의 흰 잡티 제거
+cv::Mat cleaned;
+cv::morphologyEx(binary, cleaned, cv::MORPH_OPEN, kernel);
+
+// 3) 닫힘으로 객체 내부의 검은 구멍 메우기
+cv::Mat filled;
+cv::morphologyEx(cleaned, filled, cv::MORPH_CLOSE, kernel);
+
+// filled는 이제 findContours 등에 바로 쓸 수 있는 깨끗한 마스크다
+cv::imshow("filled mask", filled);
+cv::waitKey(0);</code></pre>
+
+                <p>순서가 중요하다. <strong>열림을 먼저</strong> 한다 — 잡티를 먼저 떼어내야 다음 닫힘 단계에서 잡티가 객체에 붙어버리지 않는다. 닫힘을 먼저 하면 잡티 주변 틈까지 메워져 잡티가 더 커진다.</p>
+
+                <h3 id="practice-defect"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 표면 결함 추출 (탑햇)</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 조명이 불균일한 금속 표면에서 밝은 스크래치·입자 검출
+cv::Mat surface = cv::imread("metal.png", cv::IMREAD_GRAYSCALE);
+
+// 결함보다 충분히 큰 구조 요소 — 완만한 배경 조명을 잡아낸다
+cv::Mat bgKernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(31, 31));
+
+// 탑햇 — 배경 조명을 제거하고 작은 밝은 결함만 남긴다
+cv::Mat tophat;
+cv::morphologyEx(surface, tophat, cv::MORPH_TOPHAT, bgKernel);
+
+// 평평해진 배경 위라 단순 임계화가 잘 동작한다
+cv::Mat defects;
+cv::threshold(tophat, defects, 30, 255, cv::THRESH_BINARY);</code></pre>
+
+                <h3 id="practice-text"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 텍스트 영역 묶기 (닫힘)</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 임계화된 글자들을 단어·줄 단위 블록으로 묶는다
+cv::Mat textBin = cv::imread("text.png", cv::IMREAD_GRAYSCALE);
+cv::threshold(textBin, textBin, 0, 255,
+              cv::THRESH_BINARY_INV | cv::THRESH_OTSU);  // 글자를 흰색으로
+
+// 가로로 긴 구조 요소 — 같은 줄의 글자들을 가로로 잇는다
+cv::Mat lineKernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(25, 3));
+
+cv::Mat textBlocks;
+cv::morphologyEx(textBin, textBlocks, cv::MORPH_CLOSE, lineKernel);
+// 이제 글자들이 줄 단위 덩어리로 뭉쳐 findContours로 줄 영역을 잡을 수 있다</code></pre>
+
+                <p>텍스트 묶기에서는 <strong>구조 요소를 비대칭으로</strong> 만든 점이 핵심이다. <code>Size(25, 3)</code>처럼 가로로 길게 잡으면 같은 줄의 글자만 가로로 연결되고, 위아래 다른 줄과는 섞이지 않는다. 구조 요소의 모양 자체가 "무엇을 어떻게 묶을지"를 결정한다.</p>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>형태학은 함수 자체는 단순하지만, 순서와 전제 조건에서 실수가 잦다.</p>
+
+                <h3 id="pitfall-order"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 침식·팽창 순서 혼동 (열림 vs 닫힘)</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>열림과 닫힘을 거꾸로 쓰면 효과가 정반대다</strong>
+                        열림(침식→팽창)은 흰 잡티를 지우고, 닫힘(팽창→침식)은 검은 구멍을 메운다. 흰 잡티를 없애려고 닫힘을 쓰면 잡티가 오히려 커지고, 구멍을 메우려고 열림을 쓰면 구멍이 더 뚫린다. "열림은 여는 것 — 객체 사이를 벌려 잡티를 떼고", "닫힘은 닫는 것 — 객체 안 구멍을 막는다"로 외우면 헷갈리지 않는다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-size"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 구조 요소 크기가 과도함</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>큰 구조 요소는 잡티와 함께 진짜 객체도 망가뜨린다</strong>
+                        잡티를 확실히 지우려고 구조 요소를 <code>Size(15, 15)</code>처럼 키우면, 가는 객체나 작은 진짜 특징까지 같이 사라진다. 열림·닫힘이라도 구조 요소가 객체 폭에 육박하면 형태가 심하게 뭉개진다. <strong>제거 대상보다 약간만 큰</strong> 최소 크기에서 시작해 조금씩 키우는 것이 안전하다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁨 — 잡티는 2~3px인데 구조 요소가 너무 크다
+cv::Mat tooBig = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(15, 15));
+cv::morphologyEx(binary, dst, cv::MORPH_OPEN, tooBig);
+// → 잡티는 지워지지만 가는 객체도 끊기거나 사라진다
+
+// 좋음 — 잡티 크기에 맞춰 최소한으로
+cv::Mat justRight = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+cv::morphologyEx(binary, dst, cv::MORPH_OPEN, justRight);</code></pre>
+
+                <h3 id="pitfall-white"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 흰색 객체 가정을 잊음</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>형태학은 흰 객체·검은 배경을 전제한다</strong>
+                        <code>erode</code>는 흰 영역을 깎고 <code>dilate</code>는 흰 영역을 키운다. 객체가 검은색인 영상(밝은 배경에 어두운 글자 등)에 그대로 침식을 걸면 의도와 정반대로 검은 객체가 오히려 커진다. 객체가 어두우면 먼저 <code>cv::bitwise_not</code>이나 <code>THRESH_BINARY_INV</code>로 반전해 객체를 흰색으로 만든 뒤 형태학을 적용한다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 밝은 배경 + 어두운 객체인 경우
+cv::Mat darkObject = cv::imread("dark_on_light.png", cv::IMREAD_GRAYSCALE);
+
+// 방법 A — 임계화 단계에서 바로 반전
+cv::Mat inv;
+cv::threshold(darkObject, inv, 0, 255,
+              cv::THRESH_BINARY_INV | cv::THRESH_OTSU);  // 객체가 흰색이 된다
+
+// 방법 B — 이미 이진 영상이면 bitwise_not으로 반전
+cv::Mat alreadyBinary = cv::imread("binary_dark.png", cv::IMREAD_GRAYSCALE);
+cv::Mat flipped;
+cv::bitwise_not(alreadyBinary, flipped);
+
+// 이제 침식·팽창이 의도대로 동작한다
+cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+cv::erode(inv, inv, kernel);</code></pre>
+
+                <h3 id="pitfall-gray"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 그레이스케일에도 적용되지만 보통은 이진 영상에</h3>
+                <p>형태학 연산은 그레이스케일 영상에도 동작한다 — 침식은 국소 최솟값, 팽창은 국소 최댓값을 취한다. 탑햇·블랙햇은 오히려 그레이스케일에서 진가를 발휘한다. 다만 침식·팽창·열림·닫힘으로 <strong>형태를 다듬는 본래 목적</strong>은 객체와 배경이 명확히 갈린 <strong>이진 영상</strong>에서 가장 직관적이고 예측 가능하다. 그레이스케일에 형태학을 쓸 때는 결과가 밝기 분포에 따라 달라진다는 점을 염두에 둔다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        열림은 흰 잡티 제거, 닫힘은 검은 구멍 메우기 — 순서를 헷갈리지 않는다. 구조 요소는 제거 대상보다 약간만 크게 잡고, 객체가 어두우면 반전을 먼저 한다. 임계화 정리에서는 열림 다음 닫힘 순서를 지킨다. 이 네 가지가 형태학 실수의 대부분을 막아 준다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — OpenCV 공식 문서 (Eroding and Dilating, More Morphology Transformations 튜토리얼)</li>
+                        <li>docs.opencv.org — imgproc 모듈 레퍼런스 (erode, dilate, morphologyEx, getStructuringElement)</li>
+                        <li>OpenCV Tutorials — "Morphological Operations" 공식 가이드</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

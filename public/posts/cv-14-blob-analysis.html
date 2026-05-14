@@ -1,0 +1,1009 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>블롭 분석 — 연결 요소와 특징 필터링 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is-blob" data-section="what-is-blob">블롭이란</a>
+        <a href="#connectivity" data-section="connectivity">연결성</a>
+        <a href="#connected-components" data-section="connected-components">connectedComponents</a>
+        <a href="#with-stats" data-section="with-stats">WithStats</a>
+        <a href="#features" data-section="features">블롭 특징</a>
+        <a href="#filtering" data-section="filtering">특징 필터링</a>
+        <a href="#simple-blob-detector" data-section="simple-blob-detector">SimpleBlobDetector</a>
+        <a href="#contour-vs-cc" data-section="contour-vs-cc">윤곽 vs 연결요소</a>
+        <a href="#practice" data-section="practice">실전</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>블롭 분석 — 연결 요소와 특징 필터링</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>블롭이 무엇이고 블롭 분석이 산업 검사에서 왜 핵심인지</li>
+                        <li>4-연결과 8-연결의 차이, 그리고 결과가 어떻게 달라지는지</li>
+                        <li><code>connectedComponents</code>와 <code>connectedComponentsWithStats</code>로 라벨과 통계를 뽑는 법</li>
+                        <li>면적·중심·바운딩박스·원형도·종횡비·채움률 같은 블롭 특징 측정</li>
+                        <li>복수 특징을 조합해 양품 블롭과 불량 블롭을 판정하는 필터링</li>
+                        <li><code>SimpleBlobDetector</code> 내장 검출기와 윤곽 기반 분석과의 비교</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is-blob">블롭(Blob)이란?</a></li>
+                        <li><a href="#connectivity">연결성 — 4-연결 vs 8-연결</a></li>
+                        <li><a href="#connected-components">connectedComponents — 라벨링</a></li>
+                        <li><a href="#with-stats">connectedComponentsWithStats — 통계까지</a></li>
+                        <li><a href="#features">블롭 특징 — 면적·중심·원형도</a></li>
+                        <li><a href="#filtering">특징 기반 필터링</a></li>
+                        <li><a href="#simple-blob-detector">SimpleBlobDetector</a></li>
+                        <li><a href="#contour-vs-cc">윤곽 기반 vs 연결 요소 기반</a></li>
+                        <li><a href="#practice">실전 — 개수 세기·결함 검출</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 블롭이란 -->
+                <h2 id="what-is-blob"><i class="fa-solid fa-circle-dot"></i> 블롭(Blob)이란?</h2>
+                <p><strong>블롭</strong>(Blob, Binary Large OBject)은 이진 영상에서 서로 연결된 픽셀들이 이루는 하나의 덩어리다. 쉽게 말해 배경과 구분되는 <strong>객체 하나</strong>다. 검사 영상에서 부품 한 개, 구멍 한 개, 이물 한 점이 각각 하나의 블롭이 된다.</p>
+
+                <p><strong>블롭 분석</strong>(Blob Analysis)은 이렇게 찾아낸 각 덩어리의 특징 — 면적, 위치, 모양 — 을 측정하고, 그 수치로 객체를 분류하거나 판정하는 작업이다. 산업 비전에서 "부품이 몇 개 있는가", "이 점은 정상 구멍인가 이물인가", "찍혀야 할 마크가 빠지지 않았는가" 같은 질문은 모두 블롭 분석으로 답한다.</p>
+
+                <p>전체 흐름은 단순하다. 원본 영상을 이진화해서 객체와 배경을 가르고 → 연결된 픽셀을 묶어 블롭을 식별하고 → 각 블롭의 특징을 측정하고 → 그 특징으로 걸러내거나 판정한다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 660 220" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 단계 1: 원본 -->
+                        <rect x="20" y="50" width="120" height="120" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+                        <circle cx="60" cy="90" r="18" fill="#cbd5e1"/>
+                        <circle cx="105" cy="120" r="14" fill="#cbd5e1"/>
+                        <rect x="70" y="130" width="34" height="14" fill="#cbd5e1"/>
+                        <text x="80" y="190" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">원본 영상</text>
+                        <!-- 화살표 -->
+                        <text x="160" y="115" text-anchor="middle" font-size="20" fill="#10b981">&#8594;</text>
+                        <text x="160" y="135" text-anchor="middle" font-size="9" fill="#64748b">이진화</text>
+                        <!-- 단계 2: 이진 -->
+                        <rect x="185" y="50" width="120" height="120" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+                        <circle cx="225" cy="90" r="18" fill="#fff"/>
+                        <circle cx="270" cy="120" r="14" fill="#fff"/>
+                        <rect x="235" y="130" width="34" height="14" fill="#fff"/>
+                        <text x="245" y="190" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">이진 영상</text>
+                        <!-- 화살표 -->
+                        <text x="325" y="115" text-anchor="middle" font-size="20" fill="#10b981">&#8594;</text>
+                        <text x="325" y="135" text-anchor="middle" font-size="9" fill="#64748b">라벨링</text>
+                        <!-- 단계 3: 라벨 -->
+                        <rect x="350" y="50" width="120" height="120" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+                        <circle cx="390" cy="90" r="18" fill="#f87171"/>
+                        <text x="390" y="94" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">1</text>
+                        <circle cx="435" cy="120" r="14" fill="#60a5fa"/>
+                        <text x="435" y="125" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">2</text>
+                        <rect x="400" y="130" width="34" height="14" fill="#fbbf24"/>
+                        <text x="417" y="141" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">3</text>
+                        <text x="410" y="190" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">라벨 영상</text>
+                        <!-- 화살표 -->
+                        <text x="490" y="115" text-anchor="middle" font-size="20" fill="#10b981">&#8594;</text>
+                        <text x="490" y="135" text-anchor="middle" font-size="9" fill="#64748b">특징·판정</text>
+                        <!-- 단계 4: 판정 -->
+                        <rect x="515" y="50" width="125" height="120" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+                        <text x="577" y="85" text-anchor="middle" font-size="10" fill="#065f46">#1 area=1017 OK</text>
+                        <text x="577" y="105" text-anchor="middle" font-size="10" fill="#065f46">#2 area=615 OK</text>
+                        <text x="577" y="125" text-anchor="middle" font-size="10" fill="#b91c1c">#3 area=476 NG</text>
+                        <text x="577" y="190" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">특징·판정</text>
+                    </svg>
+                    <div class="diagram-caption">블롭 분석 파이프라인 — 이진화로 객체를 분리하고, 라벨링으로 덩어리를 식별하고, 특징으로 판정한다.</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>블롭 분석의 입력은 항상 이진 영상이다</strong>
+                        블롭 분석은 픽셀이 객체(보통 255)인지 배경(0)인지가 이미 정해진 상태에서 시작한다. 그래서 이진화(threshold) 품질이 블롭 분석 결과를 사실상 결정한다. 이 글은 이진 영상이 준비되었다고 가정하고 진행한다.
+                    </div>
+                </div>
+
+                <!-- 2. 연결성 -->
+                <h2 id="connectivity"><i class="fa-solid fa-diagram-project"></i> 연결성 — 4-연결 vs 8-연결</h2>
+                <p>"픽셀이 연결되어 있다"를 정의하려면 <strong>어느 이웃까지 연결로 볼 것인가</strong>를 정해야 한다. 이것이 <strong>연결성</strong>(connectivity)이다. 두 가지 기준이 쓰인다.</p>
+
+                <ul>
+                    <li><strong>4-연결</strong> — 상하좌우 4개 이웃만 연결로 본다. 대각선은 연결로 치지 않는다.</li>
+                    <li><strong>8-연결</strong> — 상하좌우 + 대각선 4개까지 8개 이웃 전부를 연결로 본다.</li>
+                </ul>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 560 240" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 4-연결 -->
+                        <text x="130" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#1e3a5f">4-연결</text>
+                        <g stroke="#cbd5e1" stroke-width="1" fill="#f8fafc">
+                            <rect x="50" y="40" width="50" height="50"/><rect x="100" y="40" width="50" height="50"/><rect x="150" y="40" width="50" height="50"/>
+                            <rect x="50" y="90" width="50" height="50"/><rect x="150" y="90" width="50" height="50"/>
+                            <rect x="50" y="140" width="50" height="50"/><rect x="100" y="140" width="50" height="50"/><rect x="150" y="140" width="50" height="50"/>
+                        </g>
+                        <!-- 중심 + 이웃 강조 -->
+                        <rect x="100" y="90" width="50" height="50" fill="#2563eb" stroke="#1e40af" stroke-width="1.5"/>
+                        <rect x="100" y="40" width="50" height="50" fill="#93c5fd" stroke="#2563eb" stroke-width="1.5"/>
+                        <rect x="50" y="90" width="50" height="50" fill="#93c5fd" stroke="#2563eb" stroke-width="1.5"/>
+                        <rect x="150" y="90" width="50" height="50" fill="#93c5fd" stroke="#2563eb" stroke-width="1.5"/>
+                        <rect x="100" y="140" width="50" height="50" fill="#93c5fd" stroke="#2563eb" stroke-width="1.5"/>
+                        <text x="125" y="120" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">P</text>
+                        <text x="130" y="220" text-anchor="middle" font-size="11" fill="#64748b">상하좌우 4개 이웃만</text>
+
+                        <!-- 8-연결 -->
+                        <text x="420" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#7f1d1d">8-연결</text>
+                        <g stroke="#cbd5e1" stroke-width="1">
+                            <rect x="340" y="40" width="50" height="50" fill="#fecaca"/><rect x="390" y="40" width="50" height="50" fill="#fecaca"/><rect x="440" y="40" width="50" height="50" fill="#fecaca"/>
+                            <rect x="340" y="90" width="50" height="50" fill="#fecaca"/><rect x="440" y="90" width="50" height="50" fill="#fecaca"/>
+                            <rect x="340" y="140" width="50" height="50" fill="#fecaca"/><rect x="390" y="140" width="50" height="50" fill="#fecaca"/><rect x="440" y="140" width="50" height="50" fill="#fecaca"/>
+                        </g>
+                        <g stroke="#dc2626" stroke-width="1.5" fill="none">
+                            <rect x="340" y="40" width="50" height="50"/><rect x="390" y="40" width="50" height="50"/><rect x="440" y="40" width="50" height="50"/>
+                            <rect x="340" y="90" width="50" height="50"/><rect x="440" y="90" width="50" height="50"/>
+                            <rect x="340" y="140" width="50" height="50"/><rect x="390" y="140" width="50" height="50"/><rect x="440" y="140" width="50" height="50"/>
+                        </g>
+                        <rect x="390" y="90" width="50" height="50" fill="#dc2626" stroke="#991b1b" stroke-width="1.5"/>
+                        <text x="415" y="120" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">P</text>
+                        <text x="420" y="220" text-anchor="middle" font-size="11" fill="#64748b">대각선 포함 8개 이웃</text>
+                    </svg>
+                    <div class="diagram-caption">같은 픽셀 P라도 4-연결은 상하좌우만, 8-연결은 대각선까지 이웃으로 본다.</div>
+                </div>
+
+                <p>연결성을 어떻게 잡느냐에 따라 블롭 개수가 달라진다. 대각선으로만 닿아 있는 두 영역은 <strong>4-연결에서는 별개의 블롭 2개</strong>, <strong>8-연결에서는 하나로 합쳐진 블롭 1개</strong>가 된다. 산업 검사에서는 객체가 대각선으로 살짝 이어진 경우를 한 덩어리로 보고 싶을 때가 많아 <strong>8-연결</strong>을 기본으로 쓴다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>4-연결과 8-연결을 혼동하면 개수가 어긋난다</strong>
+                        같은 영상에서 4-연결로 세면 5개, 8-연결로 세면 3개가 나올 수 있다. 검사 스펙에 "개수 N개"가 박혀 있다면 어떤 연결성으로 센 N인지 반드시 통일해야 한다. 코드 곳곳에서 연결성 값을 제각각 쓰면 디버깅이 지옥이 된다.
+                    </div>
+                </div>
+
+                <!-- 3. connectedComponents -->
+                <h2 id="connected-components"><i class="fa-solid fa-tags"></i> connectedComponents — 라벨링</h2>
+                <p>OpenCV의 <code>cv::connectedComponents</code>는 이진 영상을 받아 <strong>연결된 픽셀 덩어리마다 고유한 정수 라벨</strong>을 부여한다. 결과는 원본과 같은 크기의 <strong>라벨 영상</strong>(<code>CV_32S</code>)이다. 배경은 라벨 <code>0</code>, 첫 번째 블롭은 <code>1</code>, 두 번째는 <code>2</code> ... 식으로 번호가 매겨진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;iostream&gt;
+
+int main()
+{
+    // 그레이스케일로 읽어서 이진화한다
+    cv::Mat src = cv::imread("parts.png", cv::IMREAD_GRAYSCALE);
+    if (src.empty())
+    {
+        std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+        return -1;
+    }
+
+    cv::Mat binary;
+    cv::threshold(src, binary, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
+    // 8-연결로 라벨링. labels는 CV_32S 라벨 영상
+    cv::Mat labels;
+    int count = cv::connectedComponents(binary, labels, 8, CV_32S);
+
+    // count는 배경(0)을 포함한 라벨 개수 → 실제 블롭 수는 count - 1
+    std::cout &lt;&lt; "라벨 개수(배경 포함): " &lt;&lt; count &lt;&lt; std::endl;
+    std::cout &lt;&lt; "블롭 개수: " &lt;&lt; count - 1 &lt;&lt; std::endl;
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+라벨 개수(배경 포함): 4
+블롭 개수: 3</div>
+
+                <p>반환값 <code>count</code>는 <strong>배경 라벨 0을 포함</strong>한 총 라벨 수다. 그래서 실제 객체 개수는 항상 <code>count - 1</code>이다. 이 한 칸 차이를 놓치면 개수가 하나씩 어긋난다.</p>
+
+                <p>라벨 영상을 눈으로 확인하려면 라벨마다 다른 색을 입혀 컬러 맵으로 만든다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 라벨 영상을 색상으로 시각화한다
+cv::Mat ColorizeLabels(const cv::Mat&amp; labels, int count)
+{
+    // 라벨별 임의 색상 테이블 — 배경(0)은 검정
+    std::vector&lt;cv::Vec3b&gt; colors(count);
+    colors[0] = cv::Vec3b(0, 0, 0);
+    cv::RNG rng(12345);
+    for (int i = 1; i &lt; count; ++i)
+    {
+        colors[i] = cv::Vec3b(rng.uniform(50, 255),
+                              rng.uniform(50, 255),
+                              rng.uniform(50, 255));
+    }
+
+    cv::Mat colored(labels.size(), CV_8UC3);
+    for (int y = 0; y &lt; labels.rows; ++y)
+    {
+        for (int x = 0; x &lt; labels.cols; ++x)
+        {
+            int label = labels.at&lt;int&gt;(y, x);
+            colored.at&lt;cv::Vec3b&gt;(y, x) = colors[label];
+        }
+    }
+    return colored;
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>라벨 영상은 CV_32S다 — imshow로 바로 못 본다</strong>
+                        라벨 영상은 정수 라벨이 담긴 32비트 행렬이라 그대로 <code>imshow</code>하면 거의 검은 화면처럼 보인다. 라벨 1, 2, 3은 255단계 밝기에서 거의 0에 가깝기 때문이다. 항상 색을 입히거나 정규화해서 확인한다.
+                    </div>
+                </div>
+
+                <!-- 4. connectedComponentsWithStats -->
+                <h2 id="with-stats"><i class="fa-solid fa-table-list"></i> connectedComponentsWithStats — 통계까지</h2>
+                <p>실무에서는 라벨만으로는 부족하다. 각 블롭이 <strong>어디에 얼마나 크게</strong> 있는지 알아야 한다. <code>cv::connectedComponentsWithStats</code>는 라벨링과 동시에 블롭마다 <strong>통계 행렬</strong>과 <strong>중심 좌표</strong>를 한 번에 돌려준다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat labels, stats, centroids;
+int count = cv::connectedComponentsWithStats(
+    binary, labels, stats, centroids, 8, CV_32S);
+
+// 라벨 0은 배경이므로 1부터 순회한다
+for (int i = 1; i &lt; count; ++i)
+{
+    int x      = stats.at&lt;int&gt;(i, cv::CC_STAT_LEFT);    // 바운딩박스 좌측 x
+    int y      = stats.at&lt;int&gt;(i, cv::CC_STAT_TOP);     // 바운딩박스 상단 y
+    int w      = stats.at&lt;int&gt;(i, cv::CC_STAT_WIDTH);   // 바운딩박스 너비
+    int h      = stats.at&lt;int&gt;(i, cv::CC_STAT_HEIGHT);  // 바운딩박스 높이
+    int area   = stats.at&lt;int&gt;(i, cv::CC_STAT_AREA);    // 면적(픽셀 수)
+
+    double cx  = centroids.at&lt;double&gt;(i, 0);            // 중심 x
+    double cy  = centroids.at&lt;double&gt;(i, 1);            // 중심 y
+
+    std::cout &lt;&lt; "블롭 #" &lt;&lt; i
+              &lt;&lt; "  area=" &lt;&lt; area
+              &lt;&lt; "  bbox=(" &lt;&lt; x &lt;&lt; "," &lt;&lt; y &lt;&lt; "," &lt;&lt; w &lt;&lt; "," &lt;&lt; h &lt;&lt; ")"
+              &lt;&lt; "  centroid=(" &lt;&lt; cx &lt;&lt; "," &lt;&lt; cy &lt;&lt; ")"
+              &lt;&lt; std::endl;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+블롭 #1  area=1017  bbox=(42,30,38,36)  centroid=(60.9,48.2)
+블롭 #2  area=615   bbox=(91,106,29,28)  centroid=(105.1,119.8)
+블롭 #3  area=476   bbox=(70,130,34,14)  centroid=(86.4,136.7)</div>
+
+                <p><code>stats</code>는 <code>count × 5</code> 크기의 <code>CV_32S</code> 행렬이다. <strong>행 인덱스가 라벨 번호</strong>이고, 5개 열이 각각 좌측 x, 상단 y, 너비, 높이, 면적을 담는다. 열은 인덱스 숫자 대신 아래 상수로 접근하는 게 안전하다.</p>
+
+                <table>
+                    <tr><th>상수</th><th>열 인덱스</th><th>의미</th></tr>
+                    <tr><td><code>CC_STAT_LEFT</code></td><td>0</td><td>바운딩박스 좌측 x 좌표</td></tr>
+                    <tr><td><code>CC_STAT_TOP</code></td><td>1</td><td>바운딩박스 상단 y 좌표</td></tr>
+                    <tr><td><code>CC_STAT_WIDTH</code></td><td>2</td><td>바운딩박스 너비</td></tr>
+                    <tr><td><code>CC_STAT_HEIGHT</code></td><td>3</td><td>바운딩박스 높이</td></tr>
+                    <tr><td><code>CC_STAT_AREA</code></td><td>4</td><td>블롭 면적 (실제 픽셀 수)</td></tr>
+                </table>
+
+                <p><code>centroids</code>는 <code>count × 2</code> 크기의 <strong><code>CV_64F</code></strong> 행렬이다. 열 0이 중심 x, 열 1이 중심 y다. 면적 가중 평균 위치라서 소수점을 가진다 — <code>at&lt;double&gt;</code>로 읽어야 하며, <code>stats</code>처럼 <code>at&lt;int&gt;</code>로 읽으면 깨진 값이 나온다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>0번 행은 배경이다 — 무심코 포함하면 안 된다</strong>
+                        <code>stats</code>와 <code>centroids</code>의 0번 행은 <strong>배경</strong>의 통계다. 배경 면적은 보통 영상 전체에서 객체를 뺀 거대한 값이라, 루프를 <code>i=0</code>부터 돌리면 "면적이 가장 큰 블롭"이 항상 배경으로 잡힌다. 반드시 <code>i=1</code>부터 순회한다.
+                    </div>
+                </div>
+
+                <!-- 5. 블롭 특징 -->
+                <h2 id="features"><i class="fa-solid fa-ruler-combined"></i> 블롭 특징 — 면적·중심·원형도</h2>
+                <p><code>connectedComponentsWithStats</code>가 직접 주는 건 면적·바운딩박스·중심뿐이다. <strong>둘레, 원형도, 종횡비, 채움률</strong> 같은 모양 특징은 직접 계산해야 한다. 둘레처럼 윤곽이 필요한 특징은 해당 블롭 마스크에서 윤곽을 뽑아 구한다.</p>
+
+                <table>
+                    <tr><th>특징</th><th>정의</th><th>용도</th></tr>
+                    <tr><td>면적 (Area)</td><td>블롭을 이루는 픽셀 수</td><td>크기 검사, 노이즈 제거</td></tr>
+                    <tr><td>중심 (Centroid)</td><td>블롭 픽셀 좌표의 평균 위치</td><td>위치 측정, 정렬 검사</td></tr>
+                    <tr><td>바운딩박스 (Bounding Box)</td><td>블롭을 감싸는 최소 직사각형</td><td>크롭, 위치/크기 1차 판정</td></tr>
+                    <tr><td>둘레 (Perimeter)</td><td>윤곽선의 길이</td><td>원형도 계산의 입력</td></tr>
+                    <tr><td>원형도 (Circularity)</td><td>4&pi;&middot;면적 / 둘레&sup2; — 1에 가까울수록 원</td><td>원/비원 구분</td></tr>
+                    <tr><td>종횡비 (Aspect Ratio)</td><td>바운딩박스 너비 / 높이</td><td>길쭉한 객체 골라내기</td></tr>
+                    <tr><td>채움률 (Extent)</td><td>면적 / 바운딩박스 넓이</td><td>채워진 정도, 빈 모양 판별</td></tr>
+                    <tr><td>볼록성 (Solidity)</td><td>면적 / 볼록껍질 면적 — 1에 가까울수록 매끈</td><td>요철/오목 결함 검출</td></tr>
+                    <tr><td>방향 (Orientation)</td><td>장축이 향하는 각도</td><td>회전 검사, 자세 측정</td></tr>
+                </table>
+
+                <p>여러 특징을 한 구조체에 모아 계산하면 이후 판정 로직이 깔끔해진다. 다음은 라벨 하나에 대해 특징을 추출하는 예다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+struct BlobFeature
+{
+    int    label = 0;
+    int    area = 0;
+    cv::Point2d centroid;
+    cv::Rect bbox;
+    double perimeter = 0.0;
+    double circularity = 0.0;   // 1.0에 가까우면 원
+    double aspectRatio = 0.0;   // 너비 / 높이
+    double extent = 0.0;        // 면적 / bbox 넓이
+    double solidity = 0.0;      // 면적 / 볼록껍질 면적
+};
+
+// 라벨 i 블롭의 특징을 추출한다
+BlobFeature ExtractFeature(const cv::Mat&amp; labels,
+                           const cv::Mat&amp; stats,
+                           const cv::Mat&amp; centroids,
+                           int i)
+{
+    BlobFeature f;
+    f.label = i;
+    f.area  = stats.at&lt;int&gt;(i, cv::CC_STAT_AREA);
+    f.bbox  = cv::Rect(stats.at&lt;int&gt;(i, cv::CC_STAT_LEFT),
+                       stats.at&lt;int&gt;(i, cv::CC_STAT_TOP),
+                       stats.at&lt;int&gt;(i, cv::CC_STAT_WIDTH),
+                       stats.at&lt;int&gt;(i, cv::CC_STAT_HEIGHT));
+    f.centroid = cv::Point2d(centroids.at&lt;double&gt;(i, 0),
+                             centroids.at&lt;double&gt;(i, 1));
+
+    // 해당 라벨만 흰색인 마스크를 만든다
+    cv::Mat mask = (labels == i);
+
+    // 마스크에서 외곽 윤곽을 뽑아 둘레와 모양 특징을 계산한다
+    std::vector&lt;std::vector&lt;cv::Point&gt;&gt; contours;
+    cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    if (!contours.empty())
+    {
+        const auto&amp; c = contours[0];
+        f.perimeter = cv::arcLength(c, true);
+
+        // 원형도 — 둘레가 0이면 0으로 둔다
+        if (f.perimeter &gt; 0.0)
+        {
+            f.circularity = 4.0 * CV_PI * f.area / (f.perimeter * f.perimeter);
+        }
+
+        // 볼록성 — 볼록껍질 면적 대비 실제 면적
+        std::vector&lt;cv::Point&gt; hull;
+        cv::convexHull(c, hull);
+        double hullArea = cv::contourArea(hull);
+        if (hullArea &gt; 0.0)
+        {
+            f.solidity = f.area / hullArea;
+        }
+    }
+
+    // 종횡비와 채움률은 바운딩박스로 계산한다
+    if (f.bbox.height &gt; 0)
+    {
+        f.aspectRatio = static_cast&lt;double&gt;(f.bbox.width) / f.bbox.height;
+    }
+    int bboxArea = f.bbox.width * f.bbox.height;
+    if (bboxArea &gt; 0)
+    {
+        f.extent = static_cast&lt;double&gt;(f.area) / bboxArea;
+    }
+    return f;
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>원형도는 스케일에 무관한 특징이다</strong>
+                        면적이나 둘레는 객체가 카메라에 가까워지면 값이 커진다. 하지만 원형도(<code>4&pi;A/P&sup2;</code>), 종횡비, 채움률, 볼록성은 <strong>비율</strong>이라 크기가 변해도 거의 일정하다. 그래서 거리나 배율이 조금씩 변하는 환경에서는 면적 같은 절대값보다 비율 특징이 더 안정적인 판정 기준이 된다.
+                    </div>
+                </div>
+
+                <!-- 6. 특징 기반 필터링 -->
+                <h2 id="filtering"><i class="fa-solid fa-filter"></i> 특징 기반 필터링</h2>
+                <p>특징을 뽑았으면 이제 <strong>걸러낸다</strong>. 블롭 분석의 핵심은 "찾은 블롭 전부"가 아니라 "조건에 맞는 블롭만" 남기는 것이다. 대표적인 세 가지 필터링 시나리오를 본다.</p>
+
+                <h3 id="filter-noise"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 면적으로 노이즈 제거</h3>
+                <p>이진화 과정에서 생긴 작은 점들은 진짜 객체가 아니다. 면적이 일정 값보다 작은 블롭을 버린다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 면적이 너무 작거나 너무 큰 블롭을 제거한 마스크를 만든다
+const int kMinArea = 200;     // 이보다 작으면 노이즈
+const int kMaxArea = 100000;  // 이보다 크면 배경 덩어리 등
+
+cv::Mat cleaned = cv::Mat::zeros(labels.size(), CV_8UC1);
+for (int i = 1; i &lt; count; ++i)
+{
+    int area = stats.at&lt;int&gt;(i, cv::CC_STAT_AREA);
+    if (area &gt;= kMinArea &amp;&amp; area &lt;= kMaxArea)
+    {
+        // 유효한 블롭만 마스크에 다시 그린다
+        cleaned.setTo(255, labels == i);
+    }
+}</code></pre>
+
+                <h3 id="filter-shape"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 원형도로 원/비원 구분</h3>
+                <p>둥근 구멍만 통과시키고 찌그러진 것은 불량으로 빼낸다. 원형도가 기준 이상인 블롭만 OK로 본다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">const double kMinCircularity = 0.80;  // 0.8 이상이면 원으로 인정
+
+std::vector&lt;BlobFeature&gt; roundBlobs;
+for (int i = 1; i &lt; count; ++i)
+{
+    BlobFeature f = ExtractFeature(labels, stats, centroids, i);
+    if (f.circularity &gt;= kMinCircularity)
+    {
+        roundBlobs.push_back(f);  // 둥근 블롭만 수집
+    }
+}
+std::cout &lt;&lt; "둥근 블롭: " &lt;&lt; roundBlobs.size() &lt;&lt; "개" &lt;&lt; std::endl;</code></pre>
+
+                <h3 id="filter-aspect"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 종횡비로 길쭉한 것 골라내기</h3>
+                <p>스크래치나 머리카락 같은 가늘고 긴 이물은 종횡비가 크다. 종횡비로 길쭉한 결함만 추려낸다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">const double kElongatedRatio = 4.0;  // 가로:세로가 4:1 이상이면 길쭉함
+
+for (int i = 1; i &lt; count; ++i)
+{
+    BlobFeature f = ExtractFeature(labels, stats, centroids, i);
+    // 종횡비는 가로/세로라 세로로 긴 경우도 잡으려면 역수도 본다
+    double ratio = std::max(f.aspectRatio, 1.0 / f.aspectRatio);
+    if (ratio &gt;= kElongatedRatio)
+    {
+        std::cout &lt;&lt; "길쭉한 이물 의심 — 블롭 #" &lt;&lt; i
+                  &lt;&lt; " ratio=" &lt;&lt; ratio &lt;&lt; std::endl;
+    }
+}</code></pre>
+
+                <h3 id="filter-multi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 복수 특징 조합 판정</h3>
+                <p>실전 판정은 특징 하나로 끝나지 않는다. "면적이 정상 범위이고, 충분히 둥글고, 꽉 차 있어야" 양품으로 본다. 조건을 AND로 묶는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 양품 조건 — 면적·원형도·채움률을 모두 만족해야 OK
+bool IsGoodBlob(const BlobFeature&amp; f)
+{
+    const int    kMinArea       = 800;
+    const int    kMaxArea       = 1500;
+    const double kMinCirc       = 0.85;
+    const double kMinExtent     = 0.70;
+
+    return f.area &gt;= kMinArea
+        &amp;&amp; f.area &lt;= kMaxArea
+        &amp;&amp; f.circularity &gt;= kMinCirc
+        &amp;&amp; f.extent &gt;= kMinExtent;
+}
+
+// 전체 블롭을 양품/불량으로 분류한다
+int good = 0, bad = 0;
+for (int i = 1; i &lt; count; ++i)
+{
+    BlobFeature f = ExtractFeature(labels, stats, centroids, i);
+    if (IsGoodBlob(f)) { ++good; }
+    else               { ++bad; }
+}
+std::cout &lt;&lt; "양품 " &lt;&lt; good &lt;&lt; " / 불량 " &lt;&lt; bad &lt;&lt; std::endl;</code></pre>
+
+                <!-- 7. SimpleBlobDetector -->
+                <h2 id="simple-blob-detector"><i class="fa-solid fa-magnifying-glass-chart"></i> SimpleBlobDetector</h2>
+                <p>OpenCV는 라벨링을 직접 다루지 않고도 블롭을 찾을 수 있는 내장 검출기 <code>cv::SimpleBlobDetector</code>를 제공한다. 내부적으로 여러 임계값으로 이진화한 뒤 공통으로 검출되는 영역을 블롭으로 잡고, <strong>파라미터로 면적·원형도·볼록도·관성비를 한 번에 필터링</strong>한다. 직접 라벨링+특징추출 코드를 짜기 전에 빠르게 프로토타이핑할 때 유용하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+int main()
+{
+    cv::Mat src = cv::imread("dots.png", cv::IMREAD_GRAYSCALE);
+    if (src.empty()) { return -1; }
+
+    // 검출기 파라미터를 설정한다
+    cv::SimpleBlobDetector::Params params;
+
+    // 면적 필터 — 너무 작거나 큰 블롭 제외
+    params.filterByArea = true;
+    params.minArea = 100.0f;
+    params.maxArea = 5000.0f;
+
+    // 원형도 필터 — 1.0에 가까울수록 완전한 원
+    params.filterByCircularity = true;
+    params.minCircularity = 0.80f;
+
+    // 볼록도 필터 — 오목한 부분이 적을수록 1.0에 가까움
+    params.filterByConvexity = true;
+    params.minConvexity = 0.90f;
+
+    // 관성비 필터 — 1.0이면 원, 0에 가까우면 길쭉함
+    params.filterByInertia = true;
+    params.minInertiaRatio = 0.50f;
+
+    // 검출기를 만들고 블롭을 검출한다
+    cv::Ptr&lt;cv::SimpleBlobDetector&gt; detector =
+        cv::SimpleBlobDetector::create(params);
+
+    std::vector&lt;cv::KeyPoint&gt; keypoints;
+    detector-&gt;detect(src, keypoints);
+
+    std::cout &lt;&lt; "검출된 블롭: " &lt;&lt; keypoints.size() &lt;&lt; "개" &lt;&lt; std::endl;
+
+    // 검출 결과를 빨간 원으로 그린다
+    cv::Mat output;
+    cv::drawKeypoints(src, keypoints, output, cv::Scalar(0, 0, 255),
+                      cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    cv::imwrite("blobs_detected.png", output);
+    return 0;
+}</code></pre>
+
+                <table>
+                    <tr><th>파라미터</th><th>필터 켜기</th><th>의미</th></tr>
+                    <tr><td><code>minArea</code> / <code>maxArea</code></td><td><code>filterByArea</code></td><td>블롭 면적 범위 (픽셀 수)</td></tr>
+                    <tr><td><code>minCircularity</code></td><td><code>filterByCircularity</code></td><td>원형도 하한 — 1.0이 완전한 원</td></tr>
+                    <tr><td><code>minConvexity</code></td><td><code>filterByConvexity</code></td><td>볼록도 하한 — 면적/볼록껍질 면적</td></tr>
+                    <tr><td><code>minInertiaRatio</code></td><td><code>filterByInertia</code></td><td>관성비 하한 — 길쭉한 정도, 1.0이 원</td></tr>
+                    <tr><td><code>minThreshold</code> / <code>maxThreshold</code></td><td>&mdash;</td><td>내부 다중 이진화 임계값 범위</td></tr>
+                    <tr><td><code>filterByColor</code> / <code>blobColor</code></td><td><code>filterByColor</code></td><td>밝은(255) 블롭 vs 어두운(0) 블롭 선택</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>SimpleBlobDetector는 위치와 지름만 준다</strong>
+                        검출 결과는 <code>cv::KeyPoint</code>의 벡터다 — 각 블롭의 중심 좌표(<code>pt</code>)와 대략적인 지름(<code>size</code>)만 담긴다. 바운딩박스, 정확한 면적, 윤곽, 종횡비가 필요하면 결국 <code>connectedComponentsWithStats</code>나 윤곽 분석으로 가야 한다. SimpleBlobDetector는 "둥근 점 찾기"에 강하고 정밀 측정에는 한계가 있다.
+                    </div>
+                </div>
+
+                <!-- 8. 윤곽 vs 연결요소 -->
+                <h2 id="contour-vs-cc"><i class="fa-solid fa-code-compare"></i> 윤곽 기반 vs 연결 요소 기반</h2>
+                <p>객체를 찾는 방법은 크게 두 갈래다. 이전 글에서 다룬 <strong>윤곽(contour) 기반</strong>(<code>findContours</code>)과 이번 글의 <strong>연결 요소(connected component) 기반</strong>(<code>connectedComponents</code>)이다. 둘은 경쟁 관계가 아니라 용도가 다르다.</p>
+
+                <ul>
+                    <li><strong>연결 요소</strong>는 영상 전체를 한 번에 훑어 <strong>라벨 영상과 통계</strong>를 만든다. 각 블롭이 픽셀 단위로 채워진 영역으로 표현된다.</li>
+                    <li><strong>윤곽</strong>은 각 객체의 <strong>경계선 좌표 목록</strong>을 만든다. 계층 구조(구멍 안의 구멍)를 다룰 수 있다.</li>
+                </ul>
+
+                <table>
+                    <tr><th>기준</th><th>연결 요소 (connectedComponents)</th><th>윤곽 (findContours)</th></tr>
+                    <tr><td>결과 형태</td><td>라벨 영상 + 통계 행렬</td><td>경계점 좌표 벡터 + 계층</td></tr>
+                    <tr><td>면적</td><td>정확한 픽셀 수 (stats에 바로)</td><td><code>contourArea</code> — 다각형 근사값</td></tr>
+                    <tr><td>구멍 표현</td><td>구멍은 별개 블롭이거나 무시됨</td><td>계층(hierarchy)으로 내부 구멍 표현</td></tr>
+                    <tr><td>픽셀 단위 마스크</td><td><code>labels == i</code>로 즉시 추출</td><td><code>drawContours</code>로 다시 그려야 함</td></tr>
+                    <tr><td>중심·바운딩박스</td><td>centroids·stats에 바로 제공</td><td>moments·boundingRect로 별도 계산</td></tr>
+                    <tr><td>속도</td><td>한 번 스캔 — 블롭 많아도 빠름</td><td>객체 수·복잡도에 따라 변동</td></tr>
+                    <tr><td>잘 맞는 작업</td><td>개수 세기, 면적 필터링, 마스크 생성</td><td>모양 근사, 둘레/곡률, 계층 분석</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>둘을 섞어 쓰는 게 정석이다</strong>
+                        실무에서는 <code>connectedComponentsWithStats</code>로 블롭을 빠르게 세고 면적으로 1차 거른 다음, 살아남은 블롭만 <code>labels == i</code> 마스크로 떼어내 <code>findContours</code>로 둘레·원형도 같은 모양 특징을 정밀 측정한다. 이 글의 <code>ExtractFeature</code>가 정확히 그 조합이다.
+                    </div>
+                </div>
+
+                <!-- 9. 실전 -->
+                <h2 id="practice"><i class="fa-solid fa-industry"></i> 실전 — 개수 세기·결함 검출</h2>
+                <p>지금까지의 조각을 모아 실제 검사 시나리오를 구성한다.</p>
+
+                <h3 id="practice-count"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 부품 개수 세기</h3>
+                <p>트레이 위 부품 개수를 센다. 단순히 블롭 수를 세는 게 아니라 <strong>면적 필터로 노이즈를 먼저 걸러야</strong> 정확하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 면적이 유효 범위인 블롭만 부품으로 센다
+int CountParts(const cv::Mat&amp; binary, int minArea, int maxArea)
+{
+    cv::Mat labels, stats, centroids;
+    int count = cv::connectedComponentsWithStats(
+        binary, labels, stats, centroids, 8, CV_32S);
+
+    int parts = 0;
+    for (int i = 1; i &lt; count; ++i)  // 배경(0) 제외
+    {
+        int area = stats.at&lt;int&gt;(i, cv::CC_STAT_AREA);
+        if (area &gt;= minArea &amp;&amp; area &lt;= maxArea)
+        {
+            ++parts;
+        }
+    }
+    return parts;
+}</code></pre>
+
+                <h3 id="practice-defect"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 결함(이물) 검출</h3>
+                <p>깨끗해야 할 영역에 나타난 블롭은 전부 이물 후보다. 면적과 종횡비를 함께 봐서 점 이물과 선 이물을 구분한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">enum class DefectType { None, Spot, Scratch };
+
+// 이물 블롭을 종류별로 분류한다
+DefectType ClassifyDefect(const BlobFeature&amp; f)
+{
+    const int    kIgnoreArea   = 30;    // 이보다 작으면 무시(센서 노이즈)
+    const double kScratchRatio = 5.0;   // 종횡비 5 이상이면 스크래치
+
+    if (f.area &lt; kIgnoreArea)
+    {
+        return DefectType::None;
+    }
+
+    double ratio = std::max(f.aspectRatio, 1.0 / f.aspectRatio);
+    if (ratio &gt;= kScratchRatio)
+    {
+        return DefectType::Scratch;  // 가늘고 긴 결함
+    }
+    return DefectType::Spot;         // 점 형태 결함
+}</code></pre>
+
+                <h3 id="practice-missing"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 누락 검사</h3>
+                <p>찍혀 있어야 할 마크나 부품이 빠지지 않았는지 본다. 기대 위치마다 ROI를 잡고 그 안에 충분한 면적의 블롭이 있는지 확인한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 기대 위치 ROI 안에 유효 블롭이 있는지 검사한다
+bool IsPresent(const cv::Mat&amp; binary, const cv::Rect&amp; roi, int minArea)
+{
+    // ROI를 영상 경계 안으로 자른다
+    cv::Rect safe = roi &amp; cv::Rect(0, 0, binary.cols, binary.rows);
+    if (safe.area() == 0) { return false; }
+
+    cv::Mat region = binary(safe);
+    cv::Mat labels, stats, centroids;
+    int count = cv::connectedComponentsWithStats(
+        region, labels, stats, centroids, 8, CV_32S);
+
+    for (int i = 1; i &lt; count; ++i)
+    {
+        if (stats.at&lt;int&gt;(i, cv::CC_STAT_AREA) &gt;= minArea)
+        {
+            return true;  // 충분한 크기의 블롭 발견 → 정상
+        }
+    }
+    return false;  // 비어 있음 → 누락
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>판정은 단일 특징보다 복수 특징 조합이 안정적이다</strong>
+                        면적 하나로만 양품을 가르면, 면적은 맞는데 모양이 찌그러진 불량을 놓친다. 면적 + 원형도 + 채움률처럼 서로 독립적인 특징 두세 개를 조합하면 한 특징이 흔들려도 다른 특징이 잡아준다. 실전 검사 로직은 거의 항상 다중 조건 AND다.
+                    </div>
+                </div>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>블롭 분석에서 거의 모두가 한 번씩 밟는 함정들이다.</p>
+
+                <h3 id="pitfall-binary"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 이진화 품질이 블롭 분석 품질을 결정한다</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>블롭 분석의 정확도는 이진화에서 이미 정해진다</strong>
+                        라벨링 알고리즘은 입력 이진 영상을 그대로 믿는다. 이진화가 조명 얼룩 때문에 객체를 두 조각으로 끊으면 블롭이 2개로 세어지고, 객체와 노이즈가 붙으면 1개로 합쳐진다. 블롭 개수가 이상하면 라벨링 코드보다 <strong>먼저 이진 영상을 띄워서 눈으로 확인</strong>하는 게 빠르다. 필요하면 모폴로지 연산(open/close)으로 이진 영상을 먼저 정리한다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-single-threshold"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 단일 면적 임계값의 취약성</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"면적 &gt; N" 하나로 판정하면 쉽게 무너진다</strong>
+                        카메라 거리가 조금 바뀌거나 조명이 변하면 같은 객체의 면적도 출렁인다. 면적 하한 하나에 의존한 판정은 경계에 걸친 객체에서 양품/불량이 뒤집힌다. 면적은 <strong>범위</strong>(min~max)로 잡고, 가능하면 스케일에 무관한 원형도·종횡비를 함께 본다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-connectivity"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4-연결 / 8-연결 혼동</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>연결성을 함수마다 다르게 주면 결과가 어긋난다</strong>
+                        <code>connectedComponents</code>의 connectivity 인자를 어떤 호출에서는 4, 어떤 호출에서는 8로 주면 같은 영상에서 블롭 개수가 달라진다. 프로젝트 전체에서 연결성을 하나(보통 8)로 고정하고, 상수로 빼서 한 곳에서 관리한다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-background"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 배경 라벨(0) 포함 주의</h3>
+                <p>가장 흔한 실수다. <code>stats</code>·<code>centroids</code>의 0번 행은 배경이다. 루프를 <code>i=0</code>부터 돌리면 배경이 블롭으로 섞여 개수가 +1 되고, "최대 면적 블롭"이 배경으로 잡힌다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁨 — i=0이 배경이라 개수가 하나 더 세어진다
+// for (int i = 0; i &lt; count; ++i) { ... }
+
+// 좋음 — 항상 i=1부터 순회한다
+for (int i = 1; i &lt; count; ++i)
+{
+    int area = stats.at&lt;int&gt;(i, cv::CC_STAT_AREA);
+    // ...
+}</code></pre>
+
+                <h3 id="pitfall-touching"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 블롭이 붙으면 분리가 필요하다</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>맞닿은 두 객체는 하나의 블롭으로 세어진다</strong>
+                        나란히 붙어 있는 부품 2개는 픽셀이 이어져 있어 라벨링이 블롭 1개로 본다. 개수가 모자라게 나온다면 객체들이 붙은 것이다. 이때는 거리 변환 + <code>watershed</code>나 침식(erode)으로 먼저 떼어낸 뒤 라벨링해야 한다. 라벨링 자체는 붙은 객체를 나눠주지 않는다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        블롭 분석은 <strong>좋은 이진 영상</strong>에서 시작하고, 연결성은 <strong>8로 고정</strong>하고, 루프는 <strong>i=1부터</strong> 돌리고, 판정은 <strong>면적 범위 + 비율 특징 조합</strong>으로 한다. 붙은 객체는 라벨링 전에 분리한다. 이 다섯 가지만 지켜도 현장에서 만나는 블롭 분석 버그 대부분을 피한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — <code>connectedComponents</code> / <code>connectedComponentsWithStats</code> 함수 레퍼런스 (imgproc 모듈)</li>
+                        <li>docs.opencv.org — <code>cv::SimpleBlobDetector</code> 클래스 레퍼런스와 Params 설명</li>
+                        <li>OpenCV Tutorials — "Structural Analysis and Shape Descriptors" (윤곽·모멘트·볼록껍질)</li>
+                        <li>OpenCV Tutorials — "Image Segmentation with Distance Transform and Watershed Algorithm"</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

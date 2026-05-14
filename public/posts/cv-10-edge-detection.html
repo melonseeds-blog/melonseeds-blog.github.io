@@ -1,0 +1,955 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>엣지 검출 — Sobel·Scharr·Laplacian·Canny - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#edge-basics" data-section="edge-basics">엣지란</a>
+        <a href="#sobel" data-section="sobel">Sobel</a>
+        <a href="#scharr" data-section="scharr">Scharr</a>
+        <a href="#laplacian" data-section="laplacian">Laplacian</a>
+        <a href="#canny" data-section="canny">Canny</a>
+        <a href="#canny-tuning" data-section="canny-tuning">Canny 튜닝</a>
+        <a href="#preprocess" data-section="preprocess">전처리</a>
+        <a href="#compare" data-section="compare">방법 비교</a>
+        <a href="#industrial" data-section="industrial">산업 검사</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>엣지 검출 — Sobel·Scharr·Laplacian·Canny</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>엣지가 무엇이고 왜 미분(gradient)으로 검출하는지</li>
+                        <li>1차 미분 Sobel — x/y 방향 미분, gradient magnitude·direction 계산</li>
+                        <li>Scharr — 작은 커널에서 Sobel보다 정확한 미분</li>
+                        <li>2차 미분 Laplacian — zero-crossing과 노이즈 민감성</li>
+                        <li>Canny 4단계 알고리즘과 파라미터 튜닝</li>
+                        <li>검출 방법 비교, 산업 검사 관점, 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#edge-basics">엣지란 무엇인가</a></li>
+                        <li><a href="#sobel">1차 미분 — Sobel</a></li>
+                        <li><a href="#scharr">Scharr — 더 정확한 작은 커널</a></li>
+                        <li><a href="#laplacian">2차 미분 — Laplacian</a></li>
+                        <li><a href="#canny">Canny 엣지 검출</a></li>
+                        <li><a href="#canny-tuning">Canny 파라미터 튜닝</a></li>
+                        <li><a href="#preprocess">엣지 검출 전 전처리</a></li>
+                        <li><a href="#compare">검출 방법 비교</a></li>
+                        <li><a href="#industrial">산업 검사 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 엣지란 -->
+                <h2 id="edge-basics"><i class="fa-solid fa-border-style"></i> 엣지란 무엇인가</h2>
+                <p><strong>엣지</strong>(edge)는 이미지에서 밝기가 급격하게 변하는 경계다. 물체의 윤곽, 그림자의 경계, 무늬의 가장자리가 모두 엣지로 나타난다. 사람은 윤곽선만 봐도 물체를 알아본다 — 그래서 엣지는 거의 모든 비전 알고리즘의 출발점이 된다.</p>
+
+                <p>밝기가 "급격하게 변한다"는 것을 수학으로 옮기면 <strong>미분</strong>이 된다. 어떤 위치에서 밝기 함수의 변화율이 크다면 그 지점이 엣지다. 이미지는 픽셀로 이루어진 이산 데이터이므로, 실제로는 미분 대신 이웃 픽셀의 차이로 근사한다. 이 근사 연산을 작은 행렬, 즉 <strong>커널</strong>(kernel)로 표현해 이미지에 합성곱(convolution)한다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 밝기 프로파일 -->
+                        <text x="120" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a5f">밝기 (intensity)</text>
+                        <polyline points="40,170 110,170 130,60 200,60" fill="none" stroke="#2563eb" stroke-width="3"/>
+                        <line x1="40" y1="190" x2="210" y2="190" stroke="#94a3b8" stroke-width="1.5"/>
+                        <text x="125" y="210" text-anchor="middle" font-size="11" fill="#64748b">위치 →</text>
+                        <text x="130" y="120" text-anchor="middle" font-size="10" fill="#dc2626">급격한 변화</text>
+
+                        <!-- 1차 미분 -->
+                        <text x="335" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#78350f">1차 미분 (gradient)</text>
+                        <line x1="255" y1="150" x2="425" y2="150" stroke="#94a3b8" stroke-width="1.5"/>
+                        <polyline points="255,150 320,150 335,70 350,150 425,150" fill="none" stroke="#d97706" stroke-width="3"/>
+                        <text x="340" y="62" text-anchor="middle" font-size="10" fill="#d97706">peak = 엣지</text>
+
+                        <!-- 2차 미분 -->
+                        <text x="550" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#7f1d1d">2차 미분 (Laplacian)</text>
+                        <line x1="470" y1="130" x2="640" y2="130" stroke="#94a3b8" stroke-width="1.5"/>
+                        <polyline points="470,130 528,130 533,70 545,190 552,130 640,130" fill="none" stroke="#dc2626" stroke-width="3"/>
+                        <circle cx="540" cy="130" r="4" fill="#dc2626"/>
+                        <text x="565" y="120" text-anchor="middle" font-size="10" fill="#dc2626">zero-crossing</text>
+                    </svg>
+                    <div class="diagram-caption">밝기가 급변하는 지점에서 1차 미분은 peak를, 2차 미분은 zero-crossing(부호 전환)을 만든다.</div>
+                </div>
+
+                <p>엣지 검출 방법은 크게 두 갈래다. <strong>1차 미분</strong>을 쓰는 방법(Sobel, Scharr)은 변화율이 가장 큰 지점, 즉 미분값의 peak를 엣지로 본다. <strong>2차 미분</strong>을 쓰는 방법(Laplacian)은 미분의 부호가 바뀌는 지점, 즉 zero-crossing을 엣지로 본다. Canny는 1차 미분을 기반으로 여러 단계를 거쳐 깔끔한 엣지 선을 뽑아내는 종합 알고리즘이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 글의 모든 코드는 wrapper 없이 OpenCV를 직접 호출한다</strong>
+                        실무 라이브러리에서는 OpenCV 함수를 직접 노출하지 않고 wrapper로 감싸지만, 이 글은 학습이 목적이므로 <code>cv::Sobel</code> 같은 원본 API를 그대로 보여준다. 각 함수가 무엇을 하는지 이해한 뒤 wrapper로 옮기는 편이 낫다.
+                    </div>
+                </div>
+
+                <!-- 2. Sobel -->
+                <h2 id="sobel"><i class="fa-solid fa-arrows-left-right-to-line"></i> 1차 미분 — Sobel</h2>
+                <p><strong>Sobel</strong> 연산자는 가장 널리 쓰이는 1차 미분 엣지 검출기다. x 방향 미분과 y 방향 미분을 각각 구하는 두 개의 커널로 이루어진다. 미분만 하면 노이즈에 약하므로, Sobel 커널은 미분 방향과 수직으로 가벼운 평활화(smoothing)를 함께 한다 — 이것이 단순 차분보다 Sobel이 안정적인 이유다.</p>
+
+                <h3 id="sobel-kernel"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Sobel 커널</h3>
+                <p>3×3 Sobel 커널은 다음과 같다. 가운데 줄(또는 열)에 가중치 2를 줘서 미분 방향의 중심을 강조하고, 나머지 줄로 평활화한다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 520 170" xmlns="http://www.w3.org/2000/svg" font-family="Consolas, monospace">
+                        <!-- Gx -->
+                        <text x="120" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a5f" font-family="Pretendard, sans-serif">Gx (x 방향 미분)</text>
+                        <g font-size="15" fill="#1e3a5f">
+                            <rect x="55" y="40" width="130" height="100" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+                            <text x="78" y="68">-1</text><text x="113" y="68">0</text><text x="145" y="68">+1</text>
+                            <text x="78" y="98">-2</text><text x="113" y="98">0</text><text x="145" y="98">+2</text>
+                            <text x="78" y="128">-1</text><text x="113" y="128">0</text><text x="145" y="128">+1</text>
+                        </g>
+                        <!-- Gy -->
+                        <text x="385" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#78350f" font-family="Pretendard, sans-serif">Gy (y 방향 미분)</text>
+                        <g font-size="15" fill="#78350f">
+                            <rect x="320" y="40" width="130" height="100" rx="6" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+                            <text x="343" y="68">-1</text><text x="376" y="68">-2</text><text x="410" y="68">-1</text>
+                            <text x="346" y="98">0</text><text x="379" y="98">0</text><text x="413" y="98">0</text>
+                            <text x="343" y="128">+1</text><text x="376" y="128">+2</text><text x="410" y="128">+1</text>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">Sobel의 Gx는 좌우 밝기 차이를, Gy는 상하 밝기 차이를 측정한다. 두 커널은 서로 전치(transpose) 관계다.</div>
+                </div>
+
+                <h3 id="sobel-code"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> cv::Sobel 기본 사용</h3>
+                <p><code>cv::Sobel</code>은 미분 차수를 인자로 받는다. <code>dx=1, dy=0</code>이면 x 방향 1차 미분, <code>dx=0, dy=1</code>이면 y 방향 1차 미분이다. 핵심은 출력 깊이를 <strong><code>CV_16S</code> 또는 <code>CV_32F</code></strong>로 받는 점이다 — 미분 결과는 음수가 나올 수 있기 때문이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+int main()
+{
+    cv::Mat src = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+    if (src.empty())
+    {
+        std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+        return -1;
+    }
+
+    // 노이즈 억제를 위해 먼저 가벼운 블러를 적용한다
+    cv::Mat blurred;
+    cv::GaussianBlur(src, blurred, cv::Size(3, 3), 0);
+
+    // x 방향, y 방향 1차 미분 — 출력 깊이는 CV_16S (음수 보존)
+    cv::Mat gradX, gradY;
+    cv::Sobel(blurred, gradX, CV_16S, 1, 0, 3);  // dx=1, dy=0, ksize=3
+    cv::Sobel(blurred, gradY, CV_16S, 0, 1, 3);  // dx=0, dy=1, ksize=3
+
+    // 화면 표시·저장을 위해 절대값을 취하고 8비트로 변환한다
+    cv::Mat absX, absY;
+    cv::convertScaleAbs(gradX, absX);
+    cv::convertScaleAbs(gradY, absY);
+
+    // 두 방향을 합쳐 근사 엣지 강도를 만든다 (가중 합)
+    cv::Mat grad;
+    cv::addWeighted(absX, 0.5, absY, 0.5, 0, grad);
+
+    cv::imshow("Sobel X", absX);
+    cv::imshow("Sobel Y", absY);
+    cv::imshow("Sobel combined", grad);
+    cv::waitKey(0);
+    return 0;
+}</code></pre>
+
+                <p><code>cv::Sobel</code>의 인자 순서는 <code>(src, dst, ddepth, dx, dy, ksize, scale, delta, borderType)</code>다. <code>ddepth</code>는 출력 깊이, <code>ksize</code>는 커널 크기(1, 3, 5, 7 중 홀수)다. <code>convertScaleAbs</code>는 절대값을 취한 뒤 8비트로 포화 변환하므로, 음수 미분값을 화면에서 보이게 만든다.</p>
+
+                <h3 id="sobel-magnitude"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Gradient magnitude와 direction</h3>
+                <p>x 방향 미분 <code>Gx</code>와 y 방향 미분 <code>Gy</code>를 알면 그 지점의 <strong>gradient 크기</strong>와 <strong>방향</strong>을 정확히 계산할 수 있다. 크기는 엣지가 얼마나 강한지, 방향은 엣지가 어느 쪽을 향하는지를 나타낸다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// float로 미분을 받으면 정확한 magnitude·direction 계산이 가능하다
+cv::Mat gx, gy;
+cv::Sobel(blurred, gx, CV_32F, 1, 0, 3);
+cv::Sobel(blurred, gy, CV_32F, 0, 1, 3);
+
+// gradient 크기: sqrt(gx^2 + gy^2)
+cv::Mat magnitude;
+cv::magnitude(gx, gy, magnitude);
+
+// gradient 방향: atan2(gy, gx), 라디안 또는 도(degree)
+cv::Mat direction;
+cv::phase(gx, gy, direction, true);  // true = 결과를 도(0~360) 단위로
+
+// magnitude를 0~255로 정규화해 화면에 표시한다
+cv::Mat magDisplay;
+cv::normalize(magnitude, magDisplay, 0, 255, cv::NORM_MINMAX, CV_8U);
+cv::imshow("Gradient magnitude", magDisplay);
+cv::waitKey(0);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>addWeighted는 근사, magnitude는 정확</strong>
+                        <code>addWeighted(absX, 0.5, absY, 0.5, ...)</code>는 빠른 근사일 뿐이다. 정확한 엣지 강도가 필요하면 <code>cv::magnitude</code>로 <code>sqrt(gx² + gy²)</code>를 계산한다. Canny 내부도 magnitude를 쓴다.
+                    </div>
+                </div>
+
+                <h3 id="sobel-params"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ksize와 scale 파라미터</h3>
+                <p><code>ksize</code>를 키우면 더 넓은 영역을 평균하므로 노이즈에 강해지지만 엣지가 두꺼워지고 위치 정밀도가 떨어진다. <code>scale</code>은 미분 결과에 곱하는 배율로, 미분값이 작아 화면에서 잘 안 보일 때 키운다. <code>delta</code>는 결과에 더하는 오프셋이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// ksize = -1 은 3x3 Scharr 커널을 의미한다 (다음 절 참고)
+cv::Sobel(blurred, gradX, CV_16S, 1, 0, 3);   // 표준 3x3
+cv::Sobel(blurred, gradX, CV_16S, 1, 0, 5);   // 5x5 — 더 부드럽고 두꺼운 엣지
+
+// scale로 미분 결과를 증폭, delta로 밝기 오프셋 추가
+cv::Sobel(blurred, gradX, CV_16S, 1, 0, 3, 2.0, 0.0);  // 결과 x2</code></pre>
+
+                <!-- 3. Scharr -->
+                <h2 id="scharr"><i class="fa-solid fa-ruler-combined"></i> Scharr — 더 정확한 작은 커널</h2>
+                <p>3×3처럼 작은 커널에서는 Sobel의 미분 근사가 회전 대칭성이 떨어진다 — 대각선 방향 엣지에서 오차가 생긴다. <strong>Scharr</strong> 커널은 같은 3×3 크기에서 가중치를 다르게 잡아 미분 정확도를 높인 연산자다. 작은 커널로 정밀한 미분이 필요할 때 Sobel 대신 쓴다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 520 170" xmlns="http://www.w3.org/2000/svg" font-family="Consolas, monospace">
+                        <text x="120" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#065f46" font-family="Pretendard, sans-serif">Scharr Gx</text>
+                        <g font-size="15" fill="#065f46">
+                            <rect x="50" y="40" width="140" height="100" rx="6" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+                            <text x="68" y="68">-3</text><text x="108" y="68">0</text><text x="140" y="68">+3</text>
+                            <text x="64" y="98">-10</text><text x="108" y="98">0</text><text x="136" y="98">+10</text>
+                            <text x="68" y="128">-3</text><text x="108" y="128">0</text><text x="140" y="128">+3</text>
+                        </g>
+                        <text x="385" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#065f46" font-family="Pretendard, sans-serif">Scharr Gy</text>
+                        <g font-size="15" fill="#065f46">
+                            <rect x="315" y="40" width="140" height="100" rx="6" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+                            <text x="333" y="68">-3</text><text x="369" y="68">-10</text><text x="409" y="68">-3</text>
+                            <text x="338" y="98">0</text><text x="378" y="98">0</text><text x="412" y="98">0</text>
+                            <text x="333" y="128">+3</text><text x="369" y="128">+10</text><text x="409" y="128">+3</text>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">Scharr는 중심 가중치를 10, 모서리를 3으로 잡아 3×3에서 Sobel보다 회전 대칭성이 좋다.</div>
+                </div>
+
+                <p>OpenCV에서는 <code>cv::Scharr</code> 함수를 따로 제공한다. 사용법은 Sobel과 거의 같지만 커널이 3×3으로 고정이므로 <code>ksize</code> 인자가 없다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat src = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+cv::Mat blurred;
+cv::GaussianBlur(src, blurred, cv::Size(3, 3), 0);
+
+// Scharr — ksize 인자가 없다 (항상 3x3)
+cv::Mat scharrX, scharrY;
+cv::Scharr(blurred, scharrX, CV_16S, 1, 0);  // x 방향
+cv::Scharr(blurred, scharrY, CV_16S, 0, 1);  // y 방향
+
+cv::Mat absX, absY, grad;
+cv::convertScaleAbs(scharrX, absX);
+cv::convertScaleAbs(scharrY, absY);
+cv::addWeighted(absX, 0.5, absY, 0.5, 0, grad);
+
+cv::imshow("Scharr combined", grad);
+cv::waitKey(0);
+
+// cv::Sobel에 ksize = cv::FILTER_SCHARR(-1)을 줘도 같은 결과다
+cv::Sobel(blurred, scharrX, CV_16S, 1, 0, cv::FILTER_SCHARR);</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Sobel과 Scharr는 언제 갈리는가</strong>
+                        커널을 3×3보다 키울 수 있다면 Sobel로 충분하다. 하지만 3×3 크기를 유지하면서 미분 정밀도가 중요한 경우 — 예를 들어 정밀한 gradient 방향이 필요한 특징 추출 — 에는 Scharr가 유리하다. 산업 검사의 서브픽셀 엣지 추출에서도 Scharr 기반 gradient가 자주 쓰인다.
+                    </div>
+                </div>
+
+                <!-- 4. Laplacian -->
+                <h2 id="laplacian"><i class="fa-solid fa-wave-square"></i> 2차 미분 — Laplacian</h2>
+                <p><strong>Laplacian</strong>은 2차 미분 기반 엣지 검출기다. 1차 미분이 엣지에서 peak를 만든다면, 2차 미분은 엣지에서 부호가 바뀌는 <strong>zero-crossing</strong>을 만든다. Laplacian은 x·y 두 방향의 2차 미분을 더한 값으로, 방향에 무관한 단일 결과를 낸다 — Sobel처럼 x/y를 따로 구하지 않아도 된다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg" font-family="Consolas, monospace">
+                        <text x="160" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#7f1d1d" font-family="Pretendard, sans-serif">Laplacian 커널 (3×3)</text>
+                        <g font-size="16" fill="#7f1d1d">
+                            <rect x="95" y="40" width="130" height="100" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+                            <text x="120" y="68">0</text><text x="153" y="68">1</text><text x="186" y="68">0</text>
+                            <text x="120" y="98">1</text><text x="150" y="98">-4</text><text x="186" y="98">1</text>
+                            <text x="120" y="128">0</text><text x="153" y="128">1</text><text x="186" y="128">0</text>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">Laplacian 커널은 중심과 이웃의 밝기 차이를 한 번에 측정한다. 4-이웃 합에서 중심값의 4배를 뺀다.</div>
+                </div>
+
+                <p>가장 중요한 특징은 <strong>노이즈에 매우 민감</strong>하다는 점이다. 2차 미분은 작은 밝기 흔들림도 크게 증폭하기 때문이다. 그래서 Laplacian은 거의 항상 <strong>가우시안 블러를 먼저 적용</strong>한 뒤 쓴다 — 이 조합을 LoG(Laplacian of Gaussian)라고 부른다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat src = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+
+// Laplacian은 노이즈에 민감하므로 블러가 사실상 필수다
+cv::Mat blurred;
+cv::GaussianBlur(src, blurred, cv::Size(3, 3), 0);
+
+// 2차 미분 — 출력 깊이는 반드시 CV_16S 또는 CV_32F
+cv::Mat lap;
+cv::Laplacian(blurred, lap, CV_16S, 3);  // ksize = 3
+
+// 음수를 포함하므로 절대값 후 8비트 변환
+cv::Mat absLap;
+cv::convertScaleAbs(lap, absLap);
+
+cv::imshow("Laplacian", absLap);
+cv::waitKey(0);</code></pre>
+
+                <p><code>cv::Laplacian</code>의 인자는 <code>(src, dst, ddepth, ksize, scale, delta, borderType)</code>다. <code>ksize=1</code>이면 위 그림의 기본 3×3 커널을, <code>ksize=3</code> 이상이면 Sobel 기반의 더 큰 2차 미분 커널을 쓴다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>convertScaleAbs는 zero-crossing 정보를 버린다</strong>
+                        <code>convertScaleAbs</code>는 절대값을 취하므로 부호 정보가 사라진다 — 즉 진짜 엣지 위치인 zero-crossing을 찾을 수 없게 된다. 정밀한 엣지 위치가 필요하면 <code>CV_32F</code> 결과에서 직접 부호가 +에서 -로(또는 그 반대) 바뀌는 픽셀을 찾아야 한다. 화면 표시용으로만 <code>convertScaleAbs</code>를 쓴다.
+                    </div>
+                </div>
+
+                <h3 id="laplacian-sharpen"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Laplacian 응용 — 샤프닝</h3>
+                <p>Laplacian은 엣지 검출 외에 이미지 <strong>샤프닝</strong>에도 쓰인다. 원본에서 Laplacian 결과를 빼면 엣지가 강조되어 또렷한 이미지가 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat lap32;
+cv::Laplacian(src, lap32, CV_32F, 1);
+
+// 원본(float) - Laplacian = 엣지가 강조된 샤프 이미지
+cv::Mat src32, sharp32;
+src.convertTo(src32, CV_32F);
+sharp32 = src32 - lap32;
+
+cv::Mat sharp;
+sharp32.convertTo(sharp, CV_8U);  // 0~255로 포화 변환
+cv::imshow("Sharpened", sharp);
+cv::waitKey(0);</code></pre>
+
+                <!-- 5. Canny -->
+                <h2 id="canny"><i class="fa-solid fa-route"></i> Canny 엣지 검출</h2>
+                <p><strong>Canny</strong>는 1986년 John Canny가 제안한 엣지 검출 알고리즘으로, 지금도 가장 널리 쓰이는 표준이다. Sobel·Laplacian이 미분 결과를 그대로 내놓는 것과 달리, Canny는 <strong>얇고 연결된 깔끔한 엣지 선</strong>을 결과로 준다. 이를 위해 4단계를 거친다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <defs>
+                            <marker id="cannyArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#475569"/>
+                            </marker>
+                        </defs>
+                        <!-- 1단계 -->
+                        <rect x="15" y="55" width="120" height="90" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+                        <text x="75" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a5f">① 가우시안</text>
+                        <text x="75" y="98" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a5f">블러</text>
+                        <text x="75" y="122" text-anchor="middle" font-size="10" fill="#475569">노이즈 제거</text>
+                        <!-- 2단계 -->
+                        <rect x="170" y="55" width="120" height="90" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+                        <text x="230" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#78350f">② Gradient</text>
+                        <text x="230" y="98" text-anchor="middle" font-size="12" font-weight="700" fill="#78350f">계산</text>
+                        <text x="230" y="122" text-anchor="middle" font-size="10" fill="#92400e">Sobel 크기·방향</text>
+                        <!-- 3단계 -->
+                        <rect x="325" y="55" width="135" height="90" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+                        <text x="392" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#4c1d95">③ 비최대</text>
+                        <text x="392" y="98" text-anchor="middle" font-size="12" font-weight="700" fill="#4c1d95">억제 (NMS)</text>
+                        <text x="392" y="122" text-anchor="middle" font-size="10" fill="#5b21b6">엣지 1픽셀로 가늘게</text>
+                        <!-- 4단계 -->
+                        <rect x="495" y="55" width="170" height="90" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+                        <text x="580" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#7f1d1d">④ 이중 임계값</text>
+                        <text x="580" y="98" text-anchor="middle" font-size="12" font-weight="700" fill="#7f1d1d">+ hysteresis</text>
+                        <text x="580" y="122" text-anchor="middle" font-size="10" fill="#991b1b">약한 엣지 연결·정리</text>
+                        <!-- 화살표 -->
+                        <line x1="135" y1="100" x2="168" y2="100" stroke="#475569" stroke-width="2" marker-end="url(#cannyArrow)"/>
+                        <line x1="290" y1="100" x2="323" y2="100" stroke="#475569" stroke-width="2" marker-end="url(#cannyArrow)"/>
+                        <line x1="460" y1="100" x2="493" y2="100" stroke="#475569" stroke-width="2" marker-end="url(#cannyArrow)"/>
+                        <text x="340" y="180" text-anchor="middle" font-size="11" fill="#64748b">cv::Canny 한 줄이 이 네 단계를 모두 수행한다</text>
+                    </svg>
+                    <div class="diagram-caption">Canny 엣지 검출의 4단계 파이프라인. 각 단계가 순서대로 엣지를 정제한다.</div>
+                </div>
+
+                <h3 id="canny-steps"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4단계 상세</h3>
+                <p><strong>① 가우시안 블러</strong> — 미분은 노이즈를 증폭하므로 먼저 가우시안 블러로 잡티를 제거한다. <code>cv::Canny</code>는 내부에서 Sobel을 쓰지만 블러는 자동으로 하지 않으므로, 호출 전에 직접 블러하는 것이 권장된다.</p>
+                <p><strong>② Gradient 계산</strong> — Sobel로 x·y 미분을 구하고 gradient의 크기와 방향을 계산한다. 방향은 보통 0°, 45°, 90°, 135° 네 방향으로 양자화한다.</p>
+                <p><strong>③ 비최대 억제(Non-Maximum Suppression)</strong> — gradient 방향을 따라 이웃 픽셀과 비교해, 자신이 그 방향에서 가장 크지 않으면 0으로 만든다. 이 단계로 두꺼운 엣지가 <strong>1픽셀 폭의 얇은 선</strong>으로 정리된다.</p>
+                <p><strong>④ 이중 임계값 + hysteresis</strong> — 높은 임계값(threshold2)보다 큰 픽셀은 확실한 엣지, 낮은 임계값(threshold1)보다 작은 픽셀은 버린다. 그 사이의 약한 픽셀은 <strong>확실한 엣지와 연결되어 있을 때만</strong> 엣지로 살린다. 이 연결 추적이 hysteresis다 — 끊긴 엣지를 이어주고 고립된 잡음 점을 제거한다.</p>
+
+                <h3 id="canny-code"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> cv::Canny 사용</h3>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+int main()
+{
+    cv::Mat src = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+    if (src.empty())
+    {
+        std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+        return -1;
+    }
+
+    // ① 전처리 — 가우시안 블러로 노이즈를 줄인다
+    cv::Mat blurred;
+    cv::GaussianBlur(src, blurred, cv::Size(5, 5), 1.4);
+
+    // ②~④ Canny가 gradient 계산·NMS·hysteresis를 한 번에 수행한다
+    cv::Mat edges;
+    double threshold1 = 50.0;   // 낮은 임계값
+    double threshold2 = 150.0;  // 높은 임계값 (보통 threshold1의 2~3배)
+    cv::Canny(blurred, edges, threshold1, threshold2);
+
+    // 결과는 CV_8UC1 — 엣지는 255(흰색), 나머지는 0(검정)
+    std::cout &lt;&lt; "엣지 픽셀 수: " &lt;&lt; cv::countNonZero(edges) &lt;&lt; std::endl;
+
+    cv::imshow("Canny edges", edges);
+    cv::waitKey(0);
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+엣지 픽셀 수: 48213</div>
+
+                <p><code>cv::Canny</code>의 출력은 항상 <code>CV_8UC1</code> 바이너리 이미지다 — 엣지는 255, 배경은 0. Sobel·Laplacian처럼 <code>convertScaleAbs</code>로 후처리할 필요가 없다. 입력은 8비트 단일 채널 이미지를 받는다.</p>
+
+                <!-- 6. Canny 파라미터 튜닝 -->
+                <h2 id="canny-tuning"><i class="fa-solid fa-sliders"></i> Canny 파라미터 튜닝</h2>
+                <p>Canny 결과의 품질은 파라미터에 크게 좌우된다. 핵심은 두 임계값과 <code>apertureSize</code>, <code>L2gradient</code>다.</p>
+
+                <table>
+                    <tr><th>파라미터</th><th>역할</th><th>권장값 / 효과</th></tr>
+                    <tr><td><code>threshold1</code></td><td>낮은 임계값 — 약한 엣지 후보의 하한</td><td>낮추면 엣지가 늘어남(노이즈 포함)</td></tr>
+                    <tr><td><code>threshold2</code></td><td>높은 임계값 — 확실한 엣지의 기준</td><td>높이면 강한 엣지만 남음</td></tr>
+                    <tr><td><code>apertureSize</code></td><td>내부 Sobel 커널 크기</td><td>3, 5, 7 (기본 3)</td></tr>
+                    <tr><td><code>L2gradient</code></td><td>gradient 크기 계산 방식</td><td>true면 정확한 L2, false면 빠른 L1 근사</td></tr>
+                </table>
+
+                <h3 id="canny-ratio"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> threshold1 : threshold2 비율</h3>
+                <p>Canny 논문과 OpenCV 공식 문서는 두 임계값의 비를 <strong>1:2 ~ 1:3</strong>으로 잡기를 권한다. 비율이 너무 가까우면 hysteresis가 제 역할을 못 하고, 너무 멀면 약한 엣지가 과하게 살아난다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 1:2 비율 — 일반적인 출발점
+cv::Canny(blurred, edges, 50, 100);
+
+// 1:3 비율 — 강한 엣지 위주로 깔끔하게
+cv::Canny(blurred, edges, 50, 150);
+
+// 너무 낮은 임계값 — 노이즈가 엣지로 잡힘 (피할 것)
+cv::Canny(blurred, edges, 10, 30);</code></pre>
+
+                <h3 id="canny-auto"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 이미지 통계 기반 자동 임계값</h3>
+                <p>임계값을 손으로 맞추기 어려우면 이미지의 밝기 중앙값(median)을 기준으로 자동 계산하는 방법이 자주 쓰인다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 밝기 중앙값을 구한다
+std::vector&lt;uchar&gt; pixels;
+blurred.reshape(1, 1).copyTo(pixels);
+std::nth_element(pixels.begin(), pixels.begin() + pixels.size() / 2, pixels.end());
+double median = pixels[pixels.size() / 2];
+
+// 중앙값 기준 ±33% 범위로 임계값을 잡는다
+const double kSigma = 0.33;
+double lower = std::max(0.0,   (1.0 - kSigma) * median);
+double upper = std::min(255.0, (1.0 + kSigma) * median);
+
+cv::Mat edges;
+cv::Canny(blurred, edges, lower, upper);</code></pre>
+
+                <h3 id="canny-l2"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> apertureSize와 L2gradient</h3>
+                <p><code>apertureSize</code>는 Canny 내부 Sobel의 커널 크기다. 키우면 더 부드러운 gradient를 쓰지만 엣지 위치 정밀도가 떨어진다. <code>L2gradient=true</code>는 gradient 크기를 <code>sqrt(Gx² + Gy²)</code>로 정확히 계산하고, <code>false</code>는 <code>|Gx| + |Gy|</code>로 빠르게 근사한다. 정밀도가 중요한 산업 검사에서는 <code>true</code>를 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// apertureSize = 3 (기본), L2gradient = true (정확한 크기 계산)
+cv::Canny(blurred, edges, 50, 150, 3, true);
+
+// apertureSize = 5 — 더 부드럽지만 엣지 위치는 덜 정밀
+cv::Canny(blurred, edges, 50, 150, 5, true);
+
+// gx, gy를 미리 계산해 Canny에 직접 넘기는 오버로드도 있다
+cv::Mat gx, gy;
+cv::Sobel(blurred, gx, CV_16S, 1, 0, 3);
+cv::Sobel(blurred, gy, CV_16S, 0, 1, 3);
+cv::Canny(gx, gy, edges, 50, 150, true);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>트랙바로 임계값을 실시간 조정하면 빠르다</strong>
+                        <code>cv::createTrackbar</code>로 threshold1·threshold2 슬라이더를 만들고 콜백에서 <code>cv::Canny</code>를 다시 호출하면, 이미지를 보면서 최적 임계값을 즉시 찾을 수 있다. 검사 대상이 정해진 산업 라인에서는 이렇게 찾은 값을 고정해 쓴다.
+                    </div>
+                </div>
+
+                <!-- 7. 전처리 -->
+                <h2 id="preprocess"><i class="fa-solid fa-broom"></i> 엣지 검출 전 전처리</h2>
+                <p>모든 엣지 검출기는 미분에 기반한다. 그리고 미분은 본질적으로 <strong>고주파 성분을 증폭</strong>한다 — 진짜 엣지뿐 아니라 노이즈도 함께 키운다. 그래서 엣지 검출 전 노이즈 제거는 선택이 아니라 거의 필수다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 600 170" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 전처리 없음 -->
+                        <text x="150" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#7f1d1d">전처리 없이 미분</text>
+                        <line x1="40" y1="120" x2="260" y2="120" stroke="#94a3b8" stroke-width="1.5"/>
+                        <polyline points="40,120 70,118 85,55 100,122 115,119 130,85 145,121 165,60 180,118 200,116 215,95 230,119 260,118"
+                                  fill="none" stroke="#dc2626" stroke-width="2"/>
+                        <text x="150" y="148" text-anchor="middle" font-size="10" fill="#991b1b">노이즈가 가짜 peak로 잔뜩</text>
+                        <!-- 전처리 후 -->
+                        <text x="450" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#065f46">블러 후 미분</text>
+                        <line x1="340" y1="120" x2="560" y2="120" stroke="#94a3b8" stroke-width="1.5"/>
+                        <polyline points="340,119 420,118 440,55 460,119 560,118"
+                                  fill="none" stroke="#059669" stroke-width="2.5"/>
+                        <text x="450" y="148" text-anchor="middle" font-size="10" fill="#065f46">진짜 엣지 peak 하나만 선명</text>
+                    </svg>
+                    <div class="diagram-caption">블러 없이 미분하면 노이즈가 무수한 가짜 엣지를 만든다. 블러는 진짜 엣지만 남긴다.</div>
+                </div>
+
+                <p>전처리에는 보통 <strong>가우시안 블러</strong>를 쓴다. 노이즈의 종류에 따라 선택이 달라진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat src = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+cv::Mat blurred;
+
+// 일반적인 가우시안 노이즈 — 가우시안 블러
+cv::GaussianBlur(src, blurred, cv::Size(5, 5), 1.4);
+
+// 소금-후추 노이즈 — 미디언 블러가 더 효과적
+cv::medianBlur(src, blurred, 5);
+
+// 엣지를 살리면서 노이즈만 줄이고 싶을 때 — 양방향 필터
+cv::bilateralFilter(src, blurred, 9, 75, 75);
+
+// 전처리한 이미지로 엣지 검출
+cv::Mat edges;
+cv::Canny(blurred, edges, 50, 150);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>블러가 과하면 엣지 자체가 뭉개진다</strong>
+                        노이즈를 없애려고 커널을 너무 키우면 진짜 엣지의 위치가 흐려지고 약한 엣지가 사라진다. 노이즈를 잡을 만큼만 최소로 블러하는 것이 원칙이다. 엣지를 보존하면서 노이즈만 줄여야 한다면 <code>bilateralFilter</code>가 답이지만 연산 비용이 크다.
+                    </div>
+                </div>
+
+                <!-- 8. 방법 비교 -->
+                <h2 id="compare"><i class="fa-solid fa-scale-balanced"></i> 검출 방법 비교</h2>
+                <p>세 가지 대표 방법은 출력 형태와 강건성, 용도가 다르다. 상황에 맞게 고른다.</p>
+
+                <table>
+                    <tr><th>항목</th><th>Sobel / Scharr</th><th>Laplacian</th><th>Canny</th></tr>
+                    <tr><td>미분 차수</td><td>1차 미분</td><td>2차 미분</td><td>1차 미분 기반 종합</td></tr>
+                    <tr><td>출력 형태</td><td>gradient 크기 (회색조)</td><td>2차 미분값 (회색조)</td><td>바이너리 엣지 (0 / 255)</td></tr>
+                    <tr><td>엣지 두께</td><td>두꺼움</td><td>두꺼움</td><td>1픽셀 (NMS 적용)</td></tr>
+                    <tr><td>노이즈 강건성</td><td>중간</td><td>매우 약함</td><td>강함 (블러+hysteresis 내장)</td></tr>
+                    <tr><td>방향 정보</td><td>제공 (Gx, Gy 분리)</td><td>없음 (방향 무관)</td><td>내부 사용, 출력엔 없음</td></tr>
+                    <tr><td>주 용도</td><td>gradient 크기·방향 계산, 후속 처리 입력</td><td>blob/얼룩 검출, 샤프닝, LoG</td><td>윤곽선 추출, 형상 검사</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>실무 선택 기준</strong>
+                        깔끔한 윤곽선 한 줄이 필요하면 <strong>Canny</strong>. gradient의 크기·방향 자체를 다음 단계에서 쓰려면 <strong>Sobel/Scharr</strong>. 작은 점·얼룩을 찾거나 이미지를 또렷하게 만들려면 <strong>Laplacian</strong>. Canny도 내부적으로는 Sobel을 쓰므로, Canny는 Sobel의 상위 호환에 가깝다.
+                    </div>
+                </div>
+
+                <!-- 9. 산업 검사 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 검사 관점</h2>
+                <p>산업 비전에서 엣지 검출은 그 자체가 목적인 경우는 드물다. 대부분 <strong>치수 측정</strong>이나 <strong>윤곽 추출</strong>의 출발점으로 쓰인다.</p>
+
+                <p>예를 들어 부품의 폭을 재려면, 먼저 엣지로 부품의 양쪽 경계를 찾고 그 사이 거리를 픽셀 단위로 측정한 뒤 캘리브레이션 값을 곱해 실제 치수로 환산한다. Canny로 윤곽을 뽑아 <code>cv::findContours</code>로 닫힌 외곽선을 만든 다음 면적·둘레·바운딩 박스를 계산하는 흐름도 흔하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 엣지 → 윤곽선 → 형상 측정의 기본 흐름
+cv::Mat src = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+cv::Mat blurred, edges;
+cv::GaussianBlur(src, blurred, cv::Size(5, 5), 1.4);
+cv::Canny(blurred, edges, 50, 150);
+
+// 엣지 이미지에서 닫힌 윤곽선을 추출한다
+std::vector&lt;std::vector&lt;cv::Point&gt;&gt; contours;
+cv::findContours(edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+for (const auto&amp; contour : contours)
+{
+    double area = cv::contourArea(contour);
+    if (area &lt; 100.0)  // 너무 작은 윤곽은 노이즈로 보고 건너뛴다
+        continue;
+
+    cv::Rect box = cv::boundingRect(contour);
+    std::cout &lt;&lt; "부품 폭=" &lt;&lt; box.width
+              &lt;&lt; "px, 높이=" &lt;&lt; box.height &lt;&lt; "px"
+              &lt;&lt; ", 면적=" &lt;&lt; area &lt;&lt; std::endl;
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>서브픽셀 엣지는 후속 글에서 다룬다</strong>
+                        이 글의 Canny는 픽셀 단위 엣지다. 정밀 측정에서는 1픽셀보다 작은 단위로 엣지 위치를 추정하는 <strong>서브픽셀 엣지</strong>가 필요하다 — gradient 프로파일을 곡선으로 피팅해 peak의 정확한 위치를 찾는 방식이다. 별도 글에서 자세히 다룬다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>산업 라인에서는 ROI를 먼저 좁힌다</strong>
+                        검사 대상의 위치가 대체로 고정되어 있다면, 전체 이미지에 엣지 검출을 돌리지 말고 관심 영역(ROI)만 잘라 처리한다. 연산량이 줄고 배경 노이즈가 엣지로 잡히는 일도 막을 수 있다.
+                    </div>
+                </div>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>엣지 검출에서 거의 모두가 한 번씩 밟는 함정들이다.</p>
+
+                <h3 id="pitfall-negative"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8비트로 미분을 받으면 음수가 잘린다</h3>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>미분 결과는 음수가 나올 수 있다 — CV_8U로 받으면 안 된다</strong>
+                        밝은 곳에서 어두운 곳으로 가는 엣지는 미분값이 <strong>음수</strong>다. 출력 깊이를 <code>CV_8U</code>로 주면 음수가 모두 0으로 잘려 한쪽 방향 엣지가 통째로 사라진다. 반드시 <code>CV_16S</code>나 <code>CV_32F</code>로 받은 뒤 <code>convertScaleAbs</code>로 변환한다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁨 — CV_8U로 받으면 음수 미분값이 0으로 잘린다
+cv::Mat badGrad;
+cv::Sobel(blurred, badGrad, CV_8U, 1, 0, 3);  // 한쪽 방향 엣지 손실!
+
+// 좋음 — CV_16S로 받아 음수를 보존한 뒤 절대값 변환
+cv::Mat grad16, gradDisplay;
+cv::Sobel(blurred, grad16, CV_16S, 1, 0, 3);
+cv::convertScaleAbs(grad16, gradDisplay);     // 음수까지 살아남음</code></pre>
+
+                <h3 id="pitfall-noise"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 노이즈 전처리 생략</h3>
+                <p>블러 없이 곧장 미분하면 노이즈가 가짜 엣지를 무수히 만든다. 특히 Laplacian과 Canny는 전처리 없이는 거의 쓸 수 없다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁨 — 원본을 바로 Canny에 넣으면 노이즈가 엣지로 잡힌다
+cv::Mat edges;
+cv::Canny(src, edges, 50, 150);
+
+// 좋음 — 가우시안 블러로 전처리한 뒤 검출
+cv::Mat blurred;
+cv::GaussianBlur(src, blurred, cv::Size(5, 5), 1.4);
+cv::Canny(blurred, edges, 50, 150);</code></pre>
+
+                <h3 id="pitfall-threshold"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Canny 임계값 부적절</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>임계값이 맞지 않으면 엣지가 끊기거나 노이즈가 넘친다</strong>
+                        threshold2가 너무 높으면 약한 진짜 엣지가 끊어진 점선처럼 나오고, threshold1이 너무 낮으면 노이즈가 엣지로 살아난다. 두 값의 비를 1:2~1:3으로 유지하고, 이미지 통계나 트랙바로 적절한 절대값을 찾는다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁨 — 임계값이 너무 높아 엣지가 끊어진다
+cv::Canny(blurred, edges, 150, 400);
+
+// 나쁨 — 임계값이 너무 낮아 노이즈가 엣지로 잡힌다
+cv::Canny(blurred, edges, 5, 15);
+
+// 좋음 — 1:3 비율의 적절한 범위
+cv::Canny(blurred, edges, 50, 150);</code></pre>
+
+                <h3 id="pitfall-display"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 미분 결과를 변환 없이 imshow</h3>
+                <p><code>CV_16S</code>나 <code>CV_32F</code> 미분 결과를 그대로 <code>imshow</code>에 넘기면 화면이 거의 검정이거나 깨져 보인다. <code>imshow</code>는 float를 0~1로, 정수는 타입 범위로 해석하기 때문이다. 표시 전에 반드시 8비트로 변환한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat grad16;
+cv::Sobel(blurred, grad16, CV_16S, 1, 0, 3);
+
+// 나쁨 — CV_16S를 그대로 표시하면 제대로 안 보인다
+// cv::imshow("grad", grad16);
+
+// 좋음 1 — 절대값 + 8비트 포화 변환
+cv::Mat disp1;
+cv::convertScaleAbs(grad16, disp1);
+cv::imshow("grad abs", disp1);
+
+// 좋음 2 — 음수까지 보고 싶으면 정규화로 0~255 매핑
+cv::Mat disp2;
+cv::normalize(grad16, disp2, 0, 255, cv::NORM_MINMAX, CV_8U);
+cv::imshow("grad normalized", disp2);
+cv::waitKey(0);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        미분 결과는 음수를 포함하므로 <code>CV_16S</code>/<code>CV_32F</code>로 받고, 검출 전에 블러로 노이즈를 잡고, Canny 임계값은 1:2~1:3 비율로 맞추고, 화면 표시 전에는 8비트로 변환한다. 이 네 가지가 엣지 검출 입문의 핵심 습관이다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — OpenCV 공식 문서 (cv::Sobel, cv::Scharr, cv::Laplacian, cv::Canny 레퍼런스)</li>
+                        <li>OpenCV Tutorials — "Sobel Derivatives", "Laplace Operator", "Canny Edge Detector" 공식 튜토리얼</li>
+                        <li>J. Canny, "A Computational Approach to Edge Detection", IEEE PAMI, 1986</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
