@@ -1,0 +1,643 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMake + vcpkg manifest 실전 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why" data-section="why">왜 필요한가</a>
+        <a href="#cmake-basic" data-section="cmake-basic">CMake 기본</a>
+        <a href="#target" data-section="target">target 기반</a>
+        <a href="#multi-module" data-section="multi-module">모듈 구성</a>
+        <a href="#vcpkg" data-section="vcpkg">vcpkg</a>
+        <a href="#integration" data-section="integration">통합</a>
+        <a href="#presets" data-section="presets">CMakePresets</a>
+        <a href="#testing" data-section="testing">테스트</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+        <a href="#closing" data-section="closing">시리즈 마무리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>CMake + vcpkg manifest 실전 — 빌드와 의존성 관리</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-04-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>빌드 시스템(CMake)과 패키지 매니저(vcpkg)가 각각 푸는 문제</li>
+                        <li>모던 CMake의 핵심 — target 중심 사고와 PUBLIC/PRIVATE/INTERFACE</li>
+                        <li>여러 모듈을 add_subdirectory로 묶는 프로젝트 구성</li>
+                        <li>vcpkg manifest mode와 vcpkg.json 작성, baseline 고정</li>
+                        <li>CMakePresets.json으로 toolchain 고정, VS2022 통합, 테스트 연동</li>
+                        <li>C++ 시리즈 24편을 닫는 마무리</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">빌드 시스템과 패키지 매니저가 푸는 문제</a></li>
+                        <li><a href="#cmake-basic">CMake 기본 개념</a></li>
+                        <li><a href="#target">target 기반 빌드 — 모던 CMake의 핵심</a></li>
+                        <li><a href="#multi-module">여러 모듈로 구성하기</a></li>
+                        <li><a href="#vcpkg">vcpkg와 manifest mode</a></li>
+                        <li><a href="#integration">CMake + vcpkg 통합</a></li>
+                        <li><a href="#presets">CMakePresets.json과 VS2022</a></li>
+                        <li><a href="#testing">테스트 통합</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#closing">시리즈를 닫으며</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 필요한가 -->
+                <h2 id="why"><i class="fa-solid fa-screwdriver-wrench"></i> 빌드 시스템과 패키지 매니저가 푸는 문제</h2>
+                <p>C++ 프로젝트가 커지면 두 가지 골치 아픈 문제가 생긴다. 하나는 "이 소스들을 어떻게 바이너리로 만드는가", 다른 하나는 "OpenCV 같은 외부 라이브러리를 어떻게 가져오는가"다. 이 둘은 서로 다른 도구가 해결한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>도구</th><th>푸는 문제</th><th>본 프로젝트</th></tr>
+                    <tr><td><strong>빌드 시스템</strong></td><td>소스 → 바이너리. 플랫폼/IDE에 독립적인 빌드 정의</td><td>CMake</td></tr>
+                    <tr><td><strong>패키지 매니저</strong></td><td>외부 라이브러리 설치 / 버전 관리</td><td>vcpkg</td></tr>
+                </table>
+
+                <p>CMake는 컴파일러를 직접 호출하지 않는다. 대신 <code>CMakeLists.txt</code>라는 빌드 정의를 읽어서 Visual Studio 솔루션이나 Makefile 같은 <strong>실제 빌드 파일을 생성</strong>한다. 같은 정의 하나로 윈도우에서는 VS, 리눅스에서는 Make로 빌드할 수 있다.</p>
+
+                <p>vcpkg는 OpenCV, spdlog, gtest 같은 의존성을 소스에서 받아 컴파일하고 설치해 준다. 둘의 통합은 단순하다 — vcpkg가 라이브러리를 깔고, CMake의 <code>find_package()</code>가 그것을 찾아 쓴다. 이 글은 그 연결을 처음부터 끝까지 다룬다.</p>
+
+                <!-- 2. CMake 기본 -->
+                <h2 id="cmake-basic"><i class="fa-solid fa-box"></i> CMake 기본 개념</h2>
+                <p>CMake의 빌드는 세 단계로 흐른다.</p>
+
+                <table class="spec-table">
+                    <tr><th>단계</th><th>하는 일</th></tr>
+                    <tr><td><strong>configure</strong></td><td><code>CMakeLists.txt</code>를 읽고 컴파일러 / 환경을 탐지</td></tr>
+                    <tr><td><strong>generate</strong></td><td>실제 빌드 파일(VS 솔루션, Makefile 등) 생성</td></tr>
+                    <tr><td><strong>build</strong></td><td>생성된 빌드 파일로 컴파일 / 링크</td></tr>
+                </table>
+
+                <p>중요한 원칙은 <strong>out-of-source 빌드</strong>다. 빌드 산출물은 소스 디렉터리가 아니라 별도의 <code>build/</code> 디렉터리에 모은다. 소스와 산출물이 섞이지 않아서 깨끗하고, <code>build/</code> 폴더만 지우면 처음부터 다시 빌드할 수 있다.</p>
+
+<pre class="language-bash"><code class="language-bash"># 프로젝트 루트에서
+cmake -B build -S .      # configure + generate (build/ 디렉터리에)
+cmake --build build      # build</code></pre>
+
+                <p>그리고 모던 CMake에서 가장 중요한 사고방식 — <strong>모든 것은 target이다</strong>. 라이브러리도 target, 실행 파일도 target. include 경로, 컴파일 옵션, 링크할 라이브러리는 전부 "어떤 target에 붙는 속성"으로 다룬다. 이 관점을 잡으면 나머지가 자연스럽게 따라온다.</p>
+
+                <!-- 최소 CMakeLists -->
+                <h3 id="minimal"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 최소 CMakeLists.txt</h3>
+
+<pre class="language-cmake"><code class="language-cmake">cmake_minimum_required(VERSION 3.21)
+project(ImagingLibrary VERSION 0.1.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_library(core
+    core/src/Image.cpp
+    core/src/ImageProcessor.cpp
+)
+target_include_directories(core PUBLIC core/include)</code></pre>
+
+                <p><code>add_library(core ...)</code>가 <code>core</code>라는 target을 만들고, <code>target_include_directories</code>가 그 target에 include 경로를 붙인다. 실행 파일은 <code>add_executable(...)</code>로 만든다. 구조는 동일하다.</p>
+
+                <!-- 3. target 기반 -->
+                <h2 id="target"><i class="fa-solid fa-cubes"></i> target 기반 빌드 — 모던 CMake의 핵심</h2>
+                <p>target에 속성을 붙이는 명령은 한 묶음으로 외워두면 좋다.</p>
+
+                <table class="spec-table">
+                    <tr><th>명령</th><th>붙이는 속성</th></tr>
+                    <tr><td><code>target_link_libraries</code></td><td>링크할 라이브러리 (다른 target 포함)</td></tr>
+                    <tr><td><code>target_include_directories</code></td><td>헤더 검색 경로</td></tr>
+                    <tr><td><code>target_compile_features</code></td><td>요구 언어 표준 (예: <code>cxx_std_17</code>)</td></tr>
+                    <tr><td><code>target_compile_definitions</code></td><td>전처리기 매크로 정의</td></tr>
+                </table>
+
+                <h3 id="propagation"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> PUBLIC / PRIVATE / INTERFACE</h3>
+                <p>이 세 키워드는 속성이 <strong>어디까지 전파되는가</strong>를 정한다. 모던 CMake를 제대로 쓰려면 반드시 이해해야 하는 부분이다.</p>
+
+                <table class="spec-table">
+                    <tr><th>키워드</th><th>이 target</th><th>이 target을 쓰는 쪽</th><th>예시</th></tr>
+                    <tr><td><strong>PRIVATE</strong></td><td>적용</td><td>전파 안 됨</td><td>구현에만 쓰는 내부 의존성</td></tr>
+                    <tr><td><strong>INTERFACE</strong></td><td>적용 안 됨</td><td>전파됨</td><td>헤더 전용 라이브러리</td></tr>
+                    <tr><td><strong>PUBLIC</strong></td><td>적용</td><td>전파됨</td><td>공개 헤더에 노출되는 의존성</td></tr>
+                </table>
+
+                <p>판단 기준은 단순하다. 어떤 의존성이 <code>core</code>의 <strong>공개 헤더(.h)에 등장</strong>하면 그것을 쓰는 쪽도 알아야 하니 <code>PUBLIC</code>. <code>.cpp</code> 안에서만 쓰면 <code>PRIVATE</code>. 예를 들어 OpenCV 타입이 <code>Image.h</code>에 노출된다면 PUBLIC, 로깅용 spdlog가 구현 파일에서만 쓰인다면 PRIVATE다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>target 기반으로 사고하라</strong>
+                        "core가 무엇을 필요로 하는가"를 core target에 직접 선언하면, core를 링크하는 쪽은 그 의존성을 신경 쓸 필요가 없다. 의존성이 target을 따라 자동으로 흐르는 것 — 이게 모던 CMake의 전부다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>전역 명령은 안티패턴이다</strong>
+                        <code>include_directories()</code>나 <code>link_libraries()</code>처럼 target 없이 쓰는 전역 명령은 피한다. 모든 target에 무차별 적용되어 "이 target이 정확히 무엇에 의존하는가"를 추적할 수 없게 된다.
+                    </div>
+                </div>
+
+                <!-- 4. 여러 모듈 -->
+                <h2 id="multi-module"><i class="fa-solid fa-sitemap"></i> 여러 모듈로 구성하기</h2>
+                <p>ImagingLibrary는 core 라이브러리, measurement 솔루션, 테스트로 나뉜다. 각 디렉터리가 자기 <code>CMakeLists.txt</code>를 갖고, 루트의 <code>CMakeLists.txt</code>가 <code>add_subdirectory()</code>로 묶는다.</p>
+
+<pre class="language-bash"><code class="language-bash">ImagingLibrary/
+  CMakeLists.txt               # 루트 - 전체를 묶음
+  core/CMakeLists.txt          # core 라이브러리
+  solutions/measurement/CMakeLists.txt
+  tests/CMakeLists.txt         # gtest 테스트</code></pre>
+
+<pre class="language-cmake"><code class="language-cmake"># 루트 CMakeLists.txt
+cmake_minimum_required(VERSION 3.21)
+project(ImagingLibrary VERSION 0.1.0 LANGUAGES CXX)
+
+add_subdirectory(core)
+add_subdirectory(solutions/measurement)
+add_subdirectory(tests)</code></pre>
+
+<pre class="language-cmake"><code class="language-cmake"># solutions/measurement/CMakeLists.txt
+add_library(measurement
+    src/EdgeDistance.cpp
+)
+target_include_directories(measurement PUBLIC include)
+
+# measurement는 core에 의존한다
+target_link_libraries(measurement PUBLIC core)</code></pre>
+
+                <p><code>target_link_libraries(measurement PUBLIC core)</code> 한 줄이면 끝이다. measurement는 core의 include 경로와 의존성을 자동으로 물려받는다. 따로 <code>target_include_directories</code>로 core의 헤더 경로를 다시 적어줄 필요가 없다 — core target이 PUBLIC으로 선언해 둔 것이 그대로 전파되기 때문이다.</p>
+
+                <!-- 5. vcpkg -->
+                <h2 id="vcpkg"><i class="fa-solid fa-box-archive"></i> vcpkg와 manifest mode</h2>
+                <p>vcpkg는 Microsoft가 만든 C++ 패키지 매니저다. 동작 방식이 두 가지 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>모드</th><th>의존성 선언 위치</th><th>특징</th></tr>
+                    <tr><td>classic mode</td><td>없음 (<code>vcpkg install</code> 수동 실행)</td><td>전역 설치, 프로젝트 간 공유, 버전 추적 어려움</td></tr>
+                    <tr><td><strong>manifest mode</strong></td><td>프로젝트의 <code>vcpkg.json</code></td><td>프로젝트별 격리, 버전 선언적 관리 <strong>(권장)</strong></td></tr>
+                </table>
+
+                <p>manifest mode는 프로젝트 루트에 <code>vcpkg.json</code> 파일을 두고 거기에 의존성을 적어두는 방식이다. configure 시점에 CMake가 그 파일을 읽어 필요한 라이브러리를 자동으로 설치한다. 프로젝트마다 독립적이고, 파일 하나로 의존성 전체가 기술되니 새 팀원도 클론 후 빌드만 하면 된다.</p>
+
+                <h3 id="vcpkg-json"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> vcpkg.json 작성</h3>
+
+<pre class="language-json"><code class="language-json">{
+  "name": "imaging-library",
+  "version": "0.1.0",
+  "dependencies": [
+    {
+      "name": "opencv4",
+      "version&gt;=": "4.10.0",
+      "features": ["contrib"]
+    },
+    "spdlog",
+    "gtest"
+  ],
+  "builtin-baseline": "abc1234567890def...",
+  "overrides": [
+    { "name": "spdlog", "version": "1.14.1" }
+  ]
+}</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>필드</th><th>의미</th></tr>
+                    <tr><td><code>dependencies</code></td><td>필요한 패키지 목록. 문자열 또는 객체로 적는다</td></tr>
+                    <tr><td><code>features</code></td><td>패키지의 선택적 기능 활성화 (예: opencv4의 <code>contrib</code>)</td></tr>
+                    <tr><td><code>version&gt;=</code></td><td>최소 버전 요구</td></tr>
+                    <tr><td><code>builtin-baseline</code></td><td>vcpkg 레지스트리의 특정 커밋. 버전 고정의 기준점</td></tr>
+                    <tr><td><code>overrides</code></td><td>특정 패키지를 지정한 버전으로 강제</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>baseline을 반드시 고정하라</strong>
+                        <code>builtin-baseline</code>이 없으면 빌드하는 시점의 최신 레지스트리를 따라가서 사람마다, 날짜마다 다른 버전이 깔린다. baseline 커밋을 박아두면 재현 가능한 빌드(reproducible build)가 보장된다.
+                    </div>
+                </div>
+
+                <!-- 6. 통합 -->
+                <h2 id="integration"><i class="fa-solid fa-link"></i> CMake + vcpkg 통합</h2>
+                <p>둘을 잇는 핵심은 <strong>toolchain file</strong> 하나다. vcpkg에는 <code>vcpkg.cmake</code>라는 toolchain 파일이 들어 있다. 이것을 CMake의 <code>CMAKE_TOOLCHAIN_FILE</code> 변수로 지정하면, configure 시점에 vcpkg가 끼어들어 <code>vcpkg.json</code>의 의존성을 설치하고, <code>find_package()</code>가 그 설치본을 찾도록 경로를 설정한다.</p>
+
+<pre class="language-bash"><code class="language-bash">cmake -B build -S . \
+  -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake</code></pre>
+
+                <p>이 한 줄을 매번 치는 건 번거롭고 실수도 잦다. 그래서 뒤에서 다룰 <code>CMakePresets.json</code>에 toolchain 경로를 한 번 박아두는 것이 권장된다.</p>
+
+                <h3 id="find-package"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> find_package로 target 연결</h3>
+                <p>toolchain이 지정되면 <code>find_package</code>가 vcpkg 설치본을 찾는다. 찾은 라이브러리는 target 형태로 제공되므로 <code>target_link_libraries</code>로 그냥 붙이면 된다.</p>
+
+<pre class="language-cmake"><code class="language-cmake">find_package(OpenCV CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+
+target_link_libraries(core
+    PUBLIC  opencv_core opencv_imgproc
+    PRIVATE spdlog::spdlog
+)</code></pre>
+
+                <p>OpenCV 타입이 core의 공개 헤더에 노출되므로 <code>opencv_*</code>는 <code>PUBLIC</code>, spdlog는 구현 파일에서만 쓰이므로 <code>PRIVATE</code>다. <code>CONFIG</code> 키워드는 패키지가 제공하는 CMake 설정 파일을 쓰라는 의미로, vcpkg 패키지는 대부분 이 방식을 지원한다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>find_package가 못 찾으면 toolchain 미지정을 의심하라</strong>
+                        "Could not find package" 에러의 가장 흔한 원인은 <code>CMAKE_TOOLCHAIN_FILE</code>을 빠뜨린 것이다. vcpkg.json이 있어도 toolchain을 지정하지 않으면 CMake는 vcpkg의 존재 자체를 모른다.
+                    </div>
+                </div>
+
+                <!-- 7. CMakePresets -->
+                <h2 id="presets"><i class="fa-solid fa-gears"></i> CMakePresets.json과 VS2022</h2>
+                <p><code>CMakePresets.json</code>은 빌드 설정을 파일로 고정하는 표준 방식이다. toolchain 경로, generator, 빌드 디렉터리, 캐시 변수를 한 곳에 정의해 두면 팀원 모두가 똑같은 설정으로 빌드한다.</p>
+
+<pre class="language-json"><code class="language-json">{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "default",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "default", "configurePreset": "default" }
+  ]
+}</code></pre>
+
+<pre class="language-bash"><code class="language-bash">cmake --preset default          # configure
+cmake --build --preset default  # build</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>CMakePresets.json은 커밋하라</strong>
+                        toolchain 경로와 generator를 preset에 박아두면 명령줄 인자를 외울 필요가 없고, CI도 같은 preset을 그대로 쓴다. 빌드 환경의 단일 진실 공급원(single source of truth)이 된다.
+                    </div>
+                </div>
+
+                <h3 id="vs2022"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> VS2022 통합</h3>
+                <p>VS2022는 CMake 프로젝트를 솔루션 변환 없이 직접 연다. <code>CMakeLists.txt</code>가 있는 폴더를 "폴더 열기"로 열면 된다. <code>CMakePresets.json</code>은 자동으로 인식되어 상단 드롭다운에서 preset을 고를 수 있고, vcpkg는 VS에 통합되어 있어 별도 설정 없이 manifest mode가 동작한다.</p>
+
+                <!-- 8. 테스트 -->
+                <h2 id="testing"><i class="fa-solid fa-vial"></i> 테스트 통합</h2>
+                <p>CMake에는 CTest라는 테스트 러너가 내장되어 있다. <code>enable_testing()</code>으로 켜고, gtest 기반이면 <code>gtest_discover_tests()</code>가 테스트 케이스를 자동으로 등록해 준다.</p>
+
+<pre class="language-cmake"><code class="language-cmake"># tests/CMakeLists.txt
+find_package(GTest CONFIG REQUIRED)
+enable_testing()
+
+add_executable(core_tests core_tests/ImageProcessorTest.cpp)
+target_link_libraries(core_tests PRIVATE core GTest::gtest_main)
+
+include(GoogleTest)
+gtest_discover_tests(core_tests)</code></pre>
+
+<pre class="language-bash"><code class="language-bash">ctest --preset default        # 또는 build 디렉터리에서 ctest</code></pre>
+
+                <p>이렇게 해두면 CI 파이프라인에서도 <code>ctest</code> 한 줄로 전체 테스트가 돌아간다. 본 프로젝트의 GitLab CI Phase 2(빌드 + 테스트 자동 실행)가 정확히 이 구조를 전제로 한다.</p>
+
+                <!-- 9. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>전역 include_directories 남용</strong>
+                        target 없이 전역으로 경로를 뿌리면 어느 target이 무엇에 의존하는지 추적이 불가능해진다. 항상 <code>target_include_directories</code>를 쓴다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>find_package가 못 찾음</strong>
+                        대부분 <code>CMAKE_TOOLCHAIN_FILE</code> 미지정이 원인이다. preset에 toolchain을 박아두면 이 실수가 사라진다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>classic mode와 manifest mode 혼용</strong>
+                        둘을 섞으면 어느 쪽 라이브러리가 링크되는지 예측 불가능해진다. manifest mode를 쓰기로 했으면 전역 <code>vcpkg install</code>은 쓰지 않는다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>baseline 미고정</strong>
+                        <code>builtin-baseline</code>이 없으면 빌드할 때마다 다른 버전이 깔릴 수 있다. 재현 가능한 빌드를 위해 반드시 고정한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>build 디렉터리를 커밋</strong>
+                        <code>build/</code>는 생성물이다. 절대 커밋하지 않는다. <code>.gitignore</code>에 반드시 추가한다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>CMAKE_CXX_STANDARD를 전역으로만 설정</strong>
+                        전역 <code>set(CMAKE_CXX_STANDARD 17)</code>도 동작은 하지만, 모던하게는 target별로 <code>target_compile_features(core PUBLIC cxx_std_17)</code>를 쓰는 것이 권장된다. 표준 요구가 target을 따라 전파되기 때문이다.
+                    </div>
+                </div>
+
+                <!-- 10. 마무리 -->
+                <h2 id="closing"><i class="fa-solid fa-flag-checkered"></i> 시리즈를 닫으며</h2>
+                <p>이 글로 C++ 시리즈 24편이 끝난다. STL의 컨테이너와 알고리즘에서 출발해, 모던 C++의 스마트 포인터와 이동 의미론, 동시성, 산업 현장 적용을 거쳐, 마지막은 그 코드를 실제로 빌드하고 의존성을 관리하는 인프라까지 왔다.</p>
+                <p>문법을 아는 것과 프로젝트를 굴리는 것은 다른 일이다. 24편을 통해 그 간극이 조금이나마 좁혀졌다면 시리즈의 목적은 이룬 셈이다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>CMake 공식 문서 (cmake.org/cmake/help/latest) — 명령어 레퍼런스와 가이드</li>
+                        <li>vcpkg 공식 문서 (learn.microsoft.com/vcpkg) — manifest mode, baseline, overrides</li>
+                        <li>Professional CMake: A Practical Guide — Craig Scott</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

@@ -60,6 +60,9 @@ const POST_NAV_DATA = {
         { file: 'cpp-image-buffer-design.html', title: 'C++ 이미지 버퍼 클래스 설계' },
         { file: 'cpp-interface-patterns.html', title: '인터페이스 설계 패턴' },
         { file: 'cpp-callback-function.html', title: '콜백과 std::function' },
+        { file: 'cpp-plugin-architecture.html', title: 'C++ 플러그인 아키텍처' },
+        { file: 'cpp-cli-binding.html', title: 'C++/CLI 입문 — C++와 C# 바인딩' },
+        { file: 'cpp-cmake-vcpkg.html', title: 'CMake + vcpkg manifest 실전' },
     ],
     'tech-halcon': [
         { file: 'halcon-sg1-00-overview.html', title: 'HALCON Solution Guide I 개요와 학습법' },
