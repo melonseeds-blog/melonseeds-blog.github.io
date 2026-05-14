@@ -1,0 +1,870 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주요 CNN 아키텍처 — LeNet에서 ResNet까지 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#overview" data-section="overview">발전사 개요</a>
+        <a href="#lenet" data-section="lenet">LeNet-5</a>
+        <a href="#alexnet" data-section="alexnet">AlexNet</a>
+        <a href="#vgg" data-section="vgg">VGG</a>
+        <a href="#googlenet" data-section="googlenet">GoogLeNet</a>
+        <a href="#resnet" data-section="resnet">ResNet</a>
+        <a href="#beyond" data-section="beyond">그 이후</a>
+        <a href="#comparison" data-section="comparison">아키텍처 비교</a>
+        <a href="#key-ideas" data-section="key-ideas">핵심 아이디어</a>
+        <a href="#industrial" data-section="industrial">산업 비전 관점</a>
+        <a href="#misconceptions" data-section="misconceptions">흔한 오해</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>주요 CNN 아키텍처 — LeNet에서 ResNet까지</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>CNN 아키텍처 발전사 — ImageNet 대회(ILSVRC)가 끌어올린 흐름</li>
+                        <li>LeNet-5 — 최초의 실용적 CNN, Conv-Pool-FC 기본 틀 확립</li>
+                        <li>AlexNet — 딥러닝 부흥의 시작, ReLU·Dropout·GPU 학습</li>
+                        <li>VGG — 3×3 작은 커널을 깊게 쌓는 단순하고 규칙적인 구조</li>
+                        <li>GoogLeNet/Inception — 여러 크기 커널을 병렬로, 1×1 합성곱으로 연산 절감</li>
+                        <li>ResNet — 잔차 연결로 깊은 망의 기울기 소실 문제를 해결한 전환점</li>
+                        <li>그 이후 — DenseNet, MobileNet, EfficientNet, Vision Transformer</li>
+                        <li>아키텍처 비교표, 핵심 아이디어 정리, 산업 비전 관점, 흔한 오해</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#overview">CNN 아키텍처 발전사 개요</a></li>
+                        <li><a href="#lenet">LeNet-5 — 모든 것의 시작</a></li>
+                        <li><a href="#alexnet">AlexNet — 딥러닝 부흥의 신호탄</a></li>
+                        <li><a href="#vgg">VGG — 작은 커널을 깊게 쌓다</a></li>
+                        <li><a href="#googlenet">GoogLeNet / Inception — 넓게 그리고 효율적으로</a></li>
+                        <li><a href="#resnet">ResNet — 잔차 연결이라는 전환점</a></li>
+                        <li><a href="#beyond">ResNet 이후 — 다양한 갈래</a></li>
+                        <li><a href="#comparison">아키텍처 한눈에 비교</a></li>
+                        <li><a href="#key-ideas">핵심 아이디어 세 줄기</a></li>
+                        <li><a href="#industrial">산업 비전 관점 — 백본과 전이학습</a></li>
+                        <li><a href="#misconceptions">흔한 오해</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 발전사 개요 -->
+                <h2 id="overview"><i class="fa-solid fa-timeline"></i> CNN 아키텍처 발전사 개요</h2>
+
+                <p>앞 글에서 CNN이 합성곱·풀링·완전연결로 이미지를 보는 방식을 다뤘다. 이번에는 그 구성 요소를 <strong>어떻게 조립하느냐</strong>의 역사를 따라간다. CNN의 기본 아이디어는 1980~90년대에 이미 나왔지만, 실제로 세상을 바꾼 것은 2012년 이후다. 그 사이를 이은 것이 <strong>ImageNet 대회</strong>다.</p>
+
+                <p>ImageNet은 약 1,400만 장의 라벨링된 이미지를 모은 대규모 데이터셋이고, 이를 기반으로 2010년부터 매년 <strong>ILSVRC</strong>(ImageNet Large Scale Visual Recognition Challenge)라는 이미지 분류·검출 경진대회가 열렸다. 1,000개 클래스를 얼마나 정확히 맞히는가를 겨루는 이 대회가 사실상 CNN 아키텍처 발전의 무대가 됐다. 매년 우승 모델이 새로운 구조적 아이디어를 들고 나왔고, 그 아이디어가 다음 해의 출발점이 됐다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-trophy"></i> ILSVRC 우승 모델로 보는 발전의 가속</div>
+                    <p>대회 초기에는 전통적 컴퓨터 비전 기법(SIFT 등 수작업 특징)이 상위권이었다. 그러나 2012년 AlexNet이 전통 기법을 큰 격차로 누른 뒤로, 우승은 모두 딥러닝 모델이 차지했다. 분류 오류율(top-5 error)은 2011년 약 26%에서 2015년 ResNet의 약 3.6%까지 내려갔다. 사람의 분류 오류율이 약 5%로 알려져 있으니, 4년 만에 특정 태스크에서 사람 수준을 넘어선 셈이다. 이 가파른 곡선의 매 굴곡마다 하나의 아키텍처가 있다.</p>
+                </div>
+
+                <p>아래 타임라인은 이 글에서 다룰 모델들의 흐름을 한눈에 보여준다. 핵심은 단순히 연도 나열이 아니라, 각 모델이 <strong>앞 모델의 한계를 무엇으로 풀었는가</strong>다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 300" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="360" y="24" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">CNN 아키텍처 발전 타임라인</text>
+
+                        <!-- 가로 축 -->
+                        <line x1="40" y1="150" x2="680" y2="150" stroke="#90a4ae" stroke-width="2"/>
+                        <polygon points="680,150 672,146 672,154" fill="#90a4ae"/>
+
+                        <!-- LeNet 1998 -->
+                        <circle cx="80" cy="150" r="6" fill="#ff9800"/>
+                        <line x1="80" y1="150" x2="80" y2="100" stroke="#ffb74d" stroke-width="1.5"/>
+                        <rect x="42" y="62" width="76" height="38" rx="6" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+                        <text x="80" y="79" text-anchor="middle" font-size="10.5" fill="#e65100" font-weight="700">LeNet-5</text>
+                        <text x="80" y="93" text-anchor="middle" font-size="9" fill="#fb8c00">1998 · 기본 틀</text>
+                        <text x="80" y="172" text-anchor="middle" font-size="9" fill="#607d8b">1998</text>
+
+                        <!-- AlexNet 2012 -->
+                        <circle cx="210" cy="150" r="6" fill="#1565c0"/>
+                        <line x1="210" y1="150" x2="210" y2="200" stroke="#64b5f6" stroke-width="1.5"/>
+                        <rect x="170" y="200" width="80" height="38" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="210" y="217" text-anchor="middle" font-size="10.5" fill="#1565c0" font-weight="700">AlexNet</text>
+                        <text x="210" y="231" text-anchor="middle" font-size="9" fill="#42a5f5">2012 · ReLU·GPU</text>
+                        <text x="210" y="172" text-anchor="middle" font-size="9" fill="#607d8b">2012</text>
+
+                        <!-- VGG 2014 -->
+                        <circle cx="340" cy="150" r="6" fill="#2e7d32"/>
+                        <line x1="340" y1="150" x2="340" y2="100" stroke="#81c784" stroke-width="1.5"/>
+                        <rect x="302" y="62" width="76" height="38" rx="6" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+                        <text x="340" y="79" text-anchor="middle" font-size="10.5" fill="#2e7d32" font-weight="700">VGG</text>
+                        <text x="340" y="93" text-anchor="middle" font-size="9" fill="#66bb6a">2014 · 3×3 깊게</text>
+                        <text x="340" y="172" text-anchor="middle" font-size="9" fill="#607d8b">2014</text>
+
+                        <!-- GoogLeNet 2014 -->
+                        <circle cx="430" cy="150" r="6" fill="#673ab7"/>
+                        <line x1="430" y1="150" x2="430" y2="200" stroke="#9575cd" stroke-width="1.5"/>
+                        <rect x="388" y="200" width="84" height="38" rx="6" fill="#ede7f6" stroke="#673ab7" stroke-width="1.5"/>
+                        <text x="430" y="217" text-anchor="middle" font-size="10" fill="#4527a0" font-weight="700">GoogLeNet</text>
+                        <text x="430" y="231" text-anchor="middle" font-size="9" fill="#7e57c2">2014 · Inception</text>
+                        <text x="430" y="172" text-anchor="middle" font-size="9" fill="#607d8b"></text>
+
+                        <!-- ResNet 2015 -->
+                        <circle cx="540" cy="150" r="7" fill="#c2185b"/>
+                        <line x1="540" y1="150" x2="540" y2="100" stroke="#f06292" stroke-width="2"/>
+                        <rect x="498" y="58" width="84" height="42" rx="6" fill="#fce4ec" stroke="#c2185b" stroke-width="2"/>
+                        <text x="540" y="75" text-anchor="middle" font-size="10.5" fill="#c2185b" font-weight="700">ResNet</text>
+                        <text x="540" y="89" text-anchor="middle" font-size="9" fill="#e91e63">2015 · 잔차 연결</text>
+                        <text x="540" y="172" text-anchor="middle" font-size="9" fill="#607d8b">2015</text>
+
+                        <!-- 이후 -->
+                        <circle cx="640" cy="150" r="6" fill="#455a64"/>
+                        <line x1="640" y1="150" x2="640" y2="200" stroke="#90a4ae" stroke-width="1.5"/>
+                        <rect x="598" y="200" width="84" height="50" rx="6" fill="#eceff1" stroke="#607d8b" stroke-width="1.5"/>
+                        <text x="640" y="216" text-anchor="middle" font-size="9.5" fill="#455a64" font-weight="700">DenseNet</text>
+                        <text x="640" y="228" text-anchor="middle" font-size="9" fill="#607d8b">MobileNet·ViT</text>
+                        <text x="640" y="240" text-anchor="middle" font-size="9" fill="#607d8b">2016~</text>
+                        <text x="640" y="172" text-anchor="middle" font-size="9" fill="#607d8b">2016+</text>
+
+                        <!-- 침체기 표시 -->
+                        <text x="145" y="135" text-anchor="middle" font-size="8.5" fill="#b0bec5" font-style="italic">긴 침체기</text>
+                    </svg>
+                    <div class="caption">그림 1. CNN 아키텍처 발전 타임라인 — LeNet 이후 긴 침체기를 거쳐, AlexNet(2012)부터 매년 새 구조가 등장한다</div>
+                </div>
+
+                <!-- 2. LeNet -->
+                <h2 id="lenet"><i class="fa-solid fa-pen-nib"></i> LeNet-5 — 모든 것의 시작</h2>
+
+                <p><strong>LeNet-5</strong>는 1998년 Yann LeCun이 발표한, 최초의 실용적인 CNN이다. 미국 우편번호와 수표의 손글씨 숫자를 인식하기 위해 만들어졌고, 실제 은행 시스템에 투입되어 동작했다. 입력은 32×32 흑백 이미지, 출력은 0~9 열 개 숫자다.</p>
+
+                <p>LeNet-5의 의미는 성능 수치가 아니라 <strong>구조의 틀</strong>에 있다. 오늘날 거의 모든 CNN이 따르는 기본 패턴 — 합성곱으로 특징을 뽑고, 풀링으로 크기를 줄이고, 그것을 여러 번 반복한 뒤, 마지막에 완전연결 계층으로 분류하는 — 이 흐름을 처음으로 명확히 보여줬다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-diagram-project"></i> LeNet-5가 확립한 Conv-Pool-FC 패턴</div>
+                    <p><strong>입력</strong> → <strong>합성곱(Conv)</strong>: 작은 필터로 엣지·곡선 같은 국소 특징 추출 → <strong>풀링(Pool)</strong>: 특징 맵을 줄여 위치 변화에 둔감하게 + 연산량 감소 → 이 Conv-Pool을 두어 번 반복 → <strong>완전연결(FC)</strong>: 추출된 특징을 모아 최종 분류. LeNet-5는 합성곱 2회 + 풀링 2회 + 완전연결 3개로 구성된, 지금 기준으로는 아주 얕은 7계층 망이다. 그러나 "낮은 층은 단순한 특징을, 높은 층은 복잡한 특징을 본다"는 계층적 특징 학습의 원형이 여기에 다 들어 있다.</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>왜 14년의 침체기가 있었나</strong>
+                        LeNet-5가 1998년에 이미 동작했는데도 딥러닝 붐은 2012년에야 왔다. 이유는 세 가지가 동시에 모자랐기 때문이다. 학습시킬 <strong>대규모 데이터</strong>가 없었고, 깊은 망을 굴릴 <strong>연산 능력</strong>(GPU)이 부족했으며, 깊어질수록 학습이 안 되는 <strong>기울기 문제</strong>를 풀 기법이 없었다. 이 세 가지가 갖춰지는 데 14년이 걸렸다.
+                    </div>
+                </div>
+
+                <!-- 3. AlexNet -->
+                <h2 id="alexnet"><i class="fa-solid fa-rocket"></i> AlexNet — 딥러닝 부흥의 신호탄</h2>
+
+                <p><strong>AlexNet</strong>은 2012년 ILSVRC에서 top-5 오류율 약 16%를 기록하며 2위(약 26%)를 압도적 격차로 누르고 우승했다. 이 결과가 컴퓨터 비전 연구의 방향을 하루아침에 바꿨다. AlexNet 이후 "특징을 사람이 설계한다"는 발상은 빠르게 밀려나고, "데이터로 특징을 학습한다"가 주류가 됐다.</p>
+
+                <p>구조 자체는 LeNet-5의 Conv-Pool-FC 패턴을 그대로 따른, 더 크고 깊은 버전이다. 진짜 기여는 <strong>깊은 망을 실제로 학습 가능하게 만든 실용적 기법들</strong>의 묶음이다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">ReLU</span>
+                        <span class="term-desc">활성화 함수로 sigmoid/tanh 대신 ReLU를 채택했다. 양수 구간에서 기울기가 1로 유지되어 기울기 소실이 크게 완화되고, 계산도 단순해 학습이 몇 배 빨라졌다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Dropout</span>
+                        <span class="term-desc">완전연결 계층에서 학습 중 일부 뉴런을 무작위로 꺼버린다. 특정 뉴런에 대한 과도한 의존을 막아 과적합을 줄이는 정규화 기법이다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">GPU 학습</span>
+                        <span class="term-desc">두 장의 GPU에 망을 나눠 학습했다. 대규모 망 학습이 현실적인 시간 안에 가능하다는 것을 처음 보여줬고, 이후 모든 딥러닝 연구의 전제가 됐다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">데이터 증강</span>
+                        <span class="term-desc">이미지를 자르고 뒤집고 색을 바꿔 학습 데이터를 인위적으로 늘렸다. 한정된 데이터로도 망이 다양한 변형에 견디도록 만드는 기법이다.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>AlexNet의 진짜 교훈</strong>
+                        AlexNet은 새로운 구조를 발명했다기보다, "충분한 데이터 + GPU + 학습을 돕는 기법들"이 갖춰지면 깊은 CNN이 압도적으로 강하다는 것을 <strong>증명</strong>했다. 이후 모든 모델은 이 토대 위에서 "구조를 어떻게 더 잘 짤 것인가"를 다투게 된다.
+                    </div>
+                </div>
+
+                <!-- 4. VGG -->
+                <h2 id="vgg"><i class="fa-solid fa-layer-group"></i> VGG — 작은 커널을 깊게 쌓다</h2>
+
+                <p><strong>VGG</strong>는 2014년 옥스퍼드 VGG(Visual Geometry Group)에서 발표한 모델로, 깊이가 16층(VGG-16), 19층(VGG-19)에 이른다. VGG의 메시지는 한 문장으로 요약된다 — <strong>"커널은 작게(3×3), 망은 깊게."</strong></p>
+
+                <p>이전 모델들은 5×5, 7×7, 11×11 같은 큰 커널을 섞어 썼다. VGG는 모든 합성곱을 <strong>3×3 한 종류</strong>로 통일하고, 대신 그것을 여러 겹 쌓았다. 3×3 두 개를 연달아 쓰면 5×5 한 개와 같은 영역을 보면서도 파라미터는 더 적고, 그 사이에 활성화 함수가 한 번 더 들어가 표현력이 늘어난다. 구조가 극도로 단순하고 규칙적이라 이해하기 쉽고 변형하기도 쉽다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-thumbs-up" style="color:#2e7d32;"></i> VGG의 장점</h4>
+                        <ul>
+                            <li>구조가 단순하고 규칙적 — 이해·구현이 쉽다</li>
+                            <li>3×3로 통일되어 설계 변수가 적다</li>
+                            <li>중간 특징 맵이 깔끔해 다른 작업의 백본으로 재사용하기 좋다</li>
+                        </ul>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-thumbs-down" style="color:#c62828;"></i> VGG의 단점</h4>
+                        <ul>
+                            <li>파라미터가 매우 많다 (VGG-16 약 1.38억 개)</li>
+                            <li>대부분의 파라미터가 완전연결 계층에 몰려 있어 무겁다</li>
+                            <li>메모리·연산 비용이 커서 배포에 부담</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>VGG가 부딪힌 벽 — 깊이를 더 늘릴 수 없었다</strong>
+                        VGG는 "더 깊으면 더 좋다"는 방향을 보여줬지만, 19층쯤에서 멈춰야 했다. 더 쌓으면 오히려 성능이 떨어졌기 때문이다. 단순히 망을 깊게 하는 것만으로는 한계가 있었고, 이 벽을 깬 것이 바로 다음에 나올 ResNet이다.
+                    </div>
+                </div>
+
+                <!-- 5. GoogLeNet -->
+                <h2 id="googlenet"><i class="fa-solid fa-network-wired"></i> GoogLeNet / Inception — 넓게 그리고 효율적으로</h2>
+
+                <p><strong>GoogLeNet</strong>은 VGG와 같은 2014년 ILSVRC에서 우승한 모델이다. VGG가 "깊이"로 승부했다면, GoogLeNet은 <strong>"효율"</strong>로 승부했다. 22층이나 되는데도 파라미터는 약 500만 개로, VGG-16의 28분의 1 수준이다. 이 효율의 핵심이 <strong>Inception 모듈</strong>이다.</p>
+
+                <h3 id="inception-module"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Inception 모듈 — 여러 크기 커널을 병렬로</h3>
+
+                <p>한 위치의 특징을 볼 때 1×1이 적절한지 3×3이 적절한지 5×5가 적절한지 미리 알 수 없다. Inception 모듈의 발상은 단순하다 — <strong>고르지 말고 다 쓰자.</strong> 같은 입력에 1×1, 3×3, 5×5 합성곱과 풀링을 동시에 적용하고, 그 결과를 채널 방향으로 이어 붙인다. 망이 어떤 크기의 특징이 유용한지 스스로 학습하게 둔다.</p>
+
+                <h3 id="oneby-one"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1×1 합성곱 — 연산량을 줄이는 열쇠</h3>
+
+                <p>그런데 여러 커널을 병렬로 다 쓰면 연산량이 폭발한다. 이를 막는 것이 <strong>1×1 합성곱</strong>이다. 1×1 커널은 공간적으로는 아무것도 섞지 않고 오직 <strong>채널 수만 줄인다</strong>. 예컨대 256채널을 1×1로 64채널로 줄인 다음 3×3, 5×5를 적용하면, 무거운 연산이 훨씬 적은 채널 위에서 일어난다. 1×1 합성곱은 "병목(bottleneck)"을 만들어 연산을 압축하는 도구이며, 이 아이디어는 이후 거의 모든 효율적 아키텍처에서 재사용된다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Inception이라는 이름</strong>
+                        Inception 모듈은 이후 v2, v3, v4로 개선되며 계열을 이룬다. 핵심 철학은 일관된다 — 망을 무작정 깊거나 넓게 만들지 말고, <strong>같은 연산 예산 안에서 더 똑똑하게 배치</strong>하자는 것이다.
+                    </div>
+                </div>
+
+                <!-- 6. ResNet -->
+                <h2 id="resnet"><i class="fa-solid fa-link"></i> ResNet — 잔차 연결이라는 전환점</h2>
+
+                <p><strong>ResNet</strong>은 2015년 ILSVRC에서 top-5 오류율 약 3.6%로 우승했다. 무려 <strong>152층</strong>짜리 망을 안정적으로 학습시켰고, 이는 그 전까지 누구도 하지 못한 일이었다. ResNet은 이 시리즈 전체에서 가장 중요하게 봐야 할 모델이다. CNN을 "원하는 만큼 깊게 쌓을 수 있는" 도구로 바꿔놨기 때문이다.</p>
+
+                <h3 id="degradation"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ResNet이 푼 문제 — 깊어질수록 나빠지는 현상</h3>
+
+                <p>VGG에서 봤듯, 망을 깊게만 쌓으면 어느 지점부터 성능이 오히려 떨어진다. 이것을 <strong>퇴화(degradation) 문제</strong>라고 부른다. 이건 단순한 과적합이 아니다. 학습 데이터에 대한 오류조차 깊은 망이 더 높았다. 망이 깊어지면 역전파되는 기울기가 앞쪽 층까지 닿기 전에 점점 작아지거나 사라져(<strong>기울기 소실</strong>), 앞쪽 층이 제대로 학습되지 않는다.</p>
+
+                <h3 id="residual"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 잔차 연결 — 입력을 그대로 더해준다</h3>
+
+                <p>ResNet의 해법은 놀랍도록 간단하다. 어떤 계층 블록의 출력에 그 블록의 <strong>입력을 그대로 더해준다</strong>. 이 지름길을 <strong>스킵 연결(skip connection)</strong> 또는 <strong>잔차 연결(residual connection)</strong>이라 부른다. 블록이 학습해야 할 것은 "출력 전체"가 아니라 "입력에 더해질 변화량(잔차, residual)"뿐이다. 만약 그 블록이 아무 일도 하지 않는 게 최선이라면, 잔차를 0으로 만들기만 하면 된다 — 이게 깊은 망보다 훨씬 쉽다.</p>
+
+                <p>더 중요한 효과는 기울기 흐름이다. 잔차 연결은 역전파 시 기울기가 지나갈 <strong>고속도로</strong>를 만든다. 기울기가 합성곱 계층들을 거치지 않고도 더하기 연결을 타고 앞쪽 층까지 거의 손실 없이 전달된다. 그 결과 100층, 150층을 넘어도 학습이 멈추지 않는다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 320" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrR" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#1565c0"/></marker>
+                            <marker id="arrSkip" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#c2185b"/></marker>
+                        </defs>
+                        <text x="360" y="26" text-anchor="middle" font-size="14" fill="#1b5e20" font-weight="700">ResNet 잔차 블록 구조 — 입력을 출력에 더해주는 지름길</text>
+
+                        <!-- 일반 블록 (왼쪽) -->
+                        <text x="170" y="58" text-anchor="middle" font-size="11.5" fill="#455a64" font-weight="700">일반 블록 (Plain)</text>
+
+                        <rect x="120" y="72" width="100" height="32" rx="6" fill="#eceff1" stroke="#90a4ae" stroke-width="1.5"/>
+                        <text x="170" y="92" text-anchor="middle" font-size="10" fill="#455a64">입력 x</text>
+                        <line x1="170" y1="104" x2="170" y2="124" stroke="#1565c0" stroke-width="2" marker-end="url(#arrR)"/>
+
+                        <rect x="120" y="126" width="100" height="32" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="170" y="146" text-anchor="middle" font-size="9.5" fill="#1565c0">Conv → ReLU</text>
+                        <line x1="170" y1="158" x2="170" y2="178" stroke="#1565c0" stroke-width="2" marker-end="url(#arrR)"/>
+
+                        <rect x="120" y="180" width="100" height="32" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="170" y="200" text-anchor="middle" font-size="9.5" fill="#1565c0">Conv → ReLU</text>
+                        <line x1="170" y1="212" x2="170" y2="232" stroke="#1565c0" stroke-width="2" marker-end="url(#arrR)"/>
+
+                        <rect x="120" y="234" width="100" height="32" rx="6" fill="#eceff1" stroke="#90a4ae" stroke-width="1.5"/>
+                        <text x="170" y="254" text-anchor="middle" font-size="10" fill="#455a64">출력 F(x)</text>
+                        <text x="170" y="288" text-anchor="middle" font-size="9" fill="#90a4ae">기울기가 모든 Conv를</text>
+                        <text x="170" y="301" text-anchor="middle" font-size="9" fill="#90a4ae">거쳐야 해 소실되기 쉽다</text>
+
+                        <!-- 잔차 블록 (오른쪽) -->
+                        <text x="510" y="58" text-anchor="middle" font-size="11.5" fill="#c2185b" font-weight="700">잔차 블록 (Residual)</text>
+
+                        <rect x="460" y="72" width="100" height="32" rx="6" fill="#fce4ec" stroke="#c2185b" stroke-width="1.5"/>
+                        <text x="510" y="92" text-anchor="middle" font-size="10" fill="#c2185b">입력 x</text>
+                        <line x1="510" y1="104" x2="510" y2="124" stroke="#1565c0" stroke-width="2" marker-end="url(#arrR)"/>
+
+                        <rect x="460" y="126" width="100" height="32" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="510" y="146" text-anchor="middle" font-size="9.5" fill="#1565c0">Conv → ReLU</text>
+                        <line x1="510" y1="158" x2="510" y2="178" stroke="#1565c0" stroke-width="2" marker-end="url(#arrR)"/>
+
+                        <rect x="460" y="180" width="100" height="32" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+                        <text x="510" y="200" text-anchor="middle" font-size="9.5" fill="#1565c0">Conv</text>
+                        <line x1="510" y1="212" x2="510" y2="230" stroke="#1565c0" stroke-width="2" marker-end="url(#arrR)"/>
+
+                        <!-- 덧셈 노드 -->
+                        <circle cx="510" cy="244" r="13" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+                        <text x="510" y="249" text-anchor="middle" font-size="14" fill="#e65100" font-weight="700">+</text>
+                        <line x1="510" y1="257" x2="510" y2="276" stroke="#1565c0" stroke-width="2" marker-end="url(#arrR)"/>
+
+                        <rect x="460" y="278" width="100" height="32" rx="6" fill="#eceff1" stroke="#90a4ae" stroke-width="1.5"/>
+                        <text x="510" y="298" text-anchor="middle" font-size="9.5" fill="#455a64">출력 F(x) + x</text>
+
+                        <!-- 스킵 연결 곡선 -->
+                        <path d="M 560 88 Q 640 88 640 244 Q 640 244 524 244" fill="none" stroke="#c2185b" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrSkip)"/>
+                        <text x="655" y="166" text-anchor="middle" font-size="9.5" fill="#c2185b" font-weight="600" transform="rotate(90 655 166)">스킵 연결 (x 그대로 전달)</text>
+
+                        <!-- 가운데 설명 화살표 -->
+                        <text x="340" y="170" text-anchor="middle" font-size="20" fill="#90a4ae">→</text>
+                        <text x="340" y="195" text-anchor="middle" font-size="9" fill="#607d8b">입력을 더하는</text>
+                        <text x="340" y="207" text-anchor="middle" font-size="9" fill="#607d8b">지름길 추가</text>
+                    </svg>
+                    <div class="caption">그림 2. 일반 블록 vs 잔차 블록 — 잔차 블록은 입력 x를 출력에 그대로 더해, 기울기가 흐를 고속도로를 만든다</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>ResNet이 바꿔놓은 것</strong>
+                        ResNet 이전에는 "얼마나 깊게 쌓을 수 있는가"가 제약이었다. ResNet 이후로는 깊이가 더 이상 본질적 장벽이 아니다. 잔차 연결은 너무 효과적이고 단순해서, 이후 등장한 거의 모든 아키텍처 — DenseNet, Transformer까지 — 가 어떤 형태로든 스킵 연결을 품고 있다. CNN 발전사에서 단 하나의 전환점을 꼽으라면 ResNet이다.
+                    </div>
+                </div>
+
+                <!-- 7. 그 이후 -->
+                <h2 id="beyond"><i class="fa-solid fa-code-branch"></i> ResNet 이후 — 다양한 갈래</h2>
+
+                <p>ResNet이 깊이 문제를 풀자, 이후 연구는 한 방향이 아니라 여러 갈래로 퍼졌다. "더 잘 연결하기", "더 가볍게 만들기", "더 효율적으로 키우기", 그리고 아예 "합성곱을 벗어나기"다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">DenseNet</span>
+                        <span class="term-desc">2016년. ResNet의 스킵 연결을 극단으로 밀었다. 각 계층이 앞의 모든 계층의 출력을 입력으로 받는다. 특징 재사용이 극대화되어 적은 파라미터로도 좋은 성능을 낸다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">MobileNet</span>
+                        <span class="term-desc">2017년. 모바일·임베디드 환경을 겨냥한 경량 모델. depthwise separable convolution으로 합성곱 연산을 분해해 연산량과 크기를 크게 줄였다. 산업 현장의 엣지 디바이스에서 자주 쓰인다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">EfficientNet</span>
+                        <span class="term-desc">2019년. 망의 깊이·너비·입력 해상도를 따로따로 키우지 않고, 정해진 비율로 함께 키우는 compound scaling을 제안했다. 같은 연산 예산에서 더 높은 정확도를 낸다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">Vision Transformer (ViT)</span>
+                        <span class="term-desc">2020년. 합성곱을 아예 쓰지 않고, 자연어 처리의 Transformer 구조를 이미지에 적용했다. 이미지를 패치로 잘라 시퀀스처럼 다룬다. 대규모 데이터가 있을 때 CNN을 능가하며, 현재 비전 연구의 큰 흐름 중 하나다.</span>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>CNN은 끝났는가</strong>
+                        ViT의 등장으로 "CNN의 시대가 저물었다"는 말이 나오기도 한다. 그러나 현실은 다르다. ViT는 대규모 데이터를 필요로 하고, 데이터가 제한적인 산업 현장에서는 여전히 CNN 계열이 강하다. 또한 두 구조의 장점을 합친 하이브리드 모델도 활발히 연구된다. CNN은 대체되었다기보다 <strong>선택지 중 하나</strong>가 됐다.
+                    </div>
+                </div>
+
+                <!-- 8. 비교표 -->
+                <h2 id="comparison"><i class="fa-solid fa-table-list"></i> 아키텍처 한눈에 비교</h2>
+
+                <p>지금까지 다룬 모델들을 한 표로 정리한다. 깊이와 파라미터 수는 대표 구성 기준의 근사값이며, 정확한 값은 변형 버전마다 다르다. 중요한 것은 절대 수치가 아니라 <strong>모델 사이의 경향</strong>이다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>모델</th>
+                            <th>발표 연도</th>
+                            <th>깊이(층)</th>
+                            <th>파라미터(근사)</th>
+                            <th>핵심 아이디어</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">LeNet-5</td>
+                            <td>1998</td>
+                            <td>7</td>
+                            <td>약 6만</td>
+                            <td>Conv-Pool-FC 기본 틀 확립</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">AlexNet</td>
+                            <td>2012</td>
+                            <td>8</td>
+                            <td>약 6,000만</td>
+                            <td>ReLU · Dropout · GPU 학습 · 데이터 증강</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">VGG-16</td>
+                            <td>2014</td>
+                            <td>16</td>
+                            <td>약 1.38억</td>
+                            <td>3×3 작은 커널을 깊고 규칙적으로 쌓기</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">GoogLeNet</td>
+                            <td>2014</td>
+                            <td>22</td>
+                            <td>약 500만</td>
+                            <td>Inception 모듈 · 1×1 합성곱으로 연산 절감</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">ResNet-50</td>
+                            <td>2015</td>
+                            <td>50 (최대 152)</td>
+                            <td>약 2,560만</td>
+                            <td>잔차 연결로 기울기 흐름 개선, 초깊은 망 학습</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">DenseNet</td>
+                            <td>2016</td>
+                            <td>121 등</td>
+                            <td>약 800만</td>
+                            <td>모든 이전 계층과 연결, 특징 재사용 극대화</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">MobileNet</td>
+                            <td>2017</td>
+                            <td>28 등</td>
+                            <td>약 420만</td>
+                            <td>depthwise separable conv로 경량화</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">EfficientNet</td>
+                            <td>2019</td>
+                            <td>가변</td>
+                            <td>약 530만~ (B0)</td>
+                            <td>깊이·너비·해상도의 compound scaling</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">ViT</td>
+                            <td>2020</td>
+                            <td>가변</td>
+                            <td>약 8,600만~ (Base)</td>
+                            <td>합성곱 없이 Transformer로 이미지 처리</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>표에서 두 가지 경향이 보인다. 첫째, <strong>깊이는 꾸준히 늘었다</strong> — 7층에서 152층까지. 둘째, <strong>파라미터 수는 단조 증가가 아니다</strong> — VGG에서 1.38억까지 치솟았다가 GoogLeNet·ResNet·MobileNet에서 오히려 줄었다. "더 깊다고 더 무겁지 않다"는 것, 즉 구조를 잘 짜면 깊으면서도 가벼울 수 있다는 것이 발전의 핵심이다.</p>
+
+                <!-- 9. 핵심 아이디어 -->
+                <h2 id="key-ideas"><i class="fa-solid fa-lightbulb"></i> 핵심 아이디어 세 줄기</h2>
+
+                <p>모델 이름을 다 외울 필요는 없다. CNN 아키텍처 발전사는 결국 <strong>세 가지 질문</strong>에 대한 답의 누적이다. 새로운 모델을 만나도 이 세 줄기로 분류하면 본질이 보인다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrow-down-long" style="color:#2e7d32;"></i> 더 깊게</h4>
+                        <p>표현력은 깊이에서 나온다. VGG가 깊이의 가능성을 보였고, ResNet이 깊이의 한계를 풀었다. "낮은 층은 단순한 특징, 높은 층은 복잡한 특징"이라는 계층적 학습이 깊이의 근거다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-feather" style="color:#1565c0;"></i> 더 효율적으로</h4>
+                        <p>같은 성능을 더 적은 연산으로. GoogLeNet의 1×1 병목, MobileNet의 분해된 합성곱, EfficientNet의 균형 잡힌 스케일링이 모두 이 줄기다. 배포 환경이 제한적일수록 중요하다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-water" style="color:#c2185b;"></i> 기울기 흐름 개선</h4>
+                        <p>깊은 망의 진짜 적은 기울기 소실이다. ReLU가 활성화 차원에서, ResNet의 잔차 연결이 구조 차원에서 이 문제를 풀었다. 학습이 되어야 깊이도 효율도 의미가 있다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-puzzle-piece" style="color:#673ab7;"></i> 세 줄기는 함께 간다</h4>
+                        <p>실제 모델은 세 줄기를 동시에 추구한다. ResNet은 기울기 흐름을 풀어 깊이를 얻었고, 그 위에서 효율을 다듬은 것이 이후 모델들이다. 한 가지만으로는 부족하다.</p>
+                    </div>
+                </div>
+
+                <!-- 10. 산업 비전 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전 관점 — 백본과 전이학습</h2>
+
+                <p>여기까지 보면 마치 매년 새 아키텍처를 직접 설계해야 할 것 같지만, 실제 산업 비전 현장은 전혀 그렇지 않다. 현장 엔지니어가 새 아키텍처를 처음부터 만드는 일은 <strong>거의 없다</strong>. 대신 검증된 모델을 가져다 쓴다.</p>
+
+                <h3 id="backbone"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 백본(backbone)으로서의 CNN</h3>
+
+                <p>객체 검출, 세그멘테이션 같은 태스크의 모델은 보통 <strong>백본 + 태스크별 헤드</strong> 구조를 갖는다. 백본은 입력 이미지에서 특징을 뽑는 부분이고, 여기에 거의 항상 <strong>ResNet 계열</strong>이나 <strong>MobileNet 계열</strong>이 들어간다. ResNet은 성능과 안정성이 검증되어 기본 선택지이고, 속도·크기가 중요한 엣지 환경에서는 MobileNet이 쓰인다. 즉 이 글에서 다룬 모델들은 산업 현장에서 "최종 제품"이 아니라 "부품"으로 소비된다.</p>
+
+                <h3 id="transfer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 전이학습 — 처음부터 학습하지 않는다</h3>
+
+                <p>산업 데이터셋은 ImageNet처럼 수백만 장이 아니다. 결함 이미지가 수백~수천 장인 경우가 흔하다. 이때 모델을 무작위 초기값에서부터 학습하면 과적합되기 쉽다. 그래서 <strong>ImageNet으로 미리 학습된 ResNet·MobileNet</strong>을 가져와, 우리 데이터로 미세 조정(fine-tuning)만 한다. 이것이 <strong>전이학습</strong>이다. 대규모 데이터에서 학습된 일반적 특징 추출 능력을 그대로 빌려오고, 우리 문제에 맞는 부분만 다시 학습하는 것이다. 전이학습은 다음 글(5편)에서 더 자세히 다룬다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>현장 엔지니어가 이 글에서 가져갈 것</strong>
+                        각 모델의 세부 구조를 외우는 것보다, "왜 ResNet이 기본 백본인가", "왜 엣지에서는 MobileNet인가", "전이학습이 왜 필수인가"를 이해하는 것이 실무에 직결된다. 아키텍처 발전사를 아는 이유는 새 모델을 설계하기 위해서가 아니라, <strong>적절한 모델을 고르기 위해서</strong>다.
+                    </div>
+                </div>
+
+                <!-- 11. 흔한 오해 -->
+                <h2 id="misconceptions"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 오해</h2>
+
+                <h3 id="myth-newest"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 오해 1 — 최신 모델이 항상 최선이다</h3>
+
+                <p>"제일 최근 SOTA 모델을 쓰면 된다"는 생각은 현장에서 자주 어긋난다. 최신 모델은 대개 더 많은 데이터와 더 큰 연산을 전제로 만들어졌다. 데이터가 적은 산업 현장에서는 가벼운 ResNet이 거대한 최신 모델보다 잘 동작하는 경우가 많다. 게다가 검사 라인은 <strong>처리 속도(택트 타임)</strong> 제약이 엄격하다. 정확도가 1% 높아도 추론이 3배 느리면 라인에 못 올린다. 모델 선택은 정확도·데이터량·연산 자원·속도를 함께 따지는 <strong>트레이드오프</strong>다.</p>
+
+                <h3 id="myth-depth"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 오해 2 — 깊게만 쌓으면 성능이 오른다</h3>
+
+                <p>이건 ResNet 이전 시대가 직접 증명한 거짓이다. VGG는 19층에서 멈춰야 했고, 그냥 더 쌓은 망은 학습 오류조차 더 높았다. 깊이가 성능으로 이어진 것은 <strong>잔차 연결이라는 구조적 장치가 더해진 다음</strong>이다. "깊이 = 성능"이 아니라 "깊이 + 기울기가 흐를 수 있는 구조 = 성능"이 정확한 명제다. 구조 없는 깊이는 오히려 독이다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>아키텍처는 목적이 아니라 수단이다</strong>
+                        모델 이름과 층수에 매몰되기 쉽다. 그러나 산업 비전에서 중요한 질문은 "어떤 모델이 가장 화려한가"가 아니라 "내 검사 문제·내 데이터·내 라인 속도에 무엇이 맞는가"다. 다음 5편에서는 그 모델을 실제로 학습시키는 과정 — 데이터셋 구축, 증강, 과적합 다루기, 전이학습 — 을 다룬다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>LeCun et al. (1998) — "Gradient-Based Learning Applied to Document Recognition" (LeNet-5), Proceedings of the IEEE</li>
+                        <li>Krizhevsky, Sutskever, Hinton (2012) — "ImageNet Classification with Deep Convolutional Neural Networks" (AlexNet), NeurIPS</li>
+                        <li>Simonyan & Zisserman (2014) — "Very Deep Convolutional Networks for Large-Scale Image Recognition" (VGG), arXiv:1409.1556</li>
+                        <li>Szegedy et al. (2014) — "Going Deeper with Convolutions" (GoogLeNet/Inception), arXiv:1409.4842</li>
+                        <li>He, Zhang, Ren, Sun (2015) — "Deep Residual Learning for Image Recognition" (ResNet), arXiv:1512.03385</li>
+                        <li>Huang et al. (2016) — "Densely Connected Convolutional Networks" (DenseNet), arXiv:1608.06993</li>
+                        <li>Howard et al. (2017) — "MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications", arXiv:1704.04861</li>
+                        <li>Tan & Le (2019) — "EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks", arXiv:1905.11946</li>
+                        <li>Dosovitskiy et al. (2020) — "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale" (ViT), arXiv:2010.11929</li>
+                        <li>Russakovsky et al. (2015) — "ImageNet Large Scale Visual Recognition Challenge" (ILSVRC), IJCV</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai');
+</script>
+
+</body>
+</html>

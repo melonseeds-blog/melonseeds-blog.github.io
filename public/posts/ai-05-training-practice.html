@@ -1,0 +1,975 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학습 실전 — 데이터셋·증강·과적합·전이학습 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#data-matters" data-section="data-matters">데이터가 먼저다</a>
+        <a href="#dataset" data-section="dataset">데이터셋 구성</a>
+        <a href="#labeling" data-section="labeling">라벨링</a>
+        <a href="#augmentation" data-section="augmentation">데이터 증강</a>
+        <a href="#overfitting" data-section="overfitting">과적합</a>
+        <a href="#regularization" data-section="regularization">과적합 대응</a>
+        <a href="#transfer" data-section="transfer">전이학습</a>
+        <a href="#hyperparam" data-section="hyperparam">하이퍼파라미터</a>
+        <a href="#monitoring" data-section="monitoring">학습 모니터링</a>
+        <a href="#industrial" data-section="industrial">산업 비전 관점</a>
+        <a href="#mistakes" data-section="mistakes">흔한 실수</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>학습 실전 — 데이터셋·증강·과적합·전이학습</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>왜 산업 현장에서는 모델보다 데이터 품질이 성패를 가르는가</li>
+                        <li>학습·검증·테스트 데이터셋 분할과 데이터 누수 방지</li>
+                        <li>분류·검출·세그멘테이션별 라벨 형태와 라벨 품질 문제</li>
+                        <li>데이터 증강으로 조명·각도 변동을 모사하는 방법과 과한 증강의 위험</li>
+                        <li>과적합의 정체와 학습 곡선으로 진단하는 법</li>
+                        <li>정규화·Dropout·Early Stopping 등 과적합 대응 기법</li>
+                        <li>전이학습 — 사전학습 모델을 내 데이터로 미세조정하기</li>
+                        <li>하이퍼파라미터 튜닝과 학습 모니터링의 핵심</li>
+                        <li>결함 데이터가 적은 산업 현실에 대한 대응 전략과 흔한 실수</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#data-matters">데이터가 모델보다 중요하다</a></li>
+                        <li><a href="#dataset">데이터셋 구성 — 분할과 누수</a></li>
+                        <li><a href="#labeling">라벨링 — 형태·도구·품질</a></li>
+                        <li><a href="#augmentation">데이터 증강</a></li>
+                        <li><a href="#overfitting">과적합 — 정체와 진단</a></li>
+                        <li><a href="#regularization">과적합에 대응하는 방법</a></li>
+                        <li><a href="#transfer">전이학습</a></li>
+                        <li><a href="#hyperparam">하이퍼파라미터 튜닝</a></li>
+                        <li><a href="#monitoring">학습 모니터링</a></li>
+                        <li><a href="#industrial">산업 비전 관점의 학습</a></li>
+                        <li><a href="#mistakes">흔한 실수 정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 데이터가 먼저다 -->
+                <h2 id="data-matters"><i class="fa-solid fa-database"></i> 데이터가 모델보다 중요하다</h2>
+
+                <p>딥러닝 비전을 처음 배우면 모델 구조에 가장 큰 관심이 간다. ResNet이냐 EfficientNet이냐, 레이어를 몇 개 쌓을 것이냐 같은 질문이다. 하지만 산업 현장에서 검사 시스템을 만들어 보면 곧 깨닫는다. <strong>성패를 가르는 것은 거의 항상 데이터다.</strong> 모델은 공개된 검증된 구조를 가져다 쓰면 되지만, 데이터는 누구도 대신 만들어 주지 않는다.</p>
+
+                <p>같은 모델, 같은 학습 코드라도 데이터가 깨끗하고 현장을 잘 대표하면 잘 동작하고, 데이터가 편향되거나 라벨이 엉성하면 아무리 좋은 모델도 무너진다. 그래서 최근의 흐름을 <strong>데이터 중심 AI</strong>(data-centric AI)라고 부른다. 모델 코드를 고치는 대신 데이터를 체계적으로 개선하는 접근이다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 모델 중심 vs 데이터 중심</div>
+                    <p><strong>모델 중심 접근</strong>은 데이터를 고정해 놓고 모델 구조와 하이퍼파라미터를 바꿔 가며 성능을 올린다. 연구 논문의 벤치마크 경쟁이 이 방식이다.<br>
+                    <strong>데이터 중심 접근</strong>은 모델을 고정해 놓고 데이터의 라벨 오류를 고치고, 부족한 케이스를 채우고, 일관성을 높여 성능을 올린다. 현장 검사 시스템은 데이터셋이 작고 지저분하기 때문에 이쪽에서 얻는 이득이 훨씬 크다.</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>"좋은 모델"은 출발점, "좋은 데이터"는 승부처</strong>
+                        검증된 모델 구조는 이미 공개되어 있다. 진짜 일은 그 모델에 무엇을 먹일지 정하는 데 있다. 이 글은 모델 코드보다 데이터셋을 만들고 학습을 운영하는 실전 감각에 초점을 둔다.
+                    </div>
+                </div>
+
+                <!-- 2. 데이터셋 구성 -->
+                <h2 id="dataset"><i class="fa-solid fa-table-cells-large"></i> 데이터셋 구성 — 분할과 누수</h2>
+
+                <p>모은 이미지를 그대로 학습에 다 넣으면 안 된다. 데이터는 <strong>학습(train)·검증(validation)·테스트(test)</strong> 세 묶음으로 나눈다. 각자 역할이 다르고, 이 역할이 섞이는 순간 모델 성능을 잘못 판단하게 된다.</p>
+
+                <h3 id="split-roles"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 세 묶음의 역할</h3>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">학습셋</span>
+                        <span class="term-desc">모델이 가중치를 실제로 학습하는 데이터다. 가장 많은 양을 차지한다. 모델은 이 데이터를 직접 보면서 파라미터를 조정한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">검증셋</span>
+                        <span class="term-desc">학습 도중 모델 상태를 점검하는 데이터다. 하이퍼파라미터를 고르고, Early Stopping 시점을 정하고, 과적합 여부를 본다. 모델이 직접 학습하지는 않지만 사람이 이 결과를 보고 결정을 내리므로 간접적으로 영향을 받는다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">테스트셋</span>
+                        <span class="term-desc">모든 학습과 튜닝이 끝난 뒤 단 한 번, 최종 성능을 측정하는 데이터다. 학습 과정 어디에도 개입하지 않는다. 현장 배포 후의 성능을 가늠하는 마지막 잣대다.</span>
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 360" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrFlow" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#3a9a3e"/></marker>
+                            <marker id="arrLoop" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7Z" fill="#9c27b0"/></marker>
+                        </defs>
+                        <text x="360" y="24" text-anchor="middle" font-size="15" fill="#1b5e20" font-weight="700">데이터 분할과 학습 사이클</text>
+
+                        <!-- 전체 데이터 띠 -->
+                        <text x="40" y="58" font-size="11" fill="#455a64" font-weight="700">전체 수집 데이터</text>
+                        <rect x="40" y="66" width="396" height="34" rx="6" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="238" y="88" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="700">학습셋 (train) ~70%</text>
+                        <rect x="440" y="66" width="115" height="34" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="497" y="88" text-anchor="middle" font-size="10.5" fill="#1565c0" font-weight="700">검증 ~15%</text>
+                        <rect x="559" y="66" width="121" height="34" rx="6" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="619" y="88" text-anchor="middle" font-size="10.5" fill="#4527a0" font-weight="700">테스트 ~15%</text>
+
+                        <!-- 학습 사이클 박스 -->
+                        <rect x="60" y="150" width="160" height="60" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+                        <text x="140" y="176" text-anchor="middle" font-size="11.5" fill="#2e7d32" font-weight="700">학습셋으로</text>
+                        <text x="140" y="194" text-anchor="middle" font-size="11.5" fill="#2e7d32" font-weight="700">가중치 학습</text>
+
+                        <rect x="280" y="150" width="160" height="60" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+                        <text x="360" y="176" text-anchor="middle" font-size="11.5" fill="#1565c0" font-weight="700">검증셋으로</text>
+                        <text x="360" y="194" text-anchor="middle" font-size="11.5" fill="#1565c0" font-weight="700">성능 점검·튜닝</text>
+
+                        <rect x="500" y="150" width="160" height="60" rx="10" fill="#ede7f6" stroke="#673ab7" stroke-width="2"/>
+                        <text x="580" y="176" text-anchor="middle" font-size="11.5" fill="#4527a0" font-weight="700">테스트셋으로</text>
+                        <text x="580" y="194" text-anchor="middle" font-size="11.5" fill="#4527a0" font-weight="700">최종 1회 평가</text>
+
+                        <line x1="220" y1="180" x2="272" y2="180" stroke="#4caf50" stroke-width="2.5" marker-end="url(#arrFlow)"/>
+                        <line x1="440" y1="180" x2="492" y2="180" stroke="#4caf50" stroke-width="2.5" marker-end="url(#arrFlow)"/>
+
+                        <!-- 반복 루프 -->
+                        <path d="M 360 210 Q 360 270 250 270 Q 140 270 140 214" fill="none" stroke="#9c27b0" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrLoop)"/>
+                        <text x="250" y="290" text-anchor="middle" font-size="10.5" fill="#7b1fa2" font-weight="600">에폭마다 반복 — 학습 → 검증 → 다시 학습</text>
+
+                        <!-- 경고 띠 -->
+                        <rect x="60" y="312" width="600" height="34" rx="8" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+                        <text x="360" y="334" text-anchor="middle" font-size="10.5" fill="#b91c1c" font-weight="700">테스트셋은 마지막 박스에만 들어간다 — 학습·튜닝 루프에 절대 닿지 않는다</text>
+                    </svg>
+                    <div class="caption">그림 1. 데이터 분할과 학습 사이클 — 학습·검증은 반복 루프 안에서 돌고, 테스트셋은 루프 바깥에서 단 한 번만 쓰인다</div>
+                </div>
+
+                <h3 id="split-ratio"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 분할 비율과 클래스 균형</h3>
+
+                <p>분할 비율은 절대 공식이 없지만 데이터가 수천~수만 장 규모면 <strong>대략 70 / 15 / 15</strong> 또는 <strong>80 / 10 / 10</strong>이 흔한 출발점이다. 데이터가 수십만 장 이상으로 아주 많으면 검증·테스트는 각각 1~2%만 떼어도 충분하다. 반대로 데이터가 수백 장뿐이면 한 번의 분할로는 운에 좌우되므로 <strong>교차검증</strong>(k-fold)을 쓰는 편이 안전하다.</p>
+
+                <p>비율보다 더 중요한 것이 <strong>클래스 균형</strong>이다. 각 묶음에 클래스별 비율이 비슷하게 들어가야 한다. 전체의 결함 비율이 5%인데 테스트셋에 결함이 한 장도 안 들어가면 그 평가는 의미가 없다. 클래스 비율을 유지하며 나누는 것을 <strong>층화 분할</strong>(stratified split)이라고 한다.</p>
+
+                <h3 id="leakage"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 데이터 누수 — 가장 무서운 함정</h3>
+
+                <p><strong>데이터 누수</strong>(data leakage)는 테스트셋의 정보가 어떤 경로로든 학습 과정에 새어 들어가는 것이다. 누수가 있으면 평가 점수는 화려하게 잘 나오지만, 실제 현장에 배포하면 성능이 폭락한다. 점수를 믿고 배포했다가 뒤통수를 맞는 전형적인 원인이다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>산업 비전에서 흔한 누수 패턴</strong>
+                        같은 제품을 여러 각도로 찍은 이미지가 학습셋과 테스트셋에 나뉘어 들어가는 경우다. 모델은 사실상 "본 적 있는 물체"를 다시 보는 셈이라 점수가 부풀려진다. 또 증강으로 만든 이미지의 원본과 변형본이 서로 다른 묶음에 들어가는 것, 같은 생산 로트·같은 웨이퍼의 이미지가 분할을 가로지르는 것도 모두 누수다. <strong>분할은 이미지 단위가 아니라 "독립된 대상" 단위로 해야 한다.</strong>
+                    </div>
+                </div>
+
+                <!-- 3. 라벨링 -->
+                <h2 id="labeling"><i class="fa-solid fa-tags"></i> 라벨링 — 형태·도구·품질</h2>
+
+                <p>지도학습은 정답표가 있어야 한다. 이미지마다 "이것이 정답"이라고 붙여 주는 작업이 <strong>라벨링</strong>이다. 태스크에 따라 라벨의 형태가 완전히 다르고, 형태가 복잡할수록 라벨링 비용이 가파르게 오른다.</p>
+
+                <h3 id="label-forms"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 태스크별 라벨 형태</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>태스크</th>
+                            <th>라벨 형태</th>
+                            <th>예시</th>
+                            <th>라벨링 비용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">이미지 분류</td>
+                            <td>이미지당 클래스 1개</td>
+                            <td>"이 이미지 = 양품" / "불량"</td>
+                            <td>낮음 — 클릭 한 번</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">객체 검출</td>
+                            <td>경계 상자 + 클래스</td>
+                            <td>스크래치 위치를 사각형으로 표시</td>
+                            <td>중간 — 상자마다 드래그</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">세그멘테이션</td>
+                            <td>픽셀 단위 마스크</td>
+                            <td>결함 영역을 픽셀 경계까지 칠하기</td>
+                            <td>높음 — 한 장에 수 분~수십 분</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>같은 1,000장이라도 분류 라벨은 하루면 끝나지만 세그멘테이션 마스크는 한 주가 걸릴 수 있다. 그래서 태스크를 정할 때 "꼭 픽셀 단위가 필요한가, 위치 상자로 충분한가, 합격/불합격만 알면 되는가"를 먼저 따져야 한다. 필요 이상으로 정밀한 라벨을 고르면 데이터셋이 작아지고 결국 성능이 나빠진다.</p>
+
+                <h3 id="label-tools"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 라벨링 도구</h3>
+
+                <p>라벨링은 전용 도구로 한다. 대표적으로 <strong>CVAT</strong>, <strong>Label Studio</strong>, <strong>Roboflow</strong>, <strong>LabelImg</strong> 같은 것이 있다. 도구를 고를 때는 지원 태스크(분류·검출·세그멘테이션), 내보내기 포맷(COCO, YOLO, Pascal VOC 등), 여러 사람이 함께 작업하는 협업 기능, 모델이 미리 라벨을 제안하는 보조 기능 같은 것을 본다.</p>
+
+                <h3 id="label-quality"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 라벨 품질과 일관성</h3>
+
+                <p>라벨링에서 진짜 어려운 것은 도구가 아니라 <strong>일관성</strong>이다. "이 정도 흠집을 결함으로 볼 것인가" 같은 경계 사례에서, 작업자 A와 B가 다르게 판단하면 모델은 모순된 정답을 학습하게 된다. 모델이 혼란스러워하기 전에 사람이 먼저 기준을 합의해야 한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>라벨 가이드를 문서로 만든다</strong>
+                        결함의 정의, 경계 사례 판정 기준, 상자를 얼마나 타이트하게 그릴지 등을 예시 이미지와 함께 문서로 남긴다. 여러 명이 라벨링할 때는 같은 이미지 묶음을 두 사람이 라벨링해 일치율을 확인하는 것도 좋다. 라벨이 흔들리면 그 위의 어떤 학습도 흔들린다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>라벨링 비용은 프로젝트의 숨은 큰 비용</strong>
+                        딥러닝 검사 프로젝트에서 모델 학습보다 라벨링에 더 많은 시간과 인건비가 드는 경우가 흔하다. 데이터를 모으기는 쉬워도 라벨을 붙이는 것은 사람 손이 필요하다. 그래서 라벨이 적게 드는 태스크 설계, 전이학습, 이상탐지처럼 라벨 부담을 줄이는 전략이 중요해진다.
+                    </div>
+                </div>
+
+                <!-- 4. 데이터 증강 -->
+                <h2 id="augmentation"><i class="fa-solid fa-clone"></i> 데이터 증강</h2>
+
+                <p><strong>데이터 증강</strong>(augmentation)은 가진 이미지에 변형을 가해 새로운 학습 샘플을 만들어 내는 기법이다. 한 장의 원본을 회전·반전·밝기 조정해서 여러 장처럼 쓴다. 데이터를 새로 수집하지 않고도 데이터의 다양성을 늘려 모델이 더 잘 일반화하도록 돕는다.</p>
+
+                <h3 id="aug-techniques"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 주요 증강 기법</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>기법</th>
+                            <th>변형 내용</th>
+                            <th>모사하는 현장 변동</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">회전·반전</td>
+                            <td>이미지를 돌리거나 좌우·상하 뒤집기</td>
+                            <td>부품이 놓이는 방향의 변동</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">크롭·이동</td>
+                            <td>일부를 잘라내거나 위치를 옮기기</td>
+                            <td>대상이 화면에 들어오는 위치의 변동</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">밝기·대비</td>
+                            <td>밝기, 대비, 감마를 조정</td>
+                            <td>조명 세기·노출 차이</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">색상 변형</td>
+                            <td>색조·채도 조정</td>
+                            <td>조명 색온도, 카메라 화이트밸런스 차이</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">노이즈 추가</td>
+                            <td>가우시안 노이즈 등을 주입</td>
+                            <td>센서 노이즈, 고감도 촬영 환경</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">블러</td>
+                            <td>이미지를 흐리게</td>
+                            <td>초점 흔들림, 미세한 모션 블러</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">스케일</td>
+                            <td>확대·축소</td>
+                            <td>카메라-대상 거리, 렌즈 배율 변동</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>산업 비전에서 증강이 특히 강력한 이유는, 현장의 변동 요인이 대부분 <strong>예측 가능하기 때문</strong>이다. 조명이 밝아지거나 어두워지는 것, 부품이 살짝 기울어 들어오는 것, 카메라 거리가 미세하게 달라지는 것 — 이런 변동을 증강으로 미리 모사해 학습시키면, 모델이 실제 그런 상황을 만났을 때 흔들리지 않는다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>과한 증강은 데이터를 망친다</strong>
+                        증강은 "현장에서 실제로 일어날 법한" 변형이어야 한다. 글자가 항상 똑바로 들어오는 OCR 검사에 상하 반전을 넣으면 존재하지 않는 상황을 학습하게 된다. 결함 판정에서 색이 중요한데 색상을 심하게 흔들면 결함 신호 자체가 사라진다. 증강 후 이미지를 사람이 직접 눈으로 확인해서 "이게 현장에서 나올 수 있는 이미지인가"를 점검해야 한다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-ban"></i>
+                    <div class="callout-body">
+                        <strong>증강은 학습셋에만 적용한다</strong>
+                        증강은 학습 데이터를 늘리는 도구이지 평가 데이터를 늘리는 도구가 아니다. 검증셋·테스트셋에 증강을 적용하면 평가가 실제 현장 분포와 어긋나고, 같은 원본의 변형본이 학습·평가에 동시에 들어가는 누수까지 생긴다. 평가 데이터는 손대지 않은 원본 그대로 둔다.
+                    </div>
+                </div>
+
+                <!-- 5. 과적합 -->
+                <h2 id="overfitting"><i class="fa-solid fa-chart-line"></i> 과적합 — 정체와 진단</h2>
+
+                <p><strong>과적합</strong>(overfitting)은 모델이 학습 데이터는 거의 완벽하게 맞추지만 처음 보는 새 데이터에는 약한 상태다. 모델이 데이터의 일반적인 패턴이 아니라 학습셋에만 있는 우연한 특징, 심지어 노이즈까지 외워 버린 것이다. 학습셋이라는 시험지의 답을 통째로 암기했지만 원리는 모르는 학생과 같다.</p>
+
+                <h3 id="overfit-diagnose"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 학습 곡선으로 진단한다</h3>
+
+                <p>과적합은 <strong>학습 손실과 검증 손실을 함께 그린 곡선</strong>으로 진단한다. 정상적인 학습이라면 두 손실이 함께 내려간다. 과적합이 시작되면 학습 손실은 계속 내려가는데 <strong>검증 손실이 어느 순간부터 다시 올라간다.</strong> 이 두 곡선이 벌어지는 지점이 과적합이 시작되는 지점이다.</p>
+
+                <div class="figure">
+                    <svg viewBox="0 0 720 340" style="width:100%; max-width:720px; margin:0 auto; display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <text x="360" y="26" text-anchor="middle" font-size="15" fill="#1b5e20" font-weight="700">과적합 학습 곡선</text>
+
+                        <!-- 축 -->
+                        <line x1="80" y1="280" x2="660" y2="280" stroke="#90a4ae" stroke-width="2"/>
+                        <line x1="80" y1="60" x2="80" y2="280" stroke="#90a4ae" stroke-width="2"/>
+                        <text x="370" y="312" text-anchor="middle" font-size="11" fill="#455a64" font-weight="600">에폭 (학습 반복 횟수) →</text>
+                        <text x="50" y="170" text-anchor="middle" font-size="11" fill="#455a64" font-weight="600" transform="rotate(-90 50 170)">손실 (Loss)</text>
+
+                        <!-- 학습 손실 곡선 (계속 내려감) -->
+                        <path d="M 90 90 C 200 200, 320 250, 450 262 S 600 270, 650 272" fill="none" stroke="#4caf50" stroke-width="3"/>
+                        <text x="560" y="258" font-size="11" fill="#2e7d32" font-weight="700">학습 손실</text>
+
+                        <!-- 검증 손실 곡선 (내려가다 올라감) -->
+                        <path d="M 90 110 C 200 195, 280 215, 340 218 C 420 222, 520 245, 650 290" fill="none" stroke="#1565c0" stroke-width="3"/>
+                        <text x="560" y="300" font-size="11" fill="#1565c0" font-weight="700">검증 손실</text>
+
+                        <!-- 최적 지점 -->
+                        <line x1="340" y1="60" x2="340" y2="280" stroke="#d97706" stroke-width="2" stroke-dasharray="5 4"/>
+                        <circle cx="340" cy="218" r="5" fill="#d97706"/>
+                        <text x="340" y="50" text-anchor="middle" font-size="11" fill="#b45309" font-weight="700">최적 지점 (Early Stopping)</text>
+
+                        <!-- 구간 라벨 -->
+                        <text x="205" y="120" text-anchor="middle" font-size="10.5" fill="#2e7d32" font-weight="600">함께 내려감</text>
+                        <text x="205" y="135" text-anchor="middle" font-size="9.5" fill="#66bb6a">정상 학습</text>
+                        <text x="500" y="110" text-anchor="middle" font-size="10.5" fill="#b91c1c" font-weight="700">곡선이 벌어짐</text>
+                        <text x="500" y="125" text-anchor="middle" font-size="9.5" fill="#dc2626">과적합 구간</text>
+
+                        <!-- 격차 표시 화살표 -->
+                        <line x1="560" y1="271" x2="560" y2="252" stroke="#dc2626" stroke-width="1.5"/>
+                        <line x1="560" y1="252" x2="560" y2="271" stroke="#dc2626" stroke-width="1.5"/>
+                        <text x="600" y="240" text-anchor="middle" font-size="9.5" fill="#dc2626" font-weight="600">일반화 격차</text>
+                    </svg>
+                    <div class="caption">그림 2. 과적합 학습 곡선 — 학습 손실은 계속 내려가지만 검증 손실이 다시 올라가는 지점부터 과적합이다. 두 곡선 사이의 벌어진 간격이 일반화 격차다</div>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 과적합과 과소적합</div>
+                    <p><strong>과적합</strong>은 학습 손실은 매우 낮은데 검증 손실이 높은 상태다 — 모델이 너무 복잡하거나 데이터가 너무 적다.<br>
+                    <strong>과소적합</strong>(underfitting)은 학습 손실 자체가 안 내려가는 상태다 — 모델이 너무 단순하거나 학습이 부족하다. 이때는 정규화를 줄이거나, 모델을 키우거나, 더 오래 학습해야 한다.<br>
+                    좋은 학습은 이 둘 사이의 균형점에서 멈춘다.</p>
+                </div>
+
+                <!-- 6. 과적합 대응 -->
+                <h2 id="regularization"><i class="fa-solid fa-shield-halved"></i> 과적합에 대응하는 방법</h2>
+
+                <p>과적합이 보이면 손쓸 방법이 여럿 있다. 하나만 쓰는 게 아니라 보통 여러 개를 함께 적용한다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>대응법</th>
+                            <th>작동 원리</th>
+                            <th>비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">데이터 늘리기</td>
+                            <td>학습 데이터를 더 모으거나 증강으로 다양성을 키운다</td>
+                            <td>가장 근본적인 해결책 — 효과가 가장 확실하다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">L2 정규화 / Weight Decay</td>
+                            <td>가중치가 과하게 커지지 않도록 손실에 페널티를 더한다</td>
+                            <td>모델이 단순한 해를 선호하게 만든다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Dropout</td>
+                            <td>학습 중 일부 뉴런을 무작위로 끈다</td>
+                            <td>특정 뉴런에 과도하게 의존하지 못하게 한다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Early Stopping</td>
+                            <td>검증 손실이 올라가기 시작하면 학습을 멈춘다</td>
+                            <td>과적합 구간에 들어가기 전에 중단</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Batch Normalization</td>
+                            <td>층마다 출력 분포를 정규화한다</td>
+                            <td>학습 안정화가 주목적이며 약한 정규화 효과도 있다</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">모델 단순화</td>
+                            <td>레이어·파라미터 수를 줄인다</td>
+                            <td>데이터 양에 비해 모델이 과하게 클 때</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>순서를 정하자면 데이터 → 정규화 → 모델 크기</strong>
+                        과적합이 보이면 먼저 데이터를 늘릴 수 있는지 본다(증강 포함). 그다음 Dropout과 Weight Decay 같은 정규화를 켠다. Early Stopping은 거의 항상 기본으로 켜 둔다. 그래도 안 되면 모델 크기를 줄인다. 데이터가 충분히 많으면 과적합 자체가 잘 생기지 않는다.
+                    </div>
+                </div>
+
+                <!-- 7. 전이학습 -->
+                <h2 id="transfer"><i class="fa-solid fa-arrows-turn-to-dots"></i> 전이학습</h2>
+
+                <p><strong>전이학습</strong>(transfer learning)은 다른 큰 데이터셋으로 미리 학습된 모델을 가져와, 내 데이터로 일부만 다시 학습하는 방식이다. 가장 흔한 형태는 <strong>ImageNet</strong>(약 1,400만 장, 1,000개 클래스)으로 사전학습된 모델을 출발점으로 쓰는 것이다.</p>
+
+                <p>왜 효과가 있는가. CNN의 앞쪽 층은 에지·코너·질감 같은 <strong>범용 시각 특징</strong>을 학습한다. 이런 특징은 강아지 사진이든 산업 부품 사진이든 공통으로 쓸모가 있다. 그래서 앞쪽 층은 이미 학습된 것을 그대로 쓰고, 내 데이터에 특화된 뒤쪽 층만 새로 학습하면 된다. 처음부터 학습하는 것보다 훨씬 적은 데이터로, 훨씬 빠르게 좋은 성능에 도달한다.</p>
+
+                <h3 id="transfer-strategy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 백본 동결 vs 전체 미세조정</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>전략</th>
+                            <th>방식</th>
+                            <th>적합한 상황</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">백본 동결 (Feature Extraction)</td>
+                            <td>사전학습 층은 그대로 고정하고, 새로 붙인 분류 헤드만 학습한다</td>
+                            <td>내 데이터가 매우 적을 때, 대상이 일반 사진과 비슷할 때</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">부분 미세조정</td>
+                            <td>앞쪽 층은 동결하고 뒤쪽 일부 층 + 헤드를 학습한다</td>
+                            <td>데이터가 어느 정도 있고, 대상이 일반 사진과 다소 다를 때</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">전체 미세조정 (Fine-tuning)</td>
+                            <td>모든 층을 작은 학습률로 함께 다시 학습한다</td>
+                            <td>데이터가 충분하고, 대상이 일반 사진과 많이 다를 때 (X선·현미경 영상 등)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>전이학습은 데이터가 적은 산업 현장의 필수 무기</strong>
+                        현장에서 결함 이미지를 수만 장 모으는 것은 비현실적이다. 수백~수천 장 규모에서 처음부터 학습하면 십중팔구 과적합한다. 사전학습 모델에서 출발하면 그 정도 데이터로도 쓸 만한 성능이 나온다. 산업 비전 딥러닝에서 전이학습은 선택이 아니라 기본 전제에 가깝다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>전체 미세조정은 학습률을 작게</strong>
+                        전체 층을 미세조정할 때 학습률이 크면, 애써 학습된 사전학습 가중치가 초반 몇 스텝 만에 망가진다. 사전학습 모델을 미세조정할 때는 처음부터 학습할 때보다 훨씬 작은 학습률을 쓰는 것이 정석이다.
+                    </div>
+                </div>
+
+                <!-- 8. 하이퍼파라미터 -->
+                <h2 id="hyperparam"><i class="fa-solid fa-sliders"></i> 하이퍼파라미터 튜닝</h2>
+
+                <p><strong>하이퍼파라미터</strong>는 모델이 학습으로 알아내는 값(가중치)이 아니라, 학습을 시작하기 전에 사람이 정해 주는 설정값이다. 같은 모델·같은 데이터라도 하이퍼파라미터에 따라 결과가 크게 달라진다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <span class="term-name">학습률</span>
+                        <span class="term-desc">한 스텝마다 가중치를 얼마나 크게 움직일지를 정한다. 가장 영향이 큰 하이퍼파라미터다. 너무 크면 손실이 발산하거나 출렁이고, 너무 작으면 학습이 한없이 느리다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">배치 크기</span>
+                        <span class="term-desc">한 번에 몇 장을 묶어 처리할지를 정한다. 크면 학습이 안정적이고 빠르지만 GPU 메모리를 많이 쓰고, 작으면 노이즈가 많아 일반화에 도움이 되기도 한다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">에폭 수</span>
+                        <span class="term-desc">전체 학습 데이터를 몇 번 반복해서 볼지를 정한다. 너무 적으면 과소적합, 너무 많으면 과적합이다. 고정하기보다 Early Stopping에 맡기는 편이 낫다.</span>
+                    </div>
+                    <div class="term-item">
+                        <span class="term-name">옵티마이저</span>
+                        <span class="term-desc">손실을 줄이는 방향으로 가중치를 갱신하는 알고리즘이다. SGD, Adam, AdamW 등이 있다. 무엇을 쓸지, 그 안의 모멘텀 같은 값도 하이퍼파라미터다.</span>
+                    </div>
+                </div>
+
+                <h3 id="tuning-strategy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 튜닝 전략</h3>
+
+                <p>하이퍼파라미터를 다 동시에 흔들면 무엇이 효과가 있었는지 알 수 없다. 보통 <strong>학습률부터 잡는다.</strong> 영향이 가장 크기 때문이다. 학습률은 0.1, 0.01, 0.001처럼 자릿수 단위로 훑어 대략의 범위를 먼저 찾는다. 그다음 배치 크기, 정규화 강도 순으로 좁혀 간다.</p>
+
+                <p>탐색 방식은 가능한 값을 격자로 모두 도는 <strong>그리드 서치</strong>, 무작위로 뽑아 보는 <strong>랜덤 서치</strong>, 이전 결과를 보고 다음 후보를 똑똑하게 고르는 <strong>베이지안 최적화</strong>가 있다. 후보가 많을 때는 그리드 서치보다 랜덤 서치가 효율적인 경우가 많다. 무엇을 쓰든 평가는 반드시 <strong>검증셋</strong>으로 하고, 테스트셋은 건드리지 않는다.</p>
+
+                <!-- 9. 학습 모니터링 -->
+                <h2 id="monitoring"><i class="fa-solid fa-gauge-high"></i> 학습 모니터링</h2>
+
+                <p>학습은 돌려 놓고 끝나기를 기다리는 것이 아니라 <strong>지켜보는 것</strong>이다. 학습이 잘 가고 있는지, 망가지고 있는지를 곡선으로 읽는다.</p>
+
+                <h3 id="monitor-what"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 무엇을 보는가</h3>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-chart-line" style="color:#1565c0;"></i> 손실 곡선</h4>
+                        <p>학습 손실과 검증 손실을 함께 본다. 둘 다 내려가면 정상, 검증 손실이 올라가면 과적합, 학습 손실도 안 내려가면 과소적합이거나 학습률 문제다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-bullseye" style="color:#2e7d32;"></i> 정확도 곡선</h4>
+                        <p>학습·검증 정확도를 함께 본다. 손실과 방향이 보통 반대다. 검증 정확도가 정체되거나 떨어지면 멈출 때가 가까운 것이다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-arrows-left-right" style="color:#d97706;"></i> 학습/검증 격차</h4>
+                        <p>두 곡선 사이의 벌어진 간격이 일반화 격차다. 격차가 점점 커지면 과적합이 진행 중이라는 신호다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4><i class="fa-solid fa-circle-stop" style="color:#7b1fa2;"></i> 조기 종료 시점</h4>
+                        <p>검증 손실이 일정 에폭 동안 더 좋아지지 않으면 멈춘다. 그때까지의 가장 좋았던 가중치를 최종 모델로 쓴다.</p>
+                    </div>
+                </div>
+
+                <p>이런 모니터링은 보통 <strong>TensorBoard</strong>, <strong>Weights &amp; Biases</strong> 같은 도구로 실시간 그래프를 보면서 한다. 곡선이 이상하면(손실이 튀거나, NaN이 뜨거나, 전혀 안 내려가거나) 학습이 끝나기를 기다릴 필요 없이 바로 멈추고 원인을 찾는 것이 시간을 아끼는 길이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>곡선은 거짓말을 하지 않는다</strong>
+                        학습이 잘 안 될 때 모델 구조를 의심하기 전에 곡선부터 본다. 학습 손실이 안 내려가면 학습률·데이터·라벨 문제이고, 학습 손실은 내려가는데 검증 손실이 올라가면 과적합이다. 곡선의 모양만 봐도 다음에 무엇을 해야 할지 대부분 답이 나온다.
+                    </div>
+                </div>
+
+                <!-- 10. 산업 비전 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전 관점의 학습</h2>
+
+                <p>지금까지의 내용은 딥러닝 학습 일반론이지만, 산업 비전에는 일반적인 분류 문제와 다른 결정적 제약이 있다. <strong>결함 데이터가 극도로 적다는 것</strong>이다.</p>
+
+                <h3 id="ind-reality"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정상은 넘치고 결함은 귀하다</h3>
+
+                <p>잘 관리되는 생산 라인일수록 불량률이 낮다. 불량률이 0.1%라면, 결함 이미지 1,000장을 모으려면 정상 이미지 100만 장을 찍어야 한다는 뜻이다. 게다가 결함의 종류는 다양한데 각 종류별로는 더더욱 샘플이 적다. 처음 보는 새로운 결함은 아예 학습 데이터에 없을 수도 있다. 이것이 산업 비전 딥러닝의 근본 난제다.</p>
+
+                <h3 id="ind-cope"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 적은 데이터에 대응하는 전략</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 결함 데이터 부족에 대응하는 네 가지 축</div>
+                    <p><strong>1. 데이터 증강</strong> — 가진 결함 이미지를 조명·각도·노이즈 변형으로 최대한 다양화한다. 단, 현장에서 일어날 법한 변형만.<br>
+                    <strong>2. 전이학습</strong> — 사전학습 모델에서 출발해 적은 데이터로도 학습이 되게 한다. 산업 비전에서는 거의 기본이다.<br>
+                    <strong>3. 이상탐지 접근</strong> — 결함을 분류로 학습하는 대신, 정상 이미지만 잔뜩 학습시켜 "정상에서 벗어난 것"을 결함으로 본다. 결함 샘플이 거의 없어도 동작하며, 이 시리즈 9편에서 다룬다.<br>
+                    <strong>4. 라벨 효율적 태스크 설계</strong> — 픽셀 마스크가 꼭 필요한 게 아니라면 분류나 검출로 낮춰 라벨 부담을 줄인다.</p>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>"정상 위주 데이터"는 약점이자 기회</strong>
+                        결함이 적은 것은 분류 학습 입장에서는 약점이지만, 정상이 풍부한 것은 이상탐지 입장에서는 강점이다. 풀려는 문제를 "결함을 분류한다"에서 "정상이 아닌 것을 찾는다"로 바꾸면, 데이터의 불균형이 오히려 유리하게 작동한다. 산업 비전 딥러닝은 이 발상의 전환을 자주 활용한다.
+                    </div>
+                </div>
+
+                <!-- 11. 흔한 실수 -->
+                <h2 id="mistakes"><i class="fa-solid fa-bug"></i> 흔한 실수 정리</h2>
+
+                <p>마지막으로, 학습 실전에서 반복적으로 나오는 실수를 모았다. 대부분 "점수는 잘 나왔는데 현장에서 안 된다"로 이어지는 것들이다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>실수</th>
+                            <th>무슨 일이 벌어지는가</th>
+                            <th>올바른 방법</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">테스트셋으로 튜닝</td>
+                            <td>테스트셋 점수를 보고 하이퍼파라미터를 고른다 — 데이터 누수다. 점수는 부풀려지고 현장 성능은 낮다.</td>
+                            <td>튜닝은 검증셋으로만. 테스트셋은 끝나고 단 한 번.</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">검증 없이 학습</td>
+                            <td>검증셋을 안 만들면 과적합을 감지할 수단이 없다. 언제 멈출지도 모른다.</td>
+                            <td>학습·검증·테스트 세 묶음을 처음부터 나눈다.</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">증강을 테스트셋에도 적용</td>
+                            <td>평가가 실제 분포와 어긋나고, 원본·변형본이 섞이는 누수가 생긴다.</td>
+                            <td>증강은 학습셋에만. 검증·테스트는 원본 그대로.</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">클래스 불균형 무시</td>
+                            <td>결함 5%인 데이터에서 "전부 정상"이라 찍어도 정확도 95%다. 정확도만 보면 속는다.</td>
+                            <td>층화 분할 + 정밀도·재현율 등 불균형에 강한 지표 사용.</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">학습 곡선 안 보고 에폭 고정</td>
+                            <td>"100 에폭"으로 고정해 두면 과소적합이거나 과적합이거나 둘 중 하나다.</td>
+                            <td>곡선을 보며 Early Stopping에 종료를 맡긴다.</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">같은 대상이 분할을 가로지름</td>
+                            <td>같은 부품·로트의 이미지가 학습·테스트에 나뉘면 누수다.</td>
+                            <td>분할은 이미지가 아니라 독립된 대상 단위로.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>모든 누수는 같은 증상을 보인다</strong>
+                        데이터 누수의 종류는 다양하지만 결과는 똑같다 — 학습·검증 점수는 훌륭한데 현장에서 무너진다. 학습 결과가 "너무 좋아 보일 때"는 기뻐하기 전에 누수를 의심하는 습관이 필요하다. 점수가 의심스러울 만큼 높으면 대개 어딘가에서 정답을 미리 본 것이다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다음 편 예고</strong>
+                        이 글에서는 데이터셋을 만들고 학습을 운영하는 실전 감각을 다뤘다. 다음 6편에서는 그렇게 학습한 모델의 성능을 어떻게 측정하는지 — 이미지 분류 태스크의 정의와 정확도·정밀도·재현율·혼동행렬 같은 평가지표를 살펴본다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Ian Goodfellow, Yoshua Bengio, Aaron Courville — Deep Learning (MIT Press, 2016), 7장 Regularization / 5장 Machine Learning Basics</li>
+                        <li>Andrew Ng — Data-Centric AI 캠페인 자료 (https://datacentricai.org)</li>
+                        <li>Jia Deng et al. — ImageNet: A Large-Scale Hierarchical Image Database (CVPR 2009)</li>
+                        <li>Connor Shorten, Taghi M. Khoshgoftaar — A survey on Image Data Augmentation for Deep Learning (Journal of Big Data, 2019)</li>
+                        <li>Sinno Jialin Pan, Qiang Yang — A Survey on Transfer Learning (IEEE TKDE, 2010)</li>
+                        <li>CVAT (https://www.cvat.ai) / Label Studio (https://labelstud.io) — 오픈소스 라벨링 도구 문서</li>
+                        <li>PyTorch 공식 튜토리얼 — Transfer Learning for Computer Vision (https://pytorch.org/tutorials)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai');
+</script>
+
+</body>
+</html>
