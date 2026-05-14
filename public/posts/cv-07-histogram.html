@@ -1,0 +1,857 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>히스토그램 — 평활화·매칭·CLAHE - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 히스토그램 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-histogram" data-section="what-histogram">히스토그램이란</a>
+        <a href="#calchist" data-section="calchist">calcHist</a>
+        <a href="#reading" data-section="reading">히스토그램 읽기</a>
+        <a href="#equalize" data-section="equalize">평활화</a>
+        <a href="#clahe" data-section="clahe">CLAHE</a>
+        <a href="#compare" data-section="compare">히스토그램 비교</a>
+        <a href="#backproject" data-section="backproject">역투영</a>
+        <a href="#industrial" data-section="industrial">산업 검사 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>히스토그램 — 평활화·매칭·CLAHE</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>히스토그램이 무엇이고 이미지의 밝기·대비·노출을 어떻게 드러내는지</li>
+                        <li><code>calcHist</code>로 히스토그램을 계산하고 직접 그려서 시각화하기</li>
+                        <li><code>equalizeHist</code>로 누적분포함수 기반 평활화, 컬러 이미지는 왜 다르게 다뤄야 하는지</li>
+                        <li><code>CLAHE</code>로 지역 적응형 평활화 — 노이즈 과증폭을 억제하는 원리</li>
+                        <li><code>compareHist</code> 유사도 비교, <code>calcBackProject</code> 역투영으로 색 기반 영역 검출</li>
+                        <li>산업 검사에서 히스토그램으로 조명·노출을 모니터링하는 법과 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-histogram">히스토그램이란?</a></li>
+                        <li><a href="#calchist">calcHist — 히스토그램 계산과 시각화</a></li>
+                        <li><a href="#reading">히스토그램 읽기 — 밝기·대비 진단</a></li>
+                        <li><a href="#equalize">히스토그램 평활화 (equalizeHist)</a></li>
+                        <li><a href="#clahe">CLAHE — 지역 적응형 평활화</a></li>
+                        <li><a href="#compare">히스토그램 비교 (compareHist)</a></li>
+                        <li><a href="#backproject">역투영 (calcBackProject)</a></li>
+                        <li><a href="#industrial">산업 검사 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 히스토그램이란 -->
+                <h2 id="what-histogram"><i class="fa-solid fa-chart-column"></i> 히스토그램이란?</h2>
+                <p><strong>히스토그램</strong>은 이미지 안에서 각 밝기 값이 몇 번 나타나는지를 센 <strong>분포 그래프</strong>다. 가로축은 픽셀 밝기 값(8비트 이미지면 0~255), 세로축은 그 값을 가진 픽셀의 개수다. 이미지를 한 장 한 장 눈으로 보지 않아도 히스토그램만 보면 <strong>밝기·대비·노출 상태</strong>를 한눈에 파악할 수 있다.</p>
+
+                <p>예를 들어 히스토그램이 왼쪽(0 근처)에 몰려 있으면 어두운 이미지, 오른쪽(255 근처)에 몰려 있으면 밝은 이미지다. 좁은 범위에 봉우리가 솟아 있으면 대비가 낮고, 0~255 전 구간에 고르게 퍼져 있으면 대비가 풍부하다. 산업 검사에서 조명이 바뀌었는지, 카메라 노출이 흔들렸는지를 픽셀 단위로 따지지 않고 히스토그램 형태 하나로 감지할 수 있다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>히스토그램은 공간 정보를 버린다</strong>
+                        히스토그램은 "어떤 밝기가 몇 개"만 셀 뿐, "어디에 있는지"는 기록하지 않는다. 그래서 완전히 다른 두 이미지가 같은 히스토그램을 가질 수도 있다. 위치가 중요하면 히스토그램만으로는 부족하다 — 다른 특징과 함께 써야 한다.
+                    </div>
+                </div>
+
+                <!-- 2. calcHist -->
+                <h2 id="calchist"><i class="fa-solid fa-calculator"></i> calcHist — 히스토그램 계산과 시각화</h2>
+                <p>OpenCV에서 히스토그램은 <code>cv::calcHist</code>로 계산한다. 인자가 많아 보이지만 핵심은 세 가지다 — <strong>어떤 채널</strong>을, <strong>몇 개의 bin</strong>으로, <strong>어떤 범위</strong>에서 셀 것인가.</p>
+
+                <table>
+                    <tr><th>인자</th><th>의미</th><th>예시</th></tr>
+                    <tr><td>채널 인덱스</td><td>몇 번 채널의 값을 셀지</td><td>그레이스케일은 <code>{0}</code>, BGR의 G는 <code>{1}</code></td></tr>
+                    <tr><td>bin 수 (<code>histSize</code>)</td><td>밝기 구간을 몇 칸으로 나눌지</td><td>256이면 값마다 한 칸, 64면 4개씩 묶음</td></tr>
+                    <tr><td>범위 (<code>ranges</code>)</td><td>셀 값의 최소~최대</td><td>8비트는 <code>{0, 256}</code></td></tr>
+                    <tr><td>마스크</td><td>특정 영역만 셀 때 사용</td><td>비우면 전체 이미지</td></tr>
+                </table>
+
+                <h3 id="calchist-gray"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 그레이스케일 히스토그램 계산</h3>
+                <p>가장 단순한 형태다. 1채널 이미지의 0~255 분포를 256개 bin으로 센다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;iostream&gt;
+
+int main()
+{
+    cv::Mat gray = cv::imread("sample.jpg", cv::IMREAD_GRAYSCALE);
+    if (gray.empty())
+    {
+        std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+        return -1;
+    }
+
+    int channels[] = { 0 };          // 0번 채널
+    int histSize[] = { 256 };        // bin 256개
+    float range[] = { 0, 256 };      // 값 범위 0~255
+    const float* ranges[] = { range };
+
+    cv::Mat hist;                    // 결과는 CV_32F, 256x1 행렬
+    cv::calcHist(&amp;gray, 1, channels, cv::Mat(),
+                 hist, 1, histSize, ranges);
+
+    // 가장 픽셀이 많은 밝기 값 찾기
+    double maxVal; int maxIdx[2];
+    cv::minMaxIdx(hist, nullptr, &amp;maxVal, nullptr, maxIdx);
+    std::cout &lt;&lt; "최빈 밝기 = " &lt;&lt; maxIdx[0]
+              &lt;&lt; " (" &lt;&lt; static_cast&lt;int&gt;(maxVal) &lt;&lt; " 픽셀)" &lt;&lt; std::endl;
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+최빈 밝기 = 47 (28310 픽셀)</div>
+
+                <p><code>calcHist</code>의 결과 <code>hist</code>는 <code>CV_32F</code> 타입의 256×1 행렬이다. <code>hist.at&lt;float&gt;(i)</code>로 i번 밝기의 픽셀 수를 읽는다. 위 결과는 밝기 47이 가장 많다는 뜻 — 이미지가 어두운 쪽으로 치우쳐 있음을 짐작할 수 있다.</p>
+
+                <h3 id="calchist-draw"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 히스토그램 직접 그리기</h3>
+                <p>OpenCV에는 히스토그램을 그려주는 함수가 없다. <code>hist</code> 행렬을 받아 막대 그래프 이미지를 직접 만든다. 핵심은 <strong>정규화</strong>로 막대 높이를 캔버스 안에 맞추는 것이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// hist: calcHist 결과 (256x1, CV_32F)
+cv::Mat drawHistogram(const cv::Mat&amp; hist)
+{
+    const int kHistW = 512;   // 캔버스 너비
+    const int kHistH = 400;   // 캔버스 높이
+    const int binW = kHistW / 256;
+
+    cv::Mat canvas(kHistH, kHistW, CV_8UC3, cv::Scalar(20, 20, 20));
+
+    // 막대 높이를 캔버스 높이에 맞게 정규화
+    cv::Mat normHist;
+    cv::normalize(hist, normHist, 0, kHistH, cv::NORM_MINMAX);
+
+    for (int i = 1; i &lt; 256; i++)
+    {
+        int y1 = kHistH - static_cast&lt;int&gt;(normHist.at&lt;float&gt;(i - 1));
+        int y2 = kHistH - static_cast&lt;int&gt;(normHist.at&lt;float&gt;(i));
+        cv::line(canvas,
+                 cv::Point(binW * (i - 1), y1),
+                 cv::Point(binW * i, y2),
+                 cv::Scalar(120, 220, 120), 2);
+    }
+    return canvas;
+}</code></pre>
+
+                <h3 id="calchist-color"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 컬러 이미지 — 채널별 히스토그램</h3>
+                <p>컬러 이미지는 B, G, R 채널을 따로 분리해 각각 히스토그램을 구한다. 세 곡선을 한 캔버스에 겹쳐 그리면 색 균형을 볼 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat color = cv::imread("sample.jpg", cv::IMREAD_COLOR);
+
+std::vector&lt;cv::Mat&gt; bgr;
+cv::split(color, bgr);   // B, G, R 채널로 분리
+
+int histSize[] = { 256 };
+float range[] = { 0, 256 };
+const float* ranges[] = { range };
+int channels[] = { 0 };
+
+cv::Mat histB, histG, histR;
+cv::calcHist(&amp;bgr[0], 1, channels, cv::Mat(), histB, 1, histSize, ranges);
+cv::calcHist(&amp;bgr[1], 1, channels, cv::Mat(), histG, 1, histSize, ranges);
+cv::calcHist(&amp;bgr[2], 1, channels, cv::Mat(), histR, 1, histSize, ranges);
+// 이후 histB/histG/histR을 각각 파랑/초록/빨강 선으로 겹쳐 그린다</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>bin 수는 목적에 맞춘다</strong>
+                        시각화나 정밀 분석은 256 bin이 자연스럽다. 하지만 히스토그램 비교나 역투영처럼 잡음에 민감한 작업은 bin을 16~64로 줄이면 작은 밝기 차이에 둔감해져 더 안정적이다.
+                    </div>
+                </div>
+
+                <!-- 3. 히스토그램 읽기 -->
+                <h2 id="reading"><i class="fa-solid fa-magnifying-glass-chart"></i> 히스토그램 읽기 — 밝기·대비 진단</h2>
+                <p>히스토그램의 <strong>형태</strong>를 보면 이미지 상태를 진단할 수 있다. 네 가지 전형적인 패턴을 알아두면 카메라 설정이나 조명 문제를 빠르게 짚어낸다.</p>
+
+                <table>
+                    <tr><th>히스토그램 형태</th><th>이미지 상태</th><th>진단</th></tr>
+                    <tr><td>왼쪽(0 근처)에 몰림</td><td>어두운 이미지</td><td>노출 부족, 조명 약함</td></tr>
+                    <tr><td>오른쪽(255 근처)에 몰림</td><td>밝은 이미지</td><td>노출 과다, 조명 강함</td></tr>
+                    <tr><td>가운데 좁은 범위에 봉우리</td><td>저대비 이미지</td><td>명암 차이 부족, 흐릿함</td></tr>
+                    <tr><td>0 또는 255에 막대가 솟음 (클리핑)</td><td>노출 과다·부족 한계</td><td>정보 손실 — 복구 불가</td></tr>
+                    <tr><td>0~255 전 구간에 고르게 분포</td><td>대비 풍부한 정상 이미지</td><td>양호</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>0이나 255에 솟은 막대는 클리핑 신호다</strong>
+                        히스토그램의 양 끝(0 또는 255)에 막대가 비정상적으로 높으면 픽셀이 그 한계로 잘려나갔다는 뜻이다. 이미 손실된 정보는 평활화로도 복구되지 않는다. 클리핑이 보이면 후처리가 아니라 <strong>촬영 단계의 노출·조명</strong>을 고쳐야 한다.
+                    </div>
+                </div>
+
+                <p>코드로 간단히 진단할 수도 있다. 어두운 영역(0~84)과 밝은 영역(170~255)의 픽셀 비율을 비교하면 노출 편향을 수치로 잡는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// hist: 그레이스케일 256 bin 히스토그램
+double darkSum = 0, brightSum = 0, total = 0;
+for (int i = 0; i &lt; 256; i++)
+{
+    float c = hist.at&lt;float&gt;(i);
+    total += c;
+    if (i &lt; 85)        darkSum += c;     // 어두운 영역
+    else if (i &gt;= 170) brightSum += c;   // 밝은 영역
+}
+
+double darkRatio = darkSum / total;
+double brightRatio = brightSum / total;
+
+if (darkRatio &gt; 0.7)
+    std::cout &lt;&lt; "노출 부족 의심 (어두운 픽셀 "
+              &lt;&lt; static_cast&lt;int&gt;(darkRatio * 100) &lt;&lt; "%)" &lt;&lt; std::endl;
+else if (brightRatio &gt; 0.7)
+    std::cout &lt;&lt; "노출 과다 의심 (밝은 픽셀 "
+              &lt;&lt; static_cast&lt;int&gt;(brightRatio * 100) &lt;&lt; "%)" &lt;&lt; std::endl;</code></pre>
+
+                <!-- 4. 히스토그램 평활화 -->
+                <h2 id="equalize"><i class="fa-solid fa-arrows-left-right-to-line"></i> 히스토그램 평활화 (equalizeHist)</h2>
+                <p><strong>히스토그램 평활화</strong>(equalization)는 좁은 범위에 몰려 있는 밝기 분포를 0~255 전 구간으로 <strong>펼쳐</strong> 대비를 끌어올리는 기법이다. 저대비 이미지의 디테일을 살리는 가장 기본적인 전처리다.</p>
+
+                <h3 id="equalize-principle"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 원리 — 누적분포함수(CDF)</h3>
+                <p>평활화의 핵심은 <strong>누적분포함수</strong>(CDF, Cumulative Distribution Function)다. 각 밝기 값까지의 픽셀 수를 누적한 곡선을 만들고, 그 곡선을 0~255로 정규화한 값을 새 밝기 값으로 매핑한다. 픽셀이 많이 몰린 구간은 CDF가 가파르게 올라가므로 넓게 펼쳐지고, 픽셀이 적은 구간은 압축된다. 결과적으로 출력 히스토그램이 거의 평평해진다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 680 280" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- before -->
+                        <text x="150" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#78350f">평활화 전 — 좁게 몰린 분포</text>
+                        <rect x="40" y="40" width="220" height="160" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+                        <line x1="40" y1="200" x2="260" y2="200" stroke="#92400e" stroke-width="1.5"/>
+                        <line x1="40" y1="40" x2="40" y2="200" stroke="#92400e" stroke-width="1.5"/>
+                        <!-- 좁은 봉우리 막대들 -->
+                        <g fill="#f59e0b">
+                            <rect x="118" y="150" width="9" height="50"/>
+                            <rect x="128" y="120" width="9" height="80"/>
+                            <rect x="138" y="92" width="9" height="108"/>
+                            <rect x="148" y="78" width="9" height="122"/>
+                            <rect x="158" y="98" width="9" height="102"/>
+                            <rect x="168" y="128" width="9" height="72"/>
+                            <rect x="178" y="158" width="9" height="42"/>
+                        </g>
+                        <text x="150" y="218" text-anchor="middle" font-size="10" fill="#92400e">0 ──────── 밝기 ──────── 255</text>
+
+                        <!-- 화살표 -->
+                        <line x1="290" y1="120" x2="380" y2="120" stroke="#2563eb" stroke-width="3" marker-end="url(#arrowEq)"/>
+                        <defs>
+                            <marker id="arrowEq" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+                            </marker>
+                        </defs>
+                        <text x="335" y="110" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb">CDF 매핑</text>
+
+                        <!-- after -->
+                        <text x="530" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#065f46">평활화 후 — 고르게 펼쳐진 분포</text>
+                        <rect x="420" y="40" width="220" height="160" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+                        <line x1="420" y1="200" x2="640" y2="200" stroke="#065f46" stroke-width="1.5"/>
+                        <line x1="420" y1="40" x2="420" y2="200" stroke="#065f46" stroke-width="1.5"/>
+                        <!-- 넓게 퍼진 막대들 -->
+                        <g fill="#10b981">
+                            <rect x="430" y="120" width="9" height="80"/>
+                            <rect x="448" y="108" width="9" height="92"/>
+                            <rect x="466" y="128" width="9" height="72"/>
+                            <rect x="484" y="100" width="9" height="100"/>
+                            <rect x="502" y="118" width="9" height="82"/>
+                            <rect x="520" y="106" width="9" height="94"/>
+                            <rect x="538" y="124" width="9" height="76"/>
+                            <rect x="556" y="110" width="9" height="90"/>
+                            <rect x="574" y="126" width="9" height="74"/>
+                            <rect x="592" y="112" width="9" height="88"/>
+                            <rect x="610" y="122" width="9" height="78"/>
+                        </g>
+                        <text x="530" y="218" text-anchor="middle" font-size="10" fill="#065f46">0 ──────── 밝기 ──────── 255</text>
+                    </svg>
+                    <div class="diagram-caption">평활화는 누적분포함수를 통해 좁게 뭉친 밝기 분포를 0~255 전 구간으로 펼쳐 대비를 높인다.</div>
+                </div>
+
+                <h3 id="equalize-gray"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 그레이스케일 평활화</h3>
+                <p><code>cv::equalizeHist</code>는 <strong>1채널 8비트 이미지 전용</strong>이다. 입력과 출력 모두 <code>CV_8UC1</code>이어야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat gray = cv::imread("low_contrast.jpg", cv::IMREAD_GRAYSCALE);
+if (gray.empty())
+{
+    std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+    return -1;
+}
+
+cv::Mat equalized;
+cv::equalizeHist(gray, equalized);   // CDF 기반 평활화
+
+cv::imshow("Original", gray);
+cv::imshow("Equalized", equalized);
+cv::waitKey(0);</code></pre>
+
+                <h3 id="equalize-color"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 컬러 이미지 평활화 — YCrCb의 Y만</h3>
+                <p>컬러 이미지를 평활화하려면 <strong>밝기 채널만</strong> 평활화해야 한다. BGR 채널을 각각 평활화하면 채널 간 균형이 깨져 색이 틀어진다. 올바른 방법은 <code>YCrCb</code>나 <code>HSV</code>로 변환해 <strong>밝기 채널(Y 또는 V)</strong>만 평활화하고 다시 합치는 것이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat color = cv::imread("low_contrast.jpg", cv::IMREAD_COLOR);
+
+// BGR -&gt; YCrCb 변환 (Y = 밝기, Cr/Cb = 색차)
+cv::Mat ycrcb;
+cv::cvtColor(color, ycrcb, cv::COLOR_BGR2YCrCb);
+
+std::vector&lt;cv::Mat&gt; ch;
+cv::split(ycrcb, ch);          // ch[0] = Y, ch[1] = Cr, ch[2] = Cb
+
+cv::equalizeHist(ch[0], ch[0]);   // 밝기 채널만 평활화
+
+cv::merge(ch, ycrcb);
+cv::Mat result;
+cv::cvtColor(ycrcb, result, cv::COLOR_YCrCb2BGR);   // 다시 BGR로</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>BGR 채널을 따로따로 평활화하면 색이 망가진다</strong>
+                        B, G, R을 각각 <code>equalizeHist</code>에 넣으면 각 채널의 분포가 독립적으로 펼쳐지면서 채널 비율이 깨진다. 결과는 원본과 색조가 전혀 다른 이미지다. 컬러 평활화는 반드시 밝기 채널만 건드린다 — 색차 채널은 그대로 둔다.
+                    </div>
+                </div>
+
+                <!-- 5. CLAHE -->
+                <h2 id="clahe"><i class="fa-solid fa-table-cells-large"></i> CLAHE — 지역 적응형 평활화</h2>
+                <p><code>equalizeHist</code>는 이미지 <strong>전체</strong>에 하나의 CDF를 적용한다. 그래서 이미지의 일부만 어둡거나 밝은 경우, 전역 평활화는 그 지역 대비를 제대로 살리지 못하고 평탄한 배경의 <strong>노이즈를 과도하게 증폭</strong>시킨다.</p>
+
+                <p><strong>CLAHE</strong>(Contrast Limited Adaptive Histogram Equalization)는 이미지를 작은 <strong>타일</strong>로 나눠 각 타일마다 따로 평활화하고, 타일 경계는 보간으로 매끄럽게 잇는다. 여기에 <strong>대비 제한</strong>(clip limit)을 두어 히스토그램의 특정 bin이 너무 높으면 잘라내 다른 bin에 재분배한다 — 이것이 노이즈 과증폭을 막는 핵심이다.</p>
+
+                <table>
+                    <tr><th>항목</th><th>equalizeHist</th><th>CLAHE</th></tr>
+                    <tr><td>적용 범위</td><td>이미지 전체에 단일 CDF</td><td>타일별 지역 CDF + 경계 보간</td></tr>
+                    <tr><td>지역 대비</td><td>일부 영역은 살리지 못함</td><td>어두운/밝은 영역 모두 개선</td></tr>
+                    <tr><td>노이즈</td><td>평탄한 영역에서 과증폭</td><td>clipLimit로 증폭 억제</td></tr>
+                    <tr><td>파라미터</td><td>없음</td><td><code>clipLimit</code>, <code>tileGridSize</code></td></tr>
+                    <tr><td>속도</td><td>매우 빠름</td><td>약간 느림 (여전히 실용적)</td></tr>
+                    <tr><td>적합 상황</td><td>전체적으로 저대비</td><td>조명 불균일, 부분 그림자</td></tr>
+                </table>
+
+                <h3 id="clahe-basic"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CLAHE 기본 사용</h3>
+                <p>CLAHE는 <code>cv::createCLAHE</code>로 객체를 만들고 <code>apply</code>로 적용한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat gray = cv::imread("uneven_light.jpg", cv::IMREAD_GRAYSCALE);
+
+// clipLimit = 2.0, 타일 8x8 그리드
+cv::Ptr&lt;cv::CLAHE&gt; clahe = cv::createCLAHE(2.0, cv::Size(8, 8));
+
+cv::Mat result;
+clahe-&gt;apply(gray, result);
+
+cv::imshow("Original", gray);
+cv::imshow("CLAHE", result);
+cv::waitKey(0);</code></pre>
+
+                <h3 id="clahe-params"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 파라미터 — clipLimit와 tileGridSize</h3>
+                <p>두 파라미터가 결과를 좌우한다.</p>
+
+                <table>
+                    <tr><th>파라미터</th><th>의미</th><th>값을 키우면</th></tr>
+                    <tr><td><code>clipLimit</code></td><td>히스토그램 막대 높이 제한</td><td>대비 강해짐 + 노이즈도 증폭. 보통 2.0~4.0</td></tr>
+                    <tr><td><code>tileGridSize</code></td><td>이미지를 나누는 타일 격자 수</td><td>더 지역적 — 작은 디테일 살아남, 부자연스러워질 수 있음. 보통 8×8</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// 파라미터를 나중에 바꿔가며 튜닝할 수도 있다
+cv::Ptr&lt;cv::CLAHE&gt; clahe = cv::createCLAHE();
+clahe-&gt;setClipLimit(3.0);
+clahe-&gt;setTilesGridSize(cv::Size(16, 16));
+
+cv::Mat result;
+clahe-&gt;apply(gray, result);</code></pre>
+
+                <h3 id="clahe-color"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 컬러 이미지에 CLAHE 적용</h3>
+                <p>컬러도 마찬가지로 밝기 채널에만 적용한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat color = cv::imread("uneven_light.jpg", cv::IMREAD_COLOR);
+
+cv::Mat lab;
+cv::cvtColor(color, lab, cv::COLOR_BGR2Lab);   // L = 밝기
+
+std::vector&lt;cv::Mat&gt; ch;
+cv::split(lab, ch);
+
+cv::Ptr&lt;cv::CLAHE&gt; clahe = cv::createCLAHE(2.0, cv::Size(8, 8));
+clahe-&gt;apply(ch[0], ch[0]);   // L 채널만
+
+cv::merge(ch, lab);
+cv::Mat result;
+cv::cvtColor(lab, result, cv::COLOR_Lab2BGR);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>clipLimit를 과도하게 키우면 CLAHE의 장점이 사라진다</strong>
+                        clipLimit를 10, 20처럼 크게 주면 대비 제한이 사실상 풀려 CLAHE가 전역 평활화처럼 행동한다. 평탄한 배경의 미세한 센서 노이즈까지 거친 얼룩으로 증폭된다. 산업 검사 이미지라면 2.0~4.0 범위에서 시작해 결함이 보일 만큼만 천천히 올린다.
+                    </div>
+                </div>
+
+                <!-- 6. 히스토그램 비교 -->
+                <h2 id="compare"><i class="fa-solid fa-code-compare"></i> 히스토그램 비교 (compareHist)</h2>
+                <p><code>cv::compareHist</code>는 두 히스토그램이 얼마나 닮았는지를 하나의 숫자로 돌려준다. 색 분포가 비슷한 이미지를 찾거나, 기준 이미지와 검사 이미지의 밝기 분포 차이를 감지할 때 쓴다.</p>
+
+                <table>
+                    <tr><th>비교 방법</th><th>상수</th><th>특징</th><th>값 해석</th></tr>
+                    <tr><td>상관 (Correlation)</td><td><code>HISTCMP_CORREL</code></td><td>두 분포의 선형 상관</td><td>1에 가까울수록 유사, 0은 무관</td></tr>
+                    <tr><td>카이제곱 (Chi-Square)</td><td><code>HISTCMP_CHISQR</code></td><td>차이를 제곱해 강조</td><td>0에 가까울수록 유사, 클수록 다름</td></tr>
+                    <tr><td>교차 (Intersection)</td><td><code>HISTCMP_INTERSECT</code></td><td>겹치는 부분의 합</td><td>클수록 유사 (정규화 필요)</td></tr>
+                    <tr><td>Bhattacharyya 거리</td><td><code>HISTCMP_BHATTACHARYYA</code></td><td>분포 간 거리</td><td>0에 가까울수록 유사, 1은 완전 불일치</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat img1 = cv::imread("ref.jpg", cv::IMREAD_GRAYSCALE);
+cv::Mat img2 = cv::imread("test.jpg", cv::IMREAD_GRAYSCALE);
+
+int histSize[] = { 64 };          // 비교는 bin을 줄이는 편이 안정적
+float range[] = { 0, 256 };
+const float* ranges[] = { range };
+int channels[] = { 0 };
+
+cv::Mat h1, h2;
+cv::calcHist(&amp;img1, 1, channels, cv::Mat(), h1, 1, histSize, ranges);
+cv::calcHist(&amp;img2, 1, channels, cv::Mat(), h2, 1, histSize, ranges);
+
+// 반드시 같은 기준으로 정규화한 뒤 비교한다
+cv::normalize(h1, h1, 0, 1, cv::NORM_MINMAX);
+cv::normalize(h2, h2, 0, 1, cv::NORM_MINMAX);
+
+double correl = cv::compareHist(h1, h2, cv::HISTCMP_CORREL);
+double chisqr = cv::compareHist(h1, h2, cv::HISTCMP_CHISQR);
+double bhatta = cv::compareHist(h1, h2, cv::HISTCMP_BHATTACHARYYA);
+
+std::cout &lt;&lt; "상관 = "        &lt;&lt; correl &lt;&lt; std::endl;
+std::cout &lt;&lt; "카이제곱 = "    &lt;&lt; chisqr &lt;&lt; std::endl;
+std::cout &lt;&lt; "Bhattacharyya = " &lt;&lt; bhatta &lt;&lt; std::endl;</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (콘솔)</div>
+상관 = 0.9214<br>
+카이제곱 = 3.187<br>
+Bhattacharyya = 0.1903</div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>어떤 방법을 쓸까</strong>
+                        빠른 유사도 판정은 <code>HISTCMP_CORREL</code>이 직관적이다. 작은 차이까지 민감하게 잡아야 하면 <code>HISTCMP_CHISQR</code>, 두 분포를 거리로 다뤄야 하면 <code>HISTCMP_BHATTACHARYYA</code>가 적합하다. 결과 스케일이 방법마다 다르므로 임계값도 방법별로 따로 정한다.
+                    </div>
+                </div>
+
+                <!-- 7. 역투영 -->
+                <h2 id="backproject"><i class="fa-solid fa-bullseye"></i> 역투영 (calcBackProject)</h2>
+                <p><strong>역투영</strong>(back projection)은 "이 색 분포를 가진 영역이 이미지 어디에 있는가"를 찾는 기법이다. 먼저 찾고 싶은 객체의 히스토그램을 만들고, <code>cv::calcBackProject</code>로 입력 이미지의 각 픽셀이 그 분포에 속할 <strong>확률</strong>을 계산한다. 결과는 그레이스케일 확률 맵 — 밝을수록 그 색일 가능성이 높다.</p>
+
+                <p>색 기반 객체 추적이나 피부색 검출 등에 쓰인다. 보통 색상 정보가 밝기와 분리되는 <code>HSV</code> 색공간의 Hue 채널을 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 1단계: 찾고 싶은 객체 영역(ROI)의 색 히스토그램 만들기
+cv::Mat objectRoi = cv::imread("object_sample.jpg");   // 추적할 색 샘플
+cv::Mat roiHsv;
+cv::cvtColor(objectRoi, roiHsv, cv::COLOR_BGR2HSV);
+
+int hbins = 30;
+int histSize[] = { hbins };
+float hrange[] = { 0, 180 };           // Hue 범위 0~179
+const float* ranges[] = { hrange };
+int channels[] = { 0 };                // Hue 채널
+
+cv::Mat roiHist;
+cv::calcHist(&amp;roiHsv, 1, channels, cv::Mat(), roiHist, 1, histSize, ranges);
+cv::normalize(roiHist, roiHist, 0, 255, cv::NORM_MINMAX);
+
+// 2단계: 전체 이미지에서 그 색 분포를 역투영
+cv::Mat scene = cv::imread("scene.jpg");
+cv::Mat sceneHsv;
+cv::cvtColor(scene, sceneHsv, cv::COLOR_BGR2HSV);
+
+cv::Mat backProj;
+cv::calcBackProject(&amp;sceneHsv, 1, channels, roiHist, backProj, ranges);
+// backProj: 밝은 픽셀일수록 객체 색일 확률이 높다
+
+// 3단계: 임계값으로 마스크화하면 객체 영역만 남는다
+cv::Mat mask;
+cv::threshold(backProj, mask, 50, 255, cv::THRESH_BINARY);</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>역투영 결과는 거칠다 — 후처리가 필요하다</strong>
+                        <code>calcBackProject</code>의 출력은 픽셀 단위 확률이라 점잡음이 많다. 실무에서는 <code>GaussianBlur</code>로 부드럽게 만든 뒤 <code>threshold</code>, 그리고 모폴로지 연산(<code>morphologyEx</code>)으로 작은 구멍을 메우고 노이즈를 제거한 다음에야 깔끔한 객체 마스크를 얻는다.
+                    </div>
+                </div>
+
+                <!-- 8. 산업 검사 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 검사 관점</h2>
+                <p>히스토그램은 산업 머신비전에서 <strong>이미지 품질을 감시하는 가장 값싼 센서</strong>다. 검사 알고리즘을 돌리기 전에 입력 이미지가 정상 범위 안에 있는지 빠르게 확인할 수 있다.</p>
+
+                <h3 id="industrial-monitor"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 조명·노출 모니터링</h3>
+                <p>생산 라인은 시간이 지나며 조명이 어두워지거나 외란광이 들어온다. 기준 이미지의 히스토그램을 저장해 두고, 매 프레임 <code>compareHist</code>로 비교하면 조명 드리프트를 즉시 감지한다. 평균 밝기나 표준편차만 추적해도 효과적이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 매 프레임 평균 밝기를 추적해 조명 이상 감지
+cv::Mat gray;
+cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+
+cv::Scalar meanVal, stddevVal;
+cv::meanStdDev(gray, meanVal, stddevVal);
+
+const double kRefMean = 128.0;     // 기준 밝기
+const double kTolerance = 20.0;    // 허용 오차
+
+if (std::abs(meanVal[0] - kRefMean) &gt; kTolerance)
+{
+    std::cout &lt;&lt; "[경고] 조명 변화 감지 — 평균 밝기 "
+              &lt;&lt; meanVal[0] &lt;&lt; std::endl;
+    // 검사 보류 또는 조명 보정 트리거
+}</code></pre>
+
+                <h3 id="industrial-preprocess"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 평활화를 전처리로 활용</h3>
+                <p>조명이 균일하지 않은 표면 검사에서는 CLAHE가 결함의 미세한 대비를 끌어올려 후속 임계처리나 엣지 검출의 신뢰도를 높인다. 다만 평활화는 <strong>밝기 절댓값을 바꾸므로</strong>, 절대 밝기를 기준으로 판정하는 알고리즘 앞에서는 쓰면 안 된다. 형태나 상대 대비를 보는 검사에만 적용한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>전처리는 일관성이 생명이다</strong>
+                        평활화나 CLAHE를 검사 파이프라인에 넣었다면 모든 프레임에 동일한 파라미터로 적용해야 한다. 프레임마다 파라미터가 달라지면 같은 결함이 어떤 날은 검출되고 어떤 날은 놓쳐진다. 파라미터는 한 번 정해 고정하고 버전 관리한다.
+                    </div>
+                </div>
+
+                <!-- 9. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>히스토그램 작업에서 반복적으로 나오는 실수들이다.</p>
+
+                <h3 id="pitfall-color-eq"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> equalizeHist를 컬러 이미지에 잘못 적용</h3>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>equalizeHist는 1채널 전용이다</strong>
+                        3채널 BGR 이미지를 그대로 <code>equalizeHist</code>에 넣으면 에러가 나거나, <code>split</code> 후 채널별로 평활화하면 색이 완전히 틀어진다. 컬러는 반드시 <code>YCrCb</code>/<code>Lab</code>/<code>HSV</code>로 변환해 <strong>밝기 채널만</strong> 평활화하고 다시 합쳐야 한다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat color = cv::imread("sample.jpg");   // CV_8UC3
+
+// 나쁨 — 3채널을 그대로 넣으면 동작하지 않거나 의도와 다름
+// cv::equalizeHist(color, color);
+
+// 나쁨 — 채널별 평활화는 색을 망가뜨린다
+// std::vector&lt;cv::Mat&gt; bgr; cv::split(color, bgr);
+// for (auto&amp; c : bgr) cv::equalizeHist(c, c);   // 색조 붕괴
+
+// 좋음 — 밝기 채널만 (4절의 YCrCb 방식 사용)</code></pre>
+
+                <h3 id="pitfall-clip"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CLAHE clipLimit 과도 설정</h3>
+                <p>clipLimit를 무작정 키우면 대비 제한이 풀려 CLAHE가 전역 평활화처럼 변하고 노이즈가 거칠게 증폭된다. 2.0~4.0에서 시작해 필요한 만큼만 조금씩 올린다. tileGridSize도 너무 작게(예: 2×2) 잡으면 타일 경계가 부자연스럽게 드러난다.</p>
+
+                <h3 id="pitfall-normalize"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정규화 없이 히스토그램 비교</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>크기가 다른 이미지의 히스토그램은 그대로 비교할 수 없다</strong>
+                        히스토그램의 막대 높이는 픽셀 수의 절댓값이다. 해상도가 다른 두 이미지는 전체 픽셀 수가 달라 같은 분포라도 막대 높이가 다르다. <code>compareHist</code> 전에 반드시 <code>normalize</code>로 두 히스토그램을 같은 기준에 맞춰야 한다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-bins"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> bin 수 선택 실수</h3>
+                <p>bin 수는 작업 목적에 맞춰야 한다. <strong>256 bin</strong>은 시각화·정밀 분석에 좋지만 비교나 역투영에서는 작은 잡음에 과민하게 반응한다. 반대로 bin을 너무 적게(예: 8) 잡으면 서로 다른 이미지가 같은 히스토그램으로 뭉뚱그려진다. 비교·역투영은 보통 <strong>16~64 bin</strong>이 균형점이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        컬러 평활화는 밝기 채널만 건드리고, CLAHE clipLimit는 2.0~4.0에서 시작하고, <code>compareHist</code> 전에는 반드시 정규화하고, bin 수는 목적(시각화 256 / 비교·역투영 16~64)에 맞춘다. 이 네 가지가 히스토그램 작업의 90%를 좌우한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — OpenCV 공식 문서 (imgproc 모듈, calcHist / equalizeHist / compareHist / calcBackProject 레퍼런스)</li>
+                        <li>OpenCV Tutorials — "Histogram Calculation", "Histogram Equalization", "Histogram Comparison", "Back Projection" 공식 튜토리얼</li>
+                        <li>OpenCV Tutorials — "Histogram Equalization (CLAHE)" cv::CLAHE 클래스 가이드</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

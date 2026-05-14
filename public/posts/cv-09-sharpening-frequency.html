@@ -1,0 +1,898 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>샤프닝과 주파수 영역 — 언샤프 마스킹·푸리에 변환 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .mat-diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mat-diagram svg { max-width: 100%; height: auto; }
+        .mat-diagram .diagram-caption {
+            font-size: 0.8rem; color: var(--text-light); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#sharpening" data-section="sharpening">샤프닝이란</a>
+        <a href="#laplacian" data-section="laplacian">Laplacian 샤프닝</a>
+        <a href="#unsharp" data-section="unsharp">언샤프 마스킹</a>
+        <a href="#side-effect" data-section="side-effect">샤프닝 부작용</a>
+        <a href="#frequency" data-section="frequency">주파수 영역</a>
+        <a href="#dft" data-section="dft">푸리에 변환</a>
+        <a href="#freq-filter" data-section="freq-filter">주파수 필터링</a>
+        <a href="#spatial-vs-freq" data-section="spatial-vs-freq">공간 vs 주파수</a>
+        <a href="#industrial" data-section="industrial">산업 검사</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">CV (Computer Vision)</span>
+                </div>
+                <h1>샤프닝과 주파수 영역 — 언샤프 마스킹·푸리에 변환</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-14</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>샤프닝의 개념 — 엣지를 강조해 또렷하게 만드는 블러의 반대 연산</li>
+                        <li>Laplacian 기반 샤프닝과 filter2D로 샤프닝 커널 직접 만들기</li>
+                        <li>언샤프 마스킹 — 원본에서 블러를 빼 고주파를 추출하고 가중 합산</li>
+                        <li>공간 영역과 주파수 영역의 차이, cv::dft로 푸리에 변환과 스펙트럼 시각화</li>
+                        <li>주파수 영역 저역·고역 통과 필터링, 산업 검사에서의 주기 노이즈 제거</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#sharpening">샤프닝이란?</a></li>
+                        <li><a href="#laplacian">Laplacian 기반 샤프닝</a></li>
+                        <li><a href="#unsharp">언샤프 마스킹</a></li>
+                        <li><a href="#side-effect">샤프닝의 부작용</a></li>
+                        <li><a href="#frequency">주파수 영역 개념</a></li>
+                        <li><a href="#dft">푸리에 변환 (DFT)</a></li>
+                        <li><a href="#freq-filter">주파수 영역 필터링</a></li>
+                        <li><a href="#spatial-vs-freq">공간 영역 vs 주파수 영역</a></li>
+                        <li><a href="#industrial">산업 검사 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 샤프닝이란 -->
+                <h2 id="sharpening"><i class="fa-solid fa-wand-magic-sparkles"></i> 샤프닝이란?</h2>
+                <p><strong>샤프닝</strong>(sharpening)은 이미지의 <strong>엣지를 강조</strong>해 더 또렷하고 선명하게 보이도록 만드는 처리다. 블러가 인접 픽셀을 평균 내 경계를 뭉개는 연산이라면, 샤프닝은 정반대로 경계에서의 명암 차이를 키워 윤곽을 도드라지게 한다.</p>
+
+                <p>핵심 발상은 간단하다. 이미지에서 <strong>급격하게 변하는 부분</strong>이 곧 엣지다. 이 급격한 변화 성분만 골라내 원본에 더하면 엣지가 더 강해진다. "급격한 변화"를 어떻게 뽑아내느냐에 따라 방법이 갈린다 — 2차 미분(Laplacian)을 쓰거나, 원본에서 블러를 빼는(언샤프 마스킹) 방식이다. 둘 다 결국 <strong>고주파 성분을 추출해 원본에 보강</strong>한다는 같은 원리 위에 있다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>샤프닝은 없던 디테일을 만들지 못한다</strong>
+                        샤프닝은 이미 존재하는 엣지의 대비를 키울 뿐, 사라진 정보를 복원하지 않는다. 심하게 흐려진 이미지를 샤프닝해도 원래의 선명함은 돌아오지 않고 부자연스러운 테두리만 생긴다.
+                    </div>
+                </div>
+
+                <!-- 2. Laplacian 기반 샤프닝 -->
+                <h2 id="laplacian"><i class="fa-solid fa-water"></i> Laplacian 기반 샤프닝</h2>
+                <p><strong>Laplacian</strong>은 2차 미분 연산자다. 1차 미분이 밝기의 변화율(기울기)을 보는 것이라면, 2차 미분은 그 변화율이 다시 얼마나 빠르게 변하는지를 본다. 엣지처럼 명암이 급변하는 곳에서 Laplacian 값이 크게 튄다. 평탄한 영역에서는 0에 가깝다.</p>
+
+                <p>샤프닝 공식은 다음과 같다. 원본에서 Laplacian을 <strong>빼면</strong>(Laplacian 부호 규약에 따라) 엣지가 강조된다.</p>
+
+                <p style="text-align:center; font-family:'Consolas',monospace; background:var(--primary-50); padding:12px; border-radius:8px;">
+                    sharpened = original &minus; &alpha; &times; Laplacian(original)
+                </p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;iostream&gt;
+
+int main()
+{
+    cv::Mat src = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+    if (src.empty())
+    {
+        std::cerr &lt;&lt; "이미지를 열 수 없습니다." &lt;&lt; std::endl;
+        return -1;
+    }
+
+    // Laplacian은 음수가 나오므로 부호 있는 타입으로 받는다
+    cv::Mat lap;
+    cv::Laplacian(src, lap, CV_16S, 3);  // 커널 크기 3
+
+    // 원본도 같은 타입으로 맞춘 뒤 빼기
+    cv::Mat src16;
+    src.convertTo(src16, CV_16S);
+
+    // sharpened = original - Laplacian
+    cv::Mat sharp16 = src16 - lap;
+
+    // 0~255 범위로 클리핑하며 8비트로 환원
+    cv::Mat sharpened;
+    sharp16.convertTo(sharpened, CV_8U);
+
+    cv::imshow("Original", src);
+    cv::imshow("Laplacian Sharpened", sharpened);
+    cv::waitKey(0);
+    return 0;
+}</code></pre>
+
+                <h3 id="lap-kernel"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 샤프닝 커널 직접 만들기 — filter2D</h3>
+                <p>위 과정은 사실 하나의 <strong>3&times;3 커널</strong>로 합칠 수 있다. 원본(중심에 1)과 Laplacian 커널을 더해 두면, <code>filter2D</code> 한 번으로 끝난다. 가장 널리 쓰이는 샤프닝 커널이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 중심 5, 상하좌우 -1 — 가장 기본적인 샤프닝 커널
+cv::Mat kernel = (cv::Mat_&lt;float&gt;(3, 3) &lt;&lt;
+     0, -1,  0,
+    -1,  5, -1,
+     0, -1,  0);
+
+cv::Mat sharpened;
+cv::filter2D(src, sharpened, src.depth(), kernel);
+
+// 더 강한 샤프닝 — 대각선까지 포함한 8방향 커널
+cv::Mat strongKernel = (cv::Mat_&lt;float&gt;(3, 3) &lt;&lt;
+    -1, -1, -1,
+    -1,  9, -1,
+    -1, -1, -1);
+
+cv::Mat strongSharp;
+cv::filter2D(src, strongSharp, src.depth(), strongKernel);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>커널 원소의 합이 1이어야 평균 밝기가 유지된다</strong>
+                        샤프닝 커널의 모든 원소를 더하면 1이 되도록 설계한다(예: 5 + (-1)&times;4 = 1). 합이 1이면 평탄한 영역의 밝기가 그대로 유지되고, 엣지에서만 대비가 커진다. 합이 1보다 크면 전체가 밝아지고 작으면 어두워진다.
+                    </div>
+                </div>
+
+                <!-- 3. 언샤프 마스킹 -->
+                <h2 id="unsharp"><i class="fa-solid fa-layer-group"></i> 언샤프 마스킹</h2>
+                <p><strong>언샤프 마스킹</strong>(Unsharp Masking, USM)은 이름과 달리 이미지를 선명하게 만드는 기법이다. 이름의 유래는 필름 시절 흐릿한("unsharp") 음화를 마스크로 써서 원본을 강조하던 암실 기법이다. 디지털에서도 원리는 똑같다.</p>
+
+                <p>원본에서 블러 버전을 빼면 무엇이 남을까? 블러는 완만한 변화(저주파)만 남기고 엣지를 지운다. 따라서 <strong>원본 &minus; 블러 = 엣지·디테일 성분</strong>, 즉 고주파 성분이다. 이 고주파를 다시 원본에 가중 합산하면 엣지가 강조된다.</p>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 660 250" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <defs>
+                            <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+                            </marker>
+                        </defs>
+                        <!-- 원본 -->
+                        <rect x="20" y="50" width="110" height="60" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+                        <text x="75" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a5f">원본</text>
+                        <text x="75" y="96" text-anchor="middle" font-size="10" fill="#1e40af">original</text>
+                        <!-- 블러 -->
+                        <rect x="20" y="150" width="110" height="60" rx="8" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+                        <text x="75" y="178" text-anchor="middle" font-size="13" font-weight="700" fill="#334155">블러</text>
+                        <text x="75" y="196" text-anchor="middle" font-size="10" fill="#475569">GaussianBlur</text>
+                        <!-- 화살표: 원본/블러 -> 빼기 -->
+                        <line x1="130" y1="80" x2="225" y2="118" stroke="#2563eb" stroke-width="2" marker-end="url(#ar)"/>
+                        <line x1="130" y1="180" x2="225" y2="142" stroke="#2563eb" stroke-width="2" marker-end="url(#ar)"/>
+                        <!-- 빼기 노드 -->
+                        <circle cx="250" cy="130" r="26" fill="#fef9e7" stroke="#d97706" stroke-width="2"/>
+                        <text x="250" y="137" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">&minus;</text>
+                        <!-- 고주파 -->
+                        <line x1="276" y1="130" x2="340" y2="130" stroke="#2563eb" stroke-width="2" marker-end="url(#ar)"/>
+                        <rect x="345" y="100" width="120" height="60" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+                        <text x="405" y="126" text-anchor="middle" font-size="13" font-weight="700" fill="#7f1d1d">고주파 성분</text>
+                        <text x="405" y="144" text-anchor="middle" font-size="10" fill="#991b1b">엣지 / 디테일</text>
+                        <!-- amount 곱 -->
+                        <line x1="465" y1="130" x2="510" y2="130" stroke="#2563eb" stroke-width="2" marker-end="url(#ar)"/>
+                        <circle cx="535" cy="130" r="26" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+                        <text x="535" y="137" text-anchor="middle" font-size="16" font-weight="700" fill="#065f46">&times;k</text>
+                        <!-- 원본 + 합 -->
+                        <line x1="75" y1="50" x2="75" y2="30" stroke="#2563eb" stroke-width="2"/>
+                        <line x1="75" y1="30" x2="610" y2="30" stroke="#2563eb" stroke-width="2"/>
+                        <line x1="610" y1="30" x2="610" y2="104" stroke="#2563eb" stroke-width="2" marker-end="url(#ar)"/>
+                        <circle cx="610" cy="130" r="26" fill="#fef9e7" stroke="#d97706" stroke-width="2"/>
+                        <text x="610" y="138" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">+</text>
+                        <line x1="561" y1="130" x2="584" y2="130" stroke="#2563eb" stroke-width="2" marker-end="url(#ar)"/>
+                        <!-- 결과 -->
+                        <line x1="610" y1="156" x2="610" y2="185" stroke="#2563eb" stroke-width="2" marker-end="url(#ar)"/>
+                        <rect x="545" y="190" width="130" height="50" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+                        <text x="610" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a5f">선명한 결과</text>
+                    </svg>
+                    <div class="diagram-caption">언샤프 마스킹 흐름: 원본에서 블러를 빼 고주파를 얻고, amount(k)만큼 키워 원본에 다시 더한다.</div>
+                </div>
+
+                <p>수식으로 쓰면 다음과 같다. <code>amount</code>가 클수록 샤프닝 강도가 세진다.</p>
+
+                <p style="text-align:center; font-family:'Consolas',monospace; background:var(--primary-50); padding:12px; border-radius:8px;">
+                    sharp = original + amount &times; (original &minus; blurred)
+                </p>
+
+                <h3 id="usm-addweighted"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> addWeighted로 구현하기</h3>
+                <p>위 수식을 정리하면 <code>sharp = (1 + amount) &times; original &minus; amount &times; blurred</code>가 된다. 이는 두 이미지의 가중 합이므로 <code>cv::addWeighted</code> 한 번으로 표현된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+// 언샤프 마스킹으로 이미지를 선명하게 만든다.
+cv::Mat unsharpMask(const cv::Mat&amp; src, double amount, int blurSize, double sigma)
+{
+    // 1) 저주파만 남기는 블러 버전
+    cv::Mat blurred;
+    cv::GaussianBlur(src, blurred, cv::Size(blurSize, blurSize), sigma);
+
+    // 2) sharp = (1 + amount)*src - amount*blurred
+    cv::Mat sharp;
+    cv::addWeighted(src, 1.0 + amount, blurred, -amount, 0.0, sharp);
+
+    return sharp;
+}
+
+int main()
+{
+    cv::Mat src = cv::imread("part.jpg");
+    if (src.empty()) { return -1; }
+
+    cv::Mat result = unsharpMask(src, 1.0, 5, 1.0);  // amount=1.0
+
+    cv::imshow("Original", src);
+    cv::imshow("Unsharp Masked", result);
+    cv::waitKey(0);
+    return 0;
+}</code></pre>
+
+                <p>고주파를 명시적으로 다뤄 보고 싶다면 단계를 풀어서 쓸 수도 있다. <code>subtract</code>와 <code>addWeighted</code>를 직접 조합하는 방식이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Mat blurred, highFreq, sharp;
+
+// 블러 버전
+cv::GaussianBlur(src, blurred, cv::Size(0, 0), 3.0);  // sigma로만 지정
+
+// 고주파 = 원본 - 블러
+cv::subtract(src, blurred, highFreq);
+
+// 원본 + amount * 고주파
+double amount = 1.5;
+cv::addWeighted(src, 1.0, highFreq, amount, 0.0, sharp);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>블러 반경(sigma)이 샤프닝의 "스케일"을 정한다</strong>
+                        sigma가 작으면 가는 디테일만, 크면 넓은 윤곽까지 강조된다. <code>GaussianBlur</code>에 <code>Size(0,0)</code>을 주면 sigma만으로 커널 크기를 자동 계산하므로 스케일 조절이 편하다. 실무에서는 amount와 sigma 두 손잡이를 함께 돌려 가며 맞춘다.
+                    </div>
+                </div>
+
+                <!-- 4. 샤프닝의 부작용 -->
+                <h2 id="side-effect"><i class="fa-solid fa-triangle-exclamation"></i> 샤프닝의 부작용</h2>
+                <p>샤프닝은 공짜가 아니다. "급격한 변화"를 강조한다는 것은 <strong>엣지만이 아니라 노이즈도 함께 키운다</strong>는 뜻이다. 노이즈는 본질적으로 픽셀 단위의 급격한 값 변동, 즉 고주파 성분이기 때문이다.</p>
+
+                <ul>
+                    <li><strong>노이즈 증폭</strong> — 평탄해야 할 영역에 알갱이(grain)가 도드라진다. 어두운 영역에서 특히 두드러진다.</li>
+                    <li><strong>링잉(ringing)</strong> — 강한 엣지 주변에 밝고 어두운 띠가 생긴다. 검은 글자 주변에 흰 후광이 보이는 현상이다.</li>
+                    <li><strong>하얀 테두리 / 오버슈트</strong> — amount가 과하면 엣지의 밝은 쪽이 255를 넘어 클리핑되고, 어두운 쪽은 0으로 깔린다. 결과적으로 인공적인 윤곽선이 생긴다.</li>
+                    <li><strong>계조 손실</strong> — 클리핑이 일어난 영역은 원래의 밝기 차이를 잃어버려 디테일이 오히려 사라진다.</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>샤프닝 전에 노이즈를 먼저 잡아야 한다</strong>
+                        노이즈가 있는 이미지를 바로 샤프닝하면 노이즈가 같이 폭발한다. 순서는 <strong>디노이징 &rarr; 샤프닝</strong>이다. 또는 언샤프 마스킹에서 고주파 성분에 임계값을 두어(threshold) 작은 변동은 무시하고 뚜렷한 엣지만 강조하는 방법도 쓴다. amount는 보통 0.5~1.5 사이에서 시작해 결과를 보며 조절한다.
+                    </div>
+                </div>
+
+                <!-- 5. 주파수 영역 개념 -->
+                <h2 id="frequency"><i class="fa-solid fa-wave-square"></i> 주파수 영역 개념</h2>
+                <p>지금까지는 이미지를 <strong>공간 영역</strong>(spatial domain)에서 다뤘다. 픽셀의 위치 (x, y)에 밝기값이 놓여 있는, 우리가 눈으로 보는 그 형태다. 그런데 같은 이미지를 완전히 다른 시각으로 표현할 수 있다 — <strong>주파수 영역</strong>(frequency domain)이다.</p>
+
+                <p>주파수 영역에서는 이미지를 "여러 주파수의 물결이 겹쳐진 것"으로 본다. 어떤 물결이 얼마나 강하게 섞여 있는지를 나타낸다.</p>
+
+                <table>
+                    <tr><th>구분</th><th>의미</th><th>이미지에서의 정체</th></tr>
+                    <tr><td><strong>저주파</strong></td><td>밝기가 완만하게 변하는 성분</td><td>배경, 큰 면적의 매끄러운 영역, 전체적인 밝기</td></tr>
+                    <tr><td><strong>고주파</strong></td><td>밝기가 급격하게 변하는 성분</td><td>엣지, 가는 선, 텍스처, 디테일, 노이즈</td></tr>
+                </table>
+
+                <p>이 관점이 강력한 이유는 지금까지 한 모든 작업이 주파수로 깔끔하게 설명되기 때문이다. <strong>블러 = 고주파를 깎는 것, 샤프닝 = 고주파를 키우는 것</strong>. 공간 영역에서 커널을 옮겨가며 합성곱하던 작업이, 주파수 영역에서는 단순히 특정 주파수 대역을 곱셈으로 통과/차단하는 일이 된다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>합성곱 = 주파수 영역에서의 곱셈</strong>
+                        컨볼루션 정리(convolution theorem)에 따르면, 공간 영역의 합성곱은 주파수 영역의 곱셈과 같다. 그래서 큰 커널로 합성곱하는 무거운 연산을 주파수 영역에서는 가벼운 원소별 곱셈으로 대체할 수 있다. 두 세계를 잇는 다리가 바로 푸리에 변환이다.
+                    </div>
+                </div>
+
+                <!-- 6. 푸리에 변환 -->
+                <h2 id="dft"><i class="fa-solid fa-arrows-spin"></i> 푸리에 변환 (DFT)</h2>
+                <p>공간 영역의 이미지를 주파수 영역으로 옮기는 도구가 <strong>이산 푸리에 변환</strong>(Discrete Fourier Transform, DFT)이다. OpenCV에서는 <code>cv::dft</code>로 수행한다.</p>
+
+                <p>DFT의 결과는 <strong>복소수</strong>다. 각 주파수 성분의 크기(magnitude)와 위상(phase)을 담기 때문이다. 우리가 눈으로 확인하는 것은 보통 크기 성분 — <strong>크기 스펙트럼</strong>(magnitude spectrum)이다.</p>
+
+                <h3 id="dft-step"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> DFT와 스펙트럼 시각화</h3>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+int main()
+{
+    cv::Mat src = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+    if (src.empty()) { return -1; }
+
+    // 1) DFT에 최적인 크기로 패딩 (2,3,5의 곱 형태가 빠르다)
+    int m = cv::getOptimalDFTSize(src.rows);
+    int n = cv::getOptimalDFTSize(src.cols);
+    cv::Mat padded;
+    cv::copyMakeBorder(src, padded, 0, m - src.rows, 0, n - src.cols,
+                       cv::BORDER_CONSTANT, cv::Scalar::all(0));
+
+    // 2) 실수부 + 허수부(0)로 2채널 복소 행렬 구성, float 사용
+    cv::Mat planes[] = {
+        cv::Mat_&lt;float&gt;(padded),
+        cv::Mat::zeros(padded.size(), CV_32F)
+    };
+    cv::Mat complexImg;
+    cv::merge(planes, 2, complexImg);
+
+    // 3) 푸리에 변환 실행
+    cv::dft(complexImg, complexImg);
+
+    // 4) 크기(magnitude) 계산: sqrt(Re^2 + Im^2)
+    cv::split(complexImg, planes);
+    cv::Mat mag;
+    cv::magnitude(planes[0], planes[1], mag);
+
+    // 5) log 스케일로 압축 (값의 범위가 너무 넓다)
+    mag += cv::Scalar::all(1);   // log(0) 방지
+    cv::log(mag, mag);
+
+    // 6) 사분면 교환 — 저주파를 중앙으로 이동(shift)
+    int cx = mag.cols / 2, cy = mag.rows / 2;
+    cv::Mat q0(mag, cv::Rect(0, 0, cx, cy));
+    cv::Mat q1(mag, cv::Rect(cx, 0, cx, cy));
+    cv::Mat q2(mag, cv::Rect(0, cy, cx, cy));
+    cv::Mat q3(mag, cv::Rect(cx, cy, cx, cy));
+    cv::Mat tmp;
+    q0.copyTo(tmp); q3.copyTo(q0); tmp.copyTo(q3);  // 좌상 &lt;-&gt; 우하
+    q1.copyTo(tmp); q2.copyTo(q1); tmp.copyTo(q2);  // 우상 &lt;-&gt; 좌하
+
+    // 7) 0~1로 정규화해야 화면에 보인다
+    cv::normalize(mag, mag, 0, 1, cv::NORM_MINMAX);
+
+    cv::imshow("Input", src);
+    cv::imshow("Magnitude Spectrum", mag);
+    cv::waitKey(0);
+    return 0;
+}</code></pre>
+
+                <p>시각화한 스펙트럼에서 <strong>중앙이 저주파, 바깥쪽이 고주파</strong>다. 사분면 교환(shift)을 하는 이유는, DFT 원본 출력은 저주파가 네 모서리에 흩어져 있어 보기 불편하기 때문이다. 중앙으로 모으면 직관적으로 읽힌다 — 보통 중앙에 밝은 점이 강하게 뜨고(저주파가 에너지의 대부분), 규칙적인 패턴이 있으면 특정 위치에 밝은 점이 나타난다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>DFT 입력은 float, 크기는 getOptimalDFTSize로</strong>
+                        <code>cv::dft</code>는 보통 <code>CV_32F</code> 입력을 받는다. 8비트 이미지를 그대로 넣지 말고 float로 변환한다. 또 임의 크기에서는 DFT가 느리다 — <code>getOptimalDFTSize</code>로 2·3·5의 곱이 되는 크기를 구해 <code>copyMakeBorder</code>로 패딩하면 수 배 빨라진다.
+                    </div>
+                </div>
+
+                <!-- 7. 주파수 영역 필터링 -->
+                <h2 id="freq-filter"><i class="fa-solid fa-sliders"></i> 주파수 영역 필터링</h2>
+                <p>주파수 영역으로 옮겼으면 필터링은 <strong>마스크를 곱하는 일</strong>이 된다. 통과시킬 주파수는 1, 막을 주파수는 0인 마스크를 만들어 DFT 결과에 곱하고, 역변환(<code>cv::idft</code>)하면 필터링된 이미지가 나온다.</p>
+
+                <table>
+                    <tr><th>필터</th><th>통과 대역</th><th>마스크 모양</th><th>효과</th></tr>
+                    <tr><td><strong>저역 통과(LPF)</strong></td><td>저주파만</td><td>중앙에 흰 원</td><td>블러 — 디테일·노이즈 제거</td></tr>
+                    <tr><td><strong>고역 통과(HPF)</strong></td><td>고주파만</td><td>중앙에 검은 원</td><td>샤프닝 — 엣지만 남김</td></tr>
+                    <tr><td><strong>대역 차단(notch)</strong></td><td>특정 점만 차단</td><td>특정 좌표에 검은 점</td><td>주기 노이즈 제거</td></tr>
+                </table>
+
+                <div class="mat-diagram">
+                    <svg viewBox="0 0 660 180" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <defs>
+                            <marker id="ar2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+                            </marker>
+                        </defs>
+                        <rect x="15" y="55" width="95" height="70" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+                        <text x="62" y="86" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a5f">원본</text>
+                        <text x="62" y="103" text-anchor="middle" font-size="9" fill="#1e40af">공간 영역</text>
+                        <line x1="110" y1="90" x2="145" y2="90" stroke="#2563eb" stroke-width="2" marker-end="url(#ar2)"/>
+                        <rect x="150" y="55" width="95" height="70" rx="8" fill="#fef9e7" stroke="#d97706" stroke-width="2"/>
+                        <text x="197" y="83" text-anchor="middle" font-size="12" font-weight="700" fill="#b45309">dft</text>
+                        <text x="197" y="100" text-anchor="middle" font-size="9" fill="#92400e">주파수 영역</text>
+                        <text x="197" y="115" text-anchor="middle" font-size="9" fill="#92400e">+ shift</text>
+                        <line x1="245" y1="90" x2="280" y2="90" stroke="#2563eb" stroke-width="2" marker-end="url(#ar2)"/>
+                        <circle cx="312" cy="90" r="24" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+                        <text x="312" y="96" text-anchor="middle" font-size="16" font-weight="700" fill="#065f46">&times;</text>
+                        <text x="312" y="140" text-anchor="middle" font-size="9" fill="#065f46">마스크</text>
+                        <line x1="336" y1="90" x2="371" y2="90" stroke="#2563eb" stroke-width="2" marker-end="url(#ar2)"/>
+                        <rect x="376" y="55" width="95" height="70" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+                        <text x="423" y="83" text-anchor="middle" font-size="12" font-weight="700" fill="#7f1d1d">필터링됨</text>
+                        <text x="423" y="100" text-anchor="middle" font-size="9" fill="#991b1b">주파수 영역</text>
+                        <line x1="471" y1="90" x2="506" y2="90" stroke="#2563eb" stroke-width="2" marker-end="url(#ar2)"/>
+                        <rect x="511" y="55" width="95" height="70" rx="8" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+                        <text x="558" y="83" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">idft</text>
+                        <text x="558" y="100" text-anchor="middle" font-size="9" fill="#475569">+ 정규화</text>
+                        <text x="558" y="143" text-anchor="middle" font-size="9" fill="#334155">최종 결과</text>
+                    </svg>
+                    <div class="diagram-caption">주파수 영역 필터링 흐름: dft &rarr; shift &rarr; 마스크 곱 &rarr; idft &rarr; 정규화.</div>
+                </div>
+
+                <h3 id="lpf-code"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 저역 통과 필터 — 주파수 영역 블러</h3>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+
+// DFT 결과의 사분면을 교환한다 (저주파를 중앙으로).
+void fftShift(cv::Mat&amp; mat)
+{
+    int cx = mat.cols / 2, cy = mat.rows / 2;
+    cv::Mat q0(mat, cv::Rect(0, 0, cx, cy));
+    cv::Mat q1(mat, cv::Rect(cx, 0, cx, cy));
+    cv::Mat q2(mat, cv::Rect(0, cy, cx, cy));
+    cv::Mat q3(mat, cv::Rect(cx, cy, cx, cy));
+    cv::Mat tmp;
+    q0.copyTo(tmp); q3.copyTo(q0); tmp.copyTo(q3);
+    q1.copyTo(tmp); q2.copyTo(q1); tmp.copyTo(q2);
+}
+
+int main()
+{
+    cv::Mat src = cv::imread("part.jpg", cv::IMREAD_GRAYSCALE);
+    if (src.empty()) { return -1; }
+
+    // 최적 크기 패딩
+    int m = cv::getOptimalDFTSize(src.rows);
+    int n = cv::getOptimalDFTSize(src.cols);
+    cv::Mat padded;
+    cv::copyMakeBorder(src, padded, 0, m - src.rows, 0, n - src.cols,
+                       cv::BORDER_CONSTANT, cv::Scalar::all(0));
+
+    // 복소 행렬 구성 후 DFT
+    cv::Mat planes[] = { cv::Mat_&lt;float&gt;(padded),
+                         cv::Mat::zeros(padded.size(), CV_32F) };
+    cv::Mat complexImg;
+    cv::merge(planes, 2, complexImg);
+    cv::dft(complexImg, complexImg);
+
+    // 저주파가 중앙에 오도록 shift
+    fftShift(complexImg);
+
+    // 저역 통과 마스크: 중앙 반경 radius 안만 1
+    cv::Mat mask = cv::Mat::zeros(complexImg.size(), CV_32F);
+    int radius = 60;  // 작을수록 더 강한 블러
+    cv::circle(mask, cv::Point(mask.cols / 2, mask.rows / 2),
+               radius, cv::Scalar(1), -1);
+
+    // 2채널(실수/허수)에 같은 마스크를 곱한다
+    cv::Mat maskPlanes[] = { mask, mask };
+    cv::Mat mask2ch;
+    cv::merge(maskPlanes, 2, mask2ch);
+    cv::multiply(complexImg, mask2ch, complexImg);
+
+    // 다시 shift 되돌리고 역변환
+    fftShift(complexImg);
+    cv::Mat result;
+    cv::idft(complexImg, result, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+
+    // 역변환 결과는 반드시 정규화해야 화면에 제대로 보인다
+    cv::normalize(result, result, 0, 1, cv::NORM_MINMAX);
+
+    cv::imshow("Input", src);
+    cv::imshow("Low-pass (blurred)", result);
+    cv::waitKey(0);
+    return 0;
+}</code></pre>
+
+                <h3 id="hpf-code"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 고역 통과 필터 — 주파수 영역 샤프닝</h3>
+                <p>고역 통과는 마스크를 뒤집기만 하면 된다 — 중앙을 0, 바깥을 1로 만든다. 저주파(배경·전체 밝기)가 잘려 나가므로 결과는 엣지만 남은 영상이 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 고역 통과 마스크: 기본 1, 중앙 반경 안만 0
+cv::Mat mask = cv::Mat::ones(complexImg.size(), CV_32F);
+int radius = 30;  // 클수록 더 많은 저주파를 자른다
+cv::circle(mask, cv::Point(mask.cols / 2, mask.rows / 2),
+           radius, cv::Scalar(0), -1);
+
+// 이후 곱셈 / idft / 정규화는 저역 통과와 동일
+
+// 엣지만 남은 결과를 원본에 더하면 샤프닝 효과가 된다
+// sharpened = original + k * highPassResult</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>이상적 필터(딱 떨어지는 원)는 링잉을 만든다</strong>
+                        0과 1로 칼같이 나뉘는 원형 마스크는 경계가 너무 급격해 역변환 결과에 물결무늬(링잉)가 생긴다. 실무에서는 마스크 경계를 가우시안이나 버터워스 형태로 부드럽게 깎아 쓴다. 또한 idft 결과는 값 범위가 임의이므로 <code>normalize</code> 없이 imshow하면 새까맣거나 새하얗게 보인다.
+                    </div>
+                </div>
+
+                <!-- 8. 공간 영역 vs 주파수 영역 -->
+                <h2 id="spatial-vs-freq"><i class="fa-solid fa-scale-balanced"></i> 공간 영역 vs 주파수 영역</h2>
+                <p>같은 필터링을 두 가지 방식으로 할 수 있다면, 언제 어느 쪽을 골라야 할까. 정답은 "대부분 공간 영역, 특정 상황에서 주파수 영역"이다.</p>
+
+                <table>
+                    <tr><th>비교 항목</th><th>공간 영역 (filter2D 등)</th><th>주파수 영역 (dft / idft)</th></tr>
+                    <tr><td>처리 방식</td><td>커널을 옮겨가며 합성곱</td><td>변환 후 마스크 곱, 역변환</td></tr>
+                    <tr><td>작은 커널</td><td>매우 빠름 (3&times;3, 5&times;5)</td><td>변환 오버헤드가 더 큼</td></tr>
+                    <tr><td>큰 커널</td><td>커널 크기에 비례해 느려짐</td><td>커널 크기와 무관, 유리</td></tr>
+                    <tr><td>직관성</td><td>픽셀 단위로 이해하기 쉬움</td><td>주파수 개념 이해 필요</td></tr>
+                    <tr><td>주기 패턴 제거</td><td>거의 불가능</td><td>매우 효과적 (notch 필터)</td></tr>
+                    <tr><td>구현 복잡도</td><td>함수 한 줄</td><td>패딩·shift·정규화 등 단계 많음</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>기본은 공간 영역, 주파수 영역은 "주기성"이 핵심일 때</strong>
+                        일반적인 블러·샤프닝·엣지 검출은 작은 커널로 충분하니 공간 영역이 빠르고 간단하다. 주파수 영역이 진짜 빛나는 순간은 (1) 아주 큰 커널이 필요하거나, (2) 격자무늬 같은 <strong>주기적 패턴</strong>을 분석·제거해야 할 때다. 주기 성분은 주파수 영역에서 또렷한 점으로 나타나기 때문이다.
+                    </div>
+                </div>
+
+                <!-- 9. 산업 검사 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 검사 관점</h2>
+                <p>산업 비전 현장에서 주파수 영역 필터링이 결정적인 역할을 하는 대표 사례가 <strong>주기적 패턴 노이즈</strong> 제거다.</p>
+
+                <ul>
+                    <li><strong>격자무늬·줄무늬 노이즈</strong> — 디스플레이 패널, 직물, 메쉬, 인쇄물 검사에서 조명 간섭이나 센서 특성으로 규칙적인 무늬가 끼는 경우. 공간 영역 블러로 지우려 하면 정작 봐야 할 결함까지 뭉개진다.</li>
+                    <li><strong>모아레(moire) 패턴</strong> — 규칙적인 피사체와 센서 격자가 간섭해 생기는 물결무늬.</li>
+                    <li><strong>전원 라인 노이즈</strong> — 일정 주파수로 반복되는 횡선.</li>
+                </ul>
+
+                <p>이런 주기 노이즈는 공간 영역에서는 이미지 전체에 퍼져 있어 떼어내기 어렵지만, <strong>주파수 영역에서는 스펙트럼의 특정 좌표에 또렷한 밝은 점</strong>으로 모인다. 그 점만 0으로 찍어 막으면(notch 필터) 노이즈만 골라 제거되고 결함 신호는 보존된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// notch 필터: 스펙트럼에서 노이즈 점을 찾아 차단한다.
+// (DFT + shift는 앞 예제와 동일하다고 가정)
+
+cv::Mat mask = cv::Mat::ones(complexImg.size(), CV_32F);
+
+// 크기 스펙트럼을 보고 찾아낸 노이즈 피크 좌표들
+std::vector&lt;cv::Point&gt; noisePeaks = {
+    cv::Point(180, 240),
+    cv::Point(332, 240)   // 보통 중심 대칭으로 쌍을 이룬다
+};
+
+// 각 피크 주변의 작은 원을 0으로 막는다
+const int kNotchRadius = 8;
+for (const cv::Point&amp; p : noisePeaks)
+{
+    cv::circle(mask, p, kNotchRadius, cv::Scalar(0), -1);
+}
+
+cv::Mat maskPlanes[] = { mask, mask };
+cv::Mat mask2ch;
+cv::merge(maskPlanes, 2, mask2ch);
+cv::multiply(complexImg, mask2ch, complexImg);
+
+// 이후 shift 복원 + idft + normalize</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>"노이즈는 패턴, 결함은 무작위"라는 비대칭을 이용한다</strong>
+                        주기 노이즈는 규칙적이라 주파수 영역에서 점으로 압축되지만, 스크래치·이물 같은 결함은 불규칙해 스펙트럼 전체에 퍼진다. 점만 골라 제거하면 노이즈는 사라지고 결함은 남는다 — 이 비대칭이 주파수 필터링을 산업 검사에서 강력하게 만드는 핵심이다.
+                    </div>
+                </div>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+                <p>샤프닝과 주파수 영역 작업에서 반복적으로 마주치는 실수들이다.</p>
+
+                <h3 id="pitfall-noise"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 샤프닝으로 노이즈 증폭</h3>
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>노이즈가 있는 이미지를 바로 샤프닝하지 않는다</strong>
+                        샤프닝은 고주파를 키우는데 노이즈도 고주파다. 순서는 항상 <strong>디노이징 먼저, 샤프닝 나중</strong>. amount를 무작정 키우기보다 디노이징을 충분히 한 뒤 적당한 amount(0.5~1.5)를 쓰는 편이 결과가 훨씬 깨끗하다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-float"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> DFT 입력 타입과 크기</h3>
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>DFT 입력은 float, 크기는 getOptimalDFTSize</strong>
+                        8비트 정수 이미지를 그대로 <code>cv::dft</code>에 넣으면 안 된다 — <code>CV_32F</code>로 변환한다. 또 소수가 섞인 임의 크기는 DFT가 느리다. <code>getOptimalDFTSize</code>로 구한 크기로 <code>copyMakeBorder</code> 패딩하면 성능이 크게 좋아진다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-log"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스펙트럼은 log 스케일로 봐야 한다</h3>
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>크기 스펙트럼을 선형 스케일로 그리면 거의 안 보인다</strong>
+                        저주파(중앙)의 에너지가 다른 성분보다 압도적으로 커서, 선형으로 그리면 중앙의 점 하나만 보이고 나머지는 새까맣다. <code>cv::log</code>로 압축한 뒤(0 방지를 위해 +1) 시각화해야 패턴이 드러난다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-normalize"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 역변환 후 정규화 누락</h3>
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>idft 결과는 그대로 imshow하면 안 된다</strong>
+                        역변환 결과는 값 범위가 0~255로 떨어지지 않는다. <code>cv::DFT_SCALE</code>로 스케일을 맞추고, 표시·저장 전에는 <code>cv::normalize</code>로 0~1(또는 0~255)로 맞춰야 제대로 보인다. 이걸 빼면 결과가 새하얗거나 새까맣게 나와 "필터링이 안 됐다"고 착각하기 쉽다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>정리하면</strong>
+                        샤프닝은 고주파 보강이고 블러는 고주파 제거다 — 둘 다 주파수 관점에서 한 줄로 설명된다. 일상적인 처리는 공간 영역(filter2D, 언샤프 마스킹)으로 빠르게 하고, 주기 패턴 노이즈처럼 주파수 구조가 핵심인 문제에서만 DFT를 꺼낸다. DFT를 쓸 때는 float 입력, 최적 크기, log 스케일 시각화, 역변환 후 정규화 네 가지를 잊지 않는다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>docs.opencv.org — OpenCV 공식 문서 (filter2D, Laplacian, dft, idft 함수 레퍼런스)</li>
+                        <li>OpenCV Tutorials — "Discrete Fourier Transform" 공식 튜토리얼</li>
+                        <li>OpenCV Tutorials — "Smoothing Images" / "Image Filtering" 공식 튜토리얼</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-cv');
+    renderPostNav('dev-cv');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
