@@ -105,6 +105,12 @@ const POST_NAV_DATA = {
         { file: 'toeic-grammar-2.html', title: '토익 필수 문법 (하)' },
         { file: 'toeic-vocab-1.html', title: '토익 빈출 어휘 (비즈니스)' },
         { file: 'toeic-vocab-2.html', title: '토익 빈출 어휘 (일상)' },
+        { file: 'toeic-grammar-adv-1.html', title: '900+ 문법 1. 자리(품사) 판별' },
+        { file: 'toeic-grammar-adv-2.html', title: '900+ 문법 2. 동사 — 수일치·시제·태·가정법' },
+        { file: 'toeic-grammar-adv-3.html', title: '900+ 문법 3. 준동사 — 부정사·동명사·분사' },
+        { file: 'toeic-grammar-adv-4.html', title: '900+ 문법 4. 연결어 — 접속사·전치사·관계사' },
+        { file: 'toeic-grammar-adv-5.html', title: '900+ 문법 5. 고난도 — 비교·도치·대명사·한정사' },
+        { file: 'toeic-grammar-adv-6.html', title: '900+ 문법 6. Part 6 문맥 문법' },
     ],
     'tool': [
         { file: 'git-basics.html', title: 'Git 기본 명령어 가이드' },
