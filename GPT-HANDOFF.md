@@ -342,9 +342,12 @@ ORDERED_CATS에 등록된 카테고리는 date 대신 order로 정렬됨.
 - [ ] `post-nav-bottom` 클래스 확인 (post-nav 아님!)
 - [ ] `assets/js/post-nav.js` POST_NAV_DATA에 등록
 - [ ] `public/index.html` 카드 추가 (data-cat, data-date, data-order)
-- [ ] `index.html` (홈) 카드 추가
+- [ ] **`index.html` (루트/홈) 카드 추가** ⚠️ **가장 자주 까먹는 단계 — 실수 10 참조**
 - [ ] `python deploy.py`로 배포
 - [ ] 배포 후 카테고리 페이지에서 새 글이 보이는지 확인
+- [ ] **배포 후 루트 `index.html` "최근 게시물"에 새 글이 상단에 뜨는지 확인**
+
+> ⚠️ **카드는 반드시 두 곳에 넣는다.** `public/index.html`(카테고리별 목록)과 루트 `index.html`(홈의 "최근 게시물"). 두 파일은 **카드 형식이 다르다** — 실수 10 참조.
 
 ### 8-2. 새 카테고리 추가 시 ⚠️ 누락 1건만 있어도 카테고리 페이지가 깨진다
 
@@ -525,6 +528,30 @@ ORDERED_CATS에 등록된 카테고리(`growth-cert-istqb`, `growth-lang-toeic` 
 - ORDERED_CATS는 학습 순서 시리즈에만 추가 (선택)
 - 이게 가장 자주 까먹는 단계. **위 8-2 체크리스트를 반드시 한 번 훑고 배포할 것.**
 - 배포 후 검증: `?cat=새id`에서 ① 페이지 타이틀이 바뀌었는가 ② 다른 카테고리 글이 섞이지 않는가 — 둘 중 하나라도 NG면 CAT_NAMES 누락이다.
+
+---
+
+### 실수 10: 루트 `index.html`(홈)에 카드 추가 누락 → "최근 게시물"에 새 글이 안 뜸
+
+**증상**: 새 글을 잔뜩 올렸는데 `https://melonseeds-blog.github.io/index.html`(홈)의 "최근 게시물"에는 옛날 글이 최신으로 떠 있다. `public/index.html?cat=...`(카테고리 페이지)에서는 정상으로 보임.
+
+**실제로 일어난 일** (한 세션에서 **두 번** 반복됨):
+- 1차 — HALCON·C++·토익 시리즈를 만들고 `public/index.html`에만 카드를 넣고 루트 `index.html`을 빼먹음 → 홈에 ISTQB 옛 글이 최신으로 노출
+- 2차 — 1차를 고친 직후 스마트 공장 14편에서 **똑같이** 루트 `index.html`을 또 빼먹음
+
+**왜 자꾸 까먹나**: 카드를 넣어야 하는 파일이 **두 개**다.
+| 파일 | 역할 | 카드 형식 |
+|---|---|---|
+| `public/index.html` | 카테고리별 목록 (`?cat=` 필터) | `data-cat`, `data-date`, `data-order` 모두 있음. href = `posts/파일.html` |
+| `index.html` (루트) | 홈의 "최근 게시물" (날짜 내림차순) | `data-date`만 있음. **href = `public/posts/파일.html`** (public/ 접두사!) |
+
+루트 `index.html`은 `#public-posts` div 안의 `.post-card[data-date]`를 `data-date` 내림차순으로 정렬한다. 카드가 없으면 그 글은 홈에 영원히 안 뜬다.
+
+**규칙**:
+- 새 글/시리즈 작업 시 **두 파일 모두**에 카드를 넣는다. 8-1 체크리스트의 "루트 index.html 카드 추가" 항목을 반드시 확인.
+- 루트 카드는 형식이 다르다: `data-cat`/`data-order` 없이 `data-date`만, href에 `public/` 접두사. 한 줄 압축 형식 OK.
+- 시리즈처럼 카드가 많으면 `public/index.html`에서 카드를 추출해 변환·삽입하는 일회용 스크립트를 쓰는 게 안전하다 (data-cat/data-order 제거 + href에 `public/` 추가 + `#public-posts` 앵커 뒤에 삽입).
+- **배포 후 반드시 홈(`/index.html`)을 열어 새 글이 최근 게시물 상단에 뜨는지 눈으로 확인.**
 
 ---
 
