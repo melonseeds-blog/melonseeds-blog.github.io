@@ -1,0 +1,991 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>행위 패턴 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .diagram-box {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .diagram-box svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-light); margin-top: 12px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#intro" data-section="intro">행위 패턴이란</a>
+        <a href="#strategy" data-section="strategy">Strategy</a>
+        <a href="#observer" data-section="observer">Observer</a>
+        <a href="#command" data-section="command">Command</a>
+        <a href="#state" data-section="state">State</a>
+        <a href="#template-method" data-section="template-method">Template Method</a>
+        <a href="#iterator" data-section="iterator">Iterator</a>
+        <a href="#chain" data-section="chain">Chain of Responsibility</a>
+        <a href="#common" data-section="common">공통점</a>
+        <a href="#industrial" data-section="industrial">산업 SW 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">프로그래밍 이론</span>
+                </div>
+                <h1>행위 패턴 — Strategy·Observer·Command·State</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>행위 패턴이란 — 객체 간 책임 분배와 상호작용을 설계하는 패턴</li>
+                        <li>Strategy·Observer·Command·State — 네 가지 핵심 패턴의 정의와 C++ 구현</li>
+                        <li>Template Method·Iterator·Chain of Responsibility — 보조 패턴 간단 정리</li>
+                        <li>행위 패턴의 공통점 — 결합도를 낮추고 책임을 분산한다</li>
+                        <li>산업 SW 관점과 흔한 함정 — 과용·메모리 누수·클래스 폭발</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">행위 패턴이란?</a></li>
+                        <li><a href="#strategy">Strategy — 알고리즘의 캡슐화</a></li>
+                        <li><a href="#observer">Observer — 발행·구독</a></li>
+                        <li><a href="#command">Command — 요청의 객체화</a></li>
+                        <li><a href="#state">State — 상태에 따른 행동</a></li>
+                        <li><a href="#template-method">Template Method — 알고리즘 골격</a></li>
+                        <li><a href="#iterator">Iterator — 컬렉션 순회</a></li>
+                        <li><a href="#chain">Chain of Responsibility — 처리 체인</a></li>
+                        <li><a href="#common">행위 패턴들의 공통점</a></li>
+                        <li><a href="#industrial">산업 SW 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 행위 패턴이란 -->
+                <h2 id="intro"><i class="fa-solid fa-people-arrows"></i> 행위 패턴이란?</h2>
+                <p><strong>행위 패턴(behavioral pattern)</strong>은 객체와 클래스 사이의 <strong>책임 분배</strong>와 <strong>상호작용·통신 방식</strong>을 다루는 디자인 패턴이다. 생성 패턴이 "객체를 어떻게 만드는가", 구조 패턴이 "객체를 어떻게 조립하는가"를 다룬다면, 행위 패턴은 "객체들이 어떻게 협력하며 일을 처리하는가"를 다룬다.</p>
+                <p>핵심 질문은 하나다 — <em>어떤 일을 누가 맡고, 객체들이 서로 어떻게 메시지를 주고받을 것인가.</em> 행위 패턴은 이 협력 구조를 명시적으로 설계해, 한 객체의 변경이 다른 객체로 번지지 않도록 만든다.</p>
+                <p>이 글에서는 가장 자주 쓰이는 네 가지 — <strong>Strategy·Observer·Command·State</strong> — 를 중심으로 보고, 보조 패턴 세 가지를 간단히 짚는다.</p>
+
+                <!-- 2. Strategy -->
+                <h2 id="strategy"><i class="fa-solid fa-shuffle"></i> Strategy — 알고리즘의 캡슐화</h2>
+                <p><strong>Strategy 패턴</strong>은 알고리즘을 각각 별도의 클래스로 캡슐화해, 런타임에 서로 교체할 수 있게 한다. 알고리즘을 사용하는 쪽(<em>context</em>)과 알고리즘 자체를 분리하는 것이 목적이다.</p>
+
+                <h3 id="strategy-problem"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 문제 — if-else 분기의 누적</h3>
+                <p>이진화(thresholding) 방식이 여러 개라고 하자. 분기로 처리하면 방식이 늘 때마다 같은 함수를 계속 수정해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 안티 패턴 - 이진화 방식이 늘 때마다 이 함수를 고쳐야 한다
+ErrorCode ApplyThreshold(Image&amp; image, ThresholdType type)
+{
+    if (type == ThresholdType::Fixed)         { /* 고정 임계값 로직 */ }
+    else if (type == ThresholdType::Otsu)     { /* Otsu 로직 */ }
+    else if (type == ThresholdType::Adaptive) { /* 적응형 로직 */ }
+    // 새 방식 추가 = 또 else if ...
+    return ErrorCode::Ok;
+}</code></pre>
+
+                <h3 id="strategy-solution"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 해법 — 알고리즘을 인터페이스 뒤로</h3>
+                <p>각 알고리즘을 <code>IThresholdStrategy</code> 인터페이스의 구현으로 만든다. context는 어떤 전략을 들고 있는지만 알면 되고, 분기는 사라진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 전략 인터페이스 - 모든 이진화 알고리즘이 따르는 계약
+class IThresholdStrategy
+{
+public:
+    virtual ~IThresholdStrategy() = default;
+    virtual ErrorCode Apply(Image&amp; image) = 0;
+};
+
+// 구체 전략 1 - 고정 임계값
+class FixedThreshold : public IThresholdStrategy
+{
+public:
+    explicit FixedThreshold(int value) : m_value(value) {}
+
+    ErrorCode Apply(Image&amp; image) override
+    {
+        // 고정 임계값 이진화 수행
+        return ErrorCode::Ok;
+    }
+
+private:
+    int m_value;
+};
+
+// 구체 전략 2 - Otsu 자동 임계값
+class OtsuThreshold : public IThresholdStrategy
+{
+public:
+    ErrorCode Apply(Image&amp; image) override
+    {
+        // Otsu 알고리즘으로 임계값을 계산해 이진화
+        return ErrorCode::Ok;
+    }
+};
+
+// Context - 전략을 들고 위임한다. 분기가 없다
+class BinarizationBlock
+{
+public:
+    void SetStrategy(std::unique_ptr&lt;IThresholdStrategy&gt; strategy)
+    {
+        m_strategy = std::move(strategy);
+    }
+
+    ErrorCode Process(Image&amp; image)
+    {
+        if (m_strategy == nullptr)
+        {
+            return ErrorCode::InvalidState;
+        }
+        return m_strategy-&gt;Apply(image);   // 어떤 알고리즘인지 모른 채 위임
+    }
+
+private:
+    std::unique_ptr&lt;IThresholdStrategy&gt; m_strategy;
+};</code></pre>
+
+                <p>새 이진화 방식이 필요하면 <code>IThresholdStrategy</code>를 구현하는 클래스를 하나 추가하면 끝이다. <code>BinarizationBlock</code>은 한 줄도 바뀌지 않는다 — 개방·폐쇄 원칙(OCP)이 그대로 적용된 형태다.</p>
+
+                <h3 id="strategy-modern"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 모던 C++ — std::function과 람다</h3>
+                <p>전략이 상태 없이 동작 하나만 담는다면, 클래스 계층 대신 <code>std::function</code>으로 간소화할 수 있다. 호출 측에서 람다로 전략을 즉석에서 정의한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 함수 객체 기반 전략 - 클래스 계층이 필요 없다
+class BinarizationBlock
+{
+public:
+    using ThresholdFn = std::function&lt;ErrorCode(Image&amp;)&gt;;
+
+    void SetStrategy(ThresholdFn strategy)
+    {
+        m_strategy = std::move(strategy);
+    }
+
+    ErrorCode Process(Image&amp; image)
+    {
+        if (!m_strategy)
+        {
+            return ErrorCode::InvalidState;
+        }
+        return m_strategy(image);
+    }
+
+private:
+    ThresholdFn m_strategy;
+};
+
+// 사용 - 람다로 전략을 즉석에서 주입
+BinarizationBlock block;
+block.SetStrategy([](Image&amp; img) -&gt; ErrorCode
+{
+    // 고정 임계값 이진화
+    return ErrorCode::Ok;
+});</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>클래스 전략 vs 함수 전략</strong>
+                        전략이 자체 상태(파라미터)나 수명 관리가 필요하면 클래스가 낫다. 동작 하나만 갈아끼우는 단순한 경우라면 <code>std::function</code> + 람다가 보일러플레이트를 크게 줄인다. 둘 다 Strategy 패턴의 정신은 동일하다.
+                    </div>
+                </div>
+
+                <!-- 3. Observer -->
+                <h2 id="observer"><i class="fa-solid fa-tower-broadcast"></i> Observer — 발행·구독</h2>
+                <p><strong>Observer 패턴</strong>은 한 객체(<em>subject</em>)의 상태가 변할 때, 그 변화를 구독하는 여러 객체(<em>observer</em>)에게 자동으로 통보한다. 발행·구독(publish-subscribe) 구조의 기본형이며, 이벤트 시스템·GUI·데이터 플로우의 토대다.</p>
+
+                <div class="diagram-box">
+                    <svg width="640" height="280" viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L8,3 L0,6 Z" fill="#94a3b8"/>
+                            </marker>
+                        </defs>
+                        <!-- Subject -->
+                        <rect x="40" y="100" width="170" height="80" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+                        <text x="125" y="132" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#1e3a5f">Subject</text>
+                        <text x="125" y="153" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1d4ed8">상태가 변하면 통보</text>
+                        <!-- Observers -->
+                        <rect x="440" y="20" width="170" height="58" rx="10" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.5"/>
+                        <text x="525" y="46" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#065f46">Observer A</text>
+                        <text x="525" y="64" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#047857">로그 기록</text>
+                        <rect x="440" y="111" width="170" height="58" rx="10" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.5"/>
+                        <text x="525" y="137" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#065f46">Observer B</text>
+                        <text x="525" y="155" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#047857">UI 갱신</text>
+                        <rect x="440" y="202" width="170" height="58" rx="10" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.5"/>
+                        <text x="525" y="228" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#065f46">Observer C</text>
+                        <text x="525" y="246" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#047857">결과 저장</text>
+                        <!-- notify 화살표 -->
+                        <line x1="210" y1="125" x2="436" y2="52" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow)"/>
+                        <line x1="210" y1="140" x2="436" y2="140" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow)"/>
+                        <line x1="210" y1="155" x2="436" y2="228" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow)"/>
+                        <text x="325" y="80" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">notify()</text>
+                        <!-- subscribe 화살표 (역방향, 점선) -->
+                        <line x1="436" y1="245" x2="212" y2="172" stroke="#cbd5e1" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+                        <text x="320" y="220" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">subscribe()</text>
+                    </svg>
+                    <div class="diagram-caption">Observer는 Subject를 구독하고(subscribe), Subject는 상태 변화 시 모든 Observer에게 통보한다(notify)</div>
+                </div>
+
+                <h3 id="observer-impl"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본 구현</h3>
+                <p>Subject는 observer 목록을 들고, 상태가 바뀌면 전부 순회하며 통보한다. Subject는 observer가 무엇을 하는지 전혀 모른다 — 그저 <code>OnNotify</code>를 호출할 뿐이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Observer 인터페이스
+class IInspectionObserver
+{
+public:
+    virtual ~IInspectionObserver() = default;
+    virtual void OnInspectionDone(const InspectionResult&amp; result) = 0;
+};
+
+// Subject - observer를 관리하고 통보한다
+class InspectionSubject
+{
+public:
+    void Subscribe(IInspectionObserver* observer)
+    {
+        m_observers.push_back(observer);
+    }
+
+    void Unsubscribe(IInspectionObserver* observer)
+    {
+        m_observers.erase(
+            std::remove(m_observers.begin(), m_observers.end(), observer),
+            m_observers.end());
+    }
+
+protected:
+    // 상태 변화가 일어나면 모든 observer에게 통보한다
+    void notifyAll(const InspectionResult&amp; result)
+    {
+        for (IInspectionObserver* observer : m_observers)
+        {
+            observer-&gt;OnInspectionDone(result);
+        }
+    }
+
+private:
+    std::vector&lt;IInspectionObserver*&gt; m_observers;
+};
+
+// 구체 observer - 각자 다른 반응을 한다
+class ResultLogger : public IInspectionObserver
+{
+public:
+    void OnInspectionDone(const InspectionResult&amp; result) override
+    {
+        // 검사 결과를 로그에 기록
+    }
+};</code></pre>
+
+                <p>새 반응을 추가하고 싶으면 <code>IInspectionObserver</code> 구현을 하나 더 만들어 <code>Subscribe</code>하면 된다. <code>InspectionSubject</code>는 수정할 필요가 없다. 발행자와 구독자가 서로의 구체 타입을 모르므로 결합도가 매우 낮다.</p>
+
+                <h3 id="observer-leak"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 위험 — 메모리 누수와 댕글링 포인터</h3>
+                <p>Observer 패턴의 가장 흔한 사고는 <strong>구독 해제 누락</strong>이다. observer가 파괴됐는데 <code>Unsubscribe</code>를 호출하지 않으면, Subject는 이미 죽은 객체의 포인터를 들고 있다가 통보 시점에 그것을 역참조한다 — 댕글링 포인터 접근이다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>구독 해제 누락 = 메모리 누수 또는 크래시</strong>
+                        raw 포인터로 observer를 들고 있으면, observer 소멸 시 반드시 <code>Unsubscribe</code>를 호출해야 한다. 이를 놓치면 Subject가 죽은 객체를 통보하다 크래시한다. 반대로 Subject가 observer의 수명을 <code>shared_ptr</code>로 붙들고 있으면, observer가 영원히 해제되지 않는 누수가 생긴다. 안전한 해법은 <code>std::weak_ptr</code>로 observer를 들고, 통보 직전 <code>lock()</code>으로 살아있는지 확인하는 것이다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 안전한 구현 - weak_ptr로 들고, 죽은 observer는 자동으로 건너뛴다
+class InspectionSubject
+{
+public:
+    void Subscribe(const std::shared_ptr&lt;IInspectionObserver&gt;&amp; observer)
+    {
+        m_observers.push_back(observer);   // weak_ptr로 저장됨
+    }
+
+protected:
+    void notifyAll(const InspectionResult&amp; result)
+    {
+        // 죽은 observer를 정리하면서 통보한다
+        for (auto it = m_observers.begin(); it != m_observers.end(); )
+        {
+            if (std::shared_ptr&lt;IInspectionObserver&gt; obs = it-&gt;lock())
+            {
+                obs-&gt;OnInspectionDone(result);
+                ++it;
+            }
+            else
+            {
+                it = m_observers.erase(it);   // 이미 소멸된 observer 제거
+            }
+        }
+    }
+
+private:
+    std::vector&lt;std::weak_ptr&lt;IInspectionObserver&gt;&gt; m_observers;
+};</code></pre>
+
+                <!-- 4. Command -->
+                <h2 id="command"><i class="fa-solid fa-terminal"></i> Command — 요청의 객체화</h2>
+                <p><strong>Command 패턴</strong>은 "어떤 동작을 수행하라"는 요청 자체를 객체로 캡슐화한다. 요청이 객체가 되면 그것을 변수에 담고, 큐에 쌓고, 로그로 남기고, 거꾸로 되돌릴 수 있다. 실행 취소(undo)·작업 큐잉·매크로의 기반이다.</p>
+
+                <h3 id="command-impl"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본 구현 — Execute와 Undo</h3>
+                <p>모든 명령은 <code>Execute</code>와 <code>Undo</code>를 가진 인터페이스를 구현한다. 명령은 자신을 되돌리는 데 필요한 정보를 스스로 들고 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 명령 인터페이스 - 실행과 취소를 모두 정의
+class ICommand
+{
+public:
+    virtual ~ICommand() = default;
+    virtual ErrorCode Execute() = 0;
+    virtual ErrorCode Undo() = 0;
+};
+
+// 구체 명령 - 이미지에 회전을 적용
+class RotateCommand : public ICommand
+{
+public:
+    RotateCommand(Image&amp; target, double degrees)
+        : m_target(target), m_degrees(degrees) {}
+
+    ErrorCode Execute() override
+    {
+        // m_target을 m_degrees 만큼 회전
+        return ErrorCode::Ok;
+    }
+
+    ErrorCode Undo() override
+    {
+        // 반대 방향으로 회전해 원래대로 복구
+        return ErrorCode::Ok;
+    }
+
+private:
+    Image&amp; m_target;
+    double m_degrees;
+};</code></pre>
+
+                <h3 id="command-invoker"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Invoker — 실행 이력과 undo 스택</h3>
+                <p>명령을 실행하는 쪽(<em>invoker</em>)은 실행한 명령을 스택에 쌓아 둔다. undo 요청이 오면 스택 맨 위 명령의 <code>Undo</code>를 호출한다. invoker는 명령이 구체적으로 무슨 일을 하는지 전혀 모른다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Invoker - 명령을 실행하고 이력을 관리한다
+class CommandInvoker
+{
+public:
+    ErrorCode Run(std::unique_ptr&lt;ICommand&gt; command)
+    {
+        ErrorCode ec = command-&gt;Execute();
+        if (ec == ErrorCode::Ok)
+        {
+            m_history.push(std::move(command));   // 실행 이력에 보관
+        }
+        return ec;
+    }
+
+    ErrorCode UndoLast()
+    {
+        if (m_history.empty())
+        {
+            return ErrorCode::InvalidState;
+        }
+        ErrorCode ec = m_history.top()-&gt;Undo();
+        m_history.pop();
+        return ec;
+    }
+
+private:
+    std::stack&lt;std::unique_ptr&lt;ICommand&gt;&gt; m_history;
+};</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> CommandInvoker 동작 흐름</div>
+Run(RotateCommand 90)   -&gt; Execute  / history: [Rotate90]
+Run(BlurCommand 5)      -&gt; Execute  / history: [Rotate90, Blur5]
+UndoLast()              -&gt; Blur5.Undo   / history: [Rotate90]
+UndoLast()              -&gt; Rotate90.Undo / history: []</div>
+
+                <p>요청을 객체로 만든 덕분에 얻는 것이 많다. 명령을 큐에 쌓으면 <strong>작업 큐</strong>가 되고, 실행 전후를 기록하면 <strong>감사 로그</strong>가 되며, 명령 리스트를 묶으면 <strong>매크로</strong>가 된다. 모두 "요청이 일급 객체"이기에 가능하다.</p>
+
+                <!-- 5. State -->
+                <h2 id="state"><i class="fa-solid fa-diagram-predecessor"></i> State — 상태에 따른 행동</h2>
+                <p><strong>State 패턴</strong>은 객체의 내부 상태에 따라 행동이 달라질 때, 각 상태를 별도의 클래스로 표현한다. 객체는 현재 상태 객체에 행동을 위임하고, 상태 객체가 다음 상태로의 전이를 결정한다. 거대한 <code>switch</code>문을 상태 클래스들로 분해하는 것이 핵심이다.</p>
+
+                <h3 id="state-problem"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 문제 — 상태 분기의 폭발</h3>
+                <p>카메라가 <em>Idle → Ready → Capturing</em> 상태를 오간다고 하자. 상태 enum과 switch로 처리하면, 모든 동작 함수마다 같은 switch가 반복되고 상태가 늘 때마다 전부 수정해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 안티 패턴 - 모든 메서드에 같은 상태 분기가 반복된다
+ErrorCode Camera::StartCapture()
+{
+    switch (m_state)
+    {
+        case CameraState::Idle:      return ErrorCode::InvalidState;  // 준비 안 됨
+        case CameraState::Ready:     m_state = CameraState::Capturing; return ErrorCode::Ok;
+        case CameraState::Capturing: return ErrorCode::InvalidState;  // 이미 캡처 중
+    }
+    return ErrorCode::Unknown;
+}
+// Connect(), Disconnect(), StopCapture() ... 전부 같은 switch 반복</code></pre>
+
+                <div class="diagram-box">
+                    <svg width="620" height="180" viewBox="0 0 620 180" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L8,3 L0,6 Z" fill="#94a3b8"/>
+                            </marker>
+                        </defs>
+                        <!-- Idle -->
+                        <rect x="30" y="65" width="140" height="56" rx="28" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+                        <text x="100" y="98" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#475569">Idle</text>
+                        <!-- Ready -->
+                        <rect x="240" y="65" width="140" height="56" rx="28" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.5"/>
+                        <text x="310" y="98" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#065f46">Ready</text>
+                        <!-- Capturing -->
+                        <rect x="450" y="65" width="140" height="56" rx="28" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+                        <text x="520" y="98" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#7f1d1d">Capturing</text>
+                        <!-- Idle -> Ready -->
+                        <line x1="170" y1="85" x2="236" y2="85" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow2)"/>
+                        <text x="203" y="76" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">Connect</text>
+                        <!-- Ready -> Capturing -->
+                        <line x1="380" y1="85" x2="446" y2="85" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow2)"/>
+                        <text x="413" y="76" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">StartCapture</text>
+                        <!-- Capturing -> Ready -->
+                        <line x1="446" y1="105" x2="380" y2="105" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow2)"/>
+                        <text x="413" y="125" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">StopCapture</text>
+                        <!-- Ready -> Idle -->
+                        <line x1="236" y1="105" x2="170" y2="105" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow2)"/>
+                        <text x="203" y="125" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">Disconnect</text>
+                    </svg>
+                    <div class="diagram-caption">카메라 상태 전이 — 각 상태는 자신이 받아들이는 동작과 다음 상태만 안다</div>
+                </div>
+
+                <h3 id="state-solution"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 해법 — 상태를 클래스로</h3>
+                <p>각 상태를 <code>ICameraState</code> 구현 클래스로 만든다. 카메라(context)는 현재 상태 객체에 동작을 위임하고, 상태 객체가 다음 상태를 반환한다. switch는 완전히 사라진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class Camera;   // 전방 선언
+
+// 상태 인터페이스 - 각 동작이 다음 상태를 반환한다
+class ICameraState
+{
+public:
+    virtual ~ICameraState() = default;
+    virtual ErrorCode Connect(Camera&amp; camera) = 0;
+    virtual ErrorCode StartCapture(Camera&amp; camera) = 0;
+};
+
+// Idle 상태 - Connect만 받아들인다
+class IdleState : public ICameraState
+{
+public:
+    ErrorCode Connect(Camera&amp; camera) override;        // Ready로 전이
+    ErrorCode StartCapture(Camera&amp; camera) override
+    {
+        return ErrorCode::InvalidState;                // Idle에서는 불가
+    }
+};
+
+// Ready 상태 - StartCapture만 받아들인다
+class ReadyState : public ICameraState
+{
+public:
+    ErrorCode Connect(Camera&amp; camera) override
+    {
+        return ErrorCode::InvalidState;                // 이미 연결됨
+    }
+    ErrorCode StartCapture(Camera&amp; camera) override;   // Capturing으로 전이
+};
+
+// Context - 현재 상태에 위임만 한다. 분기가 없다
+class Camera
+{
+public:
+    Camera() : m_state(std::make_unique&lt;IdleState&gt;()) {}
+
+    ErrorCode Connect()      { return m_state-&gt;Connect(*this); }
+    ErrorCode StartCapture() { return m_state-&gt;StartCapture(*this); }
+
+    void ChangeState(std::unique_ptr&lt;ICameraState&gt; next)
+    {
+        m_state = std::move(next);
+    }
+
+private:
+    std::unique_ptr&lt;ICameraState&gt; m_state;
+};
+
+// 상태 전이 - IdleState가 직접 다음 상태를 지정한다
+ErrorCode IdleState::Connect(Camera&amp; camera)
+{
+    camera.ChangeState(std::make_unique&lt;ReadyState&gt;());
+    return ErrorCode::Ok;
+}</code></pre>
+
+                <p>각 상태 클래스는 자기가 받아들이는 동작과 전이할 다음 상태만 안다. 새 상태가 필요하면 <code>ICameraState</code> 구현을 추가하면 되고, 전이 규칙이 한곳에 흩어지지 않는다. 다만 상태가 지나치게 많으면 클래스 수가 폭발하므로, 상태 가짓수가 적고 안정적일 때 가장 잘 맞는다.</p>
+
+                <!-- 6. Template Method -->
+                <h2 id="template-method"><i class="fa-solid fa-sitemap"></i> Template Method — 알고리즘 골격</h2>
+                <p><strong>Template Method 패턴</strong>은 알고리즘의 <em>골격</em>을 기반 클래스에 정의하고, 변하는 일부 단계만 파생 클래스가 채우게 한다. 전체 흐름은 고정하되 세부 구현만 위임하는 구조다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 검사 파이프라인의 골격을 정의한다
+class InspectionPipeline
+{
+public:
+    // Template Method - 전체 흐름은 고정. public, non-virtual
+    ErrorCode Run(const Image&amp; input, InspectionResult&amp; result)
+    {
+        Image preprocessed;
+        ErrorCode ec = preprocess(input, preprocessed);   // 단계 1 (가변)
+        if (ec != ErrorCode::Ok)
+        {
+            return ec;
+        }
+        ec = analyze(preprocessed, result);               // 단계 2 (가변)
+        if (ec != ErrorCode::Ok)
+        {
+            return ec;
+        }
+        return finalize(result);                          // 단계 3 (공통)
+    }
+
+    virtual ~InspectionPipeline() = default;
+
+private:
+    // 파생 클래스가 채우는 단계 - private virtual (NVI)
+    virtual ErrorCode preprocess(const Image&amp; in, Image&amp; out) = 0;
+    virtual ErrorCode analyze(const Image&amp; in, InspectionResult&amp; result) = 0;
+
+    // 공통 단계 - 모든 파이프라인이 동일
+    ErrorCode finalize(InspectionResult&amp; result)
+    {
+        // 결과 후처리
+        return ErrorCode::Ok;
+    }
+};</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>NVI 패턴과의 연결</strong>
+                        위 예제처럼 <code>public</code> 인터페이스(<code>Run</code>)는 non-virtual로 두고, 커스터마이즈 지점만 <code>private virtual</code>로 빼는 것을 <strong>NVI(Non-Virtual Interface)</strong> 관용구라 한다. 골격(불변식·전후 처리)은 기반 클래스가 통제하고, 파생 클래스는 정해진 구멍만 메운다. Template Method의 안전한 C++ 구현 형태다.
+                    </div>
+                </div>
+
+                <!-- 7. Iterator -->
+                <h2 id="iterator"><i class="fa-solid fa-arrow-right-arrow-left"></i> Iterator — 컬렉션 순회</h2>
+                <p><strong>Iterator 패턴</strong>은 컬렉션의 내부 구조(배열인지 연결 리스트인지 트리인지)를 노출하지 않고 원소를 순차적으로 순회하는 방법을 제공한다. 순회 방식이 컬렉션 구현과 분리된다.</p>
+                <p>C++에서는 이 패턴이 <strong>STL 이터레이터</strong>로 언어 차원에 녹아 있다. <code>begin()</code> / <code>end()</code>가 이터레이터를 반환하고, 모든 표준 컨테이너가 동일한 인터페이스를 따르므로 알고리즘이 컨테이너 종류와 무관하게 동작한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// STL 이터레이터 - 컨테이너 내부 구조를 몰라도 순회한다
+std::vector&lt;InspectionResult&gt; results = RunBatch();
+
+// range-based for - 내부적으로 begin()/end() 이터레이터를 사용
+for (const InspectionResult&amp; r : results)
+{
+    // vector든 list든 set이든 같은 코드로 순회된다
+}
+
+// 알고리즘도 이터레이터만 받으므로 컨테이너에 독립적이다
+auto failCount = std::count_if(results.begin(), results.end(),
+    [](const InspectionResult&amp; r) { return r.IsFail(); });</code></pre>
+
+                <p>커스텀 컨테이너를 만들 때도 <code>begin()</code> / <code>end()</code>와 이터레이터 타입을 제공하면 range-based for와 STL 알고리즘을 그대로 쓸 수 있다 — Iterator 패턴을 직접 구현하는 셈이다.</p>
+
+                <!-- 8. Chain of Responsibility -->
+                <h2 id="chain"><i class="fa-solid fa-link"></i> Chain of Responsibility — 처리 체인</h2>
+                <p><strong>Chain of Responsibility 패턴</strong>은 요청을 처리할 수 있는 객체들을 체인으로 연결하고, 요청을 체인을 따라 흘려보낸다. 각 핸들러는 요청을 처리하거나, 처리할 수 없으면 다음 핸들러로 넘긴다. 요청을 보내는 쪽은 누가 처리할지 알 필요가 없다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 핸들러 - 처리하거나 다음으로 넘긴다
+class ImageValidator
+{
+public:
+    virtual ~ImageValidator() = default;
+
+    void SetNext(std::shared_ptr&lt;ImageValidator&gt; next)
+    {
+        m_next = std::move(next);
+    }
+
+    // 자신이 처리하지 못하면 다음 핸들러로 위임한다
+    ErrorCode Validate(const Image&amp; image)
+    {
+        ErrorCode ec = checkSelf(image);
+        if (ec != ErrorCode::Ok)
+        {
+            return ec;                       // 이 핸들러에서 거부
+        }
+        if (m_next != nullptr)
+        {
+            return m_next-&gt;Validate(image);   // 다음 핸들러로 전달
+        }
+        return ErrorCode::Ok;                // 체인 끝까지 통과
+    }
+
+private:
+    virtual ErrorCode checkSelf(const Image&amp; image) = 0;
+    std::shared_ptr&lt;ImageValidator&gt; m_next;
+};
+
+// 구체 핸들러들 - 크기 검사, 포맷 검사, 빈 이미지 검사 등
+class SizeValidator : public ImageValidator
+{
+private:
+    ErrorCode checkSelf(const Image&amp; image) override
+    {
+        // 이미지 크기가 허용 범위인지 검사
+        return ErrorCode::Ok;
+    }
+};</code></pre>
+
+                <p>검사 단계를 추가·제거·재배열하기가 쉽고, 호출하는 쪽은 체인의 시작점만 알면 된다. 다만 체인이 길어지면 요청이 어디서 처리됐는지 추적하기 어려워질 수 있다.</p>
+
+                <!-- 9. 공통점 -->
+                <h2 id="common"><i class="fa-solid fa-object-group"></i> 행위 패턴들의 공통점</h2>
+                <p>지금까지 본 패턴들은 표면적으로 달라 보이지만, 한 가지 목표를 공유한다 — <strong>결합도를 낮추고 책임을 분산한다.</strong></p>
+                <p>모두 "변하는 부분"을 인터페이스 뒤로 빼낸다. Strategy는 알고리즘을, State는 상태별 행동을, Command는 요청을, Observer는 반응을 각각 별도 객체로 분리한다. 그 결과 변경이 한 클래스 안에 격리되고, 새 기능은 새 클래스 추가만으로 끝난다. 호출하는 쪽 코드는 닫혀 있다 — 개방·폐쇄 원칙이 관통하는 셈이다.</p>
+
+                <table>
+                    <tr><th>패턴</th><th>무엇을 캡슐화하나</th><th>주로 쓰는 상황</th></tr>
+                    <tr><td><strong>Strategy</strong></td><td>교체 가능한 알고리즘</td><td>같은 작업의 방식이 여럿일 때, if-else 분기 제거</td></tr>
+                    <tr><td><strong>Observer</strong></td><td>상태 변화에 대한 반응</td><td>한 변화에 여러 객체가 반응해야 할 때, 이벤트</td></tr>
+                    <tr><td><strong>Command</strong></td><td>요청 그 자체</td><td>실행 취소, 작업 큐, 로깅, 매크로</td></tr>
+                    <tr><td><strong>State</strong></td><td>상태별 행동과 전이</td><td>상태에 따라 동작이 갈리고 전이가 복잡할 때</td></tr>
+                    <tr><td><strong>Template Method</strong></td><td>알고리즘의 가변 단계</td><td>전체 흐름은 같고 일부 단계만 다를 때</td></tr>
+                    <tr><td><strong>Iterator</strong></td><td>순회 방법</td><td>컬렉션 내부 구조를 감추고 순회할 때</td></tr>
+                    <tr><td><strong>Chain of Responsibility</strong></td><td>요청 처리자의 선택</td><td>처리 단계를 유연하게 조합할 때</td></tr>
+                </table>
+
+                <!-- 10. 산업 SW 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 SW 관점</h2>
+                <p>산업용 이미징 시스템에서는 행위 패턴이 곳곳에 자연스럽게 들어맞는다. 추상 이론이 아니라 실제 구조 결정으로 직결된다.</p>
+
+                <h3 id="industrial-strategy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 검사 알고리즘 — Strategy</h3>
+                <p>같은 "결함 검출"이라도 블롭 기반·엣지 기반·템플릿 매칭 기반 등 방식이 여럿이다. 각 방식을 <code>IDefectDetectionStrategy</code>로 캡슐화하면, 검사 블록은 알고리즘을 런타임에 갈아끼울 수 있고 새 방식 추가가 기존 코드를 건드리지 않는다.</p>
+
+                <h3 id="industrial-observer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 검사 완료 이벤트 — Observer</h3>
+                <p>한 번의 검사가 끝나면 여러 주체가 반응해야 한다 — UI는 결과를 표시하고, 로거는 기록하고, 통계 모듈은 수율을 갱신하고, PLC 인터페이스는 양품·불량 신호를 내보낸다. 검사 엔진을 Subject로 두면 각 반응을 observer로 독립적으로 붙였다 뗄 수 있다.</p>
+
+                <h3 id="industrial-command"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 작업 큐 — Command</h3>
+                <p>플로우 에디터에서 사용자의 편집 동작(블록 추가·연결·파라미터 변경)을 Command로 만들면 실행 취소·재실행이 자연스럽게 따라온다. 배치 처리에서는 작업을 Command 큐에 쌓아 워커 스레드가 순서대로 처리하게 한다.</p>
+
+                <h3 id="industrial-state"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 카메라·검사 상태 머신 — State</h3>
+                <p>카메라(연결·준비·캡처·오류)나 검사 시퀀스(대기·트리거·획득·처리·완료)는 명확한 상태 머신이다. State 패턴으로 각 상태를 클래스화하면 잘못된 전이를 컴파일 구조 차원에서 막고, 거대한 switch가 흩어지는 것을 방지한다.</p>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="pitfall-strategy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 1 — Strategy 과용</h3>
+                <p>분기 두세 개를 없애겠다고 인터페이스·구현 클래스 여러 개를 만드는 것은 과한 설계다. Strategy는 알고리즘이 <em>실제로</em> 여럿이고, 런타임 교체가 필요하며, 앞으로 늘어날 가능성이 있을 때 가치가 있다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>단순 분기에 Strategy를 끼우지 말 것</strong>
+                        값에 따라 한두 줄이 갈리는 정도라면 <code>if-else</code>나 <code>switch</code>가 더 읽기 쉽다. "변형이 늘어날 것"이라는 막연한 추측만으로 클래스 계층을 미리 만들면, 정작 변형은 안 늘고 간접 호출과 파일 개수만 늘어난다. 패턴은 통증이 실제로 나타난 뒤에 도입해도 늦지 않다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-observer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 2 — Observer의 메모리 누수와 순환 참조</h3>
+                <p>앞서 본 대로 구독 해제를 빠뜨리면 댕글링 포인터나 누수가 생긴다. 더 까다로운 경우는 <strong>순환 참조</strong>다. A가 B를 구독하고 B도 A를 구독하면서 서로 <code>shared_ptr</code>로 붙들면, 둘 다 영원히 해제되지 않는다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Observer는 수명 관리가 핵심이다</strong>
+                        Subject가 observer를 <code>shared_ptr</code>로 소유하면 안 된다 — 소유는 다른 곳이 하고, Subject는 <code>weak_ptr</code>로 "참조만" 해야 한다. 통보 시점에 <code>lock()</code>으로 생존을 확인하고, 죽은 observer는 목록에서 정리한다. 양방향 구독이 불가피하면 한쪽은 반드시 <code>weak_ptr</code>로 끊어 순환을 방지한다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-command"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 3 — Command 남용</h3>
+                <p>모든 함수 호출을 Command 객체로 감싸면 코드가 간접 호출의 미로가 된다. Command는 <em>실행 취소·큐잉·로깅·매크로 중 하나라도 실제로 필요할 때</em> 쓴다. 그냥 함수를 한 번 부르면 되는 일을 명령 객체로 만드는 것은 보일러플레이트만 늘린다.</p>
+
+                <h3 id="pitfall-state"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 4 — State 클래스 폭발</h3>
+                <p>State 패턴은 상태마다 클래스를 만든다. 상태가 3~5개로 적고 안정적이면 깔끔하지만, 상태가 수십 개거나 상태 × 이벤트 조합이 많으면 클래스와 전이 코드가 폭발한다. 이런 경우엔 오히려 상태 전이 테이블(table-driven)이나 전용 상태 머신 라이브러리가 더 관리하기 쉽다. 패턴을 적용할지는 상태의 개수와 변동성을 보고 판단한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>패턴은 목적이 아니라 도구다</strong>
+                        행위 패턴의 가치는 "결합도를 낮추고 책임을 분산한다"는 효과에 있지, 패턴 이름을 코드에 박는 데 있지 않다. 먼저 해결하려는 통증(분기 누적, 변경 전파, undo 요구 등)을 분명히 하고, 그 통증에 맞는 패턴을 고른다. 통증이 없는데 패턴부터 꺼내면 복잡도만 늘어난다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Gamma, Helm, Johnson, Vlissides — <em>Design Patterns: Elements of Reusable Object-Oriented Software</em> (GoF, 1994) — Behavioral Patterns 장</li>
+                        <li>Eric Freeman, Elisabeth Robson — <em>Head First Design Patterns</em> (2nd Edition, O'Reilly) — Strategy·Observer·Command·State</li>
+                        <li>Robert C. Martin — <em>Agile Software Development, Principles, Patterns, and Practices</em> — 개방·폐쇄 원칙과 패턴</li>
+                        <li>Herb Sutter — "Virtuality" (C/C++ Users Journal, 2001) — Non-Virtual Interface 관용구</li>
+                        <li>Bjarne Stroustrup — <em>The C++ Programming Language</em> (4th Edition) — 가상 함수, 함수 객체</li>
+                        <li>refactoring.guru — Behavioral Design Patterns</li>
+                        <li>cppreference.com — std::function, Iterator library</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-theory');
+    renderPostNav('dev-theory');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
