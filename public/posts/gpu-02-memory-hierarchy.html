@@ -1,0 +1,843 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU 메모리 계층 — global·shared·constant·texture - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec-table */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 메모리 계층 SVG 컨테이너 */
+        .mem-diagram {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .mem-diagram svg { max-width: 100%; height: auto; }
+        .mem-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why" data-section="why">왜 중요한가</a>
+        <a href="#global">Global</a>
+        <a href="#shared">Shared</a>
+        <a href="#constant">Constant</a>
+        <a href="#texture">Texture</a>
+        <a href="#register">Register</a>
+        <a href="#local">Local</a>
+        <a href="#unified">Unified</a>
+        <a href="#compare">비교표</a>
+        <a href="#patterns">패턴</a>
+        <a href="#pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / CUDA</span>
+                </div>
+                <h1>GPU 메모리 계층 — global·shared·constant·texture</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>GPU 메모리 계층 전체 구조 — register · shared · L1/L2 · constant · texture · global</li>
+                        <li>각 메모리의 크기·속도·접근 범위와 사용 키워드 (<code>__shared__</code>, <code>__constant__</code>)</li>
+                        <li>Global → Shared 타일링, Constant 브로드캐스트, Texture 보간 등 핵심 패턴 코드</li>
+                        <li>레지스터 spill, global-only 코드, shared 미사용 같은 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">왜 메모리 계층이 중요한가</a></li>
+                        <li><a href="#global">Global Memory — 크지만 느린 본거지</a></li>
+                        <li><a href="#shared">Shared Memory — 블록 안의 초고속 캐시</a></li>
+                        <li><a href="#constant">Constant Memory — 읽기 전용 브로드캐스트</a></li>
+                        <li><a href="#texture">Texture / Surface Memory — 2D 공간 캐시</a></li>
+                        <li><a href="#register">Register — 스레드 전용 최고속</a></li>
+                        <li><a href="#local">Local Memory — 사실은 global, spill 주의</a></li>
+                        <li><a href="#unified">Unified Memory — 자동 관리</a></li>
+                        <li><a href="#compare">메모리 종류 비교표</a></li>
+                        <li><a href="#patterns">대표 패턴 — Global → Shared 타일링</a></li>
+                        <li><a href="#pitfalls">흔한 함정 정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 중요한가 -->
+                <h2 id="why"><i class="fa-solid fa-bullseye"></i> 왜 메모리 계층이 중요한가</h2>
+                <p>GPU는 연산 자체가 빠르다. RTX 4090 기준 단정밀도 FP32 연산 능력이 80 TFLOPS를 넘는다. 하지만 <strong>메모리 대역폭은 1 TB/s 수준</strong>이다. 단순히 나눠 보면 연산 한 번에 데이터 한 바이트도 못 가져오는 비율이다. 그래서 대부분의 CUDA 커널은 <em>연산이 아니라 메모리에 묶인다(memory-bound)</em>.</p>
+                <p>해결책은 두 가지다. 더 빠른 메모리에 데이터를 옮겨 재사용하거나, 한 번에 가져오는 데이터 양을 늘려 결합(coalesce)한다. 둘 다 GPU 메모리 계층을 정확히 이해해야 가능하다.</p>
+
+                <div class="mem-diagram">
+                    <svg viewBox="0 0 560 320" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 피라미드 다이어그램 -->
+                        <defs>
+                            <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0" stop-color="#ef4444"/><stop offset="1" stop-color="#f97316"/>
+                            </linearGradient>
+                            <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0" stop-color="#f59e0b"/><stop offset="1" stop-color="#eab308"/>
+                            </linearGradient>
+                            <linearGradient id="g3" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0" stop-color="#84cc16"/><stop offset="1" stop-color="#22c55e"/>
+                            </linearGradient>
+                            <linearGradient id="g4" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0" stop-color="#06b6d4"/><stop offset="1" stop-color="#3b82f6"/>
+                            </linearGradient>
+                        </defs>
+
+                        <!-- 레지스터 (최상단) -->
+                        <polygon points="240,20 320,20 340,60 220,60" fill="url(#g1)" stroke="#7f1d1d" stroke-width="1"/>
+                        <text x="280" y="45" text-anchor="middle" fill="white" font-size="13" font-weight="700" font-family="Pretendard,sans-serif">Register</text>
+
+                        <!-- 셰어드/L1 -->
+                        <polygon points="220,60 340,60 360,110 200,110" fill="url(#g2)" stroke="#78350f" stroke-width="1"/>
+                        <text x="280" y="80" text-anchor="middle" fill="white" font-size="13" font-weight="700" font-family="Pretendard,sans-serif">Shared / L1</text>
+                        <text x="280" y="98" text-anchor="middle" fill="white" font-size="10" font-family="Pretendard,sans-serif">~48~228 KB / SM</text>
+
+                        <!-- L2 / Constant / Texture cache -->
+                        <polygon points="200,110 360,110 390,170 170,170" fill="url(#g3)" stroke="#14532d" stroke-width="1"/>
+                        <text x="280" y="135" text-anchor="middle" fill="white" font-size="13" font-weight="700" font-family="Pretendard,sans-serif">L2 / Constant / Texture cache</text>
+                        <text x="280" y="155" text-anchor="middle" fill="white" font-size="10" font-family="Pretendard,sans-serif">수 MB</text>
+
+                        <!-- Global / Local / Constant (DRAM) -->
+                        <polygon points="170,170 390,170 440,260 120,260" fill="url(#g4)" stroke="#1e3a8a" stroke-width="1"/>
+                        <text x="280" y="205" text-anchor="middle" fill="white" font-size="14" font-weight="700" font-family="Pretendard,sans-serif">Global Memory (DRAM)</text>
+                        <text x="280" y="225" text-anchor="middle" fill="white" font-size="11" font-family="Pretendard,sans-serif">+ Local + Constant + Texture 실체</text>
+                        <text x="280" y="244" text-anchor="middle" fill="white" font-size="10" font-family="Pretendard,sans-serif">수 GB · 가장 느림</text>
+
+                        <!-- 화살표 라벨 -->
+                        <text x="60" y="40" font-size="11" fill="#7f1d1d" font-weight="700">빠름</text>
+                        <text x="60" y="55" font-size="10" fill="#7f1d1d">작음</text>
+                        <text x="60" y="250" font-size="11" fill="#1e3a8a" font-weight="700">느림</text>
+                        <text x="60" y="265" font-size="10" fill="#1e3a8a">큼</text>
+                        <line x1="90" y1="60" x2="90" y2="245" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+                        <defs>
+                            <marker id="arr" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                                <path d="M0,0 L8,4 L0,8 z" fill="#555"/>
+                            </marker>
+                        </defs>
+
+                        <!-- 우측 범위 라벨 -->
+                        <text x="475" y="45" font-size="11" fill="#444" font-weight="600">스레드</text>
+                        <text x="475" y="85" font-size="11" fill="#444" font-weight="600">블록</text>
+                        <text x="475" y="140" font-size="11" fill="#444" font-weight="600">디바이스</text>
+                        <text x="475" y="205" font-size="11" fill="#444" font-weight="600">디바이스</text>
+                        <text x="475" y="225" font-size="10" fill="#666">+ 호스트</text>
+                    </svg>
+                    <div class="mem-caption">GPU 메모리 계층 — 위로 갈수록 빠르고 작으며, 아래로 갈수록 크고 느리다</div>
+                </div>
+
+                <!-- 2. Global -->
+                <h2 id="global"><i class="fa-solid fa-database"></i> Global Memory — 크지만 느린 본거지</h2>
+                <p>GPU에서 가장 큰 메모리다. 보통 수 GB ~ 수십 GB(DRAM). 모든 스레드가 읽고 쓸 수 있으며 호스트(CPU)에서도 <code>cudaMemcpy</code>로 접근한다. 대신 지연 시간이 수백 사이클로 가장 느리다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 호스트에서 global memory 할당과 데이터 전송
+float* d_input = nullptr;
+float* d_output = nullptr;
+
+cudaMalloc(&amp;d_input, n * sizeof(float));
+cudaMalloc(&amp;d_output, n * sizeof(float));
+
+cudaMemcpy(d_input, h_input, n * sizeof(float), cudaMemcpyHostToDevice);
+
+// 커널에서 global memory 직접 접근
+__global__ void scale(const float* in, float* out, float k, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i &lt; n)
+    {
+        out[i] = in[i] * k;   // global read + global write
+    }
+}
+
+scale&lt;&lt;&lt;(n + 255) / 256, 256&gt;&gt;&gt;(d_input, d_output, 2.0f, n);
+
+cudaMemcpy(h_output, d_output, n * sizeof(float), cudaMemcpyDeviceToHost);
+cudaFree(d_input);
+cudaFree(d_output);</code></pre>
+
+                <h3 id="coalesce"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 메모리 결합(coalescing)</h3>
+                <p>같은 warp(32 스레드)가 <em>연속된 주소</em>를 동시에 읽으면 한 번의 트랜잭션으로 처리된다. 이 결합이 깨지면 대역폭이 수 배 떨어진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 좋은 예 — 연속 접근, 결합됨
+__global__ void good(const float* in, float* out)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    out[i] = in[i];   // thread 0 → in[0], thread 1 → in[1] ... 32개가 한 번에
+}
+
+// 나쁜 예 — stride 접근, 결합 깨짐
+__global__ void bad(const float* in, float* out, int stride)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    out[i] = in[i * stride];   // thread 0 → in[0], thread 1 → in[32] ... 32회 트랜잭션
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Global만 쓰는 코드의 함정</strong>
+                        간단해서 처음에는 모두 global로 짠다. 그러나 같은 데이터를 여러 스레드가 반복해서 읽는 패턴(컨볼루션, 행렬 곱)에서는 global을 그대로 두면 대역폭이 병목이 된다. 재사용 데이터는 <code>__shared__</code>로 옮긴다.
+                    </div>
+                </div>
+
+                <!-- 3. Shared -->
+                <h2 id="shared"><i class="fa-solid fa-people-group"></i> Shared Memory — 블록 안의 초고속 캐시</h2>
+                <p>같은 블록에 속한 스레드끼리 공유하는 온칩 메모리다. L1 캐시와 같은 물리 공간을 나눠 쓰며 지연 시간이 수십 사이클로 global보다 100배쯤 빠르다. 크기는 SM당 48 KB ~ 228 KB(아키텍처에 따라 다름).</p>
+                <p>키워드는 <code>__shared__</code>. 컴파일 타임 고정 크기 또는 런타임 동적 크기로 선언한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 정적 shared memory — 크기가 컴파일 타임에 결정
+__global__ void staticShared()
+{
+    __shared__ float tile[256];
+
+    int tid = threadIdx.x;
+    tile[tid] = tid * 1.0f;
+
+    __syncthreads();   // 블록 내 모든 스레드가 도달할 때까지 대기
+
+    // 이후 tile[] 안전하게 읽기
+}
+
+// 동적 shared memory — 커널 런치 시 3번째 인자로 크기 지정
+__global__ void dynamicShared(int n)
+{
+    extern __shared__ float sdata[];   // 크기 미지정
+    int tid = threadIdx.x;
+    sdata[tid] = tid;
+    __syncthreads();
+}
+
+// 호출 시: 256 * sizeof(float) 바이트 만큼 동적 할당
+dynamicShared&lt;&lt;&lt;1, 256, 256 * sizeof(float)&gt;&gt;&gt;(256);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>__syncthreads()는 필수</strong>
+                        Shared에 쓴 직후 다른 스레드가 그 값을 읽는다면 반드시 <code>__syncthreads()</code>로 블록 동기화를 해야 한다. 빠뜨리면 경쟁 상태가 발생한다.
+                    </div>
+                </div>
+
+                <p>이미지 처리에서 흔한 패턴은 <strong>타일(tile) 로딩</strong>이다. 한 블록이 처리할 영역을 한 번 global에서 shared로 옮긴 뒤 그 안에서 여러 번 재사용한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 3x3 박스 블러 — shared memory 타일 사용
+constexpr int kTile = 16;
+constexpr int kRadius = 1;
+
+__global__ void boxBlurShared(const unsigned char* in, unsigned char* out, int w, int h)
+{
+    __shared__ unsigned char tile[kTile + 2 * kRadius][kTile + 2 * kRadius];
+
+    int gx = blockIdx.x * kTile + threadIdx.x;
+    int gy = blockIdx.y * kTile + threadIdx.y;
+    int lx = threadIdx.x + kRadius;
+    int ly = threadIdx.y + kRadius;
+
+    // 중심 픽셀 로드
+    if (gx &lt; w &amp;&amp; gy &lt; h)
+    {
+        tile[ly][lx] = in[gy * w + gx];
+    }
+    // 경계(halo) 픽셀은 일부 스레드만 로드 — 생략
+
+    __syncthreads();
+
+    if (gx &lt; w &amp;&amp; gy &lt; h)
+    {
+        int sum = 0;
+        for (int dy = -kRadius; dy &lt;= kRadius; ++dy)
+            for (int dx = -kRadius; dx &lt;= kRadius; ++dx)
+                sum += tile[ly + dy][lx + dx];
+
+        out[gy * w + gx] = sum / 9;
+    }
+}</code></pre>
+
+                <!-- 4. Constant -->
+                <h2 id="constant"><i class="fa-solid fa-snowflake"></i> Constant Memory — 읽기 전용 브로드캐스트</h2>
+                <p>크기는 작다(보통 64 KB). 실체는 DRAM이지만 전용 <strong>constant 캐시</strong>를 거친다. <em>warp 안의 모든 스레드가 같은 주소를 읽을 때</em> 한 번의 캐시 히트로 32개에 동시 브로드캐스트되어 매우 빠르다.</p>
+                <p>커널 매개변수처럼 모든 스레드가 공통으로 쓰는 작은 룩업 테이블, 필터 계수, 변환 행렬에 적합하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 전역 스코프에 선언
+__constant__ float c_kernel[9];   // 3x3 필터 계수
+
+void uploadKernel(const float* h_kernel)
+{
+    // 호스트 → constant memory 복사 전용 API
+    cudaMemcpyToSymbol(c_kernel, h_kernel, 9 * sizeof(float));
+}
+
+__global__ void conv3x3(const float* in, float* out, int w, int h)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &lt; 1 || x &gt;= w - 1 || y &lt; 1 || y &gt;= h - 1) return;
+
+    float sum = 0.0f;
+    for (int j = -1; j &lt;= 1; ++j)
+        for (int i = -1; i &lt;= 1; ++i)
+        {
+            // 모든 스레드가 같은 c_kernel 원소를 동시에 읽음 → 브로드캐스트 효과
+            sum += in[(y + j) * w + (x + i)] * c_kernel[(j + 1) * 3 + (i + 1)];
+        }
+    out[y * w + x] = sum;
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>스레드마다 다른 주소를 읽으면 직렬화된다</strong>
+                        Constant는 "모두가 같은 값"일 때만 빠르다. warp 안에서 서로 다른 인덱스에 접근하면 순차 처리되어 오히려 global보다 느려진다.
+                    </div>
+                </div>
+
+                <!-- 5. Texture -->
+                <h2 id="texture"><i class="fa-solid fa-image"></i> Texture / Surface Memory — 2D 공간 캐시</h2>
+                <p>그래픽스 텍스처에서 유래한 메모리다. 실체는 global이지만 <strong>2D 공간 지역성에 최적화된 캐시</strong>를 거친다. 픽셀이 가까이 있을수록 캐시 적중률이 높다.</p>
+                <p>이미지 처리에서 매력은 두 가지다. 하나는 <strong>경계 처리</strong>(clamp, wrap, mirror)가 자동, 다른 하나는 <strong>선형 보간</strong>이 하드웨어로 처리된다는 점이다. 워핑이나 리샘플링 커널에서 코드가 짧아진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// CUDA 5.0+ 의 텍스처 오브젝트 API
+cudaArray* cuArray = nullptr;
+cudaChannelFormatDesc desc = cudaCreateChannelDesc&lt;unsigned char&gt;();
+cudaMallocArray(&amp;cuArray, &amp;desc, width, height);
+cudaMemcpy2DToArray(cuArray, 0, 0, h_image, width, width, height,
+                    cudaMemcpyHostToDevice);
+
+cudaResourceDesc resDesc{};
+resDesc.resType = cudaResourceTypeArray;
+resDesc.res.array.array = cuArray;
+
+cudaTextureDesc texDesc{};
+texDesc.addressMode[0] = cudaAddressModeClamp;   // x 경계 — 자동 클램프
+texDesc.addressMode[1] = cudaAddressModeClamp;   // y 경계
+texDesc.filterMode = cudaFilterModeLinear;       // 양선형 보간
+texDesc.readMode = cudaReadModeNormalizedFloat;  // 0~255 → 0.0~1.0
+texDesc.normalizedCoords = 0;                    // 정수 좌표 사용
+
+cudaTextureObject_t tex = 0;
+cudaCreateTextureObject(&amp;tex, &amp;resDesc, &amp;texDesc, nullptr);
+
+// 커널 — 회전 변환
+__global__ void rotate(cudaTextureObject_t tex, float* out, int w, int h, float theta)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &gt;= w || y &gt;= h) return;
+
+    float cx = w * 0.5f, cy = h * 0.5f;
+    float u = cosf(theta) * (x - cx) - sinf(theta) * (y - cy) + cx;
+    float v = sinf(theta) * (x - cx) + cosf(theta) * (y - cy) + cy;
+
+    // 부동소수 좌표 → 하드웨어가 양선형 보간 + 경계 클램프 자동 처리
+    out[y * w + x] = tex2D&lt;float&gt;(tex, u + 0.5f, v + 0.5f);
+}</code></pre>
+
+                <!-- 6. Register -->
+                <h2 id="register"><i class="fa-solid fa-bolt"></i> Register — 스레드 전용 최고속</h2>
+                <p>가장 빠른 메모리다. 지연 시간 0에 가깝다. 단, 스레드 전용이라 다른 스레드와 공유 불가. 커널 안에서 선언한 지역 변수는 컴파일러가 자동으로 레지스터에 배치한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void simple(const float* in, float* out, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;   // 레지스터
+    float a = 0.0f;                                   // 레지스터
+    float b = 1.0f;                                   // 레지스터
+
+    if (i &lt; n)
+    {
+        a = in[i];          // global → register
+        b = a * a + 2.0f;   // 레지스터끼리 연산
+        out[i] = b;         // register → global
+    }
+}</code></pre>
+
+                <p>SM당 레지스터는 정해져 있다(예: 65536개 × 32bit). 커널이 스레드당 레지스터를 너무 많이 쓰면 동시에 돌릴 수 있는 스레드 수(점유율, occupancy)가 줄어든다. 컴파일 옵션 <code>--maxrregcount</code> 또는 <code>__launch_bounds__</code>로 한도를 둘 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 블록당 최대 256 스레드, SM당 최소 2블록 동시 실행을 컴파일러에 힌트
+__global__ void __launch_bounds__(256, 2) heavyKernel(float* data)
+{
+    // 컴파일러는 이 한도에 맞게 레지스터 사용을 조절한다
+}</code></pre>
+
+                <!-- 7. Local -->
+                <h2 id="local"><i class="fa-solid fa-triangle-exclamation"></i> Local Memory — 사실은 global, spill 주의</h2>
+                <p>이름은 "local"이지만 실체는 global DRAM 영역의 한 구역이다. 다음 두 경우에 자동으로 사용된다.</p>
+                <ul>
+                    <li>스레드 안의 큰 배열(인덱싱이 컴파일 타임에 결정되지 않는 경우)</li>
+                    <li>레지스터가 부족해서 변수가 밀려나는 <strong>register spill</strong></li>
+                </ul>
+
+<pre class="language-cpp"><code class="language-cpp">// 거의 확실히 local memory로 떨어지는 코드
+__global__ void localExample()
+{
+    float buf[128];   // 큰 지역 배열 → 레지스터에 다 못 들어감
+
+    int i = threadIdx.x % 128;
+    buf[i] = 1.0f;          // 동적 인덱스 → 레지스터 배치 불가
+    // ... 사용
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>spill을 못 알아차리는 함정</strong>
+                        커널 성능이 갑자기 떨어졌는데 원인을 모르겠다면 spill일 가능성이 높다. <code>nvcc -Xptxas=-v</code>로 빌드하면 스레드당 레지스터 수와 stack/local 사용량이 출력된다. <code>stack frame</code>이 0이 아니면 spill이 발생한 것이다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// 빌드 옵션 예
+// nvcc -Xptxas=-v -arch=sm_86 kernel.cu
+
+// 출력 예시
+// ptxas info    : Used 48 registers, 384 bytes stack frame, ...
+//                                     ^^^^^^^^^^^^^^^^^^^ spill 발생</code></pre>
+
+                <!-- 8. Unified -->
+                <h2 id="unified"><i class="fa-solid fa-arrows-rotate"></i> Unified Memory — 자동 관리</h2>
+                <p>호스트와 디바이스가 같은 포인터를 공유한다. 드라이버가 페이지 단위로 자동 마이그레이션한다. 코드가 훨씬 짧아지지만 첫 접근 시 페이지 폴트가 발생해 성능은 수동 관리보다 떨어질 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">float* data = nullptr;
+cudaMallocManaged(&amp;data, n * sizeof(float));   // CPU/GPU 양쪽에서 같은 포인터
+
+// 호스트에서 초기화
+for (int i = 0; i &lt; n; ++i) data[i] = i;
+
+// 그대로 커널에 넘김 — cudaMemcpy 필요 없음
+scale&lt;&lt;&lt;blocks, threads&gt;&gt;&gt;(data, data, 2.0f, n);
+cudaDeviceSynchronize();
+
+// 호스트가 다시 읽음 — 자동 마이그레이션
+std::cout &lt;&lt; data[0] &lt;&lt; std::endl;
+
+cudaFree(data);
+
+// 힌트로 성능 보완 가능
+cudaMemPrefetchAsync(data, n * sizeof(float), 0);   // 디바이스 0으로 미리 옮김</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>언제 쓰면 좋은가</strong>
+                        프로토타입과 호스트·디바이스 자료구조가 복잡하게 얽힌 코드에서 유용하다. 산업용 고성능 파이프라인은 보통 <code>cudaMalloc</code> + <code>cudaMemcpyAsync</code> + pinned memory 조합으로 명시적 관리한다.
+                    </div>
+                </div>
+
+                <!-- 9. 비교표 -->
+                <h2 id="compare"><i class="fa-solid fa-table"></i> 메모리 종류 비교표</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>종류</th>
+                            <th>위치</th>
+                            <th>크기</th>
+                            <th>지연(사이클)</th>
+                            <th>접근 범위</th>
+                            <th>읽기/쓰기</th>
+                            <th>캐시</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Register</td><td>온칩</td><td>SM당 ~256 KB</td><td>~1</td><td>스레드</td><td>R/W</td><td>—</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Shared</td><td>온칩</td><td>SM당 48~228 KB</td><td>~20~30</td><td>블록</td><td>R/W</td><td>L1 공유</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Constant</td><td>DRAM + 캐시</td><td>64 KB</td><td>캐시 시 ~수</td><td>디바이스(읽기 전용)</td><td>R</td><td>전용 캐시</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Texture</td><td>DRAM + 캐시</td><td>global과 동일</td><td>캐시 시 ~수십</td><td>디바이스(읽기 전용)</td><td>R</td><td>2D 공간 캐시</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Local</td><td>DRAM</td><td>스레드당 ~512 KB</td><td>~400~800</td><td>스레드</td><td>R/W</td><td>L1/L2</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Global</td><td>DRAM</td><td>수 GB ~ 수십 GB</td><td>~400~800</td><td>디바이스 + 호스트</td><td>R/W</td><td>L2</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Unified</td><td>DRAM(자동)</td><td>물리 메모리만큼</td><td>가변</td><td>디바이스 + 호스트</td><td>R/W</td><td>L2 + OS 페이지</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 10. 패턴 -->
+                <h2 id="patterns"><i class="fa-solid fa-puzzle-piece"></i> 대표 패턴 — Global → Shared 타일링</h2>
+                <p>행렬 곱은 메모리 계층 활용의 교과서 예제다. naive 버전은 같은 행/열을 N번씩 읽어 global 대역폭에 묶인다. shared로 옮기면 N배 가까이 빨라진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Naive 버전 — global 반복 읽기
+__global__ void matmulNaive(const float* A, const float* B, float* C, int N)
+{
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row &gt;= N || col &gt;= N) return;
+
+    float sum = 0.0f;
+    for (int k = 0; k &lt; N; ++k)
+    {
+        sum += A[row * N + k] * B[k * N + col];   // 매번 global
+    }
+    C[row * N + col] = sum;
+}</code></pre>
+
+<pre class="language-cpp"><code class="language-cpp">// Tiled 버전 — shared memory에 16x16 블록을 옮겨 재사용
+constexpr int kTile = 16;
+
+__global__ void matmulTiled(const float* A, const float* B, float* C, int N)
+{
+    __shared__ float As[kTile][kTile];
+    __shared__ float Bs[kTile][kTile];
+
+    int row = blockIdx.y * kTile + threadIdx.y;
+    int col = blockIdx.x * kTile + threadIdx.x;
+
+    float sum = 0.0f;
+
+    for (int t = 0; t &lt; N / kTile; ++t)
+    {
+        // 1) global → shared 로 한 타일씩 로드
+        As[threadIdx.y][threadIdx.x] = A[row * N + (t * kTile + threadIdx.x)];
+        Bs[threadIdx.y][threadIdx.x] = B[(t * kTile + threadIdx.y) * N + col];
+        __syncthreads();
+
+        // 2) shared 안에서 16번 재사용
+        for (int k = 0; k &lt; kTile; ++k)
+        {
+            sum += As[threadIdx.y][k] * Bs[k][threadIdx.x];
+        }
+        __syncthreads();
+    }
+
+    C[row * N + col] = sum;
+}</code></pre>
+
+                <p>여기에 필터 계수처럼 모든 스레드가 공유하는 작은 데이터는 <code>__constant__</code>로, 변환 행렬·룩업 테이블 등도 같은 패턴이다. <strong>"공통 작은 값 → constant, 재사용 큰 블록 → shared, 나머지 → global"</strong>로 정리하면 일관성 있는 설계가 된다.</p>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-skull"></i> 흔한 함정 정리</h2>
+
+                <h3 id="pit1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Global만 쓰는 코드</h3>
+                <p>"동작은 하니까" 그대로 두면 대역폭이 병목이 된다. <code>nvprof</code> 또는 Nsight Compute에서 <em>memory throughput</em>과 <em>compute throughput</em>을 비교한다. 메모리만 높으면 shared 후보다.</p>
+
+                <h3 id="pit2"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> __syncthreads() 누락</h3>
+                <p>Shared에 쓰고 바로 다른 스레드가 읽는 곳에는 반드시 <code>__syncthreads()</code>. 빠지면 결과가 가끔 틀린다(가장 디버깅하기 어려운 종류).</p>
+
+                <h3 id="pit3"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Register spill 무시</h3>
+                <p><code>-Xptxas=-v</code>로 빌드해 stack frame이 0인지 확인. 큰 지역 배열은 가능한 한 shared로 옮기거나 알고리즘을 쪼갠다.</p>
+
+                <h3 id="pit4"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Constant를 다른 인덱스로 접근</h3>
+                <p>모든 스레드가 같은 주소를 읽을 때만 빠르다. <code>c_table[threadIdx.x]</code>처럼 스레드마다 다른 인덱스면 직렬화되어 오히려 손해다. 그런 경우는 그냥 global이 낫다.</p>
+
+                <h3 id="pit5"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 결합 안 되는 접근 패턴</h3>
+                <p>구조체 배열(AoS) 대신 배열 구조체(SoA)로 바꾸면 결합이 살아난다. 이미지에서는 row-major + warp가 같은 행을 처리하도록 그리드를 짠다.</p>
+
+                <h3 id="pit6"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Unified Memory에 모든 걸 맡기기</h3>
+                <p>편하지만 페이지 폴트가 잦으면 성능이 들쭉날쭉해진다. 핵심 핫 데이터는 <code>cudaMemPrefetchAsync</code>로 미리 옮기거나 명시적 <code>cudaMalloc</code>으로 관리한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다음 글 예고</strong>
+                        다음 편(<code>gpu-03</code>)에서는 첫 CUDA 커널을 직접 작성하면서 <em>그리드·블록·스레드</em> 인덱싱 규칙을 정리한다. 이 글에서 다룬 메모리 계층은 이후 모든 커널의 토대가 된다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA, <em>CUDA C++ Programming Guide</em> — Memory Hierarchy 장</li>
+                        <li>NVIDIA, <em>CUDA Best Practices Guide</em> — Memory Optimizations</li>
+                        <li>NVIDIA Developer Blog, "How to Access Global Memory Efficiently in CUDA"</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

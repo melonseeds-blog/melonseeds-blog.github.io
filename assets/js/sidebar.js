@@ -22,6 +22,7 @@ function renderSidebar(currentCat) {
               { id: 'tech-factory', label: '스마트 공장' },
               { id: 'tech-comm',    label: '통신/인터페이스' },
               { id: 'tech-halcon',  label: 'HALCON 비전 라이브러리' },
+              { id: 'tech-gpu',     label: 'GPU / CUDA' },
           ]
         },
         { id: 'trend',  icon: 'fa-solid fa-satellite-dish',    label: '기술 트렌드',    color: 'trend',  desc: '기술 뉴스, 새로운 기술' },

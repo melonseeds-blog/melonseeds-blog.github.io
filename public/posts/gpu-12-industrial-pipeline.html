@@ -1,0 +1,970 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>산업 비전 GPU 파이프라인 통합 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 파이프라인 다이어그램 */
+        .pipeline-diagram {
+            background: #fff; border: 1px solid var(--border); border-radius: 12px;
+            padding: 16px; margin: 20px 0; overflow-x: auto;
+        }
+        .pipeline-diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#pipeline-overview" data-section="pipeline-overview">전체 파이프라인</a>
+        <a href="#memory-flow" data-section="memory-flow">메모리 흐름</a>
+        <a href="#stream-pipelining" data-section="stream-pipelining">스트림 파이프라이닝</a>
+        <a href="#kernel-overlap" data-section="kernel-overlap">커널 중첩</a>
+        <a href="#memory-pool" data-section="memory-pool">메모리 풀</a>
+        <a href="#realtime" data-section="realtime">실시간 보장</a>
+        <a href="#error-recovery" data-section="error-recovery">에러 복구</a>
+        <a href="#imaging-lib" data-section="imaging-lib">ImagingLib 통합</a>
+        <a href="#multi-camera" data-section="multi-camera">다중 카메라·GPU</a>
+        <a href="#testing" data-section="testing">테스트·디버깅</a>
+        <a href="#pitfalls" data-section="pitfalls">함정 종합</a>
+        <a href="#wrap-up" data-section="wrap-up">시리즈 마무리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / CUDA</span>
+                </div>
+                <h1>산업 비전 GPU 파이프라인 통합</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>카메라 grab부터 판정까지 전체 검사 파이프라인에서 GPU의 위치</li>
+                        <li>핀드 메모리 풀, GpuMat 버퍼 풀로 매 프레임 할당을 없애는 방법</li>
+                        <li>스트림 파이프라이닝으로 upload·compute·download를 동시에 진행</li>
+                        <li>택트 타임 보장, CUDA 에러 복구, 다중 카메라·다중 GPU 확장</li>
+                        <li>ImagingLib에서 Core·GPU 전처리·TensorRT 추론·CPU 판정을 잇는 블록 설계</li>
+                        <li>12편 시리즈의 회고와 다른 시리즈와의 연결</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#pipeline-overview">전체 검사 파이프라인 — GPU의 자리</a></li>
+                        <li><a href="#memory-flow">메모리 흐름 최적화 — 카메라 버퍼와 핀드 메모리</a></li>
+                        <li><a href="#stream-pipelining">스트림 파이프라이닝 — N·N+1·N+2의 중첩</a></li>
+                        <li><a href="#kernel-overlap">여러 GPU 작업 동시 실행</a></li>
+                        <li><a href="#memory-pool">메모리 재사용 — GpuMat·텐서 버퍼 풀</a></li>
+                        <li><a href="#realtime">실시간 보장 — 택트 타임과 워스트케이스</a></li>
+                        <li><a href="#error-recovery">CUDA 에러 처리와 디바이스 복구</a></li>
+                        <li><a href="#imaging-lib">ImagingLib 관점 통합 예</a></li>
+                        <li><a href="#multi-camera">다중 카메라·다중 GPU 확장</a></li>
+                        <li><a href="#testing">테스트와 디버깅</a></li>
+                        <li><a href="#pitfalls">흔한 함정 종합</a></li>
+                        <li><a href="#wrap-up">시리즈 마무리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 전체 파이프라인 -->
+                <h2 id="pipeline-overview"><i class="fa-solid fa-diagram-project"></i> 전체 검사 파이프라인 — GPU의 자리</h2>
+                <p>산업 검사 시스템은 카메라가 영상을 잡는 순간부터 OK/NG 판정 신호가 나갈 때까지 정해진 <strong>택트 타임</strong> 안에 모든 작업을 끝내야 한다. GPU는 이 흐름 중 일부 단계를 가속하기 위해 들어간다. 그러나 호스트와 디바이스 사이 데이터 복사 비용, 동기화 비용, 메모리 할당 비용을 통합 단계에서 통제하지 못하면 단일 단계 가속의 이득이 모두 사라진다.</p>
+
+                <div class="pipeline-diagram">
+                    <svg viewBox="0 0 980 280" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+                            </marker>
+                        </defs>
+                        <!-- Lane labels -->
+                        <text x="20" y="50" font-family="Pretendard, sans-serif" font-size="12" fill="#64748b" font-weight="700">HOST</text>
+                        <text x="20" y="180" font-family="Pretendard, sans-serif" font-size="12" fill="#64748b" font-weight="700">DEVICE</text>
+                        <!-- Host lane -->
+                        <rect x="70" y="30" width="120" height="60" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+                        <text x="130" y="55" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#1e3a8a">카메라 grab</text>
+                        <text x="130" y="75" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#1e3a8a">Vieworks SDK</text>
+
+                        <rect x="210" y="30" width="120" height="60" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+                        <text x="270" y="55" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#1e3a8a">핀드 메모리 풀</text>
+                        <text x="270" y="75" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#1e3a8a">cudaMallocHost</text>
+
+                        <rect x="690" y="30" width="120" height="60" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+                        <text x="750" y="55" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#1e3a8a">CPU 판정</text>
+                        <text x="750" y="75" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#1e3a8a">규칙·통계</text>
+
+                        <rect x="830" y="30" width="120" height="60" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+                        <text x="890" y="55" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#1e3a8a">결과 송신</text>
+                        <text x="890" y="75" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#1e3a8a">PLC·DB</text>
+
+                        <!-- Device lane -->
+                        <rect x="350" y="160" width="120" height="60" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+                        <text x="410" y="185" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#14532d">GPU 전처리</text>
+                        <text x="410" y="205" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#14532d">demosaic·blur</text>
+
+                        <rect x="490" y="160" width="120" height="60" rx="8" fill="#fef3c7" stroke="#d97706"/>
+                        <text x="550" y="185" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#78350f">TensorRT 추론</text>
+                        <text x="550" y="205" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#78350f">분류·세그멘테이션</text>
+
+                        <rect x="630" y="160" width="120" height="60" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+                        <text x="690" y="185" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#14532d">GPU 후처리</text>
+                        <text x="690" y="205" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#14532d">contour·morph</text>
+
+                        <!-- Arrows host -->
+                        <line x1="190" y1="60" x2="210" y2="60" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="810" y1="60" x2="830" y2="60" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+
+                        <!-- Up and down -->
+                        <line x1="330" y1="90" x2="395" y2="160" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+                        <text x="338" y="135" font-family="Pretendard, sans-serif" font-size="10" fill="#64748b">H2D upload</text>
+                        <line x1="750" y1="160" x2="730" y2="90" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+                        <text x="755" y="135" font-family="Pretendard, sans-serif" font-size="10" fill="#64748b">D2H download</text>
+
+                        <!-- Device internal arrows -->
+                        <line x1="470" y1="190" x2="490" y2="190" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="610" y1="190" x2="630" y2="190" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+
+                        <!-- Title -->
+                        <text x="490" y="260" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#64748b">카메라 → 핀드 메모리 풀 → H2D → GPU 전처리·추론·후처리 → D2H → CPU 판정 → 결과 송신</text>
+                    </svg>
+                </div>
+
+                <h3 id="stage-table"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 단계별 GPU 활용과 관련 편 매핑</h3>
+                <table>
+                    <tr><th>단계</th><th>위치</th><th>GPU 역할</th><th>관련 편</th></tr>
+                    <tr><td>카메라 grab</td><td>호스트</td><td>없음 — SDK 콜백</td><td>—</td></tr>
+                    <tr><td>호스트 메모리</td><td>호스트</td><td>핀드 메모리 풀 사용</td><td>4편 (메모리 전송)</td></tr>
+                    <tr><td>H2D upload</td><td>버스</td><td>비동기 복사·스트림</td><td>4·5편</td></tr>
+                    <tr><td>전처리</td><td>디바이스</td><td>cv::cuda 또는 커스텀 커널</td><td>9·10편</td></tr>
+                    <tr><td>딥러닝 추론</td><td>디바이스</td><td>TensorRT 엔진</td><td>11편</td></tr>
+                    <tr><td>후처리</td><td>디바이스 또는 호스트</td><td>contour는 CPU가 빠른 경우 많음</td><td>9편</td></tr>
+                    <tr><td>D2H download</td><td>버스</td><td>비동기 복사</td><td>4편</td></tr>
+                    <tr><td>판정·송신</td><td>호스트</td><td>없음</td><td>—</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>GPU에 모든 단계를 올릴 필요는 없다</strong>
+                        Contour 추출, blob 계측, 로직 판정 등은 CPU가 더 빠르거나 비슷한 경우가 많다. 데이터를 GPU에 올렸다 내리는 비용을 항상 함께 계산해야 한다.
+                    </div>
+                </div>
+
+                <!-- 2. 메모리 흐름 -->
+                <h2 id="memory-flow"><i class="fa-solid fa-memory"></i> 메모리 흐름 최적화 — 카메라 버퍼와 핀드 메모리</h2>
+                <p>카메라 SDK는 일반적으로 내부 링버퍼에 프레임을 채우고 콜백으로 포인터를 넘긴다. 이 포인터는 보통 페이지블 메모리다. 페이지블 메모리에서 GPU로 복사하면 드라이버가 내부 staging 버퍼를 거치게 되어 처리량이 떨어진다. 따라서 카메라가 직접 핀드 메모리 버퍼에 영상을 채우게 하는 것이 이상적이다.</p>
+
+                <h3 id="pinned-pool"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 핀드 메모리 풀 설계</h3>
+                <p>매 프레임 <code>cudaMallocHost</code>를 호출하면 수 밀리초가 소모된다. 시작 시 N개를 미리 잡아 풀로 돌리는 것이 정석이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Pinned host buffer pool for camera frames.
+class PinnedBufferPool
+{
+public:
+    ErrorCode Initialize(size_t bufferSize, size_t bufferCount)
+    {
+        m_bufferSize = bufferSize;
+        m_buffers.reserve(bufferCount);
+        for (size_t i = 0; i &lt; bufferCount; ++i)
+        {
+            void* ptr = nullptr;
+            cudaError_t err = cudaMallocHost(&amp;ptr, bufferSize);
+            if (err != cudaSuccess)
+            {
+                return ErrorCode::OutOfHostMemory;
+            }
+            m_buffers.push_back(ptr);
+            m_free.push_back(ptr);
+        }
+        return ErrorCode::Ok;
+    }
+
+    // Acquire a free buffer. Returns nullptr if the pool is empty.
+    void* Acquire()
+    {
+        std::lock_guard&lt;std::mutex&gt; lk(m_mtx);
+        if (m_free.empty())
+        {
+            return nullptr;
+        }
+        void* p = m_free.back();
+        m_free.pop_back();
+        return p;
+    }
+
+    // Release a buffer back to the pool.
+    void Release(void* ptr)
+    {
+        std::lock_guard&lt;std::mutex&gt; lk(m_mtx);
+        m_free.push_back(ptr);
+    }
+
+    ~PinnedBufferPool()
+    {
+        for (void* p : m_buffers)
+        {
+            cudaFreeHost(p);
+        }
+    }
+
+private:
+    size_t m_bufferSize = 0;
+    std::vector&lt;void*&gt; m_buffers;
+    std::vector&lt;void*&gt; m_free;
+    std::mutex m_mtx;
+};</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>zero-copy가 가능한 경우</strong>
+                        Jetson 같은 통합 메모리 시스템에서는 핀드 메모리를 GPU가 직접 매핑해 복사 없이 접근할 수 있다(<code>cudaHostAllocMapped</code>). 디스크리트 GPU에서는 PCIe 대역폭이 병목이라 zero-copy가 항상 빠른 것은 아니며, 접근 패턴이 코어레스드일 때만 유리하다.
+                    </div>
+                </div>
+
+                <!-- 3. 스트림 파이프라이닝 -->
+                <h2 id="stream-pipelining"><i class="fa-solid fa-arrows-up-down-left-right"></i> 스트림 파이프라이닝 — N·N+1·N+2의 중첩</h2>
+                <p>5편에서 CUDA 스트림이 비동기 작업 큐임을 다뤘다. 산업 파이프라인의 핵심은 <strong>업로드·계산·다운로드를 서로 다른 프레임에 대해 동시에 진행</strong>하는 것이다. 디스크리트 GPU에는 보통 복사 엔진이 두 개(H2D, D2H) 있고 컴퓨트 엔진이 별도로 동작하므로, 잘 설계하면 세 단계를 모두 겹쳐 처리량을 약 3배까지 끌어올릴 수 있다.</p>
+
+                <div class="pipeline-diagram">
+                    <svg viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg">
+                        <text x="20" y="40" font-family="Pretendard, sans-serif" font-size="12" font-weight="700" fill="#64748b">H2D</text>
+                        <text x="20" y="90" font-family="Pretendard, sans-serif" font-size="12" font-weight="700" fill="#64748b">Compute</text>
+                        <text x="20" y="140" font-family="Pretendard, sans-serif" font-size="12" font-weight="700" fill="#64748b">D2H</text>
+
+                        <!-- N -->
+                        <rect x="80" y="25" width="120" height="30" rx="4" fill="#bfdbfe" stroke="#3b82f6"/>
+                        <text x="140" y="45" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#1e3a8a">N upload</text>
+                        <rect x="200" y="75" width="160" height="30" rx="4" fill="#fde68a" stroke="#d97706"/>
+                        <text x="280" y="95" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#78350f">N compute</text>
+                        <rect x="360" y="125" width="100" height="30" rx="4" fill="#bbf7d0" stroke="#16a34a"/>
+                        <text x="410" y="145" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#14532d">N download</text>
+
+                        <!-- N+1 -->
+                        <rect x="200" y="25" width="120" height="30" rx="4" fill="#bfdbfe" stroke="#3b82f6"/>
+                        <text x="260" y="45" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#1e3a8a">N+1 upload</text>
+                        <rect x="360" y="75" width="160" height="30" rx="4" fill="#fde68a" stroke="#d97706"/>
+                        <text x="440" y="95" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#78350f">N+1 compute</text>
+                        <rect x="520" y="125" width="100" height="30" rx="4" fill="#bbf7d0" stroke="#16a34a"/>
+                        <text x="570" y="145" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#14532d">N+1 download</text>
+
+                        <!-- N+2 -->
+                        <rect x="360" y="25" width="120" height="30" rx="4" fill="#bfdbfe" stroke="#3b82f6"/>
+                        <text x="420" y="45" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#1e3a8a">N+2 upload</text>
+                        <rect x="520" y="75" width="160" height="30" rx="4" fill="#fde68a" stroke="#d97706"/>
+                        <text x="600" y="95" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#78350f">N+2 compute</text>
+                        <rect x="680" y="125" width="100" height="30" rx="4" fill="#bbf7d0" stroke="#16a34a"/>
+                        <text x="730" y="145" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#14532d">N+2 download</text>
+
+                        <text x="450" y="185" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#64748b">3개 스트림이 시간을 따라 겹치며 진행한다</text>
+                    </svg>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// Triple-buffered pipeline with N rolling streams.
+class GpuPipeline
+{
+public:
+    static constexpr int kStages = 3;
+
+    ErrorCode Initialize(size_t imageBytes)
+    {
+        for (int i = 0; i &lt; kStages; ++i)
+        {
+            cudaStreamCreate(&amp;m_streams[i]);
+            cudaMallocHost(&amp;m_hostBuf[i], imageBytes);
+            cudaMalloc(&amp;m_devIn[i],   imageBytes);
+            cudaMalloc(&amp;m_devOut[i],  imageBytes);
+            cudaEventCreateWithFlags(&amp;m_done[i], cudaEventDisableTiming);
+        }
+        return ErrorCode::Ok;
+    }
+
+    // Submit one frame. Returns immediately; the caller polls m_done[slot].
+    ErrorCode Submit(const uint8_t* src, size_t bytes, int frameIndex)
+    {
+        const int slot = frameIndex % kStages;
+
+        // Wait for the previous use of this slot to finish.
+        cudaEventSynchronize(m_done[slot]);
+
+        // Copy into the slot's pinned host buffer.
+        std::memcpy(m_hostBuf[slot], src, bytes);
+
+        cudaMemcpyAsync(m_devIn[slot], m_hostBuf[slot], bytes,
+                        cudaMemcpyHostToDevice, m_streams[slot]);
+
+        LaunchPreprocessKernel(m_devIn[slot], m_devOut[slot], m_streams[slot]);
+        LaunchInference(m_devOut[slot], m_streams[slot]);
+
+        cudaMemcpyAsync(m_hostBuf[slot], m_devOut[slot], bytes,
+                        cudaMemcpyDeviceToHost, m_streams[slot]);
+
+        cudaEventRecord(m_done[slot], m_streams[slot]);
+        return ErrorCode::Ok;
+    }
+
+private:
+    cudaStream_t m_streams[kStages]{};
+    cudaEvent_t  m_done[kStages]{};
+    void*        m_hostBuf[kStages]{};
+    void*        m_devIn[kStages]{};
+    void*        m_devOut[kStages]{};
+};</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>동기화 누락은 잘못된 결과를 만든다</strong>
+                        같은 슬롯을 두 프레임이 동시에 쓰면 이전 프레임의 다운로드가 끝나기 전 새 데이터가 덮어쓰일 수 있다. 슬롯 재사용 직전에 반드시 <code>cudaEventSynchronize</code>로 이전 사이클의 완료를 확인해야 한다.
+                    </div>
+                </div>
+
+                <!-- 4. 커널 중첩 -->
+                <h2 id="kernel-overlap"><i class="fa-solid fa-layer-group"></i> 여러 GPU 작업 동시 실행</h2>
+                <p>같은 스트림 안의 커널은 발행 순서대로 직렬 실행된다. 서로 독립적인 전처리와 후처리를 동시에 진행하려면 별도 스트림으로 분리하고 필요한 지점에서 이벤트로 묶어야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Two streams overlap: preprocess on streamA, postprocess of previous frame on streamB.
+cudaStream_t streamA, streamB;
+cudaStreamCreate(&amp;streamA);
+cudaStreamCreate(&amp;streamB);
+
+cudaEvent_t preDone;
+cudaEventCreateWithFlags(&amp;preDone, cudaEventDisableTiming);
+
+for (int n = 0; n &lt; frameCount; ++n)
+{
+    // streamA: upload + preprocess frame n.
+    cudaMemcpyAsync(d_in, h_in, bytes, cudaMemcpyHostToDevice, streamA);
+    LaunchPreprocess(d_in, d_pre, streamA);
+    cudaEventRecord(preDone, streamA);
+
+    // streamB: wait for preDone, then run inference + postprocess.
+    // streamA can already start the next frame upload while B runs.
+    cudaStreamWaitEvent(streamB, preDone, 0);
+    LaunchInference(d_pre, d_out, streamB);
+    LaunchPostprocess(d_out, d_final, streamB);
+    cudaMemcpyAsync(h_out, d_final, bytes, cudaMemcpyDeviceToHost, streamB);
+}</code></pre>
+
+                <p>커널 자체가 작아 점유율이 낮다면 <strong>같은 스트림에 작은 커널을 한 번에 발행</strong>해 GPU의 컴퓨트 유닛을 채우는 것보다, <strong>여러 스트림으로 분산</strong>해 하드웨어 큐를 동시에 사용하는 것이 더 빠른 경우가 있다. 이 부분은 8편의 Nsight Systems 타임라인으로 확인하는 것이 가장 정확하다.</p>
+
+                <!-- 5. 메모리 풀 -->
+                <h2 id="memory-pool"><i class="fa-solid fa-database"></i> 메모리 재사용 — GpuMat·텐서 버퍼 풀</h2>
+                <p>매 프레임 <code>cudaMalloc</code>·<code>cudaFree</code>는 절대 호출하지 않는다. 두 호출 모두 디바이스 전역 동기화를 유발하기 때문에 파이프라인의 모든 스트림이 잠시 멈춘다. 시작 시 풀을 잡고 슬롯 단위로 빌려 쓴다.</p>
+
+                <table>
+                    <tr><th>방식</th><th>프레임당 비용</th><th>지터</th><th>권장</th></tr>
+                    <tr><td>매 프레임 cudaMalloc/Free</td><td>0.5~수 ms</td><td>큼 (드라이버 GC)</td><td>금지</td></tr>
+                    <tr><td>풀 + 슬롯 재사용</td><td>~0 µs</td><td>매우 작음</td><td>표준</td></tr>
+                    <tr><td>cudaMallocAsync (스트림 풀)</td><td>µs 단위</td><td>드라이버가 관리</td><td>CUDA 11.2+</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// GpuMat pool keyed by shape.
+class GpuMatPool
+{
+public:
+    cv::cuda::GpuMat Acquire(int rows, int cols, int type)
+    {
+        const Key key{rows, cols, type};
+        std::lock_guard&lt;std::mutex&gt; lk(m_mtx);
+        auto&amp; bucket = m_pool[key];
+        if (!bucket.empty())
+        {
+            cv::cuda::GpuMat m = std::move(bucket.back());
+            bucket.pop_back();
+            return m;
+        }
+        return cv::cuda::GpuMat(rows, cols, type);  // first time only
+    }
+
+    void Release(cv::cuda::GpuMat&amp; mat)
+    {
+        if (mat.empty()) return;
+        const Key key{mat.rows, mat.cols, mat.type()};
+        std::lock_guard&lt;std::mutex&gt; lk(m_mtx);
+        m_pool[key].push_back(std::move(mat));
+    }
+
+private:
+    struct Key
+    {
+        int rows, cols, type;
+        bool operator==(const Key&amp; o) const { return rows == o.rows &amp;&amp; cols == o.cols &amp;&amp; type == o.type; }
+    };
+    struct KeyHash
+    {
+        size_t operator()(const Key&amp; k) const noexcept
+        {
+            return std::hash&lt;long long&gt;()(((long long)k.rows &lt;&lt; 32) ^ ((long long)k.cols &lt;&lt; 8) ^ k.type);
+        }
+    };
+    std::unordered_map&lt;Key, std::vector&lt;cv::cuda::GpuMat&gt;, KeyHash&gt; m_pool;
+    std::mutex m_mtx;
+};</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>매 프레임 alloc/free는 가장 흔한 성능 함정이다</strong>
+                        cv::cuda 함수는 출력 인자를 비워두면 내부적으로 할당한다. 출력 GpuMat을 미리 풀에서 받아 인자로 넘기는 패턴을 강제하지 않으면 라이브러리가 조용히 매 프레임 alloc/free를 한다.
+                    </div>
+                </div>
+
+                <!-- 6. 실시간 -->
+                <h2 id="realtime"><i class="fa-solid fa-stopwatch"></i> 실시간 보장 — 택트 타임과 워스트케이스</h2>
+                <p>산업 검사에서는 평균 처리 시간이 빠른 것보다 <strong>워스트케이스가 택트 타임 안에 들어오는지</strong>가 더 중요하다. GPU는 점유율, 드라이버 컴파일, 메모리 가비지 컬렉션 등으로 종종 튀는 프레임을 만든다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Per-frame latency tracker.
+class LatencyTracker
+{
+public:
+    void Record(double ms)
+    {
+        m_samples.push_back(ms);
+        if (m_samples.size() &gt; m_window)
+        {
+            m_samples.pop_front();
+        }
+    }
+
+    double P99() const
+    {
+        if (m_samples.empty()) return 0.0;
+        std::vector&lt;double&gt; sorted(m_samples.begin(), m_samples.end());
+        std::sort(sorted.begin(), sorted.end());
+        const size_t idx = static_cast&lt;size_t&gt;(sorted.size() * 0.99);
+        return sorted[std::min(idx, sorted.size() - 1)];
+    }
+
+    double Max() const
+    {
+        return m_samples.empty() ? 0.0 : *std::max_element(m_samples.begin(), m_samples.end());
+    }
+
+private:
+    std::deque&lt;double&gt; m_samples;
+    size_t m_window = 1000;
+};</code></pre>
+
+                <p>측정 시에는 첫 수십 프레임을 <strong>워밍업 구간</strong>으로 분리해 통계에서 제외한다. TensorRT 엔진 로딩, cuDNN 알고리즘 선택, 메모리 풀의 lazy fill이 모두 첫 프레임에서 발생한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>NVIDIA driver의 Persistence Mode를 켜자</strong>
+                        Linux에서는 <code>nvidia-smi -pm 1</code>로 켤 수 있다. 드라이버가 idle 시 컨텍스트를 내리는 것을 막아 첫 호출 지연을 줄인다. Windows에서는 TCC 모드 또는 데이터센터 GPU에서 유사한 효과가 있다.
+                    </div>
+                </div>
+
+                <!-- 7. 에러 처리 -->
+                <h2 id="error-recovery"><i class="fa-solid fa-shield-halved"></i> CUDA 에러 처리와 디바이스 복구</h2>
+                <p>CUDA 에러는 일반 함수의 실패와 다르다. 한 번 비동기 커널이 메모리 위반을 일으키면 <strong>해당 컨텍스트의 모든 후속 호출이 같은 에러를 반환</strong>한다. 디바이스가 sticky 상태에 빠진 것이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// CUDA error utility: separates sticky errors from recoverable ones.
+ErrorCode CheckCudaError(const char* where)
+{
+    cudaError_t err = cudaGetLastError();
+    if (err == cudaSuccess) return ErrorCode::Ok;
+
+    spdlog::error("CUDA error at {}: {} ({})", where, cudaGetErrorString(err), static_cast&lt;int&gt;(err));
+
+    // Sticky errors require device reset.
+    if (err == cudaErrorIllegalAddress ||
+        err == cudaErrorLaunchFailure  ||
+        err == cudaErrorECCUncorrectable)
+    {
+        return ErrorCode::CudaDeviceCorrupted;
+    }
+    return ErrorCode::CudaError;
+}
+
+// Restart strategy when the device is corrupted.
+ErrorCode ResetCudaDevice()
+{
+    cudaError_t err = cudaDeviceReset();
+    if (err != cudaSuccess)
+    {
+        spdlog::critical("cudaDeviceReset failed: {}", cudaGetErrorString(err));
+        return ErrorCode::CudaFatal;
+    }
+    spdlog::warn("CUDA device reset; reloading engines and pools.");
+    return ErrorCode::Ok;
+}</code></pre>
+
+                <p>실전에서는 디바이스 reset 후 <strong>모든 디바이스 자원을 다시 만들어야 한다</strong>. 스트림, 이벤트, 메모리 풀, TensorRT 엔진, cuDNN 핸들이 모두 무효화된다. 따라서 자원 생성을 한 곳에 모아두고 reset과 재로딩을 한 흐름으로 묶는 설계가 필요하다.</p>
+
+                <!-- 8. ImagingLib 통합 -->
+                <h2 id="imaging-lib"><i class="fa-solid fa-cubes"></i> ImagingLib 관점 통합 예</h2>
+                <p>ImagingLib의 데이터플로우 에디터에서 GPU 블록을 자연스럽게 연결하려면, <strong>Image 컨테이너가 CPU/GPU 메모리 중 어디에 살고 있는지 추상화</strong>해야 한다. <code>EnsureCpu()</code>·<code>EnsureGpu()</code> 패턴이 핵심이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Image container that hides CPU/GPU memory location.
+class Image
+{
+public:
+    // Make sure CPU side has valid data. Downloads from GPU if needed.
+    ErrorCode EnsureCpu()
+    {
+        if (m_cpuValid) return ErrorCode::Ok;
+        if (!m_gpuValid) return ErrorCode::EmptyImage;
+        m_gpuMat.download(m_cpuMat);
+        m_cpuValid = true;
+        return ErrorCode::Ok;
+    }
+
+    // Make sure GPU side has valid data.
+    ErrorCode EnsureGpu()
+    {
+        if (m_gpuValid) return ErrorCode::Ok;
+        if (!m_cpuValid) return ErrorCode::EmptyImage;
+        m_gpuMat.upload(m_cpuMat);
+        m_gpuValid = true;
+        return ErrorCode::Ok;
+    }
+
+    // After a CPU write the GPU copy is stale.
+    void MarkCpuWritten() { m_cpuValid = true; m_gpuValid = false; }
+    void MarkGpuWritten() { m_gpuValid = true; m_cpuValid = false; }
+
+    const cv::Mat&amp;            GetCpu() const { return m_cpuMat; }
+    const cv::cuda::GpuMat&amp;   GetGpu() const { return m_gpuMat; }
+
+private:
+    cv::Mat            m_cpuMat;
+    cv::cuda::GpuMat   m_gpuMat;
+    bool m_cpuValid = false;
+    bool m_gpuValid = false;
+};</code></pre>
+
+<pre class="language-cpp"><code class="language-cpp">// Block interface — every processing block speaks the same language.
+class IProcessBlock
+{
+public:
+    virtual ~IProcessBlock() = default;
+    virtual ErrorCode Process(Image&amp; input, Image&amp; output) = 0;
+    virtual bool PrefersGpu() const = 0;
+};
+
+// GPU preprocess block — declares it wants the GPU side.
+class GpuPreprocessBlock : public IProcessBlock
+{
+public:
+    ErrorCode Process(Image&amp; input, Image&amp; output) override
+    {
+        ErrorCode ec = input.EnsureGpu();
+        if (ec != ErrorCode::Ok) return ec;
+
+        cv::cuda::GpuMat&amp; src = const_cast&lt;cv::cuda::GpuMat&amp;&gt;(input.GetGpu());
+        cv::cuda::GpuMat dst = m_pool.Acquire(src.rows, src.cols, src.type());
+
+        cv::cuda::GaussianBlur(src, dst, cv::Size(5, 5), 1.2);
+
+        output = Image::FromGpu(std::move(dst));
+        output.MarkGpuWritten();
+        return ErrorCode::Ok;
+    }
+
+    bool PrefersGpu() const override { return true; }
+
+private:
+    GpuMatPool m_pool;
+};</code></pre>
+
+                <p>실행 엔진은 연결된 블록 사이를 보면서 <strong>두 블록이 모두 GPU를 선호하면 호스트 복사를 생략</strong>하고, 한쪽이 CPU만 지원하면 그 직전 노드의 출력에서 <code>EnsureCpu()</code>를 호출한다. 데이터플로우 그래프 컴파일 단계에서 한 번 결정해두면 런타임 분기 비용도 사라진다.</p>
+
+                <!-- 9. 다중 카메라/GPU -->
+                <h2 id="multi-camera"><i class="fa-solid fa-camera-retro"></i> 다중 카메라·다중 GPU 확장</h2>
+                <p>카메라 한 대에 한 스트림을 할당하는 것이 기본 구조다. 카메라가 늘면 스트림이 늘고, GPU가 여러 장이면 <code>cudaSetDevice</code>로 컨텍스트를 바꿔가며 각 카메라를 특정 디바이스에 고정한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Per-camera worker bound to a specific GPU.
+class CameraWorker
+{
+public:
+    ErrorCode Initialize(int cameraIndex, int deviceIndex)
+    {
+        m_deviceIndex = deviceIndex;
+        cudaSetDevice(m_deviceIndex);
+        cudaStreamCreate(&amp;m_stream);
+        return m_pipeline.Initialize(kImageBytes);
+    }
+
+    void Run()
+    {
+        // Each worker thread must set its device once.
+        cudaSetDevice(m_deviceIndex);
+        while (m_running)
+        {
+            const Frame f = m_camera.WaitNextFrame();
+            m_pipeline.Submit(f.data, f.bytes, f.index);
+        }
+    }
+
+private:
+    int m_deviceIndex = 0;
+    cudaStream_t m_stream{};
+    GpuPipeline m_pipeline;
+    CameraHandle m_camera;
+    std::atomic&lt;bool&gt; m_running{true};
+};</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>스레드별로 cudaSetDevice를 한 번 호출하라</strong>
+                        CUDA의 현재 디바이스는 스레드 로컬 상태다. 멀티스레드에서 작업을 분산할 때 새 스레드를 만들 때마다 시작 부분에서 명시적으로 디바이스를 지정해야 한다. 안 하면 기본값(0번)으로 흘러가 의도와 다른 GPU에서 실행된다.
+                    </div>
+                </div>
+
+                <!-- 10. 테스트 -->
+                <h2 id="testing"><i class="fa-solid fa-vial"></i> 테스트와 디버깅</h2>
+                <p>GPU 코드는 일반 단위 테스트와 두 가지가 다르다. 첫째, 결정성이 약하다. 일부 알고리즘(예: atomic 기반 누적)은 같은 입력에도 부동소수 합 순서가 달라져 미세하게 다른 결과를 낼 수 있다. 둘째, CI 환경에 GPU가 없을 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// GoogleTest helper: skip if no CUDA device is present.
+#define REQUIRE_CUDA()                                              \
+    do {                                                            \
+        int count = 0;                                              \
+        if (cudaGetDeviceCount(&amp;count) != cudaSuccess || count == 0) {  \
+            GTEST_SKIP() &lt;&lt; "No CUDA device available";             \
+        }                                                           \
+    } while (0)
+
+TEST(GpuBlur, MatchesCpuReference)
+{
+    REQUIRE_CUDA();
+
+    cv::Mat src = cv::imread("test/lena.png", cv::IMREAD_GRAYSCALE);
+    cv::Mat cpuRef;
+    cv::GaussianBlur(src, cpuRef, cv::Size(5, 5), 1.2);
+
+    cv::cuda::GpuMat gsrc(src), gdst;
+    cv::cuda::GaussianBlur(gsrc, gdst, cv::Size(5, 5), 1.2);
+
+    cv::Mat gpuOut;
+    gdst.download(gpuOut);
+
+    cv::Mat diff;
+    cv::absdiff(cpuRef, gpuOut, diff);
+    double maxDiff = 0;
+    cv::minMaxLoc(diff, nullptr, &amp;maxDiff);
+    EXPECT_LE(maxDiff, 2.0);  // small numerical tolerance
+}</code></pre>
+
+                <p>디버깅 도구로는 <code>compute-sanitizer</code>(메모리 위반·레이스 검출), <code>cuda-gdb</code>(커널 라인 단위 디버깅), Nsight Compute(커널 프로파일링), Nsight Systems(스트림 타임라인)가 있다. 의심 가는 동작이 비동기 동기화 누락일 때는 <code>CUDA_LAUNCH_BLOCKING=1</code> 환경 변수로 모든 호출을 동기화시켜 재현하면 원인이 드러나는 경우가 많다.</p>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정 종합</h2>
+                <table>
+                    <tr><th>함정</th><th>증상</th><th>해결</th></tr>
+                    <tr><td>매 프레임 alloc/free</td><td>지터·평균 지연 모두 악화</td><td>풀 사용, cudaMallocAsync</td></tr>
+                    <tr><td>동기화 누락</td><td>간헐적 잘못된 결과</td><td>이벤트, 스트림 wait, BLOCKING으로 재현</td></tr>
+                    <tr><td>워밍업 없는 첫 프레임</td><td>첫 N프레임만 수백 ms</td><td>시작 시 dummy run으로 컴파일·로딩 완료</td></tr>
+                    <tr><td>컨텍스트 누수</td><td>장시간 운영 시 메모리 증가</td><td>핸들·엔진을 명확히 소유, 종료 시 reset</td></tr>
+                    <tr><td>멀티스레드에서 디바이스 혼선</td><td>0번 GPU에 작업 몰림</td><td>각 스레드 시작 시 cudaSetDevice</td></tr>
+                    <tr><td>페이지블 메모리 복사</td><td>H2D 대역폭 절반 이하</td><td>핀드 메모리 풀 사용</td></tr>
+                    <tr><td>작은 커널 다발</td><td>론치 오버헤드가 실행보다 큼</td><td>커널 합치기, 스트림 분산</td></tr>
+                    <tr><td>cv::cuda 출력 미지정</td><td>내부 alloc 반복</td><td>출력 GpuMat 미리 준비해 전달</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>함정의 절반은 측정 안 함에서 온다</strong>
+                        매 프레임 지연을 기록하지 않으면 워스트케이스가 보이지 않는다. 8편에서 다룬 Nsight Systems 타임라인과 본 글의 <code>LatencyTracker</code>를 통합 단계부터 같이 넣어야 한다.
+                    </div>
+                </div>
+
+                <!-- 12. 마무리 -->
+                <h2 id="wrap-up"><i class="fa-solid fa-flag-checkered"></i> 시리즈 마무리</h2>
+                <p>1편에서 GPU와 CPU의 구조적 차이를 살펴보는 것으로 시작해, 메모리 계층과 첫 커널을 거쳐 스트림·shared memory·warp까지 내려갔다. 8편에서 측정 도구를 익히고, 9·10편에서 OpenCV의 cv::cuda와 직접 작성한 이미지 커널을 비교했으며, 11편에서 TensorRT로 추론을 가속했다. 이번 12편은 그 모든 조각을 하나의 산업 검사 파이프라인으로 묶었다.</p>
+
+                <p>GPU는 마법이 아니다. 잘못 쓰면 CPU보다 느리고, 잘 쓰면 한 자릿수 이상 빠르다. 그 사이의 거리는 결국 메모리 흐름·동기화·할당을 얼마나 통제하느냐에 달려 있다. ImagingLib의 로드맵에서 GPU 파이프라인은 2년 차 이후 본격적으로 들어올 영역이지만, 1년 차 CPU 구현부터 <code>EnsureCpu/EnsureGpu</code>를 비롯한 추상화의 자리를 비워두면 옮겨붙이는 비용이 훨씬 작아진다. 이 시리즈는 C++ 시리즈가 다룬 인터페이스·메모리 모델, OpenCV 시리즈가 다룬 알고리즘, AI 시리즈가 다룬 모델 배포, 스마트 공장 시리즈가 다룬 검사 시스템과 한 점에서 만난다. 같은 문제를 다른 각도에서 바라본 결과이며, 실제 검사 장비 한 대가 동작하려면 이 네 흐름이 모두 필요하다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA CUDA C++ Programming Guide — Streams, Events, Asynchronous Concurrent Execution</li>
+                        <li>NVIDIA CUDA C++ Best Practices Guide — Memory Optimizations, Pinned Memory</li>
+                        <li>NVIDIA TensorRT Developer Guide — Engine 재사용, 입력·출력 바인딩</li>
+                        <li>NVIDIA Nsight Systems / Nsight Compute 공식 문서 — 타임라인 분석</li>
+                        <li>OpenCV 공식 문서 — cv::cuda 모듈, GpuMat</li>
+                        <li>ImagingLib 로드맵 — Year 1 Core/Measurement/Viewer, Year 2~3 CUDA 최적화·플러그인 시스템</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

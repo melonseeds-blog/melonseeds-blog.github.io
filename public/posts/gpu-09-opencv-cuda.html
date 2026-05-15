@@ -1,0 +1,895 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cv::cuda 모듈 — OpenCV GPU 가속 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 파이프라인 다이어그램 */
+        .pipeline-diagram {
+            background: #fafafa; border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; overflow-x: auto;
+        }
+        .pipeline-diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#overview" data-section="overview">개요</a>
+        <a href="#build" data-section="build">빌드 요건</a>
+        <a href="#gpumat" data-section="gpumat">GpuMat</a>
+        <a href="#functions" data-section="functions">GPU 함수</a>
+        <a href="#filters" data-section="filters">Filter 객체</a>
+        <a href="#features" data-section="features">특징점</a>
+        <a href="#streams" data-section="streams">Stream</a>
+        <a href="#dnn" data-section="dnn">DNN GPU</a>
+        <a href="#when" data-section="when">언제 쓸까</a>
+        <a href="#industrial" data-section="industrial">산업 비전</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / CUDA</span>
+                </div>
+                <h1>cv::cuda 모듈 — OpenCV GPU 가속</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>cv::cuda 모듈 개요 — OpenCV에 내장된 CUDA 가속 모듈로 커널을 직접 짜지 않고 GPU 가속을 쓰는 방법</li>
+                        <li>빌드 요건 — CUDA Toolkit과 <code>WITH_CUDA=ON</code>으로 OpenCV를 다시 빌드해야 하는 이유</li>
+                        <li><code>cv::cuda::GpuMat</code> — GPU 메모리에 있는 <code>Mat</code>, <code>upload()</code>/<code>download()</code>로 호스트와 교환</li>
+                        <li>GPU 함수 — <code>cv::cuda::add</code>, <code>resize</code>, <code>GaussianBlur</code>, <code>threshold</code>, <code>cvtColor</code> 등 CPU API와 거의 동일</li>
+                        <li><code>Ptr&lt;Filter&gt;</code> 객체 — <code>createGaussianFilter</code>로 만들어 두고 반복 호출</li>
+                        <li>특징점 GPU 가속 — <code>cv::cuda::ORB</code>, <code>FastFeatureDetector</code></li>
+                        <li><code>cv::cuda::Stream</code>으로 비동기 실행과 CPU/GPU 겹치기</li>
+                        <li>OpenCV DNN의 CUDA 백엔드로 GPU 추론 (AI 시리즈 #12와 연결)</li>
+                        <li>언제 cv::cuda를 쓰고 언제 직접 커널을 짜야 하는가</li>
+                        <li>흔한 함정 — CUDA 미빌드 OpenCV, 잦은 전송, 작은 이미지에서 CPU가 더 빠른 경우</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#overview">cv::cuda 모듈 개요</a></li>
+                        <li><a href="#build">빌드 요건과 환경 확인</a></li>
+                        <li><a href="#gpumat">cv::cuda::GpuMat</a></li>
+                        <li><a href="#functions">GPU 필터·연산 함수</a></li>
+                        <li><a href="#filters">Filter 객체 — 반복 호출 최적화</a></li>
+                        <li><a href="#features">특징점 GPU 가속</a></li>
+                        <li><a href="#streams">cv::cuda::Stream — 비동기 실행</a></li>
+                        <li><a href="#dnn">cv::dnn으로 GPU 추론</a></li>
+                        <li><a href="#when">언제 cv::cuda를 쓸까</a></li>
+                        <li><a href="#industrial">산업 비전 파이프라인 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 개요 -->
+                <h2 id="overview"><i class="fa-solid fa-bolt"></i> cv::cuda 모듈 개요</h2>
+                <p><code>cv::cuda</code>는 OpenCV에 내장된 CUDA 가속 모듈이다. 시리즈 앞부분에서 살펴본 그리드·블록·스레드·shared memory를 직접 다루지 않아도, 친숙한 OpenCV API로 GPU 가속을 그대로 받을 수 있다.</p>
+
+                <p>핵심 아이디어는 두 가지다. 첫째, 데이터를 <code>cv::Mat</code>이 아니라 <code>cv::cuda::GpuMat</code>에 담아 GPU 메모리에 올린다. 둘째, <code>cv::resize</code> 대신 <code>cv::cuda::resize</code>를 호출한다. 함수 시그니처와 동작은 거의 동일하다.</p>
+
+                <div class="pipeline-diagram">
+                    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#475569"/>
+                            </marker>
+                        </defs>
+
+                        <!-- Host -->
+                        <rect x="20" y="40" width="140" height="140" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+                        <text x="90" y="65" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">Host (CPU)</text>
+                        <rect x="40" y="85" width="100" height="32" rx="6" fill="white" stroke="#93c5fd"/>
+                        <text x="90" y="105" text-anchor="middle" font-size="11" fill="#1e3a8a">cv::Mat</text>
+                        <text x="90" y="145" text-anchor="middle" font-size="10" fill="#475569">카메라 / 디스크</text>
+                        <text x="90" y="162" text-anchor="middle" font-size="10" fill="#475569">imread / grab</text>
+
+                        <!-- upload arrow -->
+                        <line x1="160" y1="100" x2="240" y2="100" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+                        <text x="200" y="92" text-anchor="middle" font-size="10" fill="#0f172a" font-weight="600">upload()</text>
+
+                        <!-- Device -->
+                        <rect x="250" y="20" width="280" height="180" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+                        <text x="390" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="#78350f">Device (GPU)</text>
+
+                        <rect x="270" y="65" width="105" height="32" rx="6" fill="white" stroke="#fcd34d"/>
+                        <text x="322" y="85" text-anchor="middle" font-size="11" fill="#78350f">GpuMat (in)</text>
+
+                        <rect x="405" y="65" width="105" height="32" rx="6" fill="white" stroke="#fcd34d"/>
+                        <text x="457" y="85" text-anchor="middle" font-size="11" fill="#78350f">GpuMat (out)</text>
+
+                        <line x1="375" y1="81" x2="405" y2="81" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+                        <rect x="290" y="115" width="200" height="60" rx="6" fill="#fff7ed" stroke="#fb923c"/>
+                        <text x="390" y="135" text-anchor="middle" font-size="11" font-weight="600" fill="#7c2d12">cv::cuda::resize</text>
+                        <text x="390" y="152" text-anchor="middle" font-size="11" font-weight="600" fill="#7c2d12">cv::cuda::GaussianBlur</text>
+                        <text x="390" y="168" text-anchor="middle" font-size="11" font-weight="600" fill="#7c2d12">cv::cuda::cvtColor ...</text>
+
+                        <!-- download arrow -->
+                        <line x1="530" y1="100" x2="610" y2="100" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+                        <text x="570" y="92" text-anchor="middle" font-size="10" fill="#0f172a" font-weight="600">download()</text>
+
+                        <!-- Host out -->
+                        <rect x="620" y="40" width="80" height="140" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+                        <text x="660" y="65" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a8a">Host</text>
+                        <rect x="630" y="85" width="60" height="32" rx="6" fill="white" stroke="#93c5fd"/>
+                        <text x="660" y="105" text-anchor="middle" font-size="11" fill="#1e3a8a">cv::Mat</text>
+                        <text x="660" y="145" text-anchor="middle" font-size="10" fill="#475569">결과 표시</text>
+                        <text x="660" y="162" text-anchor="middle" font-size="10" fill="#475569">측정값 사용</text>
+                    </svg>
+                </div>
+
+                <p>화살표가 그려진 대로 <code>업로드 → GPU 처리 → 다운로드</code> 흐름만 잘 지키면 된다. CUDA 커널을 한 줄도 쓰지 않고도 GPU 가속을 받는다.</p>
+
+                <!-- 2. 빌드 -->
+                <h2 id="build"><i class="fa-solid fa-screwdriver-wrench"></i> 빌드 요건과 환경 확인</h2>
+
+                <p>가장 큰 진입 장벽은 빌드다. NuGet이나 OS 패키지 매니저로 받는 일반 OpenCV는 <strong>CUDA 지원이 꺼져 있다</strong>. <code>cv::cuda</code> 헤더는 있지만 호출하면 예외가 난다. CUDA를 쓰려면 다음 셋 중 하나가 필요하다.</p>
+
+                <ul>
+                    <li>vcpkg에서 <code>opencv4[cuda,contrib]</code> 피처로 직접 빌드</li>
+                    <li>OpenCV 소스에서 <code>WITH_CUDA=ON</code>, <code>OPENCV_DNN_CUDA=ON</code>으로 CMake 빌드</li>
+                    <li>NVIDIA에서 제공하는 CUDA-enabled 빌드 사용</li>
+                </ul>
+
+                <p>전제 조건은 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>요구 사항</th><th>비고</th></tr>
+                    <tr><td>CUDA Toolkit</td><td>11.x 이상 (12 권장)</td><td>OpenCV 버전과 호환되는 CUDA 버전 확인 필수</td></tr>
+                    <tr><td>cuDNN</td><td>DNN GPU 백엔드를 쓸 때 필요</td><td>버전이 CUDA Toolkit과 맞아야 한다</td></tr>
+                    <tr><td>NVIDIA 드라이버</td><td>CUDA Toolkit 최소 버전 이상</td><td><code>nvidia-smi</code>로 확인</td></tr>
+                    <tr><td>Compute Capability</td><td>대상 GPU 아키텍처(SM)</td><td><code>CUDA_ARCH_BIN</code>에 명시</td></tr>
+                    <tr><td>OpenCV 모듈</td><td>opencv_contrib 필요</td><td><code>cudaarithm</code>, <code>cudafilters</code> 등이 contrib 쪽에 있다</td></tr>
+                </table>
+
+                <p>런타임에서는 이렇게 환경을 확인한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/core/cuda.hpp&gt;
+#include &lt;iostream&gt;
+
+int main()
+{
+	int deviceCount = cv::cuda::getCudaEnabledDeviceCount();
+	if (deviceCount == 0)
+	{
+		std::cerr &lt;&lt; "CUDA-enabled OpenCV not available." &lt;&lt; std::endl;
+		return -1;
+	}
+
+	cv::cuda::printShortCudaDeviceInfo(cv::cuda::getDevice());
+
+	cv::cuda::DeviceInfo info(0);
+	std::cout &lt;&lt; "Name: " &lt;&lt; info.name() &lt;&lt; "\n"
+	          &lt;&lt; "Major.Minor: " &lt;&lt; info.majorVersion() &lt;&lt; "."
+	          &lt;&lt; info.minorVersion() &lt;&lt; "\n"
+	          &lt;&lt; "Total memory: " &lt;&lt; info.totalMemory() / (1024 * 1024) &lt;&lt; " MB\n";
+	return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (RTX 4070)</div>
+Device 0:  "NVIDIA GeForce RTX 4070"  12282Mb, sm_89, Driver/Runtime ver.12.30/12.30
+Name: NVIDIA GeForce RTX 4070
+Major.Minor: 8.9
+Total memory: 12282 MB</div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>getCudaEnabledDeviceCount()가 0이면 빌드부터 다시 봐야 한다</strong>
+                        OpenCV 자체가 CUDA 없이 빌드되었다는 뜻이다. 헤더는 보이는데 링크가 안 되거나, 실행 시 <code>OpenCV(4.x) Error: No CUDA support</code> 예외가 난다.
+                    </div>
+                </div>
+
+                <!-- 3. GpuMat -->
+                <h2 id="gpumat"><i class="fa-solid fa-cube"></i> cv::cuda::GpuMat</h2>
+
+                <p><code>cv::cuda::GpuMat</code>은 한 줄로 정리하면 <strong>GPU 메모리에 있는 <code>cv::Mat</code></strong>이다. 인터페이스가 거의 똑같이 생겼다. 호스트 메모리와의 데이터 교환은 <code>upload()</code>와 <code>download()</code>로 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/opencv.hpp&gt;
+#include &lt;opencv2/cudaimgproc.hpp&gt;
+#include &lt;opencv2/cudaarithm.hpp&gt;
+
+cv::Mat hostImage = cv::imread("input.png", cv::IMREAD_COLOR);
+
+// 1) 호스트 → 디바이스 업로드
+cv::cuda::GpuMat dSrc;
+dSrc.upload(hostImage);
+
+// 2) GPU에서 처리
+cv::cuda::GpuMat dGray;
+cv::cuda::cvtColor(dSrc, dGray, cv::COLOR_BGR2GRAY);
+
+// 3) 디바이스 → 호스트 다운로드
+cv::Mat result;
+dGray.download(result);
+
+cv::imwrite("gray.png", result);</code></pre>
+
+                <h3 id="gpumat-members"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> GpuMat 멤버</h3>
+
+                <p>대부분의 멤버 이름이 <code>cv::Mat</code>과 같다. 따라서 기존 OpenCV 코드를 옮길 때 학습 부담이 적다.</p>
+
+                <table class="spec-table">
+                    <tr><th>멤버</th><th>의미</th><th>cv::Mat 대비</th></tr>
+                    <tr><td><code>rows</code>, <code>cols</code></td><td>이미지 크기</td><td>동일</td></tr>
+                    <tr><td><code>type()</code></td><td>채널·깊이 (CV_8UC3 등)</td><td>동일</td></tr>
+                    <tr><td><code>step</code></td><td>한 행의 바이트 수 (정렬 패딩 포함)</td><td>동일</td></tr>
+                    <tr><td><code>data</code></td><td>GPU 메모리의 raw 포인터</td><td>호스트에서 직접 역참조 불가</td></tr>
+                    <tr><td><code>empty()</code>, <code>size()</code></td><td>상태/크기 조회</td><td>동일</td></tr>
+                    <tr><td><code>upload()</code> / <code>download()</code></td><td>호스트와 데이터 교환</td><td>GpuMat 전용</td></tr>
+                    <tr><td><code>create(rows, cols, type)</code></td><td>GPU 메모리 할당</td><td>동일</td></tr>
+                    <tr><td><code>setTo(scalar)</code></td><td>모든 픽셀을 값으로 채움</td><td>동일</td></tr>
+                </table>
+
+                <p>이렇게 cv::Mat과 cv::cuda::GpuMat을 직접 비교하면 차이가 더 명확하다.</p>
+
+                <table class="spec-table">
+                    <tr><th>비교 항목</th><th>cv::Mat</th><th>cv::cuda::GpuMat</th></tr>
+                    <tr><td>저장 위치</td><td>호스트 메모리 (RAM)</td><td>디바이스 메모리 (VRAM)</td></tr>
+                    <tr><td>접근 방법</td><td><code>at&lt;T&gt;()</code>, <code>ptr&lt;T&gt;()</code> 직접 접근 가능</td><td>호스트에서 직접 접근 불가, download 필요</td></tr>
+                    <tr><td>처리 함수</td><td><code>cv::*</code> (CPU)</td><td><code>cv::cuda::*</code> (GPU)</td></tr>
+                    <tr><td>메모리 할당 비용</td><td>저렴</td><td>비싸다 (가능하면 재사용)</td></tr>
+                    <tr><td>복사 비용</td><td>RAM 내부</td><td>PCIe 전송 (느림)</td></tr>
+                </table>
+
+                <h3 id="gpumat-reuse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> GpuMat 재사용</h3>
+
+                <p>GPU 메모리 할당은 비용이 크다. 매 프레임 새로 만들지 말고, 한 번 만들어 두고 재사용한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class FrameProcessor
+{
+public:
+	void Process(const cv::Mat&amp; hostFrame, cv::Mat&amp; hostResult)
+	{
+		// 동일 크기·타입이면 메모리를 재사용한다.
+		m_dSrc.upload(hostFrame);
+		cv::cuda::cvtColor(m_dSrc, m_dGray, cv::COLOR_BGR2GRAY);
+		cv::cuda::threshold(m_dGray, m_dBin, 128, 255, cv::THRESH_BINARY);
+		m_dBin.download(hostResult);
+	}
+
+private:
+	cv::cuda::GpuMat m_dSrc;
+	cv::cuda::GpuMat m_dGray;
+	cv::cuda::GpuMat m_dBin;
+};</code></pre>
+
+                <!-- 4. GPU 함수 -->
+                <h2 id="functions"><i class="fa-solid fa-wand-magic-sparkles"></i> GPU 필터·연산 함수</h2>
+
+                <p>CPU API와 거의 동일한 이름으로 GPU 함수가 제공된다. <code>cv::</code> 대신 <code>cv::cuda::</code>를 붙이고, 인자에 <code>cv::Mat</code> 대신 <code>cv::cuda::GpuMat</code>을 넘기면 끝이다.</p>
+
+                <table class="spec-table">
+                    <tr><th>분류</th><th>CPU 함수</th><th>GPU 함수</th><th>헤더</th></tr>
+                    <tr><td>산술</td><td><code>cv::add</code> / <code>subtract</code></td><td><code>cv::cuda::add</code> / <code>subtract</code></td><td>cudaarithm.hpp</td></tr>
+                    <tr><td>변환</td><td><code>cv::cvtColor</code></td><td><code>cv::cuda::cvtColor</code></td><td>cudaimgproc.hpp</td></tr>
+                    <tr><td>리사이즈</td><td><code>cv::resize</code></td><td><code>cv::cuda::resize</code></td><td>cudawarping.hpp</td></tr>
+                    <tr><td>워핑</td><td><code>cv::warpAffine</code></td><td><code>cv::cuda::warpAffine</code></td><td>cudawarping.hpp</td></tr>
+                    <tr><td>임계화</td><td><code>cv::threshold</code></td><td><code>cv::cuda::threshold</code></td><td>cudaarithm.hpp</td></tr>
+                    <tr><td>블러</td><td><code>cv::GaussianBlur</code></td><td><code>cv::cuda::createGaussianFilter</code></td><td>cudafilters.hpp</td></tr>
+                    <tr><td>엣지</td><td><code>cv::Canny</code></td><td><code>cv::cuda::createCannyEdgeDetector</code></td><td>cudaimgproc.hpp</td></tr>
+                    <tr><td>모폴로지</td><td><code>cv::morphologyEx</code></td><td><code>cv::cuda::createMorphologyFilter</code></td><td>cudafilters.hpp</td></tr>
+                    <tr><td>리덕션</td><td><code>cv::minMaxLoc</code></td><td><code>cv::cuda::minMaxLoc</code></td><td>cudaarithm.hpp</td></tr>
+                    <tr><td>매칭</td><td><code>cv::matchTemplate</code></td><td><code>cv::cuda::createTemplateMatching</code></td><td>cudaimgproc.hpp</td></tr>
+                </table>
+
+                <p>간단한 함수 호출 예시다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/cudaarithm.hpp&gt;
+#include &lt;opencv2/cudaimgproc.hpp&gt;
+#include &lt;opencv2/cudawarping.hpp&gt;
+
+cv::cuda::GpuMat dSrc;
+dSrc.upload(hostImage);
+
+// 색 변환
+cv::cuda::GpuMat dGray;
+cv::cuda::cvtColor(dSrc, dGray, cv::COLOR_BGR2GRAY);
+
+// 리사이즈 (1/2 축소)
+cv::cuda::GpuMat dSmall;
+cv::cuda::resize(dGray, dSmall, cv::Size(), 0.5, 0.5, cv::INTER_LINEAR);
+
+// 임계화
+cv::cuda::GpuMat dBin;
+cv::cuda::threshold(dSmall, dBin, 128, 255, cv::THRESH_BINARY);
+
+// minMaxLoc — 결과는 호스트 값으로 받는다
+double minVal, maxVal;
+cv::Point minLoc, maxLoc;
+cv::cuda::minMaxLoc(dGray, &amp;minVal, &amp;maxVal, &amp;minLoc, &amp;maxLoc);</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>입력 타입을 잘 확인하자</strong>
+                        GPU 함수는 CPU 버전보다 지원 타입이 좁은 경우가 많다. 예를 들어 <code>cv::cuda::threshold</code>는 <code>CV_8UC1</code>, <code>CV_32FC1</code> 같은 일부 타입만 받는다. 입력 타입이 안 맞으면 예외가 난다.
+                    </div>
+                </div>
+
+                <!-- 5. Filter 객체 -->
+                <h2 id="filters"><i class="fa-solid fa-sliders"></i> Filter 객체 — 반복 호출 최적화</h2>
+
+                <p>가우시안 블러처럼 <strong>커널 자체가 매번 재사용되는</strong> 연산은, 호출할 때마다 커널을 새로 만드는 비용이 아깝다. 그래서 cv::cuda는 필터를 <code>Ptr&lt;Filter&gt;</code> 객체로 미리 만들어 두고 <code>apply()</code>로 반복 적용하는 패턴을 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/cudafilters.hpp&gt;
+
+// 한 번만 만든다 — 5x5 커널, sigma 1.5
+cv::Ptr&lt;cv::cuda::Filter&gt; gaussian =
+	cv::cuda::createGaussianFilter(CV_8UC1, CV_8UC1, cv::Size(5, 5), 1.5);
+
+cv::cuda::GpuMat dSrc, dBlur;
+for (int i = 0; i &lt; 1000; ++i)
+{
+	GrabFrameToGpu(dSrc);          // 카메라에서 GPU로 직접 업로드(가상 예시)
+	gaussian-&gt;apply(dSrc, dBlur);  // 반복 호출 — 빠르다
+	UseResult(dBlur);
+}</code></pre>
+
+                <p>다른 필터들도 같은 패턴이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Canny 엣지 — 임계값을 고정해 두고 반복 호출
+cv::Ptr&lt;cv::cuda::CannyEdgeDetector&gt; canny =
+	cv::cuda::createCannyEdgeDetector(50.0, 150.0);
+canny-&gt;detect(dGray, dEdge);
+
+// 모폴로지 — 열림 연산
+cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+cv::Ptr&lt;cv::cuda::Filter&gt; opening =
+	cv::cuda::createMorphologyFilter(cv::MORPH_OPEN, CV_8UC1, kernel);
+opening-&gt;apply(dBin, dOpen);
+
+// 박스 필터 (평균)
+cv::Ptr&lt;cv::cuda::Filter&gt; box =
+	cv::cuda::createBoxFilter(CV_8UC1, CV_8UC1, cv::Size(7, 7));
+box-&gt;apply(dGray, dMean);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>Filter 객체는 멤버 변수로 보관하자</strong>
+                        매 프레임 <code>createGaussianFilter</code>를 다시 호출하면 GPU 상수 메모리 셋업 비용이 매번 든다. 클래스 멤버 <code>cv::Ptr&lt;cv::cuda::Filter&gt;</code>로 한 번 만들고, 파라미터가 바뀔 때만 다시 만들자.
+                    </div>
+                </div>
+
+                <!-- 6. 특징점 -->
+                <h2 id="features"><i class="fa-solid fa-braille"></i> 특징점 GPU 가속</h2>
+
+                <p>특징점 검출과 매칭은 CPU에서 무거운 연산이라 GPU 효과가 크다. cv::cuda는 ORB와 FAST를 기본으로 제공한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/cudafeatures2d.hpp&gt;
+
+// ORB 검출기 — 최대 1000개 특징점
+cv::Ptr&lt;cv::cuda::ORB&gt; orb = cv::cuda::ORB::create(1000);
+
+cv::cuda::GpuMat dGray;
+dGray.upload(hostGray);
+
+cv::cuda::GpuMat dKeypoints;   // 키포인트 (GPU 표현)
+cv::cuda::GpuMat dDescriptors; // 디스크립터
+orb-&gt;detectAndCompute(dGray, cv::cuda::GpuMat(), dKeypoints, dDescriptors);
+
+// 호스트에서 해석 가능한 KeyPoint 벡터로 변환
+std::vector&lt;cv::KeyPoint&gt; keypoints;
+orb-&gt;convert(dKeypoints, keypoints);
+
+// 디스크립터 매칭도 GPU에서
+cv::Ptr&lt;cv::cuda::DescriptorMatcher&gt; matcher =
+	cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_HAMMING);
+std::vector&lt;cv::DMatch&gt; matches;
+matcher-&gt;match(dDescriptors1, dDescriptors2, matches);</code></pre>
+
+                <p>FAST 검출기도 비슷한 방식이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::Ptr&lt;cv::cuda::FastFeatureDetector&gt; fast =
+	cv::cuda::FastFeatureDetector::create(40, true);
+
+std::vector&lt;cv::KeyPoint&gt; kp;
+fast-&gt;detect(dGray, kp);</code></pre>
+
+                <!-- 7. Stream -->
+                <h2 id="streams"><i class="fa-solid fa-arrows-turn-to-dots"></i> cv::cuda::Stream — 비동기 실행</h2>
+
+                <p>시리즈 #5에서 다룬 CUDA Stream의 OpenCV 래퍼다. <code>cv::cuda::Stream</code> 객체를 만들어 GPU 함수의 마지막 인자로 넘기면, 그 호출이 <strong>비동기</strong>로 큐잉된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cv::cuda::Stream stream;
+
+cv::cuda::GpuMat dSrc, dGray, dBlur, dEdge;
+
+// 비동기 업로드 — 핀드 메모리에서 출발해야 진짜 비동기다
+dSrc.upload(hostImage, stream);
+
+// 비동기 처리
+cv::cuda::cvtColor(dSrc, dGray, cv::COLOR_BGR2GRAY, 0, stream);
+
+cv::Ptr&lt;cv::cuda::Filter&gt; gauss =
+	cv::cuda::createGaussianFilter(CV_8UC1, CV_8UC1, cv::Size(5,5), 1.2);
+gauss-&gt;apply(dGray, dBlur, stream);
+
+cv::Ptr&lt;cv::cuda::CannyEdgeDetector&gt; canny =
+	cv::cuda::createCannyEdgeDetector(50, 150);
+canny-&gt;detect(dBlur, dEdge, stream);
+
+// 비동기 다운로드
+cv::Mat hostEdge;
+dEdge.download(hostEdge, stream);
+
+// 여기까지는 즉시 반환됨. 결과를 쓰기 전 동기화 필수.
+stream.waitForCompletion();
+UseResult(hostEdge);</code></pre>
+
+                <p>Stream을 두 개 이상 만들면 GPU 처리와 PCIe 전송을 겹쳐 처리량을 높일 수 있다. 시리즈 #5의 더블 버퍼링 패턴이 그대로 적용된다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>호스트 메모리는 pinned여야 진짜 비동기다</strong>
+                        일반 <code>cv::Mat</code>의 메모리는 pageable이라 upload/download가 내부적으로 동기 동작이 된다. 진짜 오버랩이 필요하면 <code>cv::cuda::HostMem</code> (page-locked)을 써서 호스트 버퍼를 잡아야 한다.
+                    </div>
+                </div>
+
+                <!-- 8. DNN -->
+                <h2 id="dnn"><i class="fa-solid fa-brain"></i> cv::dnn으로 GPU 추론</h2>
+
+                <p>OpenCV DNN 모듈도 CUDA 백엔드를 지원한다. AI 시리즈 #12에서 다룬 OpenCV DNN을 GPU로 돌리려면 <strong>두 줄</strong>만 추가하면 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/dnn.hpp&gt;
+
+cv::dnn::Net net = cv::dnn::readNetFromONNX("yolov8n.onnx");
+
+// 핵심 — 백엔드와 타깃을 CUDA로 지정
+net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);          // FP32
+// net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA_FP16);  // FP16, 더 빠르다
+
+cv::Mat blob = cv::dnn::blobFromImage(image, 1.0/255, cv::Size(640, 640),
+                                      cv::Scalar(), true, false);
+net.setInput(blob);
+cv::Mat output = net.forward();</code></pre>
+
+                <p>전제 조건은 OpenCV가 <code>WITH_CUDA=ON</code> + <code>OPENCV_DNN_CUDA=ON</code> + cuDNN으로 빌드되었을 것이다. <code>DNN_TARGET_CUDA_FP16</code>은 Compute Capability 5.3 이상에서 의미가 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>백엔드 / 타깃 조합</th><th>설명</th><th>전제</th></tr>
+                    <tr><td><code>DNN_BACKEND_OPENCV</code> + <code>DNN_TARGET_CPU</code></td><td>기본 CPU 추론</td><td>없음</td></tr>
+                    <tr><td><code>DNN_BACKEND_OPENCV</code> + <code>DNN_TARGET_OPENCL</code></td><td>OpenCL GPU (NV/AMD/Intel)</td><td>OpenCL 드라이버</td></tr>
+                    <tr><td><code>DNN_BACKEND_CUDA</code> + <code>DNN_TARGET_CUDA</code></td><td>NVIDIA GPU, FP32</td><td>CUDA + cuDNN 빌드</td></tr>
+                    <tr><td><code>DNN_BACKEND_CUDA</code> + <code>DNN_TARGET_CUDA_FP16</code></td><td>NVIDIA GPU, FP16 (가장 빠름)</td><td>CC 5.3+, cuDNN</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>cv::dnn CUDA vs TensorRT</strong>
+                        cv::dnn CUDA 백엔드는 셋업이 쉽지만, 모델 그래프를 풀로 최적화하지는 않는다. 같은 모델·같은 GPU에서 TensorRT(시리즈 #11)가 2~4배 빠른 경우가 흔하다. 빠른 프로토타이핑은 cv::dnn, 양산은 TensorRT 식의 분기가 자연스럽다.
+                    </div>
+                </div>
+
+                <!-- 9. 언제 -->
+                <h2 id="when"><i class="fa-solid fa-scale-balanced"></i> 언제 cv::cuda를 쓸까</h2>
+
+                <p>cv::cuda는 만능이 아니다. 직접 CUDA 커널을 짜는 것과 비교했을 때 다음과 같은 트레이드오프가 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>상황</th><th>권장</th><th>이유</th></tr>
+                    <tr><td>표준적인 이미지 처리 파이프라인(블러·엣지·임계화)</td><td><span class="highlight">cv::cuda</span></td><td>OpenCV 함수가 이미 잘 튜닝됨. 작성 비용 거의 0</td></tr>
+                    <tr><td>이미 CPU OpenCV로 짜여 있는 코드를 GPU로 옮길 때</td><td><span class="highlight">cv::cuda</span></td><td>함수 이름이 거의 같아 마이그레이션이 쉽다</td></tr>
+                    <tr><td>여러 연산을 한 커널에 융합(fusion)해야 할 때</td><td>직접 커널</td><td>cv::cuda는 함수마다 별도 커널 → 메모리 트래픽 손해</td></tr>
+                    <tr><td>알고리즘이 OpenCV에 없는 경우(특수 측정·전용 검사)</td><td>직접 커널</td><td>cv::cuda 자체가 없다</td></tr>
+                    <tr><td>딥러닝 추론</td><td>cv::dnn (CUDA) or TensorRT</td><td>cv::cuda는 추론용이 아니다</td></tr>
+                    <tr><td>여러 GPU 라이브러리(NPP, cuFFT, TensorRT)와 혼용</td><td>직접 커널 + GpuMat</td><td>GpuMat의 <code>data</code> 포인터를 다른 라이브러리에 넘길 수 있다</td></tr>
+                </table>
+
+                <p>현실적인 패턴은 <strong>cv::cuda를 베이스라인으로 깔고, 병목 단계만 커스텀 커널로 교체</strong>하는 것이다. 시리즈 #10에서 이 커스텀 커널 작성을 다룬다.</p>
+
+                <!-- 10. 산업 비전 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전 파이프라인 관점</h2>
+
+                <p>산업 비전에서 cv::cuda의 가치는 명확하다. 카메라가 GenICam으로 매초 수십~수백 프레임을 쏘는 환경에서, CPU 한 코어로 다 처리하기 어렵다. GPU로 옮기되 직접 커널 짤 인력은 부족하다. cv::cuda는 이 간극을 메운다.</p>
+
+                <p>이상적인 흐름은 다음과 같다.</p>
+
+                <ol>
+                    <li>카메라 프레임을 <strong>핀드 호스트 메모리</strong>로 grab한다 (PCIe DMA 효율을 위해)</li>
+                    <li><code>GpuMat::upload(stream)</code>으로 비동기 업로드</li>
+                    <li>GPU 위에서 <code>cvtColor → blur → threshold → 모폴로지 → 측정</code> 등 모든 처리</li>
+                    <li>결과는 <strong>최소한</strong>만 download — 마스크 이미지 전체가 아니라 측정값(double, int) 위주로</li>
+                    <li>UI에 띄울 미리보기는 다운샘플링해서 작은 이미지만 다운로드</li>
+                </ol>
+
+<pre class="language-cpp"><code class="language-cpp">class VisionPipeline
+{
+public:
+	VisionPipeline()
+	{
+		m_gaussian = cv::cuda::createGaussianFilter(
+			CV_8UC1, CV_8UC1, cv::Size(5, 5), 1.5);
+		m_canny = cv::cuda::createCannyEdgeDetector(50, 150);
+	}
+
+	// 측정값만 호스트로 돌려준다.
+	ErrorCode ProcessFrame(const cv::Mat&amp; hostFrame, double&amp; outDefectArea)
+	{
+		if (hostFrame.empty())
+		{
+			return ErrorCode::InvalidInput;
+		}
+
+		m_dColor.upload(hostFrame, m_stream);
+		cv::cuda::cvtColor(m_dColor, m_dGray, cv::COLOR_BGR2GRAY, 0, m_stream);
+		m_gaussian-&gt;apply(m_dGray, m_dBlur, m_stream);
+		cv::cuda::threshold(m_dBlur, m_dBin, 128, 255, cv::THRESH_BINARY, m_stream);
+		m_canny-&gt;detect(m_dBlur, m_dEdge, m_stream);
+
+		// 면적은 countNonZero — 결과는 작은 정수
+		int defectPixels = cv::cuda::countNonZero(m_dBin);
+		outDefectArea = static_cast&lt;double&gt;(defectPixels);
+
+		m_stream.waitForCompletion();
+		return ErrorCode::Ok;
+	}
+
+private:
+	cv::cuda::Stream m_stream;
+	cv::cuda::GpuMat m_dColor, m_dGray, m_dBlur, m_dBin, m_dEdge;
+	cv::Ptr&lt;cv::cuda::Filter&gt; m_gaussian;
+	cv::Ptr&lt;cv::cuda::CannyEdgeDetector&gt; m_canny;
+};</code></pre>
+
+                <p>핵심은 <strong>GpuMat 재사용 + Filter 객체 보관 + Stream으로 비동기 + 다운로드 최소화</strong>의 네 가지다. 이 패턴만 지켜도 OpenCV CPU 구현보다 수 배 빠른 파이프라인을 얻을 수 있다.</p>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-land-mine-on"></i> 흔한 함정</h2>
+
+                <h3 id="pit-build"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CUDA 미빌드 OpenCV에서 cv::cuda 호출</h3>
+                <p>가장 흔한 사고다. 헤더와 링크는 되지만 첫 호출에서 <code>CUDA support is not available</code> 예외가 난다. 시작할 때 항상 <code>getCudaEnabledDeviceCount()</code>를 확인해 빠르게 실패시키자.</p>
+
+                <h3 id="pit-transfer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> upload/download를 자주 하면 가속 효과가 사라진다</h3>
+                <p>PCIe 전송 대역폭은 GPU 연산 대역폭보다 훨씬 좁다. <code>업로드 → 한 함수 처리 → 다운로드</code>를 반복하는 코드는 CPU보다도 느릴 수 있다. <strong>GPU 안에서 가능한 한 많은 단계를 처리</strong>한 뒤 마지막에 한 번만 내려받자.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>안티 패턴</strong>
+                        <code>upload → cuda::resize → download → 다음 함수 → upload → cuda::threshold → download ...</code> 같은 코드는 PCIe 왕복만 잔뜩 발생한다. 결과적으로 CPU 단일 함수만 부르는 것보다 느려진다.
+                    </div>
+                </div>
+
+                <h3 id="pit-small"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 작은 이미지에선 CPU가 더 빠를 수 있다</h3>
+                <p>GPU는 데이터 병렬성으로 이긴다. 320x240 그레이스케일 같은 작은 이미지에선 커널 런치 오버헤드와 전송 비용이 연산 시간을 압도해 CPU가 이긴다. <strong>벤치마크</strong>해서 손익분기점을 알아 두자. 보통 1~2 MP 이상부터 GPU가 유리하다.</p>
+
+                <h3 id="pit-memory"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> GpuMat 메모리 누수와 단편화</h3>
+                <p>GpuMat은 RAII로 자동 해제되지만, 매 프레임 새로 <code>cv::cuda::GpuMat tmp;</code> 식으로 만들면 GPU 메모리 단편화가 일어난다. 멤버 변수로 잡아 두고 재사용하자. 또 같은 크기·타입이면 OpenCV 내부적으로 메모리를 재사용한다.</p>
+
+                <h3 id="pit-type"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 지원 타입이 좁다</h3>
+                <p>cv::cuda 함수는 CPU 버전보다 받는 타입이 좁다. 컴파일은 되는데 런타임에 <code>Unsupported format</code> 예외가 난다면 입력의 <code>type()</code>을 출력해서 확인하자.</p>
+
+                <h3 id="pit-stream"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Stream 결과를 동기화 없이 사용</h3>
+                <p>비동기 호출 직후 결과 GpuMat을 download하지 않고 호스트에서 바로 쓰면 데이터가 비어 있거나 이전 프레임 결과가 보인다. 결과를 쓰기 전에 반드시 <code>stream.waitForCompletion()</code> 또는 동기 download를 호출하자.</p>
+
+                <h3 id="pit-version"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CUDA Toolkit과 OpenCV 버전 호환</h3>
+                <p>최신 CUDA 12.x로 구버전 OpenCV(4.5 이하)를 빌드하면 곳곳에서 컴파일 에러가 난다. OpenCV 릴리스 노트에서 권장 CUDA 버전을 확인하고, 가능하면 OpenCV도 최신을 쓰자.</p>
+
+                <!-- 참고 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>OpenCV — CUDA-accelerated Computer Vision (cv::cuda 모듈 공식 문서)</li>
+                        <li>OpenCV — Building OpenCV with CUDA support (CMake 빌드 가이드)</li>
+                        <li>NVIDIA — CUDA Toolkit Documentation</li>
+                        <li>OpenCV — DNN module backends and targets</li>
+                        <li>본 시리즈 #5 스트림과 비동기 실행, #11 TensorRT, #12 산업 비전 GPU 파이프라인</li>
+                        <li>본 시리즈 #10 이미지 처리 CUDA 커널 직접 작성 (cv::cuda 한계를 넘는 경우)</li>
+                        <li>AI 시리즈 #12 OpenCV DNN 모듈 실전</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,890 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TensorRT — 딥러닝 추론 가속 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { padding: 10px 14px; border: 1px solid var(--border); text-align: left; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; color: var(--primary-dark); }
+        .spec-table tr:nth-child(even) td { background: #fafafa; }
+
+        /* 다이어그램 */
+        .diagram-wrap {
+            background: #fff; border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center; overflow-x: auto;
+        }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#trt-intro" data-section="trt-intro">TensorRT란</a>
+        <a href="#compare" data-section="compare">런타임 비교</a>
+        <a href="#workflow" data-section="workflow">워크플로우</a>
+        <a href="#precision" data-section="precision">정밀도</a>
+        <a href="#int8" data-section="int8">INT8 캘리브레이션</a>
+        <a href="#build-vs-run" data-section="build-vs-run">빌드 vs 런타임</a>
+        <a href="#plugin" data-section="plugin">Plugin</a>
+        <a href="#cli-vs-api" data-section="cli-vs-api">trtexec vs API</a>
+        <a href="#dla" data-section="dla">DLA</a>
+        <a href="#industrial" data-section="industrial">산업 비전 적용</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / CUDA</span>
+                </div>
+                <h1>TensorRT — 딥러닝 추론 가속</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>TensorRT가 무엇이고 ONNX Runtime / OpenCV DNN과 어떻게 다른가</li>
+                        <li>ONNX → Builder → Engine → Runtime으로 이어지는 전체 워크플로우</li>
+                        <li>FP32 / FP16 / INT8 정밀도 선택과 INT8 캘리브레이션</li>
+                        <li>trtexec CLI와 C++ API 사용법, Plugin과 DLA</li>
+                        <li>산업 비전 추론에서 자주 만나는 함정과 회피법</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#trt-intro">TensorRT란?</a></li>
+                        <li><a href="#compare">ONNX Runtime / OpenCV DNN과의 차이</a></li>
+                        <li><a href="#workflow">TensorRT 워크플로우</a></li>
+                        <li><a href="#precision">정밀도 (FP32 / FP16 / INT8)</a></li>
+                        <li><a href="#int8">INT8 캘리브레이션</a></li>
+                        <li><a href="#build-vs-run">엔진 빌드 시간 vs 런타임 속도</a></li>
+                        <li><a href="#plugin">Plugin — 미지원 연산 처리</a></li>
+                        <li><a href="#cli-vs-api">trtexec CLI vs C++ API</a></li>
+                        <li><a href="#dla">DLA (Deep Learning Accelerator)</a></li>
+                        <li><a href="#industrial">산업 비전 적용</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. TensorRT란 -->
+                <h2 id="trt-intro"><i class="fa-solid fa-bolt"></i> TensorRT란?</h2>
+                <p><strong>TensorRT</strong>는 NVIDIA가 만든 고성능 딥러닝 <strong>추론(inference)</strong> SDK다. PyTorch나 TensorFlow로 학습한 모델을 그대로 추론에 사용하면 일반적으로 느리다. TensorRT는 학습된 모델을 받아 다음과 같은 최적화를 수행한 뒤, NVIDIA GPU에서 매우 빠르게 실행되는 <strong>엔진(engine)</strong>으로 변환한다.</p>
+
+                <ul>
+                    <li><strong>Layer fusion</strong> — Conv + BN + ReLU 같은 연속된 연산을 하나의 커널로 합친다.</li>
+                    <li><strong>Kernel auto-tuning</strong> — 대상 GPU에 가장 빠른 커널을 자동 선택한다.</li>
+                    <li><strong>Precision calibration</strong> — FP32를 FP16/INT8로 낮춰 메모리·연산을 줄인다.</li>
+                    <li><strong>Dynamic tensor memory</strong> — 텐서 메모리를 재사용해 풋프린트를 줄인다.</li>
+                    <li><strong>Multi-stream execution</strong> — 여러 입력을 병렬로 처리한다.</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>학습용이 아니라 추론용이다</strong>
+                        TensorRT는 학습(training) 도구가 아니다. 학습은 PyTorch·TensorFlow에서 하고, 양산 단계의 추론만 TensorRT로 옮긴다. 이전 글 <em>AI #10 모델 최적화</em>에서 다룬 양자화·프루닝의 실전 런타임이 TensorRT다.
+                    </div>
+                </div>
+
+                <!-- 2. 비교 -->
+                <h2 id="compare"><i class="fa-solid fa-scale-balanced"></i> ONNX Runtime / OpenCV DNN과의 차이</h2>
+                <p>산업 비전 현장에서 추론 런타임 선택지는 보통 세 가지다. <em>AI #11 ONNX 배포</em>와 <em>AI #12 OpenCV DNN</em>에서 다룬 두 런타임에 비해 TensorRT는 속도가 가장 빠르지만, 환경 제약이 가장 크다.</p>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>OpenCV DNN</th><th>ONNX Runtime</th><th>TensorRT</th></tr>
+                    <tr><td>플랫폼</td><td>CPU/GPU/모두</td><td>CPU/GPU/모두</td><td>NVIDIA GPU 전용</td></tr>
+                    <tr><td>속도(NVIDIA GPU)</td><td>중</td><td>상</td><td>최상</td></tr>
+                    <tr><td>모델 호환성</td><td>제한적</td><td>매우 넓음</td><td>넓음(일부 미지원 op 존재)</td></tr>
+                    <tr><td>빌드 단계</td><td>없음(즉시 로드)</td><td>없음/짧음</td><td>필수(수초~수십분)</td></tr>
+                    <tr><td>엔진 이식성</td><td>높음</td><td>높음</td><td>낮음(GPU/버전 종속)</td></tr>
+                    <tr><td>INT8 양자화</td><td>제한적</td><td>지원</td><td>강력하게 지원</td></tr>
+                    <tr><td>통합 난이도</td><td>쉬움</td><td>쉬움</td><td>중간</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>선택 기준</strong>
+                        택트 타임이 빠듯하고 GPU가 고정된 양산 라인이면 TensorRT가 정답이다. 다양한 PC·GPU·CPU 환경에 모델을 배포해야 한다면 ONNX Runtime이 무난하다. 검사 로직과 추론이 한 OpenCV 파이프라인에 묶여 있고 모델이 작다면 OpenCV DNN으로도 충분하다.
+                    </div>
+                </div>
+
+                <!-- 3. 워크플로우 -->
+                <h2 id="workflow"><i class="fa-solid fa-diagram-project"></i> TensorRT 워크플로우</h2>
+                <p>TensorRT 사용 흐름은 항상 동일하다. <strong>학습된 모델을 ONNX로 내보내기 → Builder로 엔진 빌드 → 엔진 파일 저장 → 런타임에서 deserialize 후 추론</strong>의 4단계다.</p>
+
+                <div class="diagram-wrap">
+                    <svg viewBox="0 0 880 220" width="100%" style="max-width:880px;" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                                <path d="M0,0 L10,5 L0,10 z" fill="#76b900"/>
+                            </marker>
+                        </defs>
+                        <!-- Stage 1 -->
+                        <rect x="20" y="60" width="160" height="90" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+                        <text x="100" y="90" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#1e3a5f">ONNX 모델</text>
+                        <text x="100" y="112" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1e3a5f">PyTorch / TF →</text>
+                        <text x="100" y="128" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1e3a5f">torch.onnx.export</text>
+                        <!-- Stage 2 -->
+                        <rect x="220" y="60" width="180" height="90" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+                        <text x="310" y="88" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#065f46">Builder</text>
+                        <text x="310" y="108" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#065f46">Parser + Config</text>
+                        <text x="310" y="124" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#065f46">layer fusion · auto-tune</text>
+                        <text x="310" y="140" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#065f46">precision 선택</text>
+                        <!-- Stage 3 -->
+                        <rect x="440" y="60" width="170" height="90" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+                        <text x="525" y="90" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#78350f">Engine (.plan)</text>
+                        <text x="525" y="112" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#78350f">직렬화 후 디스크 저장</text>
+                        <text x="525" y="128" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#78350f">GPU/버전에 묶임</text>
+                        <!-- Stage 4 -->
+                        <rect x="650" y="60" width="200" height="90" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+                        <text x="750" y="90" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#7f1d1d">Runtime</text>
+                        <text x="750" y="112" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#7f1d1d">deserialize → Context</text>
+                        <text x="750" y="128" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#7f1d1d">enqueueV3 추론</text>
+                        <!-- Arrows -->
+                        <line x1="180" y1="105" x2="220" y2="105" stroke="#76b900" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="400" y1="105" x2="440" y2="105" stroke="#76b900" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="610" y1="105" x2="650" y2="105" stroke="#76b900" stroke-width="2" marker-end="url(#arr)"/>
+                        <!-- Stage labels -->
+                        <text x="100" y="40" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#76b900">1. Export</text>
+                        <text x="310" y="40" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#76b900">2. Build (한 번)</text>
+                        <text x="525" y="40" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#76b900">3. Save</text>
+                        <text x="750" y="40" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#76b900">4. Inference (매번)</text>
+                        <!-- Bottom line -->
+                        <text x="440" y="195" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#666">빌드는 오프라인 1회 · 런타임은 양산 중 매 프레임 반복</text>
+                    </svg>
+                    <div class="diagram-caption">그림 1. TensorRT 표준 워크플로우 (ONNX → Builder → Engine → Runtime)</div>
+                </div>
+
+                <h3 id="stage-export"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1단계 — PyTorch에서 ONNX 내보내기</h3>
+
+<pre class="language-python"><code class="language-python">import torch
+import torchvision.models as models
+
+model = models.resnet50(weights="DEFAULT").eval().cuda()
+dummy = torch.randn(1, 3, 224, 224, device="cuda")
+
+torch.onnx.export(
+    model, dummy, "resnet50.onnx",
+    input_names=["input"], output_names=["output"],
+    opset_version=17,
+    dynamic_axes={"input": {0: "batch"}, "output": {0: "batch"}},
+)</code></pre>
+
+                <h3 id="stage-build"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2단계 — C++ API로 엔진 빌드</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// Build a TensorRT engine from an ONNX model.
+#include &lt;NvInfer.h&gt;
+#include &lt;NvOnnxParser.h&gt;
+#include &lt;fstream&gt;
+#include &lt;memory&gt;
+
+using namespace nvinfer1;
+
+class Logger : public ILogger
+{
+public:
+    void log(Severity severity, const char* msg) noexcept override
+    {
+        if (severity &lt;= Severity::kWARNING)
+        {
+            std::cout &lt;&lt; "[TRT] " &lt;&lt; msg &lt;&lt; std::endl;
+        }
+    }
+};
+
+bool BuildEngine(const std::string&amp; onnxPath, const std::string&amp; enginePath)
+{
+    Logger logger;
+    auto builder = std::unique_ptr&lt;IBuilder&gt;(createInferBuilder(logger));
+    const auto flag = 1U &lt;&lt; static_cast&lt;uint32_t&gt;(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
+    auto network = std::unique_ptr&lt;INetworkDefinition&gt;(builder-&gt;createNetworkV2(flag));
+
+    // Parse ONNX into the TensorRT network graph.
+    auto parser = std::unique_ptr&lt;nvonnxparser::IParser&gt;(
+        nvonnxparser::createParser(*network, logger));
+    if (!parser-&gt;parseFromFile(onnxPath.c_str(),
+            static_cast&lt;int&gt;(ILogger::Severity::kWARNING)))
+    {
+        return false;
+    }
+
+    // Builder config — workspace, precision, optimization profile.
+    auto config = std::unique_ptr&lt;IBuilderConfig&gt;(builder-&gt;createBuilderConfig());
+    config-&gt;setMemoryPoolLimit(MemoryPoolType::kWORKSPACE, 1ULL &lt;&lt; 30);  // 1 GiB
+    if (builder-&gt;platformHasFastFp16())
+    {
+        config-&gt;setFlag(BuilderFlag::kFP16);  // FP16 mixed precision
+    }
+
+    // Dynamic shape profile for batch size 1..8.
+    auto profile = builder-&gt;createOptimizationProfile();
+    profile-&gt;setDimensions("input", OptProfileSelector::kMIN,  Dims4{1, 3, 224, 224});
+    profile-&gt;setDimensions("input", OptProfileSelector::kOPT,  Dims4{4, 3, 224, 224});
+    profile-&gt;setDimensions("input", OptProfileSelector::kMAX,  Dims4{8, 3, 224, 224});
+    config-&gt;addOptimizationProfile(profile);
+
+    // Build and serialize.
+    auto serialized = std::unique_ptr&lt;IHostMemory&gt;(
+        builder-&gt;buildSerializedNetwork(*network, *config));
+    if (!serialized) return false;
+
+    std::ofstream out(enginePath, std::ios::binary);
+    out.write(static_cast&lt;const char*&gt;(serialized-&gt;data()), serialized-&gt;size());
+    return true;
+}</code></pre>
+
+                <h3 id="stage-runtime"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3단계 — 런타임에서 추론</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// Load a serialized engine and run inference.
+#include &lt;NvInfer.h&gt;
+#include &lt;cuda_runtime_api.h&gt;
+#include &lt;fstream&gt;
+#include &lt;vector&gt;
+
+class TrtInferer
+{
+public:
+    bool Load(const std::string&amp; enginePath)
+    {
+        std::ifstream in(enginePath, std::ios::binary | std::ios::ate);
+        const std::streamsize size = in.tellg();
+        in.seekg(0);
+        std::vector&lt;char&gt; blob(size);
+        in.read(blob.data(), size);
+
+        m_runtime.reset(createInferRuntime(m_logger));
+        m_engine.reset(m_runtime-&gt;deserializeCudaEngine(blob.data(), size));
+        m_context.reset(m_engine-&gt;createExecutionContext());
+        cudaStreamCreate(&amp;m_stream);
+        return m_context != nullptr;
+    }
+
+    // Run a single inference. Caller provides device pointers.
+    bool Infer(float* dInput, float* dOutput, int batch)
+    {
+        m_context-&gt;setInputShape("input", Dims4{batch, 3, 224, 224});
+        m_context-&gt;setTensorAddress("input", dInput);
+        m_context-&gt;setTensorAddress("output", dOutput);
+        if (!m_context-&gt;enqueueV3(m_stream)) return false;
+        cudaStreamSynchronize(m_stream);
+        return true;
+    }
+
+private:
+    Logger m_logger;
+    std::unique_ptr&lt;IRuntime&gt; m_runtime;
+    std::unique_ptr&lt;ICudaEngine&gt; m_engine;
+    std::unique_ptr&lt;IExecutionContext&gt; m_context;
+    cudaStream_t m_stream{};
+};</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>입력은 GPU 메모리에 미리 올려둔다</strong>
+                        카메라에서 받은 이미지는 보통 호스트에 있다. <code>cudaMemcpyAsync</code>로 디바이스에 올린 뒤 추론하면 PCIe 복사가 추론 시간에 포함된다. 시리즈 2편 <em>메모리 계층</em>에서 본 핀드 메모리(pinned memory)를 함께 쓰면 복사 자체가 빨라진다.
+                    </div>
+                </div>
+
+                <!-- 4. 정밀도 -->
+                <h2 id="precision"><i class="fa-solid fa-microchip"></i> 정밀도 (FP32 / FP16 / INT8)</h2>
+                <p>TensorRT가 가장 큰 속도 이득을 주는 부분은 <strong>저정밀도 추론</strong>이다. FP32 그대로 두는 것은 사실상 GPU 텐서 코어(Tensor Core)를 놀리는 셈이다.</p>
+
+                <table class="spec-table">
+                    <tr><th>정밀도</th><th>비트</th><th>상대 속도 (Tensor Core 기준)</th><th>정확도 손실</th><th>추가 작업</th></tr>
+                    <tr><td>FP32</td><td>32</td><td>1.0×</td><td>없음</td><td>없음</td></tr>
+                    <tr><td>FP16</td><td>16</td><td>2~3×</td><td>거의 없음</td><td>플래그 설정만</td></tr>
+                    <tr><td>BF16</td><td>16</td><td>2~3×</td><td>거의 없음</td><td>플래그 설정만(Ampere+)</td></tr>
+                    <tr><td>INT8</td><td>8</td><td>3~5×</td><td>0.1~1% 수준</td><td>캘리브레이션 필요</td></tr>
+                    <tr><td>FP8</td><td>8</td><td>3~5×</td><td>모델 의존적</td><td>Hopper+ 한정</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>FP16부터 켜라</strong>
+                        FP16은 거의 무료로 얻는 가속이다. 검사 정확도 검증만 통과하면 그냥 켠다. INT8은 캘리브레이션과 정확도 재검증이 필요하므로 택트 타임이 부족할 때만 단계적으로 적용한다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// Enable mixed precision.
+config-&gt;setFlag(BuilderFlag::kFP16);   // half precision
+config-&gt;setFlag(BuilderFlag::kINT8);   // INT8 (requires calibrator)
+// kSTRICT_TYPES is deprecated; use kPREFER_PRECISION_CONSTRAINTS if needed.</code></pre>
+
+                <!-- 5. INT8 -->
+                <h2 id="int8"><i class="fa-solid fa-chart-line"></i> INT8 캘리브레이션</h2>
+                <p>INT8은 [-128, 127] 범위로 활성값을 양자화한다. 어느 실수 범위를 8비트 정수에 매핑할지 <strong>스케일(scale)</strong>을 결정해야 하며, 이 과정이 <strong>캘리브레이션(calibration)</strong>이다. 학습 후 양자화(<strong>PTQ — Post Training Quantization</strong>)는 다음과 같이 진행된다.</p>
+
+                <ol>
+                    <li>대표 입력 이미지를 수백~수천 장 준비 (양산 라인의 실제 분포와 닮을 것)</li>
+                    <li>FP32로 추론하면서 각 레이어 활성값의 분포(히스토그램)를 수집</li>
+                    <li>KL divergence 등을 최소화하는 클리핑 임계값으로 스케일 결정</li>
+                    <li>이 스케일을 엔진에 굽기</li>
+                </ol>
+
+<pre class="language-cpp"><code class="language-cpp">// Minimal INT8 calibrator. Feeds batches from a dataset folder.
+class Int8Calibrator : public IInt8EntropyCalibrator2
+{
+public:
+    Int8Calibrator(int batchSize, const std::string&amp; cacheFile,
+                   const std::vector&lt;std::string&gt;&amp; files)
+        : m_batchSize(batchSize), m_cacheFile(cacheFile), m_files(files)
+    {
+        cudaMalloc(&amp;m_deviceInput, batchSize * 3 * 224 * 224 * sizeof(float));
+    }
+
+    int getBatchSize() const noexcept override { return m_batchSize; }
+
+    bool getBatch(void* bindings[], const char* names[], int n) noexcept override
+    {
+        if (m_index + m_batchSize &gt; m_files.size()) return false;
+        std::vector&lt;float&gt; host = LoadAndPreprocess(m_files, m_index, m_batchSize);
+        cudaMemcpy(m_deviceInput, host.data(), host.size() * sizeof(float),
+                   cudaMemcpyHostToDevice);
+        bindings[0] = m_deviceInput;
+        m_index += m_batchSize;
+        return true;
+    }
+
+    // Cache to skip recalibration on rebuild.
+    const void* readCalibrationCache(std::size_t&amp; length) noexcept override
+    {
+        m_cache = ReadFile(m_cacheFile);
+        length = m_cache.size();
+        return length ? m_cache.data() : nullptr;
+    }
+
+    void writeCalibrationCache(const void* data, std::size_t length) noexcept override
+    {
+        WriteFile(m_cacheFile, data, length);
+    }
+
+private:
+    int m_batchSize;
+    std::string m_cacheFile;
+    std::vector&lt;std::string&gt; m_files;
+    std::vector&lt;char&gt; m_cache;
+    void* m_deviceInput = nullptr;
+    std::size_t m_index = 0;
+};
+
+// Use it in builder config.
+Int8Calibrator calib(8, "resnet50_int8.cache", calibrationImages);
+config-&gt;setFlag(BuilderFlag::kINT8);
+config-&gt;setInt8Calibrator(&amp;calib);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>캘리브레이션 데이터가 분포를 대표해야 한다</strong>
+                        검사 라인의 실제 이미지(양품·불량 비율 포함)를 써야 한다. 합성 데이터나 학습 데이터만 사용하면 양산에서 정확도가 떨어진다. 통상 500~1000장이면 충분하지만, 클래스 불균형이 심하면 더 늘린다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>PTQ로 부족하면 QAT</strong>
+                        분류는 PTQ로 보통 0.5% 이내 손실에 그치지만, 검출·세그멘테이션은 손실이 크게 보이기도 한다. 이때는 학습 단계에서 양자화를 시뮬레이션하는 <strong>QAT (Quantization Aware Training)</strong>로 넘어간다.
+                    </div>
+                </div>
+
+                <!-- 6. 빌드 vs 런타임 -->
+                <h2 id="build-vs-run"><i class="fa-solid fa-clock"></i> 엔진 빌드 시간 vs 런타임 속도</h2>
+                <p>TensorRT 빌더는 가능한 모든 커널 후보를 실측해 가장 빠른 것을 고른다. 그래서 빌드는 오래 걸리고, 그 대가로 런타임은 빠르다. ResNet-50 기준 빌드는 수 분, INT8까지 켜면 수십 분까지 간다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Trade build time for runtime quality.
+config-&gt;setBuilderOptimizationLevel(5);   // 0=fast build, 5=best perf (default 3)
+
+// Profile cache speeds up rebuild on the same GPU.
+auto cache = std::unique_ptr&lt;ITimingCache&gt;(
+    config-&gt;createTimingCache(cacheBlob.data(), cacheBlob.size()));
+config-&gt;setTimingCache(*cache, false);</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>빌드는 한 번, 추론은 매 프레임</strong>
+                        빌드는 CI나 셋업 단계에서 1회만 돌리고, 양산 PC에는 결과 엔진(.plan)만 배포한다. 빌드 시간은 양산 성능에 영향을 주지 않는다.
+                    </div>
+                </div>
+
+                <!-- 7. Plugin -->
+                <h2 id="plugin"><i class="fa-solid fa-puzzle-piece"></i> Plugin — 미지원 연산 처리</h2>
+                <p>대부분의 표준 연산은 TensorRT가 직접 지원하지만, 최신 논문의 커스텀 연산이나 비표준 후처리(예: 특정 NMS 변형)는 미지원일 수 있다. 이때 두 가지 선택지가 있다.</p>
+
+                <ol>
+                    <li><strong>모델 수정</strong> — 가능하면 동등한 표준 연산 조합으로 그래프를 다시 짠다.</li>
+                    <li><strong>TensorRT Plugin</strong> — <code>IPluginV3</code>를 구현해 커스텀 CUDA 커널을 끼워 넣는다.</li>
+                </ol>
+
+<pre class="language-cpp"><code class="language-cpp">// Skeleton of a TensorRT plugin (V3 interface, simplified).
+class MyOpPlugin : public IPluginV3, public IPluginV3OneCore,
+                   public IPluginV3OneBuild, public IPluginV3OneRuntime
+{
+public:
+    // Run the custom CUDA kernel.
+    int32_t enqueue(const PluginTensorDesc* inDesc, const PluginTensorDesc* outDesc,
+                    const void* const* inputs, void* const* outputs,
+                    void* workspace, cudaStream_t stream) noexcept override
+    {
+        MyCustomKernelLaunch(
+            static_cast&lt;const float*&gt;(inputs[0]),
+            static_cast&lt;float*&gt;(outputs[0]),
+            inDesc[0].dims.d[0], stream);
+        return 0;
+    }
+    // ... configure / clone / serialize methods omitted for brevity
+};</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>가능하면 plugin은 피한다</strong>
+                        plugin은 유지 관리 비용이 크다. TensorRT 메이저 버전이 올라가면 인터페이스가 바뀌어 다시 빌드해야 할 때도 있다. 모델 수정이나 ONNX opset 업그레이드로 해결되는 경우가 더 많다.
+                    </div>
+                </div>
+
+                <!-- 8. CLI vs API -->
+                <h2 id="cli-vs-api"><i class="fa-solid fa-terminal"></i> trtexec CLI vs C++ API</h2>
+                <p>TensorRT는 빠른 실험과 성능 측정을 위해 <code>trtexec</code>라는 CLI 도구를 함께 제공한다. 모델을 빠르게 평가할 때는 trtexec, 양산 통합에는 C++ API를 쓴다.</p>
+
+<pre class="language-bash"><code class="language-bash"># 가장 단순한 빌드 + 벤치마크
+trtexec --onnx=resnet50.onnx --saveEngine=resnet50.plan
+
+# FP16 + 동적 shape + 워크스페이스 2GB
+trtexec --onnx=resnet50.onnx \
+        --saveEngine=resnet50_fp16.plan \
+        --fp16 \
+        --minShapes=input:1x3x224x224 \
+        --optShapes=input:4x3x224x224 \
+        --maxShapes=input:8x3x224x224 \
+        --memPoolSize=workspace:2048
+
+# INT8 + 캘리브레이션 캐시
+trtexec --onnx=resnet50.onnx \
+        --int8 --calib=resnet50_int8.cache \
+        --saveEngine=resnet50_int8.plan
+
+# 기존 엔진의 추론 속도만 측정
+trtexec --loadEngine=resnet50_fp16.plan --iterations=1000 --warmUp=200</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> trtexec 출력 (요약)</div>
+=== Performance summary ===
+Throughput: 2148 qps
+Latency: min = 0.42 ms, mean = 0.46 ms, max = 0.61 ms
+GPU Compute Time: min = 0.40 ms, mean = 0.44 ms, max = 0.58 ms
+H2D Latency: min = 0.01 ms, mean = 0.01 ms
+D2H Latency: min = 0.01 ms, mean = 0.01 ms</div>
+
+                <!-- 9. DLA -->
+                <h2 id="dla"><i class="fa-solid fa-microchip"></i> DLA (Deep Learning Accelerator)</h2>
+                <p>Jetson AGX Orin, Xavier 등 일부 NVIDIA 임베디드 SoC에는 GPU 외에 <strong>DLA</strong>라는 고정 기능 추론 가속기가 함께 들어 있다. DLA는 GPU보다 느리지만 전력 효율이 좋고, GPU를 다른 작업에 비워둘 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Route the engine to DLA core 0, fall back to GPU when an op is unsupported.
+config-&gt;setFlag(BuilderFlag::kFP16);    // DLA requires FP16 or INT8
+config-&gt;setDefaultDeviceType(DeviceType::kDLA);
+config-&gt;setDLACore(0);
+config-&gt;setFlag(BuilderFlag::kGPU_FALLBACK);</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>DLA는 임베디드 한정</strong>
+                        데스크톱·서버 GPU(RTX, A100, H100)에는 DLA가 없다. Jetson 같은 엣지 디바이스에 검사 시스템을 올릴 때 의미가 있다.
+                    </div>
+                </div>
+
+                <!-- 10. 산업 비전 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전 적용</h2>
+                <p>검사 시스템에서 TensorRT가 해결하는 문제는 결국 두 가지다. <strong>택트 타임 안에 들어가기</strong>와 <strong>한 PC에서 여러 모델 동시 추론</strong>이다.</p>
+
+                <h3 id="case-tact"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 택트 타임에 맞추기</h3>
+                <p>예를 들어 200 ms 택트 라인에서 카메라 노출 30 ms, 전처리 10 ms, 후처리 10 ms를 빼면 추론에 쓸 수 있는 시간은 150 ms 정도다. ResNet-50을 PyTorch CPU로 돌리면 150 ms를 훌쩍 넘기지만, TensorRT FP16 + RTX 4070에서는 0.5 ms 미만으로 떨어진다. 즉 모델을 더 키울 여유가 생긴다.</p>
+
+                <h3 id="case-multi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 다중 모델 동시 추론</h3>
+                <p>한 검사 셀에서 분류 + 결함 검출 + 세그멘테이션을 동시에 돌려야 할 때, 모델마다 독립 CUDA 스트림으로 묶으면 GPU 자원을 겹쳐 쓸 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Run three engines concurrently on three CUDA streams.
+struct Pipeline
+{
+    TrtInferer classifier;
+    TrtInferer detector;
+    TrtInferer segmenter;
+    cudaStream_t s1, s2, s3;
+};
+
+ErrorCode RunFrame(Pipeline&amp; pipe, const Image&amp; image)
+{
+    if (image.IsEmpty()) return ErrorCode::InvalidArgument;
+
+    UploadToDeviceAsync(image, pipe.s1);
+    pipe.classifier.InferAsync(pipe.s1);   // class label
+    pipe.detector.InferAsync(pipe.s2);     // defect boxes
+    pipe.segmenter.InferAsync(pipe.s3);    // mask
+
+    cudaStreamSynchronize(pipe.s1);
+    cudaStreamSynchronize(pipe.s2);
+    cudaStreamSynchronize(pipe.s3);
+    return ErrorCode::Success;
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>CUDA Graph로 한 단계 더</strong>
+                        같은 입력 shape, 같은 시퀀스로 매 프레임 반복된다면 <code>cudaGraph</code>로 묶어 런치 오버헤드를 줄일 수 있다. 짧은 추론(&lt; 1 ms)에서 효과가 크다.
+                    </div>
+                </div>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>다른 GPU·다른 TensorRT 버전으로 빌드한 엔진은 호환되지 않는다</strong>
+                        엔진(.plan)은 <em>GPU 컴퓨트 capability + TensorRT 버전 + cuDNN/cuBLAS 버전</em>에 묶인다. RTX 3060에서 빌드한 엔진은 RTX 4070에서 로드되지 않거나, 되더라도 최적화가 어긋난다. <strong>양산 PC에서 직접 빌드하거나, 동일한 SKU별로 따로 빌드</strong>한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>INT8 캘리브레이션 데이터가 너무 적으면 정확도가 무너진다</strong>
+                        50장으로 캘리브레이션 하고 양산에서 검출 정확도가 떨어지는 사례가 흔하다. 최소 수백 장, 가능하면 라인의 하루치 샘플을 쓴다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>벤치마크에 빌드 시간을 포함하지 않는다</strong>
+                        "TensorRT 추론에 30초 걸린다"고 보고하는 측정의 대부분은 엔진 빌드/로드를 포함한 것이다. 양산 추론 측정은 반드시 <strong>워밍업 후 enqueueV3만</strong> 잰다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>지원되지 않는 ONNX opset / 연산자</strong>
+                        최신 PyTorch가 내보낸 opset이 설치된 TensorRT보다 높으면 파싱이 실패한다. <code>torch.onnx.export(..., opset_version=17)</code>처럼 명시적으로 낮추거나 TensorRT를 업그레이드한다. 파서 로그에 "Unsupported operator"가 찍히면 해당 op만 따로 처리해야 한다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>PCIe 복사가 추론보다 오래 걸리는 경우</strong>
+                        4K 이미지를 매 프레임 호스트→디바이스로 복사하면 추론보다 복사가 더 걸린다. 카메라 SDK가 GPUDirect나 핀드 메모리를 지원하는지 확인하고, 가능하면 <strong>GPU에 직접 DMA</strong>로 받는 경로를 만든다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다음 글 예고</strong>
+                        다음 편에서는 TensorRT가 자동으로 골라 주는 커널 너머, <strong>cuDNN과 cuBLAS</strong>가 어떤 역할을 하는지 살펴본다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA — <em>TensorRT Developer Guide</em> (docs.nvidia.com/deeplearning/tensorrt)</li>
+                        <li>NVIDIA — <em>TensorRT C++ API Reference</em></li>
+                        <li>NVIDIA — <em>Best Practices for TensorRT Performance</em></li>
+                        <li>NVIDIA GitHub — <em>TensorRT/samples</em> (oss 샘플 코드)</li>
+                        <li>NVIDIA — <em>Working with INT8</em> (Calibration whitepaper)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

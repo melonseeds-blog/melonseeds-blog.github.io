@@ -1,0 +1,949 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이미지 처리 CUDA 커널 직접 작성 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 다이어그램 */
+        .diagram-box {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .diagram-box svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 10px;
+        }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); color: var(--primary-dark); font-weight: 700; }
+        .spec-table code { font-size: 0.85em; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why-custom" data-section="why-custom">왜 직접</a>
+        <a href="#patterns" data-section="patterns">공통 패턴</a>
+        <a href="#gaussian" data-section="gaussian">Gaussian</a>
+        <a href="#sobel" data-section="sobel">Sobel</a>
+        <a href="#threshold" data-section="threshold">임계화</a>
+        <a href="#histogram" data-section="histogram">Histogram</a>
+        <a href="#morphology" data-section="morphology">모폴로지</a>
+        <a href="#reduction" data-section="reduction">Reduction</a>
+        <a href="#gpumat-raw" data-section="gpumat-raw">GpuMat 연동</a>
+        <a href="#bench" data-section="bench">성능 비교</a>
+        <a href="#industrial" data-section="industrial">산업 비전</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / CUDA</span>
+                </div>
+                <h1>이미지 처리 CUDA 커널 직접 작성</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>cv::cuda로 부족한 순간 — 언제 커널을 직접 짜야 하는가</li>
+                        <li>이미지 커널의 공통 패턴 — 2D 인덱싱, pitch, 경계 처리</li>
+                        <li>GaussianBlur, Sobel, Threshold, Histogram, 모폴로지, Reduction 직접 구현</li>
+                        <li>cv::cuda::GpuMat raw 포인터로 커널 호출하는 법</li>
+                        <li>cv::cuda 대비 성능 비교와 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-custom">왜 직접 커널을 짜는가</a></li>
+                        <li><a href="#patterns">이미지 커널의 공통 패턴</a></li>
+                        <li><a href="#gaussian">GaussianBlur 커널 — 분리 가능 필터</a></li>
+                        <li><a href="#sobel">Sobel 엣지 검출 커널</a></li>
+                        <li><a href="#threshold">임계화 커널 — 전역과 Otsu</a></li>
+                        <li><a href="#histogram">Histogram 커널 — atomic과 shared</a></li>
+                        <li><a href="#morphology">모폴로지 커널 — erosion과 dilation</a></li>
+                        <li><a href="#reduction">Reduction 패턴 — 합·최대·최소</a></li>
+                        <li><a href="#gpumat-raw">cv::cuda::GpuMat raw 포인터 연동</a></li>
+                        <li><a href="#bench">성능 비교 — cv::cuda vs 직접 커널</a></li>
+                        <li><a href="#industrial">산업 비전 관점 — Hot path를 커널로</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 직접 커널 -->
+                <h2 id="why-custom"><i class="fa-solid fa-screwdriver-wrench"></i> 왜 직접 커널을 짜는가</h2>
+                <p><a href="gpu-09-opencv-cuda.html">cv::cuda 모듈</a>은 잘 만들어져 있고 대부분의 표준 연산을 커버한다. 그런데도 직접 커널을 짜야 하는 순간이 분명히 존재한다.</p>
+
+                <table>
+                    <tr><th>상황</th><th>왜 직접 짜야 하는가</th></tr>
+                    <tr><td>cv::cuda에 없는 연산</td><td>커스텀 필터, 도메인 특화 알고리즘, 특수 비전 처리</td></tr>
+                    <tr><td>여러 연산 합치기 (fusion)</td><td>blur → threshold → morph을 한 커널로 합치면 메모리 왕복 제거</td></tr>
+                    <tr><td>비표준 데이터 타입</td><td>Mono10/12 packed, 비선형 인덱싱, 커스텀 구조체</td></tr>
+                    <tr><td>메모리 재사용 최적화</td><td>shared memory 타일링을 직접 제어해 글로벌 접근 최소화</td></tr>
+                    <tr><td>제한된 입력 가정</td><td>크기·정렬이 고정이면 분기를 제거하고 더 빠르게 가능</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>기본 원칙</strong>
+                        먼저 cv::cuda로 만들고, <strong>측정</strong>한 다음, 진짜 병목인 부분만 커널로 다시 짠다. 모든 걸 처음부터 직접 짜는 건 시간 낭비다.
+                    </div>
+                </div>
+
+                <!-- 2. 공통 패턴 -->
+                <h2 id="patterns"><i class="fa-solid fa-shapes"></i> 이미지 커널의 공통 패턴</h2>
+                <p>이미지 커널은 거의 같은 골격을 공유한다. 한 스레드가 한 픽셀을 맡고, 2D 인덱스를 계산하고, 경계를 체크하고, pitch로 줄 시작을 잡는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void ImageKernelTemplate(
+    const uchar* __restrict__ src, size_t srcPitch,
+    uchar* __restrict__ dst, size_t dstPitch,
+    int width, int height)
+{
+    // 1) 픽셀 좌표 계산
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    // 2) 경계 체크 (필수)
+    if (x &gt;= width || y &gt;= height) return;
+
+    // 3) pitch 기반 주소 계산 (cudaMallocPitch / GpuMat 호환)
+    const uchar* srcRow = src + y * srcPitch;
+    uchar*       dstRow = dst + y * dstPitch;
+
+    // 4) 실제 처리
+    dstRow[x] = srcRow[x];
+}</code></pre>
+
+                <div class="diagram-box">
+                    <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg">
+                        <!-- grid -->
+                        <g font-family="Consolas, monospace" font-size="11">
+                            <rect x="20" y="30" width="280" height="160" fill="#f8fafc" stroke="#cbd5e1"/>
+                            <text x="160" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">Grid (이미지 전체)</text>
+                            <!-- blocks -->
+                            <g stroke="#94a3b8" fill="#e0f2fe">
+                                <rect x="30" y="40" width="60" height="40"/>
+                                <rect x="95" y="40" width="60" height="40"/>
+                                <rect x="160" y="40" width="60" height="40"/>
+                                <rect x="225" y="40" width="60" height="40"/>
+                                <rect x="30" y="85" width="60" height="40"/>
+                                <rect x="95" y="85" width="60" height="40" fill="#fde68a"/>
+                                <rect x="160" y="85" width="60" height="40"/>
+                                <rect x="225" y="85" width="60" height="40"/>
+                                <rect x="30" y="130" width="60" height="40"/>
+                                <rect x="95" y="130" width="60" height="40"/>
+                                <rect x="160" y="130" width="60" height="40"/>
+                                <rect x="225" y="130" width="60" height="40"/>
+                            </g>
+                            <text x="125" y="108" text-anchor="middle" fill="#78350f" font-size="10">Block</text>
+                            <text x="160" y="205" text-anchor="middle" fill="#64748b">blockDim.x × blockDim.y (예: 16×16)</text>
+
+                            <!-- arrow -->
+                            <path d="M310 105 L360 105" stroke="#0ea5e9" stroke-width="2" marker-end="url(#arr)"/>
+                            <defs>
+                                <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                                    <path d="M0,0 L10,5 L0,10 z" fill="#0ea5e9"/>
+                                </marker>
+                            </defs>
+
+                            <!-- block detail -->
+                            <rect x="370" y="40" width="240" height="140" fill="#fffbeb" stroke="#fbbf24"/>
+                            <text x="490" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="#78350f">Block 내부 (스레드 16×16)</text>
+                            <g stroke="#fcd34d" fill="#fef3c7">
+                                <rect x="380" y="50" width="14" height="14"/>
+                                <rect x="395" y="50" width="14" height="14"/>
+                                <rect x="410" y="50" width="14" height="14"/>
+                                <rect x="425" y="50" width="14" height="14" fill="#fb923c"/>
+                                <rect x="440" y="50" width="14" height="14"/>
+                            </g>
+                            <text x="432" y="80" text-anchor="middle" fill="#9a3412" font-size="10">1 thread = 1 pixel</text>
+                            <text x="490" y="120" text-anchor="middle" font-size="11" fill="#78350f">x = blockIdx.x * 16 + threadIdx.x</text>
+                            <text x="490" y="140" text-anchor="middle" font-size="11" fill="#78350f">y = blockIdx.y * 16 + threadIdx.y</text>
+                            <text x="490" y="165" text-anchor="middle" font-size="11" fill="#475569">→ pixel (x, y)에 한 픽셀 처리</text>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">이미지 커널의 표준 매핑 — Grid × Block × Thread 가 픽셀에 1:1 대응</div>
+                </div>
+
+                <h3 id="why-pitch"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> pitch가 왜 중요한가</h3>
+                <p>GPU는 행 시작 주소가 128/256바이트 정렬되어 있을 때 메모리 결합(coalescing)이 효율적이다. <code>cudaMallocPitch</code>와 <code>cv::cuda::GpuMat</code>은 각 행을 정렬하기 위해 행 끝에 padding을 둔다. 따라서 <code>row * width</code>가 아니라 <code>row * pitch</code>로 주소를 잡아야 한다.</p>
+
+                <h3 id="launch-config"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 표준 런치 설정</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 호스트 측 — 거의 모든 이미지 커널에서 재사용
+inline void Launch2D(int width, int height, dim3&amp; grid, dim3&amp; block,
+                     int bx = 16, int by = 16)
+{
+    block = dim3(bx, by);
+    grid  = dim3((width  + bx - 1) / bx,
+                 (height + by - 1) / by);
+}</code></pre>
+
+                <!-- 3. GaussianBlur -->
+                <h2 id="gaussian"><i class="fa-solid fa-water"></i> GaussianBlur 커널 — 분리 가능 필터</h2>
+                <p>2D Gaussian은 1D Gaussian 두 번으로 분해할 수 있다(수평 ⊗ 수직). <a href="cv-04-blur-filtering.html">OpenCV 시리즈</a>에서 다룬 그 분리 가능 필터다. 직접 짜면 K×K 곱셈을 2K로 줄여 거의 항상 빠르다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방식</th><th>곱셈 수 (픽셀당)</th><th>K=11일 때</th></tr>
+                    <tr><td>일반 2D 컨볼루션</td><td>K²</td><td>121 회</td></tr>
+                    <tr><td>분리 가능(수평+수직)</td><td>2K</td><td>22 회</td></tr>
+                </table>
+
+                <h3 id="gaussian-naive"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 단순 2D 커널 (출발점)</h3>
+
+<pre class="language-cpp"><code class="language-cpp">__constant__ float c_kernel2D[25];  // 5x5
+
+__global__ void Conv2D_5x5(
+    const uchar* __restrict__ src, size_t srcPitch,
+    uchar*       __restrict__ dst, size_t dstPitch,
+    int width, int height)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &gt;= width || y &gt;= height) return;
+
+    float sum = 0.0f;
+    for (int ky = -2; ky &lt;= 2; ++ky)
+    {
+        int sy = min(max(y + ky, 0), height - 1);  // BORDER_REPLICATE
+        const uchar* row = src + sy * srcPitch;
+        for (int kx = -2; kx &lt;= 2; ++kx)
+        {
+            int sx = min(max(x + kx, 0), width - 1);
+            sum += row[sx] * c_kernel2D[(ky + 2) * 5 + (kx + 2)];
+        }
+    }
+    dst[y * dstPitch + x] = (uchar)__float2uint_rn(sum);
+}</code></pre>
+
+                <h3 id="gaussian-separable"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 분리 가능 + Shared Memory 타일링 (수평 패스)</h3>
+
+<pre class="language-cpp"><code class="language-cpp">#define TILE_W 32
+#define TILE_H 8
+#define RADIUS 5
+
+__constant__ float c_gauss1D[2 * RADIUS + 1];
+
+__global__ void GaussianHorizontal(
+    const uchar* __restrict__ src, size_t srcPitch,
+    float*       __restrict__ tmp, size_t tmpPitch,
+    int width, int height)
+{
+    __shared__ uchar tile[TILE_H][TILE_W + 2 * RADIUS];
+
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int x  = blockIdx.x * TILE_W + tx;
+    int y  = blockIdx.y * TILE_H + ty;
+
+    // shared로 행 단위 로드 (좌우 halo 포함)
+    int baseX = blockIdx.x * TILE_W - RADIUS;
+    for (int i = tx; i &lt; TILE_W + 2 * RADIUS; i += TILE_W)
+    {
+        int sx = min(max(baseX + i, 0), width - 1);
+        int sy = min(max(y, 0), height - 1);
+        tile[ty][i] = src[sy * srcPitch + sx];
+    }
+    __syncthreads();
+
+    if (x &gt;= width || y &gt;= height) return;
+
+    float sum = 0.0f;
+    #pragma unroll
+    for (int k = -RADIUS; k &lt;= RADIUS; ++k)
+        sum += tile[ty][tx + RADIUS + k] * c_gauss1D[k + RADIUS];
+
+    tmp[y * (tmpPitch / sizeof(float)) + x] = sum;
+}</code></pre>
+
+                <p>수직 패스도 같은 골격이다. tile을 세로로 잡고 ty 방향으로 halo를 두면 된다. 두 번 호출하면 2D Gaussian이 완성된다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>Constant memory가 필터 계수에 딱이다</strong>
+                        모든 스레드가 같은 인덱스를 읽으면 <code>__constant__</code>는 broadcast로 한 번에 처리되어 매우 빠르다. 필터 커널 계수는 거의 항상 constant memory다.
+                    </div>
+                </div>
+
+                <!-- 4. Sobel -->
+                <h2 id="sobel"><i class="fa-solid fa-bolt"></i> Sobel 엣지 검출 커널</h2>
+                <p>Sobel은 3×3 두 개의 필터로 Gx, Gy를 구하고 magnitude를 계산한다. <a href="cv-05-edge-detection.html">엣지 검출</a> 글에서 다룬 그것이다. 3×3은 작아서 shared memory 없이도 잘 동작한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void SobelMagnitude(
+    const uchar* __restrict__ src, size_t srcPitch,
+    uchar*       __restrict__ dst, size_t dstPitch,
+    int width, int height)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &gt;= width || y &gt;= height) return;
+
+    // 경계 클램프
+    int xm = max(x - 1, 0);
+    int xp = min(x + 1, width  - 1);
+    int ym = max(y - 1, 0);
+    int yp = min(y + 1, height - 1);
+
+    auto P = [&amp;](int yy, int xx) -&gt; int {
+        return src[yy * srcPitch + xx];
+    };
+
+    // Gx
+    int gx = -P(ym, xm) - 2 * P(y, xm) - P(yp, xm)
+           +  P(ym, xp) + 2 * P(y, xp) + P(yp, xp);
+    // Gy
+    int gy = -P(ym, xm) - 2 * P(ym, x) - P(ym, xp)
+           +  P(yp, xm) + 2 * P(yp, x) + P(yp, xp);
+
+    // L1 근사 (sqrt보다 빠르고 실무에서 충분)
+    int mag = abs(gx) + abs(gy);
+    dst[y * dstPitch + x] = (uchar)min(mag, 255);
+}</code></pre>
+
+                <div class="diagram-box">
+                    <svg viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg">
+                        <g font-family="Consolas, monospace" font-size="12">
+                            <!-- 3x3 -->
+                            <g>
+                                <text x="60" y="20" text-anchor="middle" font-weight="700" fill="#334155">입력 (3×3)</text>
+                                <g stroke="#94a3b8" fill="#f1f5f9">
+                                    <rect x="20" y="30" width="30" height="30"/>
+                                    <rect x="50" y="30" width="30" height="30"/>
+                                    <rect x="80" y="30" width="30" height="30"/>
+                                    <rect x="20" y="60" width="30" height="30"/>
+                                    <rect x="50" y="60" width="30" height="30" fill="#fde68a"/>
+                                    <rect x="80" y="60" width="30" height="30"/>
+                                    <rect x="20" y="90" width="30" height="30"/>
+                                    <rect x="50" y="90" width="30" height="30"/>
+                                    <rect x="80" y="90" width="30" height="30"/>
+                                </g>
+                                <text x="65" y="79" text-anchor="middle" fill="#78350f" font-size="10">P</text>
+                            </g>
+                            <!-- Gx kernel -->
+                            <g>
+                                <text x="220" y="20" text-anchor="middle" font-weight="700" fill="#334155">Gx 커널</text>
+                                <g stroke="#94a3b8" fill="#dbeafe" font-size="11">
+                                    <rect x="180" y="30" width="30" height="30"/><text x="195" y="50" text-anchor="middle">-1</text>
+                                    <rect x="210" y="30" width="30" height="30"/><text x="225" y="50" text-anchor="middle">0</text>
+                                    <rect x="240" y="30" width="30" height="30"/><text x="255" y="50" text-anchor="middle">+1</text>
+                                    <rect x="180" y="60" width="30" height="30"/><text x="195" y="80" text-anchor="middle">-2</text>
+                                    <rect x="210" y="60" width="30" height="30"/><text x="225" y="80" text-anchor="middle">0</text>
+                                    <rect x="240" y="60" width="30" height="30"/><text x="255" y="80" text-anchor="middle">+2</text>
+                                    <rect x="180" y="90" width="30" height="30"/><text x="195" y="110" text-anchor="middle">-1</text>
+                                    <rect x="210" y="90" width="30" height="30"/><text x="225" y="110" text-anchor="middle">0</text>
+                                    <rect x="240" y="90" width="30" height="30"/><text x="255" y="110" text-anchor="middle">+1</text>
+                                </g>
+                            </g>
+                            <!-- Gy kernel -->
+                            <g>
+                                <text x="370" y="20" text-anchor="middle" font-weight="700" fill="#334155">Gy 커널</text>
+                                <g stroke="#94a3b8" fill="#fce7f3" font-size="11">
+                                    <rect x="330" y="30" width="30" height="30"/><text x="345" y="50" text-anchor="middle">-1</text>
+                                    <rect x="360" y="30" width="30" height="30"/><text x="375" y="50" text-anchor="middle">-2</text>
+                                    <rect x="390" y="30" width="30" height="30"/><text x="405" y="50" text-anchor="middle">-1</text>
+                                    <rect x="330" y="60" width="30" height="30"/><text x="345" y="80" text-anchor="middle">0</text>
+                                    <rect x="360" y="60" width="30" height="30"/><text x="375" y="80" text-anchor="middle">0</text>
+                                    <rect x="390" y="60" width="30" height="30"/><text x="405" y="80" text-anchor="middle">0</text>
+                                    <rect x="330" y="90" width="30" height="30"/><text x="345" y="110" text-anchor="middle">+1</text>
+                                    <rect x="360" y="90" width="30" height="30"/><text x="375" y="110" text-anchor="middle">+2</text>
+                                    <rect x="390" y="90" width="30" height="30"/><text x="405" y="110" text-anchor="middle">+1</text>
+                                </g>
+                            </g>
+                            <!-- output -->
+                            <g>
+                                <text x="500" y="20" text-anchor="middle" font-weight="700" fill="#334155">출력</text>
+                                <rect x="470" y="60" width="60" height="30" stroke="#10b981" fill="#d1fae5"/>
+                                <text x="500" y="80" text-anchor="middle" fill="#065f46" font-size="11">|Gx|+|Gy|</text>
+                            </g>
+                            <path d="M120 75 L175 75" stroke="#0ea5e9" marker-end="url(#a2)"/>
+                            <path d="M120 75 L325 75" stroke="#ec4899" stroke-dasharray="3 3" marker-end="url(#a3)"/>
+                            <path d="M275 75 L465 75" stroke="#10b981" marker-end="url(#a4)"/>
+                            <defs>
+                                <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0ea5e9"/></marker>
+                                <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ec4899"/></marker>
+                                <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#10b981"/></marker>
+                            </defs>
+                            <text x="280" y="170" text-anchor="middle" fill="#64748b" font-size="11">한 스레드 = 한 픽셀에서 Gx, Gy, magnitude 모두 계산</text>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">Sobel 커널의 메모리 접근 — 3×3 윈도우를 한 스레드가 모두 읽는다</div>
+                </div>
+
+                <!-- 5. Threshold -->
+                <h2 id="threshold"><i class="fa-solid fa-sliders"></i> 임계화 커널 — 전역과 Otsu</h2>
+                <p><a href="cv-06-thresholding.html">임계화</a>는 가장 단순한 픽셀 단위 연산이라 GPU에서 거의 메모리 대역폭에 묶인다.</p>
+
+                <h3 id="thr-global"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 전역 임계화</h3>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void ThresholdBinary(
+    const uchar* __restrict__ src, size_t srcPitch,
+    uchar*       __restrict__ dst, size_t dstPitch,
+    int width, int height, uchar thresh, uchar maxVal)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &gt;= width || y &gt;= height) return;
+
+    uchar v = src[y * srcPitch + x];
+    dst[y * dstPitch + x] = (v &gt; thresh) ? maxVal : 0;
+}</code></pre>
+
+                <h3 id="thr-otsu"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Otsu 자동 임계값</h3>
+                <p>Otsu는 히스토그램으로부터 클래스 간 분산이 최대가 되는 임계값을 찾는다. GPU에서는 (1) 히스토그램 계산, (2) 호스트에서 Otsu 식 평가, (3) 위 BinaryKernel 호출, 세 단계가 일반적이다. 256-bin 누적은 호스트에서 처리해도 무시할 만하다.</p>
+
+                <!-- 6. Histogram -->
+                <h2 id="histogram"><i class="fa-solid fa-chart-column"></i> Histogram 커널 — atomic과 shared</h2>
+                <p>히스토그램은 GPU 커널 중에서도 가장 까다로운 패턴이다. 수많은 스레드가 같은 256개의 bin에 동시에 쓰려고 하기 때문이다. <strong>shared histogram → global merge</strong>가 정석이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void Histogram256(
+    const uchar* __restrict__ src, size_t srcPitch,
+    int width, int height,
+    unsigned int* __restrict__ hist)  // 256개
+{
+    __shared__ unsigned int sHist[256];
+
+    // 1) shared 초기화 (256 스레드면 1회, 그 외엔 루프)
+    int tid = threadIdx.y * blockDim.x + threadIdx.x;
+    int blockSize = blockDim.x * blockDim.y;
+    for (int i = tid; i &lt; 256; i += blockSize)
+        sHist[i] = 0;
+    __syncthreads();
+
+    // 2) 블록 내 픽셀들을 shared에 누적 (atomic이지만 충돌이 적다)
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &lt; width &amp;&amp; y &lt; height)
+    {
+        uchar v = src[y * srcPitch + x];
+        atomicAdd(&amp;sHist[v], 1u);
+    }
+    __syncthreads();
+
+    // 3) global로 병합 (1 block당 256번)
+    for (int i = tid; i &lt; 256; i += blockSize)
+        atomicAdd(&amp;hist[i], sHist[i]);
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>왜 shared가 필수인가</strong>
+                        global atomicAdd만 사용하면 수백만 스레드가 256 bin에 직접 충돌해서 사실상 직렬화된다. shared로 한 번 흡수하면 충돌이 같은 block 내부에 한정되어 수십~수백 배 빨라진다.
+                    </div>
+                </div>
+
+                <!-- 7. 모폴로지 -->
+                <h2 id="morphology"><i class="fa-solid fa-stamp"></i> 모폴로지 커널 — erosion과 dilation</h2>
+                <p>3×3 구조 요소(structuring element)로 erosion/dilation을 직접 짠다. erosion은 윈도우의 <strong>min</strong>, dilation은 <strong>max</strong>다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">template &lt;bool IsDilation&gt;
+__global__ void Morph3x3(
+    const uchar* __restrict__ src, size_t srcPitch,
+    uchar*       __restrict__ dst, size_t dstPitch,
+    int width, int height)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &gt;= width || y &gt;= height) return;
+
+    int xm = max(x - 1, 0), xp = min(x + 1, width  - 1);
+    int ym = max(y - 1, 0), yp = min(y + 1, height - 1);
+
+    uchar v = src[y * srcPitch + x];
+    if (IsDilation)
+    {
+        v = max(v, src[ym * srcPitch + xm]);
+        v = max(v, src[ym * srcPitch + x ]);
+        v = max(v, src[ym * srcPitch + xp]);
+        v = max(v, src[y  * srcPitch + xm]);
+        v = max(v, src[y  * srcPitch + xp]);
+        v = max(v, src[yp * srcPitch + xm]);
+        v = max(v, src[yp * srcPitch + x ]);
+        v = max(v, src[yp * srcPitch + xp]);
+    }
+    else  // erosion
+    {
+        v = min(v, src[ym * srcPitch + xm]);
+        v = min(v, src[ym * srcPitch + x ]);
+        v = min(v, src[ym * srcPitch + xp]);
+        v = min(v, src[y  * srcPitch + xm]);
+        v = min(v, src[y  * srcPitch + xp]);
+        v = min(v, src[yp * srcPitch + xm]);
+        v = min(v, src[yp * srcPitch + x ]);
+        v = min(v, src[yp * srcPitch + xp]);
+    }
+    dst[y * dstPitch + x] = v;
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>모폴로지도 분리 가능하다</strong>
+                        직사각형/십자형 구조 요소면 수평 erosion + 수직 erosion으로 분해 가능하다. 큰 커널일수록 효과가 크다.
+                    </div>
+                </div>
+
+                <!-- 8. Reduction -->
+                <h2 id="reduction"><i class="fa-solid fa-down-long"></i> Reduction 패턴 — 합·최대·최소</h2>
+                <p>전체 픽셀의 평균이나 최대값 같은 단일 스칼라를 구하는 패턴이다. warp shuffle이 등장한 뒤로 reduction은 훨씬 간결해졌다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__inline__ __device__ unsigned int warpReduceSum(unsigned int v)
+{
+    for (int off = 16; off &gt; 0; off /= 2)
+        v += __shfl_down_sync(0xffffffff, v, off);
+    return v;
+}
+
+__global__ void ImageSum(
+    const uchar* __restrict__ src, size_t srcPitch,
+    int width, int height,
+    unsigned long long* __restrict__ outSum)
+{
+    __shared__ unsigned int sPartial[32];  // 최대 32 warp/block
+
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    unsigned int v = 0;
+    if (x &lt; width &amp;&amp; y &lt; height)
+        v = src[y * srcPitch + x];
+
+    // 1) warp 내부 reduce
+    v = warpReduceSum(v);
+
+    // 2) 각 warp의 lane 0이 shared에 저장
+    int lane    = (threadIdx.y * blockDim.x + threadIdx.x) &amp; 31;
+    int warpId  = (threadIdx.y * blockDim.x + threadIdx.x) &gt;&gt; 5;
+    if (lane == 0) sPartial[warpId] = v;
+    __syncthreads();
+
+    // 3) 첫 warp가 남은 부분합을 다시 reduce
+    int nWarps = (blockDim.x * blockDim.y + 31) / 32;
+    if (warpId == 0)
+    {
+        unsigned int x0 = (lane &lt; nWarps) ? sPartial[lane] : 0u;
+        x0 = warpReduceSum(x0);
+        if (lane == 0) atomicAdd(outSum, (unsigned long long)x0);
+    }
+}</code></pre>
+
+                <!-- 9. GpuMat 연동 -->
+                <h2 id="gpumat-raw"><i class="fa-solid fa-plug"></i> cv::cuda::GpuMat raw 포인터 연동</h2>
+                <p>실무에서는 입력이 이미 <code>cv::cuda::GpuMat</code>로 들어오는 경우가 많다. <code>GpuMat</code>의 <code>data</code>와 <code>step</code>이 곧 raw 포인터와 pitch다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;opencv2/core/cuda.hpp&gt;
+
+// 위에서 정의한 SobelMagnitude 호출
+void RunSobelOnGpuMat(const cv::cuda::GpuMat&amp; src, cv::cuda::GpuMat&amp; dst,
+                     cudaStream_t stream = 0)
+{
+    CV_Assert(src.type() == CV_8UC1);
+    dst.create(src.size(), CV_8UC1);
+
+    dim3 block(16, 16);
+    dim3 grid((src.cols + 15) / 16, (src.rows + 15) / 16);
+
+    SobelMagnitude&lt;&lt;&lt;grid, block, 0, stream&gt;&gt;&gt;(
+        src.ptr&lt;uchar&gt;(), src.step,
+        dst.ptr&lt;uchar&gt;(), dst.step,
+        src.cols, src.rows);
+    // 동기 확인은 디버그 빌드에서만
+}</code></pre>
+
+                <p>OpenCV의 <code>cv::cuda::Stream</code>과 합치고 싶으면 <code>cv::cuda::StreamAccessor::getStream(stream)</code>으로 <code>cudaStream_t</code>를 꺼내 쓰면 된다. 이러면 <a href="gpu-09-opencv-cuda.html">cv::cuda</a> 호출과 직접 커널을 같은 스트림에 섞을 수 있다.</p>
+
+                <!-- 10. 성능 비교 -->
+                <h2 id="bench"><i class="fa-solid fa-gauge-high"></i> 성능 비교 — cv::cuda vs 직접 커널</h2>
+                <p>RTX 3060, 4096×3000 Mono8 이미지 기준 측정 예시(참고용 수치).</p>
+
+                <table class="spec-table">
+                    <tr><th>연산</th><th>cv::cuda</th><th>직접 커널</th><th>비고</th></tr>
+                    <tr><td>GaussianBlur 5×5</td><td>0.42 ms</td><td>0.38 ms</td><td>거의 차이 없음</td></tr>
+                    <tr><td>GaussianBlur 11×11 (separable)</td><td>0.75 ms</td><td>0.62 ms</td><td>커널 fusion으로 단축</td></tr>
+                    <tr><td>Sobel + Threshold</td><td>0.55 ms (2회 호출)</td><td>0.34 ms (1 커널)</td><td><strong>fusion 효과</strong></td></tr>
+                    <tr><td>Histogram 256</td><td>0.21 ms</td><td>0.23 ms</td><td>cv::cuda가 잘 만듦</td></tr>
+                    <tr><td>Image Sum</td><td>0.18 ms</td><td>0.17 ms</td><td>거의 동일</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>직접 커널이 항상 이기는 게 아니다</strong>
+                        cv::cuda의 단일 커널은 NVIDIA가 충분히 최적화해 둔 결과다. <strong>이득이 가장 큰 건 여러 연산을 한 커널로 합칠 때(fusion)</strong>다. blur → threshold → erode를 한 패스로 묶으면 글로벌 메모리 왕복이 사라진다.
+                    </div>
+                </div>
+
+                <h3 id="fusion"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Fusion 예시 — Sobel + Threshold</h3>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void SobelThresholdFused(
+    const uchar* __restrict__ src, size_t srcPitch,
+    uchar*       __restrict__ dst, size_t dstPitch,
+    int width, int height, int threshold)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &gt;= width || y &gt;= height) return;
+
+    int xm = max(x - 1, 0), xp = min(x + 1, width  - 1);
+    int ym = max(y - 1, 0), yp = min(y + 1, height - 1);
+
+    int gx = -src[ym*srcPitch+xm] - 2*src[y*srcPitch+xm] - src[yp*srcPitch+xm]
+           +  src[ym*srcPitch+xp] + 2*src[y*srcPitch+xp] + src[yp*srcPitch+xp];
+    int gy = -src[ym*srcPitch+xm] - 2*src[ym*srcPitch+x] - src[ym*srcPitch+xp]
+           +  src[yp*srcPitch+xm] + 2*src[yp*srcPitch+x] + src[yp*srcPitch+xp];
+
+    int mag = abs(gx) + abs(gy);
+    dst[y * dstPitch + x] = (mag &gt; threshold) ? 255 : 0;  // 임계화까지 한 번에
+}</code></pre>
+
+                <!-- 11. 산업 비전 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전 관점 — Hot path를 커널로</h2>
+                <p>검사 알고리즘은 보통 수십 개의 작은 연산이 줄줄이 이어진다. 모든 걸 직접 짤 필요는 없다. 다음 기준으로 골라낸다.</p>
+
+                <table>
+                    <tr><th>그대로 둘 곳</th><th>직접 커널로 옮길 곳</th></tr>
+                    <tr><td>cv::cuda 한 번 호출로 끝나는 큰 연산</td><td>2~5개 작은 연산이 연속으로 묶이는 hot path</td></tr>
+                    <tr><td>실행 시간 5% 미만인 부분</td><td>전체의 30% 이상을 잡아먹는 단계</td></tr>
+                    <tr><td>cv::cuda에 잘 매핑되는 표준 연산</td><td>도메인 특화 알고리즘(특수 결함 검출, 비표준 디모자이크)</td></tr>
+                    <tr><td>크기·타입이 매번 바뀌는 곳</td><td>입력이 매번 같은 고정 파이프라인</td></tr>
+                </table>
+
+                <p>한 줄 카메라(line-scan) 라이브 검사는 latency가 곧 throughput이다. 한 프레임당 10 ms를 8 ms로 줄이는 게 25%의 라인 속도 향상이 된다. fusion만 잘해도 그 정도는 쉽게 줄어든다.</p>
+
+                <!-- 12. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-skull"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>경계 처리 누락</strong>
+                        <code>if (x &gt;= width || y &gt;= height) return;</code>를 빠뜨리면 다음 행의 패딩 영역을 침범해 미세한 노이즈 또는 메모리 액세스 오류가 난다. compute-sanitizer로 잡힌다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>pitch 무시</strong>
+                        <code>y * width + x</code>로 인덱싱하면 cv::cuda::GpuMat에서 한 행씩 어긋난다. 반드시 <code>step</code> 또는 <code>pitch</code>를 사용한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>atomic 과다 사용 → 직렬화</strong>
+                        global atomicAdd로 한 곳에 몰리면 GPU가 사실상 1개 SM처럼 동작한다. shared로 1차 흡수하고, 마지막 단계에서만 global atomic을 쓴다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>경계에서 divergence가 발생하는 if</strong>
+                        warp 안에서 일부 스레드만 if에 걸리면 분기 모두를 실행한다. 작은 분기는 무해하지만, 큰 분기는 <code>min/max</code> 클램프나 padding된 입력으로 회피한다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>측정하지 않은 자기만족 최적화</strong>
+                        unroll, shared, constant를 다 박아 넣고 "빨라졌을 거다"라고 끝내는 게 가장 흔한 실수다. <a href="gpu-08-profiling.html">Nsight Compute</a>로 메모리 throughput, occupancy, stall reason을 확인하기 전엔 끝난 게 아니다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA CUDA Samples — <code>imageDenoising</code>, <code>convolutionSeparable</code>, <code>histogram</code></li>
+                        <li>NVIDIA CUDA C++ Programming Guide — Shared Memory, Warp Shuffle</li>
+                        <li>OpenCV cv::cuda 모듈 소스 — modules/cudaimgproc, modules/cudafilters</li>
+                        <li>"Programming Massively Parallel Processors" (Kirk &amp; Hwu) — Reduction, Tiling 챕터</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

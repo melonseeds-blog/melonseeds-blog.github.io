@@ -1,0 +1,844 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>첫 CUDA 커널 — 그리드·블록·스레드 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC 2단 바 */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table code { background: var(--primary-light); color: var(--primary-dark); padding: 1px 6px; border-radius: 4px; }
+
+        /* 다이어그램 박스 */
+        .diagram-box {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .diagram-box svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 10px;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#kernel-intro" data-section="kernel-intro">커널이란</a>
+        <a href="#qualifiers" data-section="qualifiers">함수 한정자</a>
+        <a href="#hierarchy" data-section="hierarchy">그리드·블록·스레드</a>
+        <a href="#indexing" data-section="indexing">인덱싱</a>
+        <a href="#vector-add" data-section="vector-add">벡터 덧셈</a>
+        <a href="#matrix-add" data-section="matrix-add">행렬 덧셈</a>
+        <a href="#block-size" data-section="block-size">블록 크기</a>
+        <a href="#sync-error" data-section="sync-error">동기성·에러</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / CUDA</span>
+                </div>
+                <h1>첫 CUDA 커널 — 그리드·블록·스레드</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>CUDA 커널의 정의와 <code>__global__</code>·<code>__device__</code>·<code>__host__</code> 함수 한정자</li>
+                        <li>그리드 — 블록 — 스레드 3단 계층 구조와 <code>dim3</code> 구성</li>
+                        <li><code>threadIdx</code>·<code>blockIdx</code>·<code>blockDim</code>·<code>gridDim</code>으로 전역 인덱스를 계산하는 방법</li>
+                        <li>벡터 덧셈·행렬 덧셈 전체 예제 코드 (호스트 메모리 → cudaMalloc → cudaMemcpy → 커널 호출 → 회수)</li>
+                        <li>블록 크기 선택 기준, 경계 처리, 비동기 호출, 에러 체크 패턴</li>
+                        <li>커널 작성 시 흔히 빠지는 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#kernel-intro">CUDA 커널이란?</a></li>
+                        <li><a href="#qualifiers">함수 한정자 — __global__·__device__·__host__</a></li>
+                        <li><a href="#hierarchy">그리드·블록·스레드 계층</a></li>
+                        <li><a href="#indexing">인덱싱 — 전역 인덱스 계산</a></li>
+                        <li><a href="#vector-add">첫 예제 — 벡터 덧셈</a></li>
+                        <li><a href="#matrix-add">두 번째 예제 — 행렬 덧셈 (2D)</a></li>
+                        <li><a href="#block-size">블록 크기 선택</a></li>
+                        <li><a href="#sync-error">커널 호출 동기성과 에러 체크</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 커널이란 -->
+                <h2 id="kernel-intro"><i class="fa-solid fa-microchip"></i> CUDA 커널이란?</h2>
+                <p>CUDA에서 <strong>커널(kernel)</strong>은 GPU에서 실행되는 함수다. 일반 C++ 함수처럼 한 번 호출되면 한 번 실행되는 것이 아니라, <strong>N개의 스레드가 동시에 동일한 함수 본문을 병렬로 실행</strong>한다. 각 스레드는 자기 고유 ID로 처리할 데이터를 골라 잡는다.</p>
+
+                <p>호스트 코드 한 줄(<code>kernel&lt;&lt;&lt;..., ...&gt;&gt;&gt;(...)</code>)이 수십만 개의 스레드를 띄우는 셈이다. CPU 멀티스레드와 결정적으로 다른 점이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>SIMT 실행 모델</strong>
+                        CUDA는 SIMT(Single Instruction, Multiple Threads) 모델을 따른다. 같은 명령을 여러 스레드가 동시에 다른 데이터에 대해 수행한다. 이전 글(1편)에서 본 GPU 코어 구조의 자연스러운 결과다.
+                    </div>
+                </div>
+
+                <!-- 2. 함수 한정자 -->
+                <h2 id="qualifiers"><i class="fa-solid fa-tag"></i> 함수 한정자 — __global__·__device__·__host__</h2>
+                <p>CUDA는 함수가 어디서 호출되고 어디서 실행되는지를 한정자로 명시한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>한정자</th><th>호출 위치</th><th>실행 위치</th><th>반환형</th></tr>
+                    <tr><td><code>__global__</code></td><td>호스트(CPU)</td><td>디바이스(GPU)</td><td>반드시 <code>void</code></td></tr>
+                    <tr><td><code>__device__</code></td><td>디바이스</td><td>디바이스</td><td>자유</td></tr>
+                    <tr><td><code>__host__</code></td><td>호스트</td><td>호스트</td><td>자유 (생략 시 기본)</td></tr>
+                    <tr><td><code>__host__ __device__</code></td><td>둘 다</td><td>둘 다</td><td>자유</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// 커널 — CPU에서 호출, GPU에서 실행. 반환형은 항상 void.
+__global__ void MyKernel(float* data, int n)
+{
+    // GPU 코드
+}
+
+// 디바이스 헬퍼 — 커널 안에서만 호출 가능.
+__device__ float Square(float x)
+{
+    return x * x;
+}
+
+// 호스트와 디바이스 양쪽에서 쓰는 인라인 유틸리티.
+__host__ __device__ int Clamp(int v, int lo, int hi)
+{
+    return v &lt; lo ? lo : (v &gt; hi ? hi : v);
+}
+
+// 일반 호스트 함수. __host__ 는 보통 생략한다.
+void HostOnly() { /* ... */ }</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong><code>__global__</code> 반환형은 항상 void</strong>
+                        결과는 출력 인자 포인터(디바이스 메모리)에 써서 돌려준다. 반환형으로 값을 주는 것은 불가능하다.
+                    </div>
+                </div>
+
+                <!-- 3. 계층 -->
+                <h2 id="hierarchy"><i class="fa-solid fa-sitemap"></i> 그리드·블록·스레드 계층</h2>
+                <p>커널 호출 한 번은 <strong>그리드(grid)</strong>를 띄운다. 그리드는 <strong>블록(block)</strong>들의 모음이고, 블록은 다시 <strong>스레드(thread)</strong>들의 모음이다. 즉 <em>그리드 → 블록 → 스레드</em>의 3단 계층이다.</p>
+
+                <div class="diagram-box">
+                    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Grid box -->
+                        <rect x="10" y="10" width="620" height="300" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" rx="8"/>
+                        <text x="320" y="32" text-anchor="middle" font-size="14" font-weight="700" fill="#334155">Grid (gridDim.x = 3, gridDim.y = 2)</text>
+
+                        <!-- 6 blocks (3x2) -->
+                        <g font-family="Consolas, monospace" font-size="10">
+                            <!-- block (0,0) -->
+                            <rect x="30" y="50" width="190" height="120" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" rx="6"/>
+                            <text x="125" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#78350f">Block (0,0)</text>
+                            <!-- threads inside -->
+                            <g fill="#0ea5e9">
+                                <rect x="40" y="78" width="18" height="18" rx="2"/><rect x="62" y="78" width="18" height="18" rx="2"/>
+                                <rect x="84" y="78" width="18" height="18" rx="2"/><rect x="106" y="78" width="18" height="18" rx="2"/>
+                                <rect x="128" y="78" width="18" height="18" rx="2"/><rect x="150" y="78" width="18" height="18" rx="2"/>
+                                <rect x="172" y="78" width="18" height="18" rx="2"/><rect x="194" y="78" width="18" height="18" rx="2"/>
+                                <rect x="40" y="100" width="18" height="18" rx="2"/><rect x="62" y="100" width="18" height="18" rx="2"/>
+                                <rect x="84" y="100" width="18" height="18" rx="2"/><rect x="106" y="100" width="18" height="18" rx="2"/>
+                                <rect x="128" y="100" width="18" height="18" rx="2"/><rect x="150" y="100" width="18" height="18" rx="2"/>
+                                <rect x="172" y="100" width="18" height="18" rx="2"/><rect x="194" y="100" width="18" height="18" rx="2"/>
+                            </g>
+                            <text x="125" y="140" text-anchor="middle" font-size="10" fill="#475569">threads (blockDim = 16)</text>
+                            <text x="125" y="156" text-anchor="middle" font-size="9" fill="#64748b">threadIdx.x = 0 .. 15</text>
+
+                            <!-- block (1,0) -->
+                            <rect x="225" y="50" width="190" height="120" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" rx="6"/>
+                            <text x="320" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#78350f">Block (1,0)</text>
+                            <!-- block (2,0) -->
+                            <rect x="420" y="50" width="190" height="120" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" rx="6"/>
+                            <text x="515" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#78350f">Block (2,0)</text>
+
+                            <!-- block (0,1) -->
+                            <rect x="30" y="180" width="190" height="115" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" rx="6"/>
+                            <text x="125" y="198" text-anchor="middle" font-size="11" font-weight="700" fill="#78350f">Block (0,1)</text>
+                            <!-- block (1,1) -->
+                            <rect x="225" y="180" width="190" height="115" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" rx="6"/>
+                            <text x="320" y="198" text-anchor="middle" font-size="11" font-weight="700" fill="#78350f">Block (1,1)</text>
+                            <!-- block (2,1) -->
+                            <rect x="420" y="180" width="190" height="115" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" rx="6"/>
+                            <text x="515" y="198" text-anchor="middle" font-size="11" font-weight="700" fill="#78350f">Block (2,1)</text>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">2D 그리드 — 3×2 블록, 각 블록 안에 다수의 스레드. 블록은 SM에 배치되고, 블록 단위로 shared memory와 동기화를 공유한다.</div>
+                </div>
+
+                <h3 id="dim3"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> dim3 타입과 1D / 2D / 3D 구성</h3>
+                <p><code>dim3</code>은 최대 3차원까지 표현하는 정수 벡터 구조체다. 그리드와 블록의 차원을 모두 <code>dim3</code>로 지정한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 1D — 벡터처럼 한 줄로 펼친 데이터.
+dim3 blockDim(256);           // 한 블록당 256 스레드
+dim3 gridDim(64);             // 64개 블록 → 총 64 * 256 = 16,384 스레드
+kernel&lt;&lt;&lt;gridDim, blockDim&gt;&gt;&gt;(args);
+
+// 2D — 이미지·행렬 처리.
+dim3 blockDim(16, 16);        // 16x16 = 256 스레드/블록
+dim3 gridDim(80, 60);         // 80x60 블록 → 1280x960 픽셀 커버
+kernel&lt;&lt;&lt;gridDim, blockDim&gt;&gt;&gt;(args);
+
+// 3D — 볼륨 데이터, 3D 컨볼루션 등.
+dim3 blockDim(8, 8, 8);       // 512 스레드/블록
+dim3 gridDim(32, 32, 32);
+kernel&lt;&lt;&lt;gridDim, blockDim&gt;&gt;&gt;(args);
+
+// int 하나만 넘기면 1D 단축형으로 해석된다.
+kernel&lt;&lt;&lt;64, 256&gt;&gt;&gt;(args);   // 위 1D 예제와 동일</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>한 블록당 최대 1024 스레드</strong>
+                        대부분의 GPU에서 블록당 스레드 수 상한은 1024다. <code>16×16=256</code>, <code>32×32=1024</code>가 자주 쓰이는 2D 블록 크기다.
+                    </div>
+                </div>
+
+                <!-- 4. 인덱싱 -->
+                <h2 id="indexing"><i class="fa-solid fa-hashtag"></i> 인덱싱 — 전역 인덱스 계산</h2>
+                <p>모든 스레드는 자기가 어느 데이터를 처리해야 할지 결정해야 한다. 내장 변수 4개로 그 위치를 알아낸다.</p>
+
+                <table class="spec-table">
+                    <tr><th>내장 변수</th><th>의미</th><th>예시 값 (blockDim=256, gridDim=64)</th></tr>
+                    <tr><td><code>threadIdx</code></td><td>블록 내에서의 스레드 인덱스</td><td>0 ~ 255</td></tr>
+                    <tr><td><code>blockIdx</code></td><td>그리드 내에서의 블록 인덱스</td><td>0 ~ 63</td></tr>
+                    <tr><td><code>blockDim</code></td><td>한 블록의 스레드 수</td><td>256</td></tr>
+                    <tr><td><code>gridDim</code></td><td>그리드의 블록 수</td><td>64</td></tr>
+                </table>
+
+                <h3 id="idx-1d"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1D 전역 인덱스</h3>
+                <p>1D 데이터(벡터)를 처리할 때 가장 자주 쓰는 공식이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void MyKernel(float* data, int n)
+{
+    // 전역 인덱스 — 블록 번호 * 블록 크기 + 블록 내 스레드 번호.
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i &lt; n)
+    {
+        data[i] = data[i] * 2.0f;
+    }
+}</code></pre>
+
+                <p>이를 이해하기 위한 간단한 그림. <code>blockDim.x = 4</code>, <code>gridDim.x = 3</code>일 때 12개 스레드의 <code>i</code>는 다음과 같다.</p>
+
+<pre class="language-text"><code class="language-text">Block 0           Block 1           Block 2
+[ 0  1  2  3 ]  [ 4  5  6  7 ]  [ 8  9 10 11 ]
+ ^                ^                ^
+ threadIdx.x=0   threadIdx.x=0   threadIdx.x=0
+ blockIdx.x=0    blockIdx.x=1    blockIdx.x=2
+
+i = blockIdx.x * blockDim.x + threadIdx.x
+   = 1 * 4 + 2 = 6  (예: Block 1의 3번째 스레드)</code></pre>
+
+                <h3 id="idx-2d"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2D 인덱싱 — 이미지·행렬</h3>
+                <p>2D 그리드/블록을 쓸 때는 행과 열 두 방향 모두 같은 식을 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void ProcessImage(unsigned char* image, int width, int height, int pitch)
+{
+    int col = blockIdx.x * blockDim.x + threadIdx.x;  // x 방향
+    int row = blockIdx.y * blockDim.y + threadIdx.y;  // y 방향
+
+    if (col &lt; width &amp;&amp; row &lt; height)
+    {
+        // pitch — 한 행이 차지하는 실제 바이트 수 (정렬 때문에 width와 다를 수 있음).
+        int idx = row * pitch + col;
+        image[idx] = 255 - image[idx];  // 반전
+    }
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>pitch vs width</strong>
+                        <code>cudaMallocPitch</code>로 할당한 메모리는 행 시작 주소가 128 바이트 등으로 정렬돼 있어서 <code>pitch</code>(바이트 단위)가 <code>width * sizeof(pixel)</code>보다 클 수 있다. 인덱싱 시 반드시 <code>pitch</code>를 사용한다.
+                    </div>
+                </div>
+
+                <!-- 5. 벡터 덧셈 -->
+                <h2 id="vector-add"><i class="fa-solid fa-plus"></i> 첫 예제 — 벡터 덧셈</h2>
+                <p>CUDA의 "Hello, World"인 벡터 덧셈이다. <code>C = A + B</code>를 GPU에서 병렬로 계산한다. 전체 흐름은 다음과 같다.</p>
+
+                <ol>
+                    <li>호스트 메모리에 입력 배열 A, B 준비</li>
+                    <li><code>cudaMalloc</code>으로 GPU 메모리 d_A, d_B, d_C 할당</li>
+                    <li><code>cudaMemcpy</code>로 호스트 → 디바이스 데이터 복사</li>
+                    <li>커널 호출 (<code>&lt;&lt;&lt;...&gt;&gt;&gt;</code> 문법)</li>
+                    <li><code>cudaMemcpy</code>로 디바이스 → 호스트 결과 회수</li>
+                    <li><code>cudaFree</code>로 GPU 메모리 해제</li>
+                </ol>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;cstdio&gt;
+#include &lt;cuda_runtime.h&gt;
+
+constexpr int kVectorSize = 1 &lt;&lt; 20;   // 1,048,576 요소
+constexpr int kThreadsPerBlock = 256;
+
+// 커널 — 각 스레드가 한 요소를 담당한다.
+__global__ void VectorAdd(const float* a, const float* b, float* c, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i &lt; n)
+    {
+        c[i] = a[i] + b[i];
+    }
+}
+
+int main()
+{
+    const size_t bytes = kVectorSize * sizeof(float);
+
+    // 1) 호스트 메모리 준비.
+    float* h_a = (float*)malloc(bytes);
+    float* h_b = (float*)malloc(bytes);
+    float* h_c = (float*)malloc(bytes);
+    for (int i = 0; i &lt; kVectorSize; ++i)
+    {
+        h_a[i] = static_cast&lt;float&gt;(i);
+        h_b[i] = static_cast&lt;float&gt;(i) * 2.0f;
+    }
+
+    // 2) 디바이스 메모리 할당.
+    float* d_a = nullptr;
+    float* d_b = nullptr;
+    float* d_c = nullptr;
+    cudaMalloc(&amp;d_a, bytes);
+    cudaMalloc(&amp;d_b, bytes);
+    cudaMalloc(&amp;d_c, bytes);
+
+    // 3) 호스트 -&gt; 디바이스 복사.
+    cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice);
+
+    // 4) 커널 호출 — 블록 수는 올림 나눗셈으로 계산한다.
+    int blocks = (kVectorSize + kThreadsPerBlock - 1) / kThreadsPerBlock;
+    VectorAdd&lt;&lt;&lt;blocks, kThreadsPerBlock&gt;&gt;&gt;(d_a, d_b, d_c, kVectorSize);
+
+    // 커널은 비동기이므로 결과를 읽기 전에 동기화한다.
+    cudaDeviceSynchronize();
+
+    // 5) 디바이스 -&gt; 호스트 회수.
+    cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost);
+
+    // 검증 (앞 5개만 출력).
+    for (int i = 0; i &lt; 5; ++i)
+    {
+        printf("c[%d] = %.1f\n", i, h_c[i]);
+    }
+
+    // 6) 정리.
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_c);
+    free(h_a);
+    free(h_b);
+    free(h_c);
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+c[0] = 0.0
+c[1] = 3.0
+c[2] = 6.0
+c[3] = 9.0
+c[4] = 12.0</div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>올림 나눗셈 패턴</strong>
+                        <code>(n + threadsPerBlock - 1) / threadsPerBlock</code>은 "데이터 개수를 블록 크기로 나눈 뒤 올림"하는 관용구다. 마지막 블록의 일부 스레드는 데이터 범위 밖이라 <code>if (i &lt; n)</code> 검사가 반드시 필요하다.
+                    </div>
+                </div>
+
+                <!-- 6. 행렬 덧셈 -->
+                <h2 id="matrix-add"><i class="fa-solid fa-table-cells"></i> 두 번째 예제 — 행렬 덧셈 (2D)</h2>
+                <p>이번에는 2D 그리드/블록으로 행렬을 더한다. <code>C = A + B</code>, <code>A</code>·<code>B</code>·<code>C</code>는 <code>width × height</code> 크기.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;cstdio&gt;
+#include &lt;cuda_runtime.h&gt;
+
+constexpr int kWidth  = 1024;
+constexpr int kHeight = 1024;
+
+__global__ void MatrixAdd(const float* a, const float* b, float* c, int width, int height)
+{
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (col &lt; width &amp;&amp; row &lt; height)
+    {
+        int idx = row * width + col;
+        c[idx] = a[idx] + b[idx];
+    }
+}
+
+int main()
+{
+    const int n = kWidth * kHeight;
+    const size_t bytes = n * sizeof(float);
+
+    // 호스트.
+    float* h_a = (float*)malloc(bytes);
+    float* h_b = (float*)malloc(bytes);
+    float* h_c = (float*)malloc(bytes);
+    for (int i = 0; i &lt; n; ++i) { h_a[i] = 1.0f; h_b[i] = 2.0f; }
+
+    // 디바이스.
+    float* d_a; float* d_b; float* d_c;
+    cudaMalloc(&amp;d_a, bytes);
+    cudaMalloc(&amp;d_b, bytes);
+    cudaMalloc(&amp;d_c, bytes);
+    cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice);
+
+    // 2D 그리드/블록 구성.
+    dim3 blockDim(16, 16);                                   // 256 스레드/블록
+    dim3 gridDim((kWidth  + blockDim.x - 1) / blockDim.x,    // 64
+                 (kHeight + blockDim.y - 1) / blockDim.y);   // 64
+
+    MatrixAdd&lt;&lt;&lt;gridDim, blockDim&gt;&gt;&gt;(d_a, d_b, d_c, kWidth, kHeight);
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost);
+
+    printf("c[0] = %.1f, c[last] = %.1f\n", h_c[0], h_c[n - 1]);
+
+    cudaFree(d_a); cudaFree(d_b); cudaFree(d_c);
+    free(h_a); free(h_b); free(h_c);
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+c[0] = 3.0, c[last] = 3.0</div>
+
+                <p>이미지 처리에서도 동일한 패턴이 그대로 적용된다. <code>row</code>·<code>col</code>을 픽셀 좌표로 보면 된다. (10편에서 본격적으로 다룬다.)</p>
+
+                <!-- 7. 블록 크기 -->
+                <h2 id="block-size"><i class="fa-solid fa-ruler"></i> 블록 크기 선택</h2>
+                <p>블록 크기는 성능에 직결되지만, 시작 단계에서는 다음 경험칙을 따르면 충분하다.</p>
+
+                <table class="spec-table">
+                    <tr><th>축</th><th>권장 값</th><th>비고</th></tr>
+                    <tr><td>1D 블록</td><td>128 / 256 / 512</td><td>대부분의 워크로드에서 256이 무난</td></tr>
+                    <tr><td>2D 블록</td><td>16×16 = 256 또는 32×8 = 256</td><td>이미지 처리는 16×16이 표준</td></tr>
+                    <tr><td>3D 블록</td><td>8×8×8 = 512</td><td>볼륨 데이터</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>32의 배수가 좋다</strong>
+                        하드웨어가 32 스레드(warp) 단위로 명령을 발급하기 때문이다. 블록 크기가 32의 배수가 아니면 마지막 warp가 비활성 레인을 끌고 다닌다. 점유율(occupancy)과 warp 관점의 자세한 이야기는 7편에서 다룬다.
+                    </div>
+                </div>
+
+                <!-- 8. 경계·동기·에러 -->
+                <h2 id="sync-error"><i class="fa-solid fa-rotate"></i> 커널 호출 동기성과 에러 체크</h2>
+
+                <h3 id="async"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 커널은 비동기</h3>
+                <p><code>kernel&lt;&lt;&lt;...&gt;&gt;&gt;(...)</code>는 호출 즉시 반환된다. 호스트는 커널이 끝났는지 모른 채 다음 줄로 넘어간다. 결과를 안전하게 읽으려면 동기화가 필요하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">VectorAdd&lt;&lt;&lt;blocks, threads&gt;&gt;&gt;(d_a, d_b, d_c, n);
+// 이 시점에 커널이 아직 안 끝났을 수 있다.
+
+cudaDeviceSynchronize();   // 커널 완료까지 호스트 블로킹.
+
+// cudaMemcpy(... DeviceToHost ...)는 내부적으로 동기화를 포함하므로,
+// 결과를 곧바로 호스트로 복사하는 경우엔 명시적 Synchronize가 필수는 아니다.</code></pre>
+
+                <h3 id="error-check"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 에러 체크 패턴</h3>
+                <p>CUDA API는 모두 <code>cudaError_t</code>를 반환한다. 커널 호출만은 반환값이 없으므로 호출 직후 <code>cudaGetLastError</code>로 확인한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#define CUDA_CHECK(call)                                                  \
+    do {                                                                  \
+        cudaError_t err = (call);                                         \
+        if (err != cudaSuccess) {                                         \
+            fprintf(stderr, "CUDA error at %s:%d: %s\n",                  \
+                    __FILE__, __LINE__, cudaGetErrorString(err));         \
+            std::exit(EXIT_FAILURE);                                      \
+        }                                                                 \
+    } while (0)
+
+CUDA_CHECK(cudaMalloc(&amp;d_a, bytes));
+CUDA_CHECK(cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice));
+
+VectorAdd&lt;&lt;&lt;blocks, threads&gt;&gt;&gt;(d_a, d_b, d_c, n);
+CUDA_CHECK(cudaGetLastError());        // 커널 런치 자체의 오류 (잘못된 구성 등)
+CUDA_CHECK(cudaDeviceSynchronize());   // 커널 실행 중 발생한 오류 (out-of-bounds 등)</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>런치 에러 vs 런타임 에러</strong>
+                        <code>cudaGetLastError</code>는 커널 <em>구성</em> 오류(블록 크기 초과 등)를 잡는다. 커널 <em>실행 중</em> 일어난 메모리 위반은 <code>cudaDeviceSynchronize</code> 시점에 보고된다. 두 호출을 모두 체크해야 원인을 추적할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 9. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <h3 id="pf-bounds"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1) 경계 검사 누락 — out-of-bounds 접근</h3>
+                <p>가장 자주 보는 버그. 데이터 개수가 블록 크기의 배수가 아니면 마지막 블록의 일부 스레드는 범위 밖 인덱스를 갖는다. 검사하지 않으면 다른 메모리를 침범한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 잘못된 코드 — i가 n을 넘을 수 있다.
+__global__ void Bad(float* data, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    data[i] *= 2.0f;   // i &gt;= n 일 때 잘못된 메모리 접근.
+}
+
+// 올바른 코드.
+__global__ void Good(float* data, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i &lt; n)
+    {
+        data[i] *= 2.0f;
+    }
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>증상이 늦게 드러난다</strong>
+                        out-of-bounds 접근은 운 좋게 인접 할당 영역에 떨어지면 즉시 크래시가 안 난다. 디버그 모드에서 <code>compute-sanitizer</code>로 항상 검증하는 습관을 들이자.
+                    </div>
+                </div>
+
+                <h3 id="pf-index"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2) 인덱스 계산 실수</h3>
+                <p>2D에서 <code>row</code>와 <code>col</code>을 바꿔 쓰거나, <code>width</code> 대신 <code>height</code>를 곱하는 실수가 흔하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 잘못된 코드 — height로 곱했다. col이 width를 넘으면 다음 행으로 새어 들어간다.
+int idx = row * height + col;
+
+// 올바른 코드.
+int idx = row * width + col;     // 또는 pitch를 사용</code></pre>
+
+                <h3 id="pf-noerror"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3) 에러 체크 안 함</h3>
+                <p>커널이 실패해도 호스트 코드는 멀쩡히 진행된다. 결과만 보고 "왜 0이지?" 하는 상황이 벌어진다. 시작부터 <code>CUDA_CHECK</code> 매크로를 깔고 가는 것이 정신 건강에 좋다.</p>
+
+                <h3 id="pf-1donly"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4) 1D 인덱싱만 쓰고 2D 데이터 처리하기</h3>
+                <p>1D 인덱싱으로도 이미지 처리는 가능하다(<code>idx = row * width + col</code>로 분해). 하지만 2D 인덱싱을 쓰면 코드가 직관적이고, 메모리 접근 패턴이 캐시 친화적이 된다. 이미지·행렬은 2D 그리드로 짜는 게 정석이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>다음 글 예고</strong>
+                        4편에서는 <code>cudaMemcpy</code>의 비용과 핀드 메모리(pinned/page-locked)·통합 메모리(unified memory)를 다룬다. 5편에서는 스트림으로 데이터 전송과 커널 실행을 겹치는 비동기 패턴을 본다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA — <em>CUDA C++ Programming Guide</em> (docs.nvidia.com/cuda)</li>
+                        <li>NVIDIA — <em>CUDA C++ Best Practices Guide</em></li>
+                        <li>NVIDIA Developer Blog — "An Even Easier Introduction to CUDA"</li>
+                        <li>Jason Sanders, Edward Kandrot — <em>CUDA by Example</em></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

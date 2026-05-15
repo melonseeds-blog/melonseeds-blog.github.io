@@ -1,0 +1,869 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUDA란 / GPU vs CPU / 환경 셋업 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* spec-table */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 16px 0;
+            font-size: 0.9rem;
+        }
+        .spec-table th, .spec-table td {
+            border: 1px solid var(--border); padding: 10px 12px; text-align: left;
+            vertical-align: top;
+        }
+        .spec-table th {
+            background: var(--primary-50); color: var(--primary-dark); font-weight: 700;
+        }
+        .spec-table tr:nth-child(even) td { background: var(--bg); }
+
+        /* 다이어그램 */
+        .diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 18px; margin: 20px 0; text-align: center;
+        }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#gpu-intro" data-section="gpu-intro">GPU란</a>
+        <a href="#cpu-vs-gpu" data-section="cpu-vs-gpu">CPU vs GPU</a>
+        <a href="#cuda-intro" data-section="cuda-intro">CUDA란</a>
+        <a href="#cuda-model" data-section="cuda-model">프로그래밍 모델</a>
+        <a href="#setup" data-section="setup">환경 셋업</a>
+        <a href="#vs-build" data-section="vs-build">VS2022 빌드</a>
+        <a href="#hello-cuda" data-section="hello-cuda">첫 실행</a>
+        <a href="#industry" data-section="industry">산업 비전</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / CUDA</span>
+                </div>
+                <h1>CUDA란 / GPU vs CPU / 환경 셋업</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>GPU의 본질 — 수천 개 코어로 같은 연산을 병렬 처리하는 SIMT 아키텍처</li>
+                        <li>CPU vs GPU 정량 비교 — 코어 수, 캐시, 대역폭, 레이턴시, 처리량</li>
+                        <li>CUDA란 무엇인가, 그리고 OpenCL / SYCL / HIP과의 위치</li>
+                        <li>호스트-디바이스 모델과 grid/block/thread 계층</li>
+                        <li>드라이버 + Toolkit + VS2022 환경 셋업과 첫 CUDA Hello 실행</li>
+                        <li>산업 비전 관점에서 GPU가 필요한 순간, 그리고 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#gpu-intro">GPU란?</a></li>
+                        <li><a href="#cpu-vs-gpu">CPU vs GPU</a></li>
+                        <li><a href="#cuda-intro">CUDA란?</a></li>
+                        <li><a href="#cuda-model">CUDA 프로그래밍 모델</a></li>
+                        <li><a href="#setup">CUDA 환경 셋업</a></li>
+                        <li><a href="#vs-build">Visual Studio 2022 + CUDA 빌드</a></li>
+                        <li><a href="#hello-cuda">첫 실행 — deviceQuery와 CUDA Hello</a></li>
+                        <li><a href="#industry">산업 비전 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. GPU란 -->
+                <h2 id="gpu-intro"><i class="fa-solid fa-microchip"></i> GPU란?</h2>
+                <p><strong>Graphics Processing Unit</strong>. 원래는 픽셀과 정점(vertex)을 동시에 그리기 위해 태어난 그래픽 전용 칩이다. 화면의 모든 픽셀이 본질적으로 같은 연산("이 색을 이 위치에 그려라")을 반복한다는 점에서, GPU는 처음부터 <strong>같은 연산을 수천 개의 데이터에 동시에 적용</strong>하는 방향으로 진화했다.</p>
+
+                <p>2007년 NVIDIA가 CUDA를 발표하면서 GPU는 그래픽을 벗어나 범용 컴퓨팅(<strong>GPGPU</strong>, General-Purpose computing on GPU)으로 확장된다. 지금은 딥러닝, 시뮬레이션, 영상처리, 암호 해시까지 "데이터가 많고 연산이 규칙적인" 모든 분야의 표준 가속기다.</p>
+
+                <h3 id="simd-simt"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> SIMD와 SIMT</h3>
+                <p>GPU의 병렬성은 <strong>SIMT</strong>(Single Instruction, Multiple Threads) 모델로 표현된다. CPU의 SIMD(Single Instruction, Multiple Data — 예: AVX-512)와 비슷하지만, GPU는 한 명령을 수십~수천 개의 "스레드" 단위로 동시에 흘려보낸다. NVIDIA에서는 32개 스레드가 한 묶음(<strong>warp</strong>)으로 같은 명령을 실행한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>모델</th><th>의미</th><th>예시</th></tr>
+                    <tr><td>SISD</td><td>한 명령, 한 데이터</td><td>전통적 스칼라 CPU</td></tr>
+                    <tr><td>SIMD</td><td>한 명령, 여러 데이터 (벡터 레지스터)</td><td>SSE, AVX, NEON</td></tr>
+                    <tr><td>SIMT</td><td>한 명령, 여러 스레드 (분기 허용)</td><td>NVIDIA CUDA, AMD ROCm</td></tr>
+                </table>
+
+                <!-- 2. CPU vs GPU -->
+                <h2 id="cpu-vs-gpu"><i class="fa-solid fa-balance-scale"></i> CPU vs GPU</h2>
+                <p>한 줄 요약: <strong>CPU는 레이턴시(latency) 최적화, GPU는 처리량(throughput) 최적화</strong>다. CPU는 한 스레드를 최대한 빨리 끝내는 데 자원을 쓰고, GPU는 한 스레드가 느리더라도 수만 개를 굴려서 단위 시간당 처리량을 끌어올린다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg">
+                        <!-- CPU side -->
+                        <rect x="20" y="20" width="320" height="200" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
+                        <text x="180" y="44" text-anchor="middle" font-family="Pretendard" font-weight="700" font-size="15" fill="#1e3a5f">CPU — Latency 최적화</text>
+                        <!-- Few large cores -->
+                        <rect x="40" y="60" width="130" height="70" rx="6" fill="#2563eb"/>
+                        <text x="105" y="100" text-anchor="middle" fill="white" font-size="11" font-weight="600">Core (Big)</text>
+                        <rect x="190" y="60" width="130" height="70" rx="6" fill="#2563eb"/>
+                        <text x="255" y="100" text-anchor="middle" fill="white" font-size="11" font-weight="600">Core (Big)</text>
+                        <!-- Cache -->
+                        <rect x="40" y="140" width="280" height="30" rx="4" fill="#93c5fd"/>
+                        <text x="180" y="160" text-anchor="middle" fill="#1e3a5f" font-size="11" font-weight="600">큰 L1 / L2 / L3 Cache</text>
+                        <!-- Control -->
+                        <rect x="40" y="180" width="280" height="25" rx="4" fill="#60a5fa"/>
+                        <text x="180" y="197" text-anchor="middle" fill="white" font-size="11" font-weight="600">Branch Predictor + OoO Control</text>
+
+                        <!-- GPU side -->
+                        <rect x="360" y="20" width="320" height="200" rx="10" fill="#fef3c7" stroke="#fde68a"/>
+                        <text x="520" y="44" text-anchor="middle" font-family="Pretendard" font-weight="700" font-size="15" fill="#78350f">GPU — Throughput 최적화</text>
+                        <!-- Many small cores grid -->
+                        <g fill="#f59e0b">
+                            <!-- 8x6 grid -->
+                            <rect x="375" y="60" width="22" height="18" rx="2"/>
+                            <rect x="400" y="60" width="22" height="18" rx="2"/>
+                            <rect x="425" y="60" width="22" height="18" rx="2"/>
+                            <rect x="450" y="60" width="22" height="18" rx="2"/>
+                            <rect x="475" y="60" width="22" height="18" rx="2"/>
+                            <rect x="500" y="60" width="22" height="18" rx="2"/>
+                            <rect x="525" y="60" width="22" height="18" rx="2"/>
+                            <rect x="550" y="60" width="22" height="18" rx="2"/>
+                            <rect x="575" y="60" width="22" height="18" rx="2"/>
+                            <rect x="600" y="60" width="22" height="18" rx="2"/>
+                            <rect x="625" y="60" width="22" height="18" rx="2"/>
+                            <rect x="650" y="60" width="22" height="18" rx="2"/>
+                            <rect x="375" y="82" width="22" height="18" rx="2"/>
+                            <rect x="400" y="82" width="22" height="18" rx="2"/>
+                            <rect x="425" y="82" width="22" height="18" rx="2"/>
+                            <rect x="450" y="82" width="22" height="18" rx="2"/>
+                            <rect x="475" y="82" width="22" height="18" rx="2"/>
+                            <rect x="500" y="82" width="22" height="18" rx="2"/>
+                            <rect x="525" y="82" width="22" height="18" rx="2"/>
+                            <rect x="550" y="82" width="22" height="18" rx="2"/>
+                            <rect x="575" y="82" width="22" height="18" rx="2"/>
+                            <rect x="600" y="82" width="22" height="18" rx="2"/>
+                            <rect x="625" y="82" width="22" height="18" rx="2"/>
+                            <rect x="650" y="82" width="22" height="18" rx="2"/>
+                            <rect x="375" y="104" width="22" height="18" rx="2"/>
+                            <rect x="400" y="104" width="22" height="18" rx="2"/>
+                            <rect x="425" y="104" width="22" height="18" rx="2"/>
+                            <rect x="450" y="104" width="22" height="18" rx="2"/>
+                            <rect x="475" y="104" width="22" height="18" rx="2"/>
+                            <rect x="500" y="104" width="22" height="18" rx="2"/>
+                            <rect x="525" y="104" width="22" height="18" rx="2"/>
+                            <rect x="550" y="104" width="22" height="18" rx="2"/>
+                            <rect x="575" y="104" width="22" height="18" rx="2"/>
+                            <rect x="600" y="104" width="22" height="18" rx="2"/>
+                            <rect x="625" y="104" width="22" height="18" rx="2"/>
+                            <rect x="650" y="104" width="22" height="18" rx="2"/>
+                            <rect x="375" y="126" width="22" height="18" rx="2"/>
+                            <rect x="400" y="126" width="22" height="18" rx="2"/>
+                            <rect x="425" y="126" width="22" height="18" rx="2"/>
+                            <rect x="450" y="126" width="22" height="18" rx="2"/>
+                            <rect x="475" y="126" width="22" height="18" rx="2"/>
+                            <rect x="500" y="126" width="22" height="18" rx="2"/>
+                            <rect x="525" y="126" width="22" height="18" rx="2"/>
+                            <rect x="550" y="126" width="22" height="18" rx="2"/>
+                            <rect x="575" y="126" width="22" height="18" rx="2"/>
+                            <rect x="600" y="126" width="22" height="18" rx="2"/>
+                            <rect x="625" y="126" width="22" height="18" rx="2"/>
+                            <rect x="650" y="126" width="22" height="18" rx="2"/>
+                        </g>
+                        <text x="520" y="162" text-anchor="middle" fill="#78350f" font-size="10">수천 개의 작은 Core (SM × 다수)</text>
+                        <rect x="375" y="172" width="295" height="20" rx="3" fill="#fcd34d"/>
+                        <text x="522" y="187" text-anchor="middle" fill="#78350f" font-size="11" font-weight="600">작은 Cache, 거대한 HBM/GDDR 메모리 대역폭</text>
+                        <rect x="375" y="195" width="295" height="18" rx="3" fill="#fbbf24"/>
+                        <text x="522" y="208" text-anchor="middle" fill="#78350f" font-size="10" font-weight="600">단순 Control, Warp 단위 스케줄링</text>
+                    </svg>
+                    <div class="diagram-caption">CPU는 코어가 크고 캐시·제어 로직이 두껍다. GPU는 코어가 작고 많으며, 한 명령을 warp 단위로 동시에 흘린다.</div>
+                </div>
+
+                <h3 id="hw-compare"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 하드웨어 스펙 비교</h3>
+                <p>대표적인 데스크탑급 칩을 기준으로 비교한다(수치는 세대마다 다르므로 자릿수로 보자).</p>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>CPU (예: 16-core 데스크탑)</th><th>GPU (예: RTX 4090급)</th></tr>
+                    <tr><td>물리 코어</td><td>8 ~ 64</td><td>10,000 이상 (CUDA core)</td></tr>
+                    <tr><td>클럭</td><td>4 ~ 5 GHz</td><td>2 ~ 2.5 GHz</td></tr>
+                    <tr><td>코어당 캐시</td><td>큼 (수 MB L2/L3)</td><td>작음 (수십 KB shared)</td></tr>
+                    <tr><td>메모리 대역폭</td><td>50 ~ 100 GB/s</td><td>500 ~ 1,000 GB/s 이상</td></tr>
+                    <tr><td>단일 스레드 레이턴시</td><td>매우 낮음</td><td>높음 (스레드 swap으로 가림)</td></tr>
+                    <tr><td>분기(branch) 처리</td><td>강력 (OoO + 분기 예측)</td><td>약함 (warp divergence 페널티)</td></tr>
+                    <tr><td>강점 작업</td><td>OS, 직렬 로직, 분기 많은 코드</td><td>대규모 동일 연산 (행렬, 픽셀, conv)</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>"GPU가 1000배 빠르다"는 어디서 나오나</strong>
+                        스칼라 한 줄이 빠르다는 게 아니다. 같은 시간에 GPU는 수천 개 연산을 동시에 수행한다. 즉 처리량(throughput) 측면의 비율이며, 데이터가 충분히 클 때만 의미가 있다.
+                    </div>
+                </div>
+
+                <!-- 3. CUDA란 -->
+                <h2 id="cuda-intro"><i class="fa-solid fa-cubes"></i> CUDA란?</h2>
+                <p><strong>CUDA</strong>(Compute Unified Device Architecture)는 NVIDIA가 만든 GPU 컴퓨팅 플랫폼이다. 단순한 API가 아니라 <em>드라이버 + 런타임 + 컴파일러(nvcc) + 표준 라이브러리(cuBLAS, cuDNN, Thrust 등) + 도구(Nsight)</em>의 묶음이다.</p>
+
+                <h3 id="cuda-stack"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CUDA 스택</h3>
+                <table class="spec-table">
+                    <tr><th>레벨</th><th>구성 요소</th><th>역할</th></tr>
+                    <tr><td>응용</td><td>TensorRT, cuDNN, cuBLAS, Thrust, OpenCV(cv::cuda)</td><td>도메인별 고수준 라이브러리</td></tr>
+                    <tr><td>런타임</td><td>CUDA Runtime API (<code>cudaMalloc</code>, <code>cudaMemcpy</code>...)</td><td>C/C++에서 호출하는 표준 인터페이스</td></tr>
+                    <tr><td>드라이버</td><td>CUDA Driver API + NVIDIA Driver</td><td>커널 로드, 디바이스 관리</td></tr>
+                    <tr><td>컴파일러</td><td>nvcc, PTX, SASS</td><td>커널을 GPU 어셈블리로 변환</td></tr>
+                    <tr><td>하드웨어</td><td>SM, CUDA core, Tensor core, HBM</td><td>실제 연산</td></tr>
+                </table>
+
+                <h3 id="alternatives"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 다른 옵션은?</h3>
+                <table class="spec-table">
+                    <tr><th>플랫폼</th><th>주체</th><th>특징</th></tr>
+                    <tr><td><strong>CUDA</strong></td><td>NVIDIA</td><td>벤더 종속이지만 도구·생태계가 가장 두텁다</td></tr>
+                    <tr><td>OpenCL</td><td>Khronos</td><td>크로스 벤더. 실사용 측 도구 지원은 점점 약해지는 추세</td></tr>
+                    <tr><td>SYCL / oneAPI</td><td>Khronos, Intel</td><td>C++17/20 표준 위에서 단일 소스. Intel 주도</td></tr>
+                    <tr><td>HIP / ROCm</td><td>AMD</td><td>CUDA와 거의 1:1 매핑되는 API. AMD GPU 대상</td></tr>
+                </table>
+
+                <p>산업 현장에서 NVIDIA GPU + Windows + Visual Studio 조합이 사실상 표준이므로, 이 시리즈는 <strong>CUDA를 기준</strong>으로 진행한다.</p>
+
+                <!-- 4. CUDA 프로그래밍 모델 -->
+                <h2 id="cuda-model"><i class="fa-solid fa-sitemap"></i> CUDA 프로그래밍 모델</h2>
+                <p>CUDA 코드는 두 세계로 나뉜다. <strong>호스트(Host) = CPU + 시스템 메모리</strong>, <strong>디바이스(Device) = GPU + GPU 메모리</strong>. 호스트가 데이터를 디바이스로 복사하고, 커널을 실행시키고, 결과를 받아온다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Host -->
+                        <rect x="20" y="40" width="260" height="200" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
+                        <text x="150" y="65" text-anchor="middle" font-weight="700" font-size="14" fill="#1e3a5f">Host (CPU + RAM)</text>
+                        <rect x="50" y="90" width="200" height="50" rx="6" fill="#2563eb"/>
+                        <text x="150" y="120" text-anchor="middle" fill="white" font-size="12" font-weight="600">main() / 제어 로직</text>
+                        <rect x="50" y="160" width="200" height="60" rx="6" fill="#93c5fd"/>
+                        <text x="150" y="185" text-anchor="middle" fill="#1e3a5f" font-size="11" font-weight="600">호스트 메모리</text>
+                        <text x="150" y="205" text-anchor="middle" fill="#1e3a5f" font-size="10">h_data[N]</text>
+
+                        <!-- Arrows -->
+                        <defs>
+                            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+                            </marker>
+                        </defs>
+                        <line x1="285" y1="180" x2="415" y2="180" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+                        <text x="350" y="172" text-anchor="middle" font-size="10" fill="#475569">cudaMemcpy H2D</text>
+                        <line x1="415" y1="210" x2="285" y2="210" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+                        <text x="350" y="230" text-anchor="middle" font-size="10" fill="#475569">cudaMemcpy D2H</text>
+                        <line x1="285" y1="115" x2="415" y2="115" stroke="#d97706" stroke-width="2" marker-end="url(#arr)"/>
+                        <text x="350" y="107" text-anchor="middle" font-size="10" fill="#78350f">kernel&lt;&lt;&lt;...&gt;&gt;&gt;</text>
+
+                        <!-- Device -->
+                        <rect x="420" y="40" width="260" height="200" rx="10" fill="#fef3c7" stroke="#fde68a"/>
+                        <text x="550" y="65" text-anchor="middle" font-weight="700" font-size="14" fill="#78350f">Device (GPU + VRAM)</text>
+                        <rect x="450" y="90" width="200" height="50" rx="6" fill="#f59e0b"/>
+                        <text x="550" y="113" text-anchor="middle" fill="white" font-size="12" font-weight="600">Kernel (수천 thread)</text>
+                        <text x="550" y="130" text-anchor="middle" fill="white" font-size="10">grid → block → thread</text>
+                        <rect x="450" y="160" width="200" height="60" rx="6" fill="#fcd34d"/>
+                        <text x="550" y="185" text-anchor="middle" fill="#78350f" font-size="11" font-weight="600">디바이스 메모리</text>
+                        <text x="550" y="205" text-anchor="middle" fill="#78350f" font-size="10">d_data[N]</text>
+
+                        <text x="350" y="20" text-anchor="middle" font-weight="700" font-size="13" fill="#1f2937">CUDA Host-Device 실행 흐름</text>
+                    </svg>
+                    <div class="diagram-caption">호스트는 디바이스로 데이터를 복사하고 커널을 띄운 뒤, 결과를 다시 호스트로 복사한다.</div>
+                </div>
+
+                <h3 id="thread-hier"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스레드 계층: grid / block / thread</h3>
+                <p>커널을 실행할 때 두 개의 차원을 정한다. 한 <strong>grid</strong>는 여러 개의 <strong>block</strong>으로 이루어지고, 한 block은 여러 개의 <strong>thread</strong>로 이루어진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 1D 예시: N개의 데이터를 처리한다.
+// block 당 256 thread, block 개수는 ceil(N/256).
+int threadsPerBlock = 256;
+int blocks = (N + threadsPerBlock - 1) / threadsPerBlock;
+myKernel&lt;&lt;&lt;blocks, threadsPerBlock&gt;&gt;&gt;(d_data, N);</code></pre>
+
+                <p>커널 내부에서는 인덱싱이 핵심이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void myKernel(float* data, int N)
+{
+    // 전역 1D 인덱스 계산.
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx &gt;= N) return;          // 경계 가드 필수.
+
+    data[idx] = data[idx] * 2.0f;
+}</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>지정자</th><th>실행 위치</th><th>호출 위치</th></tr>
+                    <tr><td><code>__global__</code></td><td>Device</td><td>Host (커널 진입점)</td></tr>
+                    <tr><td><code>__device__</code></td><td>Device</td><td>Device (디바이스 보조 함수)</td></tr>
+                    <tr><td><code>__host__</code></td><td>Host</td><td>Host (기본값)</td></tr>
+                </table>
+
+                <!-- 5. 환경 셋업 -->
+                <h2 id="setup"><i class="fa-solid fa-screwdriver-wrench"></i> CUDA 환경 셋업</h2>
+                <p>설치해야 할 것은 세 가지다.</p>
+
+                <table class="spec-table">
+                    <tr><th>구성 요소</th><th>설명</th><th>비고</th></tr>
+                    <tr><td>NVIDIA Driver</td><td>GPU 자체를 OS에 노출시키는 드라이버</td><td>Toolkit보다 최신이어야 한다</td></tr>
+                    <tr><td>CUDA Toolkit</td><td>nvcc 컴파일러, 헤더, 런타임 라이브러리, 샘플</td><td>버전 = 12.x 권장</td></tr>
+                    <tr><td>호환 IDE</td><td>Visual Studio 2022 (Windows) 또는 GCC/Clang (Linux)</td><td>설치 순서: VS 먼저, 그다음 Toolkit</td></tr>
+                </table>
+
+                <h3 id="cc"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Compute Capability</h3>
+                <p>GPU 세대마다 지원하는 명령어 집합이 다르다. 이를 <strong>compute capability</strong> (sm_XX)로 표현한다. 컴파일 시 본인 GPU에 맞춰 지정해야 PTX → SASS 변환이 효율적이다.</p>
+
+                <table class="spec-table">
+                    <tr><th>아키텍처</th><th>대표 GPU</th><th>sm_XX</th></tr>
+                    <tr><td>Pascal</td><td>GTX 1080</td><td>sm_61</td></tr>
+                    <tr><td>Turing</td><td>RTX 2080</td><td>sm_75</td></tr>
+                    <tr><td>Ampere</td><td>RTX 3090, A100</td><td>sm_86 / sm_80</td></tr>
+                    <tr><td>Ada Lovelace</td><td>RTX 4090</td><td>sm_89</td></tr>
+                    <tr><td>Hopper</td><td>H100</td><td>sm_90</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>드라이버 버전과 Toolkit 버전이 안 맞으면 끝장이다</strong>
+                        Toolkit은 "최소 드라이버 버전" 요구사항이 있다. 회사 PC처럼 드라이버 업데이트가 막힌 환경에서 최신 Toolkit을 설치하면 <code>cudaErrorInsufficientDriver</code>가 뜬다. <code>nvidia-smi</code>가 보여주는 드라이버의 "CUDA Version"은 그 드라이버가 지원하는 최대 Toolkit 버전이다 — 설치된 Toolkit 버전이 아니라는 점에 주의.
+                    </div>
+                </div>
+
+                <h3 id="install-check"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 설치 확인</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 명령 프롬프트에서
+// 1) 드라이버 + GPU 인식 확인
+//    nvidia-smi
+//
+// 2) Toolkit / nvcc 확인
+//    nvcc --version
+//
+// 3) 환경변수 확인
+//    set CUDA_PATH
+//    → 예: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4</code></pre>
+
+                <!-- 6. VS2022 빌드 -->
+                <h2 id="vs-build"><i class="fa-solid fa-code"></i> Visual Studio 2022 + CUDA 빌드</h2>
+                <p>두 가지 방법이 있다. <strong>(A) VS의 CUDA 프로젝트 템플릿</strong>은 가장 빠른 시작 방법이고, <strong>(B) CMake 통합</strong>은 ImagingLib처럼 멀티 모듈 프로젝트에 적합하다.</p>
+
+                <h3 id="vs-template"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> (A) VS CUDA 프로젝트</h3>
+                <p>VS 2022 → 새 프로젝트 → <strong>CUDA 12.x Runtime</strong> 템플릿. <code>.cu</code> 파일이 자동으로 nvcc로 라우팅된다. 프로젝트 속성 → <code>CUDA C/C++</code> → <code>Device</code> → <strong>Code Generation</strong>에서 sm_XX를 지정한다.</p>
+
+                <h3 id="cmake"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> (B) CMake 통합 (권장)</h3>
+
+<pre class="language-cpp"><code class="language-cpp"># CMakeLists.txt
+cmake_minimum_required(VERSION 3.18)
+project(ImagingCuda LANGUAGES CXX CUDA)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
+
+# 빌드 대상 아키텍처. 본인 GPU에 맞춘다.
+# 75 = Turing, 86 = Ampere, 89 = Ada
+set(CMAKE_CUDA_ARCHITECTURES 75 86 89)
+
+add_executable(hello_cuda
+    src/main.cpp
+    src/kernel.cu
+)
+
+# .cu 파일에 별도 옵션이 필요하면
+target_compile_options(hello_cuda PRIVATE
+    $&lt;$&lt;COMPILE_LANGUAGE:CUDA&gt;:--use_fast_math&gt;
+)</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>vcpkg + CMake 환경이라면</strong>
+                        ImagingLib는 vcpkg manifest 모드를 쓴다. <code>opencv4[cuda,contrib]</code> 기능을 켜두면 cv::cuda 헤더가 자동으로 연결된다. CUDA Toolkit 자체는 vcpkg가 설치하지 않으므로 시스템에 별도로 설치해야 한다.
+                    </div>
+                </div>
+
+                <!-- 7. 첫 실행 -->
+                <h2 id="hello-cuda"><i class="fa-solid fa-rocket"></i> 첫 실행 — deviceQuery와 CUDA Hello</h2>
+
+                <h3 id="device-query"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> deviceQuery로 GPU 정보 확인</h3>
+                <p>Toolkit 샘플에 포함된 deviceQuery는 GPU 스펙을 한눈에 보여준다. 직접 짜도 어렵지 않다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// device_query.cu — 디바이스 정보를 출력한다.
+#include &lt;cuda_runtime.h&gt;
+#include &lt;cstdio&gt;
+
+int main()
+{
+    int deviceCount = 0;
+    cudaGetDeviceCount(&amp;deviceCount);
+
+    if (deviceCount == 0)
+    {
+        printf("CUDA-capable device not found.\n");
+        return 1;
+    }
+
+    for (int i = 0; i &lt; deviceCount; ++i)
+    {
+        cudaDeviceProp prop{};
+        cudaGetDeviceProperties(&amp;prop, i);
+
+        printf("Device %d: %s\n", i, prop.name);
+        printf("  Compute Capability : %d.%d\n", prop.major, prop.minor);
+        printf("  SM count           : %d\n", prop.multiProcessorCount);
+        printf("  Global memory      : %.2f GB\n",
+               prop.totalGlobalMem / (1024.0 * 1024.0 * 1024.0));
+        printf("  Memory bus width   : %d-bit\n", prop.memoryBusWidth);
+        printf("  Memory clock       : %d MHz\n", prop.memoryClockRate / 1000);
+        printf("  Max threads/block  : %d\n", prop.maxThreadsPerBlock);
+        printf("  Warp size          : %d\n", prop.warpSize);
+    }
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (예: RTX 3060 기준)</div>
+Device 0: NVIDIA GeForce RTX 3060
+  Compute Capability : 8.6
+  SM count           : 28
+  Global memory      : 11.99 GB
+  Memory bus width   : 192-bit
+  Memory clock       : 7501 MHz
+  Max threads/block  : 1024
+  Warp size          : 32</div>
+
+                <h3 id="cuda-hello"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CUDA Hello — 벡터 덧셈</h3>
+                <p>"Hello, World" 격인 벡터 덧셈 예제. CUDA의 전체 사이클(할당 → 복사 → 커널 → 복사 → 해제)이 다 들어있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// vector_add.cu
+#include &lt;cuda_runtime.h&gt;
+#include &lt;cstdio&gt;
+#include &lt;vector&gt;
+
+// Device kernel: c[i] = a[i] + b[i].
+__global__ void VectorAdd(const float* a, const float* b, float* c, int n)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx &lt; n)
+    {
+        c[idx] = a[idx] + b[idx];
+    }
+}
+
+int main()
+{
+    constexpr int kN = 1 &lt;&lt; 20;            // 약 100만개.
+    constexpr int kBytes = kN * sizeof(float);
+
+    // Host buffer.
+    std::vector&lt;float&gt; hA(kN, 1.0f);
+    std::vector&lt;float&gt; hB(kN, 2.0f);
+    std::vector&lt;float&gt; hC(kN, 0.0f);
+
+    // Device buffer.
+    float* dA = nullptr;
+    float* dB = nullptr;
+    float* dC = nullptr;
+    cudaMalloc(&amp;dA, kBytes);
+    cudaMalloc(&amp;dB, kBytes);
+    cudaMalloc(&amp;dC, kBytes);
+
+    // H2D copy.
+    cudaMemcpy(dA, hA.data(), kBytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(dB, hB.data(), kBytes, cudaMemcpyHostToDevice);
+
+    // Launch kernel.
+    constexpr int kThreadsPerBlock = 256;
+    int blocks = (kN + kThreadsPerBlock - 1) / kThreadsPerBlock;
+    VectorAdd&lt;&lt;&lt;blocks, kThreadsPerBlock&gt;&gt;&gt;(dA, dB, dC, kN);
+
+    // D2H copy.
+    cudaMemcpy(hC.data(), dC, kBytes, cudaMemcpyDeviceToHost);
+
+    // Verify.
+    printf("hC[0] = %f, hC[N-1] = %f\n", hC[0], hC[kN - 1]);
+
+    cudaFree(dA);
+    cudaFree(dB);
+    cudaFree(dC);
+    return 0;
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+hC[0] = 3.000000, hC[N-1] = 3.000000</div>
+
+                <h3 id="error-check"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 에러 체크는 매크로로 묶자</h3>
+                <p>위 예제는 깔끔한 흐름을 보여주려고 에러 체크를 생략했지만, 실제 코드에서는 모든 CUDA API 호출의 반환값을 확인해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Common CUDA error-check macro.
+#define CUDA_CHECK(call)                                                      \
+    do                                                                        \
+    {                                                                         \
+        cudaError_t err = (call);                                             \
+        if (err != cudaSuccess)                                               \
+        {                                                                     \
+            fprintf(stderr, "CUDA error %s at %s:%d\n",                       \
+                    cudaGetErrorString(err), __FILE__, __LINE__);             \
+            std::abort();                                                     \
+        }                                                                     \
+    } while (0)
+
+CUDA_CHECK(cudaMalloc(&amp;dA, kBytes));
+CUDA_CHECK(cudaMemcpy(dA, hA.data(), kBytes, cudaMemcpyHostToDevice));
+
+// 커널 실행 직후에는 별도로 체크해야 한다.
+VectorAdd&lt;&lt;&lt;blocks, kThreadsPerBlock&gt;&gt;&gt;(dA, dB, dC, kN);
+CUDA_CHECK(cudaGetLastError());           // launch 실패 여부.
+CUDA_CHECK(cudaDeviceSynchronize());      // 실행 중 에러 여부.</code></pre>
+
+                <!-- 8. 산업 비전 -->
+                <h2 id="industry"><i class="fa-solid fa-industry"></i> 산업 비전 관점</h2>
+                <p>산업 비전(머신 비전) 시스템은 한 줄 요약하면 "<strong>고속 카메라 + 실시간 검사</strong>"다. 다음과 같은 상황에서 GPU는 선택이 아니라 필수가 된다.</p>
+
+                <ul>
+                    <li><strong>고해상도 라인스캔 카메라</strong> — 8K × 라인레이트 100kHz면 초당 수백 MB의 픽셀. CPU 한 스레드로는 컬러 보간조차 따라가지 못한다.</li>
+                    <li><strong>딥러닝 기반 결함 검출</strong> — UNet, YOLO 같은 모델은 GPU 없이는 ms 단위 추론이 불가능하다. cuDNN/TensorRT 사용이 사실상 강제된다.</li>
+                    <li><strong>대면적 매칭 / 서브픽셀 측정</strong> — 정규화 상관(NCC), Hough, 모폴로지 등을 풀 해상도에서 수십 fps로 돌려야 할 때.</li>
+                </ul>
+
+                <p>ImagingLib에서는 핵심 이미지 컨테이너가 CPU/GPU 메모리를 모두 들고 있다가 <code>EnsureCpu()</code> / <code>EnsureGpu()</code>로 필요한 쪽에 데이터를 보장한다. 처리 블록은 가능하면 <strong>GPU 위에 데이터를 머무르게</strong> 해서 H2D/D2H 왕복 비용을 없앤다. 다음 편들에서 이 컨테이너 설계와 cv::cuda 래핑, 그리고 TensorRT 통합을 차례로 다룬다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>시리즈 미리보기</strong>
+                        9편에서는 cv::cuda를 ImagingLib의 Filter 블록에 연결하는 방법을, 11편에서는 학습된 모델을 TensorRT 엔진으로 변환해 실시간 검사 파이프라인에 끼우는 방법을 다룬다. 둘 다 결국은 본 글의 host-device 모델 위에서 동작한다.
+                    </div>
+                </div>
+
+                <!-- 9. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>1. 드라이버 / Toolkit / cuDNN 버전 불일치</strong>
+                        가장 흔한 삽질. Toolkit 12.4면 드라이버 R550 이상이 필요한 식이다. cuDNN은 또 Toolkit 버전에 묶인다. 새 PC에서 환경을 잡을 때는 <strong>드라이버 → Toolkit → cuDNN → 프레임워크</strong> 순으로, 각 단계에서 호환 표를 확인하고 진행한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>2. compute capability 미지원으로 인한 런타임 실패</strong>
+                        sm_89로 빌드한 바이너리를 sm_61 GPU에 가져가면 JIT 컴파일이 시도되지만 실패하는 경우가 많다. 배포용 빌드는 <code>CMAKE_CUDA_ARCHITECTURES</code>에 여러 SM을 같이 넣어 fat binary로 만든다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>3. "GPU는 무조건 빠르다"라는 착각</strong>
+                        데이터 크기가 작으면 <code>cudaMemcpy</code> 왕복 비용이 커널 실행 시간보다 크다. 100 × 100 이미지 한 장에 단순 임계 처리하려고 GPU를 쓰는 건 손해다. 일반적으로 <strong>수 MB 이상 + 픽셀당 충분한 연산량</strong>이 있을 때부터 GPU가 이긴다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>4. 비동기 커널을 동기로 착각</strong>
+                        커널 런치(<code>kernel&lt;&lt;&lt;...&gt;&gt;&gt;</code>)는 즉시 리턴한다. 결과를 측정하려면 반드시 <code>cudaDeviceSynchronize()</code>를 부르거나 <code>cudaEvent</code>를 써야 한다. 그냥 <code>std::chrono</code>로 둘러싸면 커널 시간이 0에 가깝게 나온다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>5. 커널 안에서 예외 / 동적 할당 / iostream 사용</strong>
+                        디바이스 코드는 C++의 표준 예외, <code>std::cout</code>, 호스트 <code>std::vector</code> 등을 쓰지 못한다. 디버깅 출력은 <code>printf</code>(디바이스용)나 호스트로 복사 후 출력으로 우회한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA CUDA C++ Programming Guide (docs.nvidia.com/cuda/cuda-c-programming-guide)</li>
+                        <li>NVIDIA CUDA Toolkit Documentation — Installation Guide for Windows</li>
+                        <li>NVIDIA CUDA Runtime API Reference</li>
+                        <li>NVIDIA Developer Blog — "An Even Easier Introduction to CUDA"</li>
+                        <li>CUDA Samples — github.com/NVIDIA/cuda-samples (deviceQuery 등)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

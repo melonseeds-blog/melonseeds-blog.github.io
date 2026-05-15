@@ -1,0 +1,902 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메모리 전송과 핀드 메모리 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 다이어그램 */
+        .diagram-box {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px; margin: 20px 0;
+            text-align: center;
+        }
+        .diagram-box svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted);
+            margin-top: 10px; font-style: italic;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#bottleneck" data-section="bottleneck">병목</a>
+        <a href="#basic-api" data-section="basic-api">기본 API</a>
+        <a href="#pitched" data-section="pitched">2D/3D 메모리</a>
+        <a href="#pinned" data-section="pinned">핀드 메모리</a>
+        <a href="#wc" data-section="wc">Write-Combined</a>
+        <a href="#zero-copy" data-section="zero-copy">Zero-Copy</a>
+        <a href="#unified" data-section="unified">Unified Memory</a>
+        <a href="#patterns" data-section="patterns">최적화 패턴</a>
+        <a href="#vision" data-section="vision">산업 비전</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / CUDA</span>
+                </div>
+                <h1>메모리 전송과 핀드 메모리</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>호스트와 디바이스 간 메모리 전송이 왜 GPU 프로그래밍의 가장 큰 병목인지</li>
+                        <li>cudaMalloc / cudaMemcpy / cudaMallocPitch 기본 API의 사용법</li>
+                        <li>핀드(Pinned) 메모리, Write-Combined, Zero-Copy, Unified Memory의 차이와 적용 시점</li>
+                        <li>산업 비전에서 카메라 grab 버퍼를 어떻게 잡아야 전송 시간을 줄일 수 있는지</li>
+                        <li>전송 횟수, pitch 무시, 핀드 과다 사용 등 자주 빠지는 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#bottleneck">왜 메모리 전송이 병목인가</a></li>
+                        <li><a href="#basic-api">기본 API — cudaMalloc / cudaMemcpy</a></li>
+                        <li><a href="#pitched">2D / 3D 메모리와 Pitch</a></li>
+                        <li><a href="#pinned">핀드(Pinned) 메모리</a></li>
+                        <li><a href="#wc">Write-Combined 메모리</a></li>
+                        <li><a href="#zero-copy">Zero-Copy 메모리</a></li>
+                        <li><a href="#unified">Unified Memory (cudaMallocManaged)</a></li>
+                        <li><a href="#patterns">메모리 전송 최적화 패턴</a></li>
+                        <li><a href="#vision">산업 비전 적용 — 카메라 grab 버퍼</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 병목 -->
+                <h2 id="bottleneck"><i class="fa-solid fa-gauge-high"></i> 왜 메모리 전송이 병목인가</h2>
+
+                <p>GPU가 아무리 빠르게 연산해도, 데이터가 GPU 안에 들어가 있지 않으면 의미가 없다. 호스트 RAM과 GPU 전역 메모리 사이의 데이터 이동은 <strong>PCIe 버스</strong>를 통해 일어나고, 이 구간이 전체 파이프라인에서 가장 느린 구간이다.</p>
+
+                <div class="diagram-box">
+                    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Host -->
+                        <rect x="20" y="60" width="180" height="110" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+                        <text x="110" y="90" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#1e3a5f">Host (CPU + RAM)</text>
+                        <text x="110" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#1e3a5f">DDR4/5 RAM</text>
+                        <text x="110" y="135" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#1e3a5f">~50 GB/s</text>
+                        <text x="110" y="155" text-anchor="middle" font-family="Consolas, monospace" font-size="10" fill="#64748b">malloc / cudaMallocHost</text>
+
+                        <!-- PCIe arrow -->
+                        <line x1="200" y1="115" x2="280" y2="115" stroke="#dc2626" stroke-width="3" marker-end="url(#arrowR)"/>
+                        <line x1="280" y1="135" x2="200" y2="135" stroke="#dc2626" stroke-width="3" marker-end="url(#arrowL)"/>
+                        <text x="240" y="100" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" font-weight="700" fill="#dc2626">PCIe Gen4 x16</text>
+                        <text x="240" y="170" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#dc2626">~32 GB/s</text>
+
+                        <!-- GPU -->
+                        <rect x="280" y="60" width="200" height="110" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+                        <text x="380" y="90" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#065f46">Device (GPU)</text>
+                        <text x="380" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#065f46">Global Memory (HBM/GDDR)</text>
+                        <text x="380" y="135" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#065f46">~1000 GB/s</text>
+                        <text x="380" y="155" text-anchor="middle" font-family="Consolas, monospace" font-size="10" fill="#64748b">cudaMalloc</text>
+
+                        <!-- SM -->
+                        <line x1="480" y1="115" x2="540" y2="115" stroke="#059669" stroke-width="3" marker-end="url(#arrowR)"/>
+                        <text x="510" y="105" text-anchor="middle" font-family="Consolas, monospace" font-size="10" fill="#065f46">on-chip</text>
+                        <rect x="540" y="60" width="160" height="110" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                        <text x="620" y="90" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#78350f">SM Shared / L1</text>
+                        <text x="620" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#78350f">on-chip cache</text>
+                        <text x="620" y="135" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#78350f">&gt; 10 TB/s</text>
+
+                        <text x="360" y="200" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#64748b">PCIe가 GPU 내부 대역폭보다 30배 이상 느리다 → 전송이 곧 병목</text>
+
+                        <defs>
+                            <marker id="arrowR" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#dc2626"/>
+                            </marker>
+                            <marker id="arrowL" markerWidth="10" markerHeight="10" refX="2" refY="3" orient="auto">
+                                <path d="M9,0 L9,6 L0,3 z" fill="#dc2626"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    <div class="diagram-caption">Host ↔ PCIe ↔ GPU 전송 흐름 — 대역폭은 안쪽으로 갈수록 빨라진다</div>
+                </div>
+
+                <table class="spec-table">
+                    <tr><th>구간</th><th>대표 대역폭</th><th>비고</th></tr>
+                    <tr><td>Host RAM (DDR5)</td><td>~50 GB/s</td><td>CPU 측 메모리</td></tr>
+                    <tr><td class="highlight">PCIe Gen4 x16</td><td class="highlight">~32 GB/s (이론), 실측 24~26</td><td class="highlight">가장 좁은 구간</td></tr>
+                    <tr><td>PCIe Gen5 x16</td><td>~64 GB/s</td><td>최신 메인보드</td></tr>
+                    <tr><td>GPU Global Memory</td><td>500~1500 GB/s</td><td>HBM3는 3 TB/s 이상</td></tr>
+                    <tr><td>GPU Shared / L1</td><td>10 TB/s 이상</td><td>SM on-chip</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>한 줄 요약</strong>
+                        커널 실행 시간보다 <code>cudaMemcpy</code> 시간이 더 큰 경우가 흔하다. 전송을 줄이는 것이 GPU 최적화의 7할이다.
+                    </div>
+                </div>
+
+                <!-- 2. 기본 API -->
+                <h2 id="basic-api"><i class="fa-solid fa-code"></i> 기본 API — cudaMalloc / cudaMemcpy</h2>
+
+                <h3 id="alloc-free"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 할당과 해제</h3>
+
+                <p>GPU 전역 메모리는 <code>cudaMalloc</code>으로 잡고 <code>cudaFree</code>로 푼다. 반환은 항상 <code>cudaError_t</code>이므로 체크해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;cuda_runtime.h&gt;
+#include &lt;cstdio&gt;
+
+int main()
+{
+    const size_t n = 1024 * 1024;          // 1M elements
+    const size_t bytes = n * sizeof(float);
+
+    // Host 측 할당 — 일반 malloc/new
+    float* hPtr = static_cast&lt;float*&gt;(malloc(bytes));
+
+    // Device 측 할당
+    float* dPtr = nullptr;
+    cudaError_t err = cudaMalloc(&amp;dPtr, bytes);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "cudaMalloc failed: %s\n", cudaGetErrorString(err));
+        return 1;
+    }
+
+    // ... 사용 ...
+
+    cudaFree(dPtr);
+    free(hPtr);
+    return 0;
+}</code></pre>
+
+                <h3 id="memcpy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 복사 방향</h3>
+
+                <p><code>cudaMemcpy</code>는 4가지 방향을 지정할 수 있다. 방향만 다르고 인자 순서는 <code>(dst, src, bytes, kind)</code>로 항상 같다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Host → Device : 입력 데이터 업로드
+cudaMemcpy(dPtr, hPtr, bytes, cudaMemcpyHostToDevice);
+
+// Device → Host : 결과 다운로드
+cudaMemcpy(hPtr, dPtr, bytes, cudaMemcpyDeviceToHost);
+
+// Device → Device : GPU 내부 복사 (PCIe 안 탐, 매우 빠름)
+cudaMemcpy(dPtrB, dPtrA, bytes, cudaMemcpyDeviceToDevice);
+
+// Host → Host : 거의 안 씀 (memcpy로 충분)
+cudaMemcpy(hPtrB, hPtrA, bytes, cudaMemcpyHostToHost);
+
+// 방향 자동 추론 (느림, 디버그용)
+cudaMemcpy(dst, src, bytes, cudaMemcpyDefault);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>Device→Device는 거의 공짜</strong>
+                        같은 GPU 내부 복사는 PCIe를 타지 않고 GPU 메모리 대역폭(~1 TB/s)을 그대로 쓴다. 중간 결과를 호스트로 보냈다가 다시 올리는 코드는 즉시 의심해야 한다.
+                    </div>
+                </div>
+
+                <h3 id="memset"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 초기화 — cudaMemset</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// GPU 메모리를 0으로 초기화 (byte 단위)
+cudaMemset(dPtr, 0, bytes);
+
+// 주의: float 1.0f로 채우지는 못한다. byte 패턴만 지정 가능.</code></pre>
+
+                <!-- 3. Pitch -->
+                <h2 id="pitched"><i class="fa-solid fa-table-cells"></i> 2D / 3D 메모리와 Pitch</h2>
+
+                <p>이미지처럼 2D 데이터를 다룰 때, 단순히 <code>width * height * sizeof(T)</code>로 잡으면 행 시작 주소가 정렬되지 않아 메모리 접근이 느려진다. CUDA는 <code>cudaMallocPitch</code>로 각 행을 정렬해 잡고, 실제 행 간격을 <code>pitch</code>(stride)로 알려준다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">const int kImageWidth  = 1920;
+const int kImageHeight = 1080;
+
+float* dImage = nullptr;
+size_t pitch = 0;  // 한 행의 실제 byte 수 (보통 width*sizeof(T)보다 큼)
+
+cudaMallocPitch(&amp;dImage, &amp;pitch,
+                kImageWidth * sizeof(float),  // 논리적 행 크기
+                kImageHeight);
+
+printf("logical row = %zu bytes, pitch = %zu bytes\n",
+       kImageWidth * sizeof(float), pitch);
+// 예: logical row = 7680, pitch = 7680 또는 8192</code></pre>
+
+                <p>전송도 pitch를 인지하는 <code>cudaMemcpy2D</code>를 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Host에 일반 배열 (pitch == width*sizeof(T))
+float* hImage = static_cast&lt;float*&gt;(malloc(kImageWidth * kImageHeight * sizeof(float)));
+
+cudaMemcpy2D(dImage, pitch,                          // dst, dst pitch
+             hImage, kImageWidth * sizeof(float),    // src, src pitch
+             kImageWidth * sizeof(float),            // 한 행 byte 수
+             kImageHeight,                           // 행 수
+             cudaMemcpyHostToDevice);</code></pre>
+
+                <p>커널 안에서는 <code>pitch</code>를 이용해 행 주소를 계산한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void InvertKernel(float* image, size_t pitch, int width, int height)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &gt;= width || y &gt;= height) return;
+
+    // pitch는 byte 단위 → char*로 캐스팅한 뒤 다시 float*로
+    float* row = reinterpret_cast&lt;float*&gt;(reinterpret_cast&lt;char*&gt;(image) + y * pitch);
+    row[x] = 1.0f - row[x];
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>pitch를 무시하고 width로 접근하지 말 것</strong>
+                        <code>image[y * width + x]</code>로 접근하면 어떤 행은 맞고 어떤 행은 어긋난다. 이미지 가장자리에 줄무늬가 나타나면 거의 이 문제다.
+                    </div>
+                </div>
+
+                <h3 id="malloc3d"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3D 메모리</h3>
+
+<pre class="language-cpp"><code class="language-cpp">cudaPitchedPtr dVolume;
+cudaExtent extent = make_cudaExtent(width * sizeof(float), height, depth);
+cudaMalloc3D(&amp;dVolume, extent);
+// dVolume.ptr, dVolume.pitch, dVolume.xsize, dVolume.ysize 로 접근</code></pre>
+
+                <!-- 4. Pinned -->
+                <h2 id="pinned"><i class="fa-solid fa-thumbtack"></i> 핀드(Pinned) 메모리</h2>
+
+                <p>일반 <code>malloc</code>으로 잡은 호스트 메모리는 <strong>pageable</strong>이다. OS가 페이지를 디스크로 스왑할 수 있어서, GPU가 DMA로 직접 읽을 수 없다. CUDA 런타임은 일단 임시 핀드 버퍼로 복사한 다음 PCIe로 보낸다. 즉, 한 번 더 복사한다.</p>
+
+                <p><strong>핀드 메모리(page-locked memory)</strong>는 OS가 스왑하지 못하도록 고정한 호스트 메모리다. GPU가 DMA로 바로 읽고 쓸 수 있어 전송 속도가 빨라진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 핀드 할당
+float* hPinned = nullptr;
+cudaMallocHost(&amp;hPinned, bytes);   // 또는 cudaHostAlloc
+
+// 사용은 일반 포인터와 동일
+for (size_t i = 0; i &lt; n; ++i) hPinned[i] = static_cast&lt;float&gt;(i);
+
+cudaMemcpy(dPtr, hPinned, bytes, cudaMemcpyHostToDevice);
+
+// 해제
+cudaFreeHost(hPinned);</code></pre>
+
+                <h3 id="pinned-bench"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 체감 — 간단 벤치</h3>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;cuda_runtime.h&gt;
+#include &lt;cstdio&gt;
+
+double TransferMs(void* dst, void* src, size_t bytes, cudaMemcpyKind kind, int iter = 20)
+{
+    cudaEvent_t s, e;
+    cudaEventCreate(&amp;s); cudaEventCreate(&amp;e);
+    cudaEventRecord(s);
+    for (int i = 0; i &lt; iter; ++i) cudaMemcpy(dst, src, bytes, kind);
+    cudaEventRecord(e); cudaEventSynchronize(e);
+    float ms = 0.f; cudaEventElapsedTime(&amp;ms, s, e);
+    cudaEventDestroy(s); cudaEventDestroy(e);
+    return ms / iter;
+}
+
+int main()
+{
+    const size_t bytes = 256 * 1024 * 1024;  // 256 MB
+    float* dPtr; cudaMalloc(&amp;dPtr, bytes);
+
+    float* hPageable = static_cast&lt;float*&gt;(malloc(bytes));
+    float* hPinned;  cudaMallocHost(&amp;hPinned, bytes);
+
+    printf("Pageable H2D: %.2f ms\n", TransferMs(dPtr, hPageable, bytes, cudaMemcpyHostToDevice));
+    printf("Pinned   H2D: %.2f ms\n", TransferMs(dPtr, hPinned,   bytes, cudaMemcpyHostToDevice));
+
+    cudaFree(dPtr); free(hPageable); cudaFreeHost(hPinned);
+}</code></pre>
+
+                <p>RTX 4090 + PCIe Gen4 환경에서 대략 다음과 같은 차이가 난다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방식</th><th>대역폭 (예시)</th><th>비고</th></tr>
+                    <tr><td>Pageable malloc</td><td>~12 GB/s</td><td>내부 임시 핀드 복사 1회 포함</td></tr>
+                    <tr><td class="highlight">Pinned (cudaMallocHost)</td><td class="highlight">~25 GB/s</td><td class="highlight">PCIe 이론치에 근접</td></tr>
+                    <tr><td>Pinned + 비동기 + 스트림</td><td>~25 GB/s × 오버랩</td><td>다음 편 주제</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>핀드 메모리를 너무 많이 잡으면 시스템이 느려진다</strong>
+                        OS가 페이지를 스왑/이동하지 못하므로 가용 RAM이 줄어든다. 16 GB 시스템에서 8 GB를 핀드로 잡으면 다른 프로세스가 스왑으로 내몰린다. <strong>꼭 필요한 grab 버퍼·전송 스테이징 버퍼에만</strong> 사용한다.
+                    </div>
+                </div>
+
+                <h3 id="cudahostalloc"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> cudaHostAlloc — 플래그 버전</h3>
+
+<pre class="language-cpp"><code class="language-cpp">float* hp = nullptr;
+cudaHostAlloc(&amp;hp, bytes, cudaHostAllocDefault);
+// 플래그 종류:
+//   cudaHostAllocDefault         : 일반 핀드
+//   cudaHostAllocPortable        : 모든 CUDA 컨텍스트에서 핀드로 보임
+//   cudaHostAllocMapped          : Zero-Copy용 매핑
+//   cudaHostAllocWriteCombined   : Write-Combined</code></pre>
+
+                <!-- 5. Write-Combined -->
+                <h2 id="wc"><i class="fa-solid fa-pen-nib"></i> Write-Combined 메모리</h2>
+
+                <p>Write-Combined(WC)은 CPU 캐시를 우회하는 핀드 메모리다. CPU가 <strong>쓰기만 하고 절대 읽지 않을 때</strong> 유리하다. PCIe로 나가는 속도가 더 빨라지지만, CPU가 이 영역에서 한 번이라도 읽으면 굉장히 느려진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">float* hWc = nullptr;
+cudaHostAlloc(&amp;hWc, bytes, cudaHostAllocWriteCombined);
+
+// 좋은 사용: 입력 버퍼 채우고 GPU로 보내기만 함
+for (size_t i = 0; i &lt; n; ++i) hWc[i] = ProduceSample(i);
+cudaMemcpy(dPtr, hWc, bytes, cudaMemcpyHostToDevice);
+
+// 나쁜 사용: CPU 읽기 — 매우 느림!
+// float v = hWc[0];   // ✗ 캐시 우회 → 메모리에서 직접 읽음</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>언제 쓰나</strong>
+                        Host→Device 일방향 스트리밍 (예: 카메라 grab 후 GPU로 보내기만 하는 버퍼). Device→Host 결과 버퍼에는 절대 쓰지 말 것.
+                    </div>
+                </div>
+
+                <!-- 6. Zero-Copy -->
+                <h2 id="zero-copy"><i class="fa-solid fa-arrows-left-right-to-line"></i> Zero-Copy 메모리</h2>
+
+                <p>Zero-Copy는 호스트 메모리를 GPU 주소공간에 <strong>매핑</strong>해서, 커널이 PCIe를 통해 직접 읽거나 쓰는 방식이다. <code>cudaMemcpy</code>가 필요 없다는 게 장점이지만, GPU의 모든 접근이 PCIe를 타기 때문에 큰 데이터엔 매우 불리하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Mapped host memory 할당
+float* hMapped = nullptr;
+cudaHostAlloc(&amp;hMapped, bytes, cudaHostAllocMapped);
+
+// 같은 메모리를 가리키는 device 포인터 얻기
+float* dMapped = nullptr;
+cudaHostGetDevicePointer(&amp;dMapped, hMapped, 0);
+
+// 커널이 dMapped를 직접 사용 — 명시적 복사 없음
+MyKernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(dMapped, n);
+cudaDeviceSynchronize();
+
+// 결과를 host에서 읽기 (이미 같은 메모리)
+printf("%f\n", hMapped[0]);
+
+cudaFreeHost(hMapped);</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>특성</th><th>Zero-Copy 적합</th><th>일반 cudaMemcpy 적합</th></tr>
+                    <tr><td>데이터 크기</td><td>작음 (~수 MB 이하)</td><td>큼</td></tr>
+                    <tr><td>접근 패턴</td><td>1회 순차 읽기/쓰기</td><td>반복 접근</td></tr>
+                    <tr><td>예시</td><td>구성 파라미터, 룩업 테이블 일부</td><td>이미지·텐서</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>큰 데이터에 Zero-Copy를 쓰지 말 것</strong>
+                        각 메모리 접근이 PCIe를 탄다. 1920×1080 이미지를 zero-copy로 읽으며 처리하면 <code>cudaMemcpy</code> + 커널 조합보다 5~10배 느려진다.
+                    </div>
+                </div>
+
+                <!-- 7. Unified Memory -->
+                <h2 id="unified"><i class="fa-solid fa-link"></i> Unified Memory (cudaMallocManaged)</h2>
+
+                <p>Unified Memory는 호스트와 디바이스가 같은 포인터를 공유하는 가상 메모리다. CUDA 런타임이 페이지 폴트를 잡아 필요한 쪽으로 자동 마이그레이션한다. Pascal 세대(SM 6.0) 이상에서 페이지 폴트 기반 마이그레이션을 지원한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">float* uPtr = nullptr;
+cudaMallocManaged(&amp;uPtr, bytes);
+
+// Host에서 초기화 — 자동으로 host에 페이지 배치
+for (size_t i = 0; i &lt; n; ++i) uPtr[i] = static_cast&lt;float&gt;(i);
+
+// Device에서 사용 — 접근 시 페이지가 GPU로 자동 마이그레이션
+MyKernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(uPtr, n);
+cudaDeviceSynchronize();
+
+// Host에서 다시 읽기 — 페이지가 host로 돌아옴
+printf("%f\n", uPtr[0]);
+
+cudaFree(uPtr);</code></pre>
+
+                <p>접근 패턴을 미리 알 수 있다면 <code>cudaMemPrefetchAsync</code>로 마이그레이션 시점을 앞당겨 페이지 폴트를 줄일 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int device = 0;
+cudaGetDevice(&amp;device);
+
+// GPU로 미리 보내기
+cudaMemPrefetchAsync(uPtr, bytes, device);
+MyKernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(uPtr, n);
+
+// Host로 미리 가져오기
+cudaMemPrefetchAsync(uPtr, bytes, cudaCpuDeviceId);
+cudaDeviceSynchronize();</code></pre>
+
+                <h3 id="managed-vs"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 할당 API 비교</h3>
+
+                <table class="spec-table">
+                    <tr><th>API</th><th>위치</th><th>전송</th><th>장점</th><th>단점</th></tr>
+                    <tr><td><code>malloc</code> + <code>cudaMemcpy</code></td><td>Host (pageable)</td><td>명시적</td><td>단순</td><td>임시 핀드 복사 1회 추가, 느림</td></tr>
+                    <tr><td><code>cudaMallocHost</code></td><td>Host (pinned)</td><td>명시적</td><td>빠른 전송, 비동기 가능</td><td>RAM 차지</td></tr>
+                    <tr><td><code>cudaHostAlloc(WC)</code></td><td>Host (pinned + WC)</td><td>명시적</td><td>H2D 더 빠름</td><td>CPU 읽기 금지</td></tr>
+                    <tr><td><code>cudaHostAlloc(Mapped)</code></td><td>Host (mapped)</td><td>없음 (직접 접근)</td><td>복사 없음</td><td>큰 데이터에 매우 느림</td></tr>
+                    <tr><td><code>cudaMallocManaged</code></td><td>Unified</td><td>자동 마이그레이션</td><td>코드 간결</td><td>예측 어려움, 폴트 비용</td></tr>
+                    <tr><td><code>cudaMalloc</code></td><td>Device only</td><td>—</td><td>가장 빠른 GPU 접근</td><td>Host에서 직접 못 씀</td></tr>
+                </table>
+
+                <!-- 8. Patterns -->
+                <h2 id="patterns"><i class="fa-solid fa-diagram-project"></i> 메모리 전송 최적화 패턴</h2>
+
+                <h3 id="p-reduce"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1) 전송 횟수를 줄인다</h3>
+
+                <p>여러 단계의 처리를 GPU에서 한 번에 끝내는 것이 가장 좋다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// ✗ 나쁜 예 — 단계마다 host로 내림
+cudaMemcpy(dA, hA, bytes, cudaMemcpyHostToDevice);
+BlurKernel&lt;&lt;&lt;...&gt;&gt;&gt;(dA, dB);
+cudaMemcpy(hB, dB, bytes, cudaMemcpyDeviceToHost);   // 불필요
+cudaMemcpy(dB, hB, bytes, cudaMemcpyHostToDevice);   // 불필요
+EdgeKernel&lt;&lt;&lt;...&gt;&gt;&gt;(dB, dC);
+cudaMemcpy(hC, dC, bytes, cudaMemcpyDeviceToHost);
+
+// ✓ 좋은 예 — 중간 결과는 GPU에 둠
+cudaMemcpy(dA, hA, bytes, cudaMemcpyHostToDevice);
+BlurKernel&lt;&lt;&lt;...&gt;&gt;&gt;(dA, dB);
+EdgeKernel&lt;&lt;&lt;...&gt;&gt;&gt;(dB, dC);
+cudaMemcpy(hC, dC, bytes, cudaMemcpyDeviceToHost);</code></pre>
+
+                <h3 id="p-reuse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2) 버퍼를 재사용한다</h3>
+
+                <p><code>cudaMalloc</code>/<code>cudaFree</code>는 비싸다. 처리할 때마다 할당하지 말고 풀(pool)을 만든다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class GpuImageBuffer
+{
+public:
+    ErrorCode Resize(int width, int height)
+    {
+        const size_t need = static_cast&lt;size_t&gt;(width) * height * sizeof(float);
+        if (need &lt;= m_capacity) { m_width = width; m_height = height; return ErrorCode::Ok; }
+
+        if (m_ptr) cudaFree(m_ptr);
+        cudaError_t e = cudaMalloc(&amp;m_ptr, need);
+        if (e != cudaSuccess) return ErrorCode::OutOfMemory;
+        m_capacity = need;
+        m_width = width; m_height = height;
+        return ErrorCode::Ok;
+    }
+    ~GpuImageBuffer() { if (m_ptr) cudaFree(m_ptr); }
+
+private:
+    float* m_ptr      = nullptr;
+    size_t m_capacity = 0;
+    int    m_width    = 0;
+    int    m_height   = 0;
+};</code></pre>
+
+                <h3 id="p-async"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3) 핀드 + 비동기 + 스트림 (예고)</h3>
+
+                <p>핀드 메모리는 <code>cudaMemcpyAsync</code>의 전제 조건이다. 스트림을 활용하면 <strong>전송과 커널 실행을 겹쳐</strong> PCIe 대기 시간을 숨길 수 있다. 자세한 내용은 5편에서 다룬다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cudaStream_t s;
+cudaStreamCreate(&amp;s);
+
+cudaMemcpyAsync(dPtr, hPinned, bytes, cudaMemcpyHostToDevice, s);
+MyKernel&lt;&lt;&lt;grid, block, 0, s&gt;&gt;&gt;(dPtr, n);
+cudaMemcpyAsync(hPinned, dPtr, bytes, cudaMemcpyDeviceToHost, s);
+
+cudaStreamSynchronize(s);
+cudaStreamDestroy(s);</code></pre>
+
+                <!-- 9. Vision -->
+                <h2 id="vision"><i class="fa-solid fa-camera"></i> 산업 비전 적용 — 카메라 grab 버퍼</h2>
+
+                <p>머신 비전 파이프라인에서 가장 효과 큰 최적화는 <strong>카메라 grab 버퍼 자체를 핀드 메모리로 잡는 것</strong>이다. Vieworks SDK든 GenICam이든, 사용자 버퍼 등록 API를 제공하면 거기에 <code>cudaMallocHost</code>로 잡은 버퍼를 넘긴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Pinned ring buffer for camera grab
+class PinnedRingBuffer
+{
+public:
+    ErrorCode Initialize(int width, int height, int slotCount)
+    {
+        m_frameBytes = static_cast&lt;size_t&gt;(width) * height;  // Mono8 가정
+        m_slotCount = slotCount;
+        m_slots.resize(slotCount);
+
+        for (int i = 0; i &lt; slotCount; ++i)
+        {
+            // 카메라가 직접 쓰고, GPU가 빠르게 읽을 버퍼
+            cudaError_t e = cudaHostAlloc(&amp;m_slots[i], m_frameBytes,
+                                          cudaHostAllocDefault);
+            if (e != cudaSuccess) return ErrorCode::OutOfMemory;
+        }
+        return ErrorCode::Ok;
+    }
+
+    // 카메라 콜백에 슬롯 포인터 제공
+    uint8_t* GetSlot(int index) const { return m_slots[index]; }
+
+    ~PinnedRingBuffer()
+    {
+        for (auto* p : m_slots) if (p) cudaFreeHost(p);
+    }
+
+private:
+    std::vector&lt;uint8_t*&gt; m_slots;
+    size_t m_frameBytes = 0;
+    int    m_slotCount  = 0;
+};</code></pre>
+
+                <p>전송은 비동기로 보내 다음 프레임 grab과 겹친다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 카메라 콜백 — 새 프레임이 슬롯 k에 들어왔다고 알려옴
+void OnFrameReady(int k)
+{
+    cudaMemcpyAsync(m_dGpuFrame, m_ring.GetSlot(k),
+                    m_frameBytes, cudaMemcpyHostToDevice, m_stream);
+    InspectionKernel&lt;&lt;&lt;m_grid, m_block, 0, m_stream&gt;&gt;&gt;(m_dGpuFrame, m_dResult);
+    cudaMemcpyAsync(m_hResult, m_dResult, m_resultBytes,
+                    cudaMemcpyDeviceToHost, m_stream);
+    // CPU는 다음 grab을 기다리고, GPU는 이번 프레임을 처리한다.
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실측 — 4K Mono8 (32 MB) 1프레임</strong>
+                        Pageable로 받아 복사: ~3.0 ms / Pinned 직접 grab: ~1.3 ms / Pinned + 스트림 오버랩: 사실상 0 ms (커널과 겹침). 30 fps × 4K 라인에서 결정적인 차이다.
+                    </div>
+                </div>
+
+                <!-- 10. Pitfalls -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="pf-1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 너무 잦은 작은 전송</h3>
+
+                <p>1 KB짜리 cudaMemcpy를 100번 호출하면, 100 KB를 한 번에 보내는 것보다 수십 배 느리다. 각 호출에는 고정 오버헤드(수 µs)가 있다. 작은 데이터를 모아 한 번에 보내자.</p>
+
+                <h3 id="pf-2"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 핀드 메모리 과다 사용</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"빠르니까 다 핀드로" 는 위험</strong>
+                        가용 시스템 RAM이 줄고, 다른 프로세스가 스왑으로 내몰린다. <code>cudaHostAlloc</code>이 어느 순간 <code>cudaErrorMemoryAllocation</code>을 돌려주기도 한다. 카메라 grab 슬롯·전송 스테이징처럼 빈번하게 PCIe를 타는 곳에만 사용한다.
+                    </div>
+                </div>
+
+                <h3 id="pf-3"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> pitch를 무시한 접근</h3>
+
+                <p>2D 메모리를 <code>image[y * width + x]</code>로 접근하면 일부 행이 어긋난다. 반드시 <code>pitch</code>를 통해 행 주소를 구한다 (위 <a href="#pitched">Pitch 섹션</a> 참조).</p>
+
+                <h3 id="pf-4"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Zero-Copy 남용</h3>
+
+                <p>"<code>cudaMemcpy</code> 호출이 사라져서 좋다"는 이유로 큰 이미지에 Zero-Copy를 쓰면 모든 픽셀 접근이 PCIe를 탄다. 결과적으로 5~10배 느려진다. Zero-Copy는 작은 상수 데이터·룩업 테이블의 일부 접근 정도에만.</p>
+
+                <h3 id="pf-5"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Managed Memory를 만능으로 보기</h3>
+
+                <p>편하지만 페이지 폴트 비용이 누적되면 수동 <code>cudaMemcpy</code>보다 느려질 수 있다. 성능이 중요한 경로에서는 <code>cudaMemPrefetchAsync</code>로 마이그레이션 시점을 지정하거나, 아예 <code>cudaMalloc</code>으로 바꾸는 편이 낫다.</p>
+
+                <h3 id="pf-6"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 동기 vs 비동기 혼동</h3>
+
+                <p><code>cudaMemcpy</code>는 <strong>동기</strong>(완료까지 블록)지만, <code>cudaMemcpyAsync</code>는 <strong>호스트 측에서만 비동기</strong>다. 그리고 <code>cudaMemcpyAsync</code>는 <strong>핀드 메모리에서만 진짜로 비동기</strong>로 동작한다. pageable 메모리를 넘기면 내부에서 동기 복사로 폴백된다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>다음 편 예고</strong>
+                        5편에서는 스트림과 비동기 실행을 다룬다. 핀드 메모리 + 멀티 스트림으로 전송과 커널을 어떻게 겹치는지, 그리고 이벤트로 동기화하는 방법까지.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA CUDA C++ Programming Guide — Memory Management 챕터</li>
+                        <li>NVIDIA CUDA Runtime API Reference — cudaMalloc, cudaMemcpy, cudaMallocHost, cudaHostAlloc, cudaMallocManaged</li>
+                        <li>NVIDIA Developer Blog — "How to Optimize Data Transfers in CUDA C/C++"</li>
+                        <li>NVIDIA Developer Blog — "Unified Memory in CUDA 6 and Beyond"</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

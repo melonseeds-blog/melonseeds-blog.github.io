@@ -1,0 +1,940 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Memory와 동기화·뱅크 충돌 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#recap" data-section="recap">복습</a>
+        <a href="#declare" data-section="declare">선언과 사용</a>
+        <a href="#sync" data-section="sync">__syncthreads</a>
+        <a href="#tiling" data-section="tiling">타일링</a>
+        <a href="#convolution" data-section="convolution">컨볼루션</a>
+        <a href="#bank-conflict" data-section="bank-conflict">뱅크 충돌</a>
+        <a href="#avoid-conflict" data-section="avoid-conflict">충돌 회피</a>
+        <a href="#static-vs-dynamic" data-section="static-vs-dynamic">정적 vs 동적</a>
+        <a href="#l1-config" data-section="l1-config">L1 비율</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / CUDA</span>
+                </div>
+                <h1>Shared Memory와 동기화·뱅크 충돌</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Shared memory의 위치와 특성 — SM 내부 SRAM에서 L1과 공유</li>
+                        <li>정적/동적 선언 방법과 <code>__syncthreads()</code> 동기화</li>
+                        <li>타일링 패턴 — 행렬 곱셈과 이미지 컨볼루션 예제</li>
+                        <li>뱅크 충돌(Bank Conflict)의 원리와 회피 기법</li>
+                        <li><code>cudaFuncSetCacheConfig</code>로 L1/Shared 비율 조정</li>
+                        <li>실수하기 쉬운 함정 — 동기화 누락, 발산 코드 내 동기화, 크기 초과</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#recap">Shared Memory 복습</a></li>
+                        <li><a href="#declare">선언과 사용</a></li>
+                        <li><a href="#sync">__syncthreads()로 동기화</a></li>
+                        <li><a href="#tiling">타일링 패턴 — 행렬 곱셈</a></li>
+                        <li><a href="#convolution">이미지 컨볼루션 예제</a></li>
+                        <li><a href="#bank-conflict">뱅크 충돌(Bank Conflict)</a></li>
+                        <li><a href="#avoid-conflict">뱅크 충돌 회피 기법</a></li>
+                        <li><a href="#static-vs-dynamic">정적 vs 동적 Shared Memory</a></li>
+                        <li><a href="#l1-config">Shared Memory와 L1 비율 조정</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 복습 -->
+                <h2 id="recap"><i class="fa-solid fa-rotate-left"></i> Shared Memory 복습</h2>
+                <p>2편 메모리 계층에서 다뤘듯이 GPU 메모리는 속도와 범위에 따라 계층을 이룬다. Shared memory는 <strong>같은 블록(block) 내 스레드들이 공유</strong>하는 매우 빠른 온칩(on-chip) 메모리다. 물리적으로는 SM(Streaming Multiprocessor) 내부의 SRAM이며, L1 캐시와 같은 영역을 나눠 쓴다.</p>
+
+                <table class="spec-table">
+                    <tr><th>메모리</th><th>범위</th><th>지연(cycle)</th><th>용량/SM</th><th>관리 주체</th></tr>
+                    <tr><td>레지스터</td><td>스레드</td><td>~1</td><td>64KB</td><td>컴파일러</td></tr>
+                    <tr><td><strong>Shared Memory</strong></td><td><strong>블록</strong></td><td><strong>~20–30</strong></td><td><strong>48–164KB</strong></td><td><strong>프로그래머</strong></td></tr>
+                    <tr><td>L1 캐시</td><td>SM</td><td>~30</td><td>(공유)</td><td>하드웨어</td></tr>
+                    <tr><td>L2 캐시</td><td>전체</td><td>~200</td><td>4–40MB</td><td>하드웨어</td></tr>
+                    <tr><td>Global Memory</td><td>전체</td><td>~400–800</td><td>—</td><td>프로그래머</td></tr>
+                </table>
+
+                <p>Global memory에 비해 약 <strong>20–30배</strong> 빠르다. 같은 데이터를 여러 스레드가 반복 참조하면 shared memory에 한 번 적재한 뒤 재사용하는 것이 정석이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>핵심 사용 시나리오</strong>
+                        스레드들이 데이터를 공유하거나, 같은 데이터를 여러 번 읽거나, 인접 픽셀처럼 협력적 접근이 필요한 경우 shared memory를 사용한다.
+                    </div>
+                </div>
+
+                <!-- 2. 선언과 사용 -->
+                <h2 id="declare"><i class="fa-solid fa-code"></i> 선언과 사용</h2>
+
+                <h3 id="static-shared"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정적 선언</h3>
+                <p>크기를 컴파일 타임에 고정하는 방식. 가장 단순하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void StaticSharedKernel(float* input, float* output, int n)
+{
+    // Compile-time fixed size shared memory.
+    __shared__ float buf[256];
+
+    int tid = threadIdx.x;
+    int gid = blockIdx.x * blockDim.x + tid;
+
+    // Load from global to shared.
+    if (gid &lt; n)
+    {
+        buf[tid] = input[gid];
+    }
+    __syncthreads();
+
+    // Use shared data (here just write back).
+    if (gid &lt; n)
+    {
+        output[gid] = buf[tid] * 2.0f;
+    }
+}
+
+// Launch.
+StaticSharedKernel&lt;&lt;&lt;gridDim, 256&gt;&gt;&gt;(d_in, d_out, n);</code></pre>
+
+                <h3 id="dynamic-shared"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 동적 선언</h3>
+                <p>커널 호출 시 크기를 지정하는 방식. <code>extern</code> 키워드로 선언하고 launch 시 세 번째 실행 인자로 바이트 단위 크기를 넘긴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void DynamicSharedKernel(float* input, float* output, int n)
+{
+    // Size is determined at launch time.
+    extern __shared__ float buf[];
+
+    int tid = threadIdx.x;
+    int gid = blockIdx.x * blockDim.x + tid;
+
+    if (gid &lt; n)
+    {
+        buf[tid] = input[gid];
+    }
+    __syncthreads();
+
+    if (gid &lt; n)
+    {
+        output[gid] = buf[tid] * 2.0f;
+    }
+}
+
+// The third &lt;&lt;&lt;...&gt;&gt;&gt; argument is shared memory bytes.
+int blockSize = 256;
+size_t sharedBytes = blockSize * sizeof(float);
+DynamicSharedKernel&lt;&lt;&lt;gridDim, blockSize, sharedBytes&gt;&gt;&gt;(d_in, d_out, n);</code></pre>
+
+                <h3 id="dynamic-multi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 동적 shared로 여러 배열 두기</h3>
+                <p>동적 shared는 단일 버퍼만 선언 가능하다. 여러 배열이 필요하면 오프셋을 직접 계산한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void MultiArrayKernel(int n)
+{
+    extern __shared__ unsigned char smem[];
+
+    // Manually split into multiple arrays.
+    float* a = reinterpret_cast&lt;float*&gt;(smem);
+    int*   b = reinterpret_cast&lt;int*&gt;(&amp;a[blockDim.x]);
+
+    int tid = threadIdx.x;
+    a[tid] = 0.0f;
+    b[tid] = 0;
+    // ...
+}
+
+// Launch with total size for both arrays.
+size_t bytes = blockSize * (sizeof(float) + sizeof(int));
+MultiArrayKernel&lt;&lt;&lt;grid, blockSize, bytes&gt;&gt;&gt;(n);</code></pre>
+
+                <!-- 3. 동기화 -->
+                <h2 id="sync"><i class="fa-solid fa-people-arrows"></i> __syncthreads()로 동기화</h2>
+                <p><code>__syncthreads()</code>는 같은 블록 내 <strong>모든 스레드가 이 지점에 도달할 때까지 대기</strong>하는 배리어(barrier)다. Shared memory에 쓴 데이터를 다른 스레드가 읽기 전에 반드시 호출해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void ReverseInBlock(float* data)
+{
+    __shared__ float s[256];
+    int tid = threadIdx.x;
+
+    // Each thread writes its element.
+    s[tid] = data[blockIdx.x * blockDim.x + tid];
+
+    // Wait until all threads have finished writing.
+    __syncthreads();
+
+    // Now safe to read what other threads wrote.
+    int reverseIdx = blockDim.x - 1 - tid;
+    data[blockIdx.x * blockDim.x + tid] = s[reverseIdx];
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>__syncthreads() 누락은 데이터 race</strong>
+                        Shared memory에 쓰기를 한 직후 다른 스레드의 값을 읽는다면 동기화가 필수다. 빠뜨리면 비결정적(non-deterministic) 결과가 나오며, 디버그 빌드에서는 우연히 통과하다 릴리스에서 깨지는 일이 흔하다.
+                    </div>
+                </div>
+
+                <h3 id="warp-sync"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 워프 내부 동기화</h3>
+                <p>같은 워프(32 스레드) 내부라면 SIMT 특성상 lockstep으로 실행되지만, Volta 이후 architecture는 독립 스케줄링을 허용하므로 워프 내라도 <code>__syncwarp()</code>를 명시하는 것이 안전하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Volta+ : warp-level barrier.
+__syncwarp();              // entire warp
+__syncwarp(0x0000FFFF);    // lower 16 lanes only (mask)</code></pre>
+
+                <!-- 4. 타일링 -->
+                <h2 id="tiling"><i class="fa-solid fa-table-cells"></i> 타일링 패턴 — 행렬 곱셈</h2>
+                <p>Shared memory의 가장 대표적인 활용 패턴이 <strong>타일링(tiling)</strong>이다. 큰 데이터를 작은 타일 단위로 잘라 shared memory에 적재하고, 블록 내 스레드들이 협력해 재사용한다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg">
+                        <!-- A matrix -->
+                        <rect x="20" y="40" width="180" height="180" fill="#eff6ff" stroke="#1e40af" stroke-width="1.5"/>
+                        <text x="110" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="#1e40af">Matrix A</text>
+                        <rect x="20" y="40" width="60" height="60" fill="#fde68a" stroke="#d97706" stroke-width="2"/>
+                        <text x="50" y="76" text-anchor="middle" font-size="11" font-weight="700" fill="#78350f">tile A</text>
+
+                        <!-- B matrix -->
+                        <rect x="240" y="40" width="180" height="180" fill="#eff6ff" stroke="#1e40af" stroke-width="1.5"/>
+                        <text x="330" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="#1e40af">Matrix B</text>
+                        <rect x="240" y="40" width="60" height="60" fill="#fde68a" stroke="#d97706" stroke-width="2"/>
+                        <text x="270" y="76" text-anchor="middle" font-size="11" font-weight="700" fill="#78350f">tile B</text>
+
+                        <!-- C result -->
+                        <rect x="460" y="40" width="160" height="160" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+                        <text x="540" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="#059669">Matrix C</text>
+                        <rect x="460" y="40" width="54" height="54" fill="#a7f3d0" stroke="#059669" stroke-width="2"/>
+                        <text x="487" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#065f46">block</text>
+
+                        <!-- arrows -->
+                        <path d="M 85 100 Q 200 140 460 100" stroke="#d97706" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+                        <path d="M 305 100 Q 380 140 460 100" stroke="#d97706" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+
+                        <text x="320" y="260" text-anchor="middle" font-size="12" fill="#475569">각 블록이 A·B 타일을 shared로 로드 → 곱셈 누산 → C 한 블록 완성</text>
+
+                        <defs>
+                            <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#d97706"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    <div class="diagram-caption">타일링 — 두 입력 행렬의 타일을 shared memory에 적재 후 블록 내 스레드가 재사용</div>
+                </div>
+
+                <p>타일링 없이 단순 구현하면 각 결과 원소마다 행 전체와 열 전체를 global memory에서 읽어야 한다. 타일링을 적용하면 같은 타일이 블록 내에서 여러 번 재사용되므로 global 접근 횟수가 <strong>TILE_SIZE배</strong>만큼 줄어든다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#define TILE 16
+
+__global__ void MatMulTiled(const float* A, const float* B, float* C, int N)
+{
+    __shared__ float tileA[TILE][TILE];
+    __shared__ float tileB[TILE][TILE];
+
+    int row = blockIdx.y * TILE + threadIdx.y;
+    int col = blockIdx.x * TILE + threadIdx.x;
+
+    float sum = 0.0f;
+
+    // Iterate over tiles in the K dimension.
+    for (int t = 0; t &lt; N / TILE; ++t)
+    {
+        // Cooperative load: each thread loads one element.
+        tileA[threadIdx.y][threadIdx.x] = A[row * N + (t * TILE + threadIdx.x)];
+        tileB[threadIdx.y][threadIdx.x] = B[(t * TILE + threadIdx.y) * N + col];
+
+        __syncthreads();    // wait until tile is fully loaded
+
+        // Compute partial dot product using shared tiles.
+        #pragma unroll
+        for (int k = 0; k &lt; TILE; ++k)
+        {
+            sum += tileA[threadIdx.y][k] * tileB[k][threadIdx.x];
+        }
+
+        __syncthreads();    // wait before overwriting tiles in next iteration
+    }
+
+    C[row * N + col] = sum;
+}
+
+// Launch.
+dim3 block(TILE, TILE);
+dim3 grid(N / TILE, N / TILE);
+MatMulTiled&lt;&lt;&lt;grid, block&gt;&gt;&gt;(dA, dB, dC, N);</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>왜 __syncthreads()가 두 번 필요한가</strong>
+                        첫 번째는 타일 로드 완료 후 모든 스레드가 같이 읽기 위해서, 두 번째는 다음 반복에서 새 타일로 덮어쓰기 전에 모든 스레드의 계산이 끝났음을 보장하기 위해서다.
+                    </div>
+                </div>
+
+                <!-- 5. 컨볼루션 -->
+                <h2 id="convolution"><i class="fa-solid fa-image"></i> 이미지 컨볼루션 예제</h2>
+                <p>이미지 처리에서 3×3, 5×5 같은 작은 커널을 이미지 전체에 적용하는 컨볼루션도 타일링의 좋은 사례다. 다만 경계에서 이웃 픽셀을 참조해야 하므로 <strong>halo(이웃 여유 영역)</strong>를 포함해 적재한다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 520 220" xmlns="http://www.w3.org/2000/svg">
+                        <!-- shared tile with halo -->
+                        <rect x="40" y="20" width="180" height="180" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+                        <text x="130" y="14" text-anchor="middle" font-size="11" fill="#78350f">Shared tile + halo (18×18)</text>
+                        <rect x="60" y="40" width="140" height="140" fill="#fde68a" stroke="#b45309" stroke-width="1.5"/>
+                        <text x="130" y="115" text-anchor="middle" font-size="12" font-weight="700" fill="#78350f">block (16×16)</text>
+                        <text x="130" y="135" text-anchor="middle" font-size="10" fill="#78350f">실제 계산 영역</text>
+
+                        <!-- arrow -->
+                        <path d="M 230 110 L 290 110" stroke="#059669" stroke-width="2.5" fill="none" marker-end="url(#arr2)"/>
+                        <text x="260" y="100" text-anchor="middle" font-size="10" fill="#059669">3×3 conv</text>
+
+                        <!-- output -->
+                        <rect x="320" y="40" width="140" height="140" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+                        <text x="390" y="34" text-anchor="middle" font-size="11" fill="#065f46">Output (16×16)</text>
+                        <text x="390" y="115" text-anchor="middle" font-size="12" font-weight="700" fill="#065f46">결과</text>
+
+                        <defs>
+                            <marker id="arr2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#059669"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    <div class="diagram-caption">컨볼루션 — 블록 크기 16×16에 halo 1픽셀씩 더해 18×18을 shared로 로드</div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">#define BLOCK 16
+#define RADIUS 1
+#define TILE_W (BLOCK + 2 * RADIUS)   // 18
+
+__constant__ float c_kernel[9] = {
+    1/16.f, 2/16.f, 1/16.f,
+    2/16.f, 4/16.f, 2/16.f,
+    1/16.f, 2/16.f, 1/16.f
+};
+
+__global__ void GaussianBlur3x3(const unsigned char* input,
+                                unsigned char* output,
+                                int width, int height)
+{
+    __shared__ unsigned char tile[TILE_W][TILE_W];
+
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    // Global coordinates of this thread's output pixel.
+    int gx = blockIdx.x * BLOCK + tx;
+    int gy = blockIdx.y * BLOCK + ty;
+
+    // Coordinates inside the shared tile (offset by halo radius).
+    int lx = tx + RADIUS;
+    int ly = ty + RADIUS;
+
+    // Helper: clamped global read.
+    auto loadPixel = [&amp;](int x, int y) -&gt; unsigned char {
+        x = max(0, min(x, width - 1));
+        y = max(0, min(y, height - 1));
+        return input[y * width + x];
+    };
+
+    // 1) Each thread loads its own center pixel.
+    tile[ly][lx] = loadPixel(gx, gy);
+
+    // 2) Border threads also load halo pixels.
+    if (tx &lt; RADIUS)
+    {
+        tile[ly][lx - RADIUS]       = loadPixel(gx - RADIUS, gy);
+        tile[ly][lx + BLOCK]        = loadPixel(gx + BLOCK, gy);
+    }
+    if (ty &lt; RADIUS)
+    {
+        tile[ly - RADIUS][lx]       = loadPixel(gx, gy - RADIUS);
+        tile[ly + BLOCK][lx]        = loadPixel(gx, gy + BLOCK);
+    }
+    // (corners omitted for brevity — load similarly)
+
+    __syncthreads();
+
+    if (gx &gt;= width || gy &gt;= height) return;
+
+    // 3) Apply 3x3 convolution from shared memory.
+    float sum = 0.0f;
+    #pragma unroll
+    for (int ky = -RADIUS; ky &lt;= RADIUS; ++ky)
+    {
+        #pragma unroll
+        for (int kx = -RADIUS; kx &lt;= RADIUS; ++kx)
+        {
+            sum += tile[ly + ky][lx + kx]
+                 * c_kernel[(ky + RADIUS) * 3 + (kx + RADIUS)];
+        }
+    }
+
+    output[gy * width + gx] = static_cast&lt;unsigned char&gt;(sum);
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>왜 halo가 필요한가</strong>
+                        16×16 출력을 만들 때 3×3 커널을 적용하려면 각 경계 픽셀이 바로 옆 이웃을 읽어야 한다. 이웃까지 shared로 미리 적재해 두면 컨볼루션 루프 안에서 추가 global 접근이 사라진다.
+                    </div>
+                </div>
+
+                <!-- 6. 뱅크 충돌 -->
+                <h2 id="bank-conflict"><i class="fa-solid fa-bolt"></i> 뱅크 충돌(Bank Conflict)</h2>
+                <p>Shared memory는 빠른 병렬 접근을 위해 <strong>32개의 뱅크(bank)</strong>로 나뉘어 있다. 워프(32 스레드)가 한 번에 메모리에 접근할 때, 32 스레드가 <strong>서로 다른 뱅크</strong>에 접근하면 1 cycle에 모두 처리된다. 하지만 두 스레드가 같은 뱅크의 다른 주소를 동시에 요청하면 직렬화되어 성능이 떨어진다. 이를 뱅크 충돌이라고 한다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg">
+                        <!-- banks -->
+                        <text x="60" y="22" font-size="12" font-weight="700" fill="#1e40af">Bank 0</text>
+                        <text x="140" y="22" font-size="12" font-weight="700" fill="#1e40af">Bank 1</text>
+                        <text x="220" y="22" font-size="12" font-weight="700" fill="#1e40af">Bank 2</text>
+                        <text x="300" y="22" font-size="12" font-weight="700" fill="#1e40af">Bank 3</text>
+                        <text x="380" y="22" font-size="12" fill="#94a3b8">...</text>
+                        <text x="440" y="22" font-size="12" font-weight="700" fill="#1e40af">Bank 31</text>
+
+                        <!-- good case -->
+                        <text x="20" y="70" font-size="11" fill="#065f46" font-weight="700">Good</text>
+                        <rect x="60" y="50" width="60" height="30" fill="#a7f3d0" stroke="#059669"/>
+                        <text x="90" y="70" text-anchor="middle" font-size="11" fill="#065f46">T0</text>
+                        <rect x="140" y="50" width="60" height="30" fill="#a7f3d0" stroke="#059669"/>
+                        <text x="170" y="70" text-anchor="middle" font-size="11" fill="#065f46">T1</text>
+                        <rect x="220" y="50" width="60" height="30" fill="#a7f3d0" stroke="#059669"/>
+                        <text x="250" y="70" text-anchor="middle" font-size="11" fill="#065f46">T2</text>
+                        <rect x="300" y="50" width="60" height="30" fill="#a7f3d0" stroke="#059669"/>
+                        <text x="330" y="70" text-anchor="middle" font-size="11" fill="#065f46">T3</text>
+                        <rect x="440" y="50" width="60" height="30" fill="#a7f3d0" stroke="#059669"/>
+                        <text x="470" y="70" text-anchor="middle" font-size="11" fill="#065f46">T31</text>
+                        <text x="550" y="70" font-size="11" fill="#065f46">1 cycle</text>
+
+                        <!-- conflict case -->
+                        <text x="20" y="130" font-size="11" fill="#7f1d1d" font-weight="700">Conflict</text>
+                        <rect x="60" y="100" width="60" height="30" fill="#fecaca" stroke="#dc2626"/>
+                        <text x="90" y="120" text-anchor="middle" font-size="11" fill="#7f1d1d">T0</text>
+                        <rect x="60" y="130" width="60" height="30" fill="#fecaca" stroke="#dc2626"/>
+                        <text x="90" y="150" text-anchor="middle" font-size="11" fill="#7f1d1d">T1</text>
+                        <rect x="60" y="160" width="60" height="30" fill="#fecaca" stroke="#dc2626"/>
+                        <text x="90" y="180" text-anchor="middle" font-size="11" fill="#7f1d1d">T2</text>
+                        <text x="550" y="150" font-size="11" fill="#7f1d1d">3-way conflict</text>
+                        <text x="550" y="165" font-size="11" fill="#7f1d1d">→ 3 cycles</text>
+
+                        <!-- broadcast -->
+                        <text x="20" y="220" font-size="11" fill="#1e3a5f" font-weight="700">Broadcast</text>
+                        <rect x="60" y="200" width="60" height="30" fill="#bfdbfe" stroke="#2563eb"/>
+                        <text x="90" y="220" text-anchor="middle" font-size="10" fill="#1e3a5f">T0–T31 same addr</text>
+                        <text x="550" y="220" font-size="11" fill="#1e3a5f">1 cycle (broadcast)</text>
+                    </svg>
+                    <div class="diagram-caption">3가지 패턴 — 서로 다른 뱅크(이상), 같은 뱅크 다른 주소(충돌), 같은 주소(브로드캐스트)</div>
+                </div>
+
+                <p>현대 GPU에서 shared memory는 4바이트 워드 단위로 32개 뱅크에 순차 매핑된다. 즉 <code>float buf[N]</code>에서 <code>buf[i]</code>는 뱅크 <code>i % 32</code>에 위치한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>접근 패턴</th><th>설명</th><th>성능</th></tr>
+                    <tr><td><code>buf[tid]</code></td><td>스레드 i → 뱅크 i. 완벽한 분산</td><td>1 cycle (최적)</td></tr>
+                    <tr><td><code>buf[tid * 2]</code></td><td>홀짝만 사용. 2-way 충돌</td><td>2 cycles</td></tr>
+                    <tr><td><code>buf[tid * 32]</code></td><td>모두 뱅크 0. 32-way 충돌</td><td>32 cycles (최악)</td></tr>
+                    <tr><td><code>buf[0]</code> (모든 스레드)</td><td>같은 주소 동시 읽기</td><td>1 cycle (broadcast)</td></tr>
+                    <tr><td><code>buf[tid * 4]</code></td><td>뱅크 0, 4, 8, ... 8-way 충돌</td><td>4 cycles</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>뱅크 충돌은 조용한 성능 킬러</strong>
+                        결과 자체는 정확하므로 기능 테스트는 통과한다. 하지만 32-way 충돌은 최적 대비 <strong>32배 느리게</strong> 동작한다. Nsight Compute의 <code>shared_load_bank_conflicts</code> 지표로 확인해야 한다.
+                    </div>
+                </div>
+
+                <!-- 7. 충돌 회피 -->
+                <h2 id="avoid-conflict"><i class="fa-solid fa-shield-halved"></i> 뱅크 충돌 회피 기법</h2>
+
+                <h3 id="padding"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 패딩(Padding)</h3>
+                <p>2D shared 배열에서 한 열을 통째로 접근할 때(<code>buf[i][tid]</code>처럼 i가 변하는 접근)는 모든 스레드가 같은 뱅크에 모일 수 있다. 한 열에 더미 칸 하나를 추가하면 stride가 어긋나 충돌이 사라진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 충돌 발생 — 32 스레드가 같은 열 접근 시 모두 같은 뱅크
+__shared__ float buf[32][32];
+// buf[0][tid], buf[1][tid], ... 모두 tid%32 뱅크
+
+// 해결 — 한 칸 패딩
+__shared__ float buf[32][33];   // +1 padding
+// 이제 buf[i][tid]의 뱅크 = (i * 33 + tid) % 32
+// i가 바뀌어도 뱅크가 분산됨</code></pre>
+
+                <h3 id="transpose-example"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 전치(transpose) 커널 예시</h3>
+                <p>행렬 전치는 뱅크 충돌이 발생하기 쉬운 대표 예시다. 패딩 한 줄만 추가해도 큰 성능 향상을 얻는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#define TILE 32
+
+__global__ void TransposeNaive(const float* in, float* out, int N)
+{
+    __shared__ float tile[TILE][TILE];     // bank conflict on column read!
+
+    int x = blockIdx.x * TILE + threadIdx.x;
+    int y = blockIdx.y * TILE + threadIdx.y;
+
+    tile[threadIdx.y][threadIdx.x] = in[y * N + x];
+    __syncthreads();
+
+    int xt = blockIdx.y * TILE + threadIdx.x;
+    int yt = blockIdx.x * TILE + threadIdx.y;
+    out[yt * N + xt] = tile[threadIdx.x][threadIdx.y];   // column access → conflict
+}
+
+__global__ void TransposePadded(const float* in, float* out, int N)
+{
+    __shared__ float tile[TILE][TILE + 1]; // +1 padding removes conflict
+
+    int x = blockIdx.x * TILE + threadIdx.x;
+    int y = blockIdx.y * TILE + threadIdx.y;
+
+    tile[threadIdx.y][threadIdx.x] = in[y * N + x];
+    __syncthreads();
+
+    int xt = blockIdx.y * TILE + threadIdx.x;
+    int yt = blockIdx.x * TILE + threadIdx.y;
+    out[yt * N + xt] = tile[threadIdx.x][threadIdx.y];   // no conflict
+}</code></pre>
+
+                <h3 id="stride-redesign"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Stride 조정과 접근 패턴 재설계</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 나쁜 접근 — stride 32, 모두 뱅크 0
+for (int i = 0; i &lt; n; i += 32) sum += buf[tid + i];
+
+// 좋은 접근 — 연속 인덱스
+for (int i = 0; i &lt; n; ++i) sum += buf[tid + i * blockDim.x];
+
+// Reduction의 경우 stride를 워프 폭으로 자연스럽게 분산
+for (int s = blockDim.x / 2; s &gt; 0; s &gt;&gt;= 1)
+{
+    if (tid &lt; s) buf[tid] += buf[tid + s];
+    __syncthreads();
+}</code></pre>
+
+                <!-- 8. 정적 vs 동적 -->
+                <h2 id="static-vs-dynamic"><i class="fa-solid fa-scale-balanced"></i> 정적 vs 동적 Shared Memory</h2>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>정적(static)</th><th>동적(dynamic)</th></tr>
+                    <tr><td>선언</td><td><code>__shared__ float buf[256];</code></td><td><code>extern __shared__ float buf[];</code></td></tr>
+                    <tr><td>크기 결정</td><td>컴파일 타임</td><td>런타임(커널 launch 시)</td></tr>
+                    <tr><td>여러 배열</td><td>가능, 자연스러움</td><td>오프셋 수동 계산 필요</td></tr>
+                    <tr><td>launch 인자</td><td>3번째 자리 생략 가능</td><td>3번째 자리에 바이트 지정</td></tr>
+                    <tr><td>유연성</td><td>낮음</td><td>높음</td></tr>
+                    <tr><td>주 사용처</td><td>크기가 고정된 알고리즘</td><td>크기를 호출자가 결정</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>혼합 사용도 가능</strong>
+                        정적 선언으로 고정 크기 버퍼를, 동적으로 가변 크기 버퍼를 동시에 사용할 수 있다. 동적 부분은 launch 시 바이트 크기만 넘기면 된다.
+                    </div>
+                </div>
+
+                <!-- 9. L1 비율 -->
+                <h2 id="l1-config"><i class="fa-solid fa-sliders"></i> Shared Memory와 L1 비율 조정</h2>
+                <p>SM 내부의 통합 SRAM은 shared memory와 L1 캐시가 나눠 쓴다. 워크로드 특성에 따라 비율을 조정할 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 커널별 캐시 선호도 설정.
+cudaFuncSetCacheConfig(MyKernel, cudaFuncCachePreferShared);   // shared 우선
+cudaFuncSetCacheConfig(MyKernel, cudaFuncCachePreferL1);       // L1 우선
+cudaFuncSetCacheConfig(MyKernel, cudaFuncCachePreferEqual);    // 동등
+cudaFuncSetCacheConfig(MyKernel, cudaFuncCachePreferNone);     // 기본
+
+// Volta 이후: opt-in으로 동적 shared memory 한도 상향.
+cudaFuncSetAttribute(MyKernel,
+    cudaFuncAttributeMaxDynamicSharedMemorySize,
+    96 * 1024);  // 96KB
+
+MyKernel&lt;&lt;&lt;grid, block, 96 * 1024&gt;&gt;&gt;(...);</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>아키텍처별 한도 차이</strong>
+                        기본 한도(예: 48KB)를 넘는 동적 shared를 쓰려면 <code>cudaFuncAttributeMaxDynamicSharedMemorySize</code> 설정이 필수다. Ampere(A100)는 최대 164KB까지 지원한다.
+                    </div>
+                </div>
+
+                <!-- 10. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="pitfall-1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 1 — __syncthreads() 누락</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 잘못된 코드
+__shared__ float s[256];
+s[threadIdx.x] = input[gid];
+// __syncthreads() 누락!
+float v = s[(threadIdx.x + 1) % 256];   // 다른 스레드의 값이 아직 안 쓰였을 수 있음</code></pre>
+
+                <h3 id="pitfall-2"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 2 — 발산(divergent) 코드 내 동기화</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 데드락 위험 — if 안의 __syncthreads()
+if (threadIdx.x &lt; 32)
+{
+    s[threadIdx.x] = ...;
+    __syncthreads();        // ★ 위험: 다른 스레드는 도달 못 함
+}
+
+// 올바른 패턴 — 모든 스레드가 도달
+s[threadIdx.x] = ...;       // 모든 스레드 실행
+__syncthreads();            // 블록 전체가 도달
+if (threadIdx.x &lt; 32)
+{
+    // ...
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>__syncthreads()는 반드시 모든 스레드가 도달해야 한다</strong>
+                        조건문이나 early return으로 일부 스레드만 동기화 지점에 도달하면 영구 데드락에 빠진다. 블록 전체가 도달 가능한 위치에만 두자.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-3"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 3 — 뱅크 충돌 미인지</h3>
+                <p>코드는 정확히 동작하지만 성능이 기대치에 못 미친다면 첫 번째로 의심할 것이 뱅크 충돌이다. Nsight Compute로 측정한다.</p>
+
+<pre class="language-bash"><code class="language-bash">$ ncu --metrics l1tex__data_bank_conflicts_pipe_lsu_mem_shared.sum ./my_app
+# shared_load_bank_conflicts / shared_store_bank_conflicts 지표 확인</code></pre>
+
+                <h3 id="pitfall-4"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 4 — Shared memory 크기 초과</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// 컴파일 에러 또는 런타임 launch 실패
+__shared__ float huge[100 * 1024];   // 400KB - SM 한도 초과
+
+// 런타임 확인
+cudaDeviceProp prop;
+cudaGetDeviceProperties(&amp;prop, 0);
+printf("Shared per block: %zu bytes\n", prop.sharedMemPerBlock);
+printf("Shared per SM   : %zu bytes\n", prop.sharedMemPerMultiprocessor);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Occupancy와의 트레이드오프</strong>
+                        블록당 shared를 많이 쓰면 SM에 동시 실행 가능한 블록 수가 줄어 occupancy가 떨어진다. 무조건 많이 쓰는 게 능사가 아니다. <code>cudaOccupancyMaxActiveBlocksPerMultiprocessor</code>로 확인하자.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-5"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 5 — Volta 이후 워프 독립 스케줄링</h3>
+                <p>Volta 이전에는 워프 내부 스레드가 lockstep으로 진행되어 워프 내 동기화가 암묵적이었다. Volta(SM 7.0) 이후는 독립 스케줄링이 가능해 워프 내 통신에도 <code>__syncwarp()</code>를 명시해야 안전하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// Pre-Volta 가정 — Volta+에서 깨질 수 있음
+if (tid &lt; 32)
+{
+    s[tid] += s[tid + 16];   // 워프 내 — 이전에는 동기화 불필요
+    s[tid] += s[tid + 8];
+    // ...
+}
+
+// Volta+ 안전한 패턴
+if (tid &lt; 32)
+{
+    s[tid] += s[tid + 16];
+    __syncwarp();
+    s[tid] += s[tid + 8];
+    __syncwarp();
+    // ...
+}</code></pre>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA — CUDA C++ Programming Guide (Shared Memory, Memory Hierarchy)</li>
+                        <li>NVIDIA — CUDA Best Practices Guide (Shared Memory, Bank Conflicts)</li>
+                        <li>NVIDIA Developer Blog — Using Shared Memory in CUDA C/C++ (Mark Harris)</li>
+                        <li>NVIDIA Developer Blog — Efficient Matrix Transpose in CUDA</li>
+                        <li>Nsight Compute Profiling Guide — shared memory bank conflict metrics</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

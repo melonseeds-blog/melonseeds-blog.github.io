@@ -1,0 +1,838 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>성능 측정 — nvprof·Nsight Systems·Compute - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* spec-table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; color: var(--primary-dark); }
+        .spec-table td code { font-size: 0.85em; }
+
+        /* 다이어그램 */
+        .diagram-box {
+            background: #fafbfc; border: 1px solid var(--border); border-radius: 10px;
+            padding: 18px; margin: 20px 0; text-align: center;
+        }
+        .diagram-box .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; font-style: italic;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why-measure" data-section="why-measure">측정의 이유</a>
+        <a href="#cpu-limit" data-section="cpu-limit">CPU 측정의 한계</a>
+        <a href="#cuda-events" data-section="cuda-events">CUDA Events</a>
+        <a href="#nvprof" data-section="nvprof">nvprof</a>
+        <a href="#nsight-systems" data-section="nsight-systems">Nsight Systems</a>
+        <a href="#nsight-compute" data-section="nsight-compute">Nsight Compute</a>
+        <a href="#metrics" data-section="metrics">주요 메트릭</a>
+        <a href="#workflow" data-section="workflow">워크플로우</a>
+        <a href="#industrial" data-section="industrial">산업 비전 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / CUDA</span>
+                </div>
+                <h1>성능 측정 — nvprof·Nsight Systems·Compute</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>"추측 대신 측정" — 프로파일링이 모든 GPU 최적화의 출발점이다</li>
+                        <li>CPU <code>std::chrono</code>로 GPU 시간을 정확히 잴 수 없는 이유와 <code>cudaEvent_t</code> 사용법</li>
+                        <li>NVIDIA 프로파일러 3총사: <code>nvprof</code>(legacy), Nsight Systems, Nsight Compute</li>
+                        <li>주요 메트릭 — Occupancy, Memory Throughput, Warp Efficiency 해석</li>
+                        <li>표준 프로파일링 워크플로우와 산업 비전 사이클 타임 검증</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-measure">추측 대신 측정</a></li>
+                        <li><a href="#cpu-limit">CPU 측정의 한계와 비동기 실행</a></li>
+                        <li><a href="#cuda-events">CUDA Events로 정밀 측정</a></li>
+                        <li><a href="#nvprof">nvprof — legacy 커맨드라인 프로파일러</a></li>
+                        <li><a href="#nsight-systems">Nsight Systems — 시스템 타임라인</a></li>
+                        <li><a href="#nsight-compute">Nsight Compute — 커널 단위 깊이 분석</a></li>
+                        <li><a href="#metrics">주요 메트릭 읽기</a></li>
+                        <li><a href="#workflow">프로파일링 워크플로우</a></li>
+                        <li><a href="#industrial">산업 비전 관점 — 사이클 타임 검증</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 추측 대신 측정 -->
+                <h2 id="why-measure"><i class="fa-solid fa-magnifying-glass-chart"></i> 추측 대신 측정</h2>
+                <p>최적화의 출발점은 항상 측정이다. 어디가 병목인지 모르면 최적화할 수도 없다. "이 커널이 느릴 것 같다"는 직관은 자주 틀린다. 실제로 측정해 보면 의외로 메모리 전송이 80% 차지하거나, 커널 시작 오버헤드가 본체보다 크거나, 동기화 지점에서 모든 스트림이 멈춰 있는 경우가 흔하다.</p>
+
+                <p>GPU 코드의 성능은 단순히 "빠르다/느리다"로 평가할 수 없다. 다음 질문에 답할 수 있어야 한다.</p>
+                <ul>
+                    <li>커널이 실제로 GPU에서 몇 ms 동안 실행됐는가?</li>
+                    <li>SM(Streaming Multiprocessor)이 얼마나 활용됐는가? (Occupancy)</li>
+                    <li>메모리 대역폭의 몇 %를 사용했는가?</li>
+                    <li>warp 분기(divergence)가 얼마나 심한가?</li>
+                    <li>호스트-디바이스 전송이 커널 실행을 가리고 있는가?</li>
+                </ul>
+
+                <p>이 모든 질문에 답하기 위한 도구가 <strong>프로파일러</strong>다. NVIDIA는 세대별로 도구를 갈아 끼워 왔으며, 현재(CUDA 12+)는 <code>nvprof</code>를 deprecated 처리하고 <strong>Nsight Systems</strong>(전체 흐름)와 <strong>Nsight Compute</strong>(커널 분석)로 일원화했다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Donald Knuth의 격언</strong>
+                        "Premature optimization is the root of all evil." — 그러나 후반부에는 "Yet we should not pass up our opportunities in that critical 3%"라는 단서가 붙는다. 그 3%를 찾는 도구가 프로파일러다.
+                    </div>
+                </div>
+
+                <!-- 2. CPU 측정의 한계 -->
+                <h2 id="cpu-limit"><i class="fa-solid fa-clock"></i> CPU 측정의 한계와 비동기 실행</h2>
+                <p>가장 흔한 실수는 <code>std::chrono</code>로 GPU 커널 시간을 재는 것이다. CUDA 커널 호출은 <strong>비동기(asynchronous)</strong>다. 호스트는 커널을 큐에 넣자마자 곧바로 다음 줄로 진행한다. 따라서 다음과 같이 측정하면 커널 실행 시간이 아니라 <strong>호출 오버헤드</strong>만 잡힌다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;chrono&gt;
+
+// 잘못된 측정 — 커널이 끝나기 전에 시간이 찍힘
+auto start = std::chrono::high_resolution_clock::now();
+myKernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(d_data, n);
+auto end = std::chrono::high_resolution_clock::now();
+
+auto ms = std::chrono::duration&lt;double, std::milli&gt;(end - start).count();
+std::cout &lt;&lt; "Kernel time: " &lt;&lt; ms &lt;&lt; " ms\n";  // 거의 0에 가까운 값</code></pre>
+
+                <p>해결책은 측정 전에 <code>cudaDeviceSynchronize()</code>로 GPU 작업이 모두 끝날 때까지 호스트를 블로킹하는 것이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// CPU 타이머로 측정하려면 동기화 필수
+cudaDeviceSynchronize();  // 이전 작업 모두 끝낸 후 시작
+auto start = std::chrono::high_resolution_clock::now();
+
+myKernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(d_data, n);
+
+cudaDeviceSynchronize();  // 커널 완료 대기
+auto end = std::chrono::high_resolution_clock::now();
+
+auto ms = std::chrono::duration&lt;double, std::milli&gt;(end - start).count();</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>cudaDeviceSynchronize는 측정 외 코드에서 남발하면 안 된다</strong>
+                        동기화는 호스트-디바이스 병렬성을 깨뜨려 전체 성능을 떨어뜨린다. 프로파일링이 끝나면 반드시 제거하거나, <code>#ifdef PROFILE</code>로 가두자.
+                    </div>
+                </div>
+
+                <p>그러나 CPU 타이머는 호스트 클럭에 의존하고, 큐 잠재 시간·커널 실행·완료 신호까지 모두 묶여 잡힌다. 더 정확한 측정은 GPU 자체의 타임스탬프를 쓰는 <strong>CUDA Events</strong>다.</p>
+
+                <!-- 3. CUDA Events -->
+                <h2 id="cuda-events"><i class="fa-solid fa-stopwatch"></i> CUDA Events로 정밀 측정</h2>
+                <p><code>cudaEvent_t</code>는 스트림 큐에 끼워 넣는 타임스탬프 마커다. GPU가 마커를 처리하는 순간 기록되므로 호스트 오버헤드를 우회한다. 해상도는 약 0.5 마이크로초.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;cuda_runtime.h&gt;
+#include &lt;iostream&gt;
+
+// CUDA Event 기반 커널 시간 측정.
+float MeasureKernelMs(int n, float* d_data)
+{
+    cudaEvent_t startEvent;
+    cudaEvent_t stopEvent;
+    cudaEventCreate(&amp;startEvent);
+    cudaEventCreate(&amp;stopEvent);
+
+    // 워밍업 — 첫 실행은 컴파일·캐시 적재로 느리다.
+    myKernel&lt;&lt;&lt;(n + 255) / 256, 256&gt;&gt;&gt;(d_data, n);
+    cudaDeviceSynchronize();
+
+    // 측정 시작 마커.
+    cudaEventRecord(startEvent, 0);
+
+    myKernel&lt;&lt;&lt;(n + 255) / 256, 256&gt;&gt;&gt;(d_data, n);
+
+    // 측정 종료 마커.
+    cudaEventRecord(stopEvent, 0);
+    cudaEventSynchronize(stopEvent);  // stopEvent까지 완료 대기.
+
+    float elapsedMs = 0.0f;
+    cudaEventElapsedTime(&amp;elapsedMs, startEvent, stopEvent);
+
+    cudaEventDestroy(startEvent);
+    cudaEventDestroy(stopEvent);
+    return elapsedMs;
+}</code></pre>
+
+                <h3 id="multi-run"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 여러 번 평균 내기</h3>
+                <p>일회성 측정은 신뢰할 수 없다. GPU 클럭 부스트, 캐시 상태, 다른 프로세스 간섭 때문에 편차가 크다. 최소 10~100회 반복하고 평균(또는 중앙값)을 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">constexpr int kWarmupRuns = 3;
+constexpr int kMeasureRuns = 50;
+
+// 워밍업.
+for (int i = 0; i &lt; kWarmupRuns; ++i)
+{
+    myKernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(d_data, n);
+}
+cudaDeviceSynchronize();
+
+// 본 측정.
+cudaEvent_t startEvent;
+cudaEvent_t stopEvent;
+cudaEventCreate(&amp;startEvent);
+cudaEventCreate(&amp;stopEvent);
+
+cudaEventRecord(startEvent, 0);
+for (int i = 0; i &lt; kMeasureRuns; ++i)
+{
+    myKernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(d_data, n);
+}
+cudaEventRecord(stopEvent, 0);
+cudaEventSynchronize(stopEvent);
+
+float totalMs = 0.0f;
+cudaEventElapsedTime(&amp;totalMs, startEvent, stopEvent);
+float avgMs = totalMs / kMeasureRuns;
+
+std::cout &lt;&lt; "Average kernel time: " &lt;&lt; avgMs &lt;&lt; " ms\n";</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>RAII 래퍼로 감싸기</strong>
+                        <code>cudaEventCreate</code>/<code>cudaEventDestroy</code> 쌍은 누락 위험이 있다. 작은 <code>CudaTimer</code> 클래스를 만들어 생성자에서 record, 소멸자에서 elapsed를 로깅하면 측정 코드가 깔끔해진다.
+                    </div>
+                </div>
+
+                <!-- 4. nvprof -->
+                <h2 id="nvprof"><i class="fa-solid fa-terminal"></i> nvprof — legacy 커맨드라인 프로파일러</h2>
+                <p><code>nvprof</code>는 CUDA 5~10 시대의 표준 프로파일러였다. 별도 계측 코드 없이 실행 파일에 붙여 커널별 시간·메모리 처리량·SM 점유율을 출력했다. CUDA 11부터 <strong>deprecated</strong>이며 Volta 이후 일부 메트릭은 지원되지 않는다. 그러나 가볍고 빠른 1차 진단용으로 여전히 유용하다.</p>
+
+<pre class="language-bash"><code class="language-bash"># 기본 커널 타이밍 요약.
+nvprof ./my_cuda_app
+
+# 메모리 전송 포함 자세히.
+nvprof --print-gpu-trace ./my_cuda_app
+
+# 특정 메트릭만.
+nvprof --metrics achieved_occupancy,gld_efficiency,gst_efficiency ./my_cuda_app
+
+# 결과를 파일로 (Visual Profiler에서 열기 가능).
+nvprof -o profile.nvvp ./my_cuda_app</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 출력 예시 (요약)</div>
+==12345== Profiling application: ./my_cuda_app
+==12345== Profiling result:
+Type  Time(%)   Time     Calls   Avg       Min       Max       Name
+GPU   62.3%    18.7ms    50    374.2us   370.1us   381.5us   convKernel
+GPU   23.1%     6.9ms    50    138.4us   135.2us   142.0us   thresholdKernel
+GPU   14.6%     4.4ms    50     88.0us    85.1us    92.3us   [CUDA memcpy HtoD]</div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Turing(SM 75) 이후는 Nsight 도구를 쓰자</strong>
+                        <code>nvprof</code>는 Volta까지만 메트릭이 완전하며, Ampere(RTX 30 시리즈) 이후는 일부 기능이 동작하지 않는다. 새 프로젝트는 처음부터 Nsight Systems / Compute를 권장한다.
+                    </div>
+                </div>
+
+                <!-- 5. Nsight Systems -->
+                <h2 id="nsight-systems"><i class="fa-solid fa-chart-gantt"></i> Nsight Systems — 시스템 타임라인</h2>
+                <p>Nsight Systems(<code>nsys</code>)는 <strong>전체 시스템 레벨</strong>의 타임라인 프로파일러다. CPU 스레드, OS 호출, CUDA API 호출, 커널 실행, 메모리 전송, 스트림, NVTX 마커를 모두 같은 타임라인에 그린다. "어디서 시간이 새고 있는가?"를 한눈에 본다.</p>
+
+                <div class="diagram-box">
+                    <svg width="100%" viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg" style="max-width:720px;">
+                        <!-- 축 -->
+                        <line x1="100" y1="30" x2="700" y2="30" stroke="#cbd5e1" stroke-width="1"/>
+                        <text x="100" y="22" font-size="10" fill="#64748b">0 ms</text>
+                        <text x="395" y="22" font-size="10" fill="#64748b">10 ms</text>
+                        <text x="690" y="22" font-size="10" fill="#64748b">20 ms</text>
+
+                        <!-- CPU thread -->
+                        <text x="10" y="60" font-size="11" font-weight="600" fill="#1e3a5f">CPU</text>
+                        <rect x="100" y="48" width="80" height="22" fill="#93c5fd" stroke="#2563eb"/>
+                        <text x="105" y="63" font-size="10" fill="#1e3a5f">prepare</text>
+                        <rect x="180" y="48" width="40" height="22" fill="#bfdbfe" stroke="#2563eb"/>
+                        <text x="184" y="63" font-size="9" fill="#1e3a5f">launch</text>
+                        <rect x="520" y="48" width="140" height="22" fill="#93c5fd" stroke="#2563eb"/>
+                        <text x="525" y="63" font-size="10" fill="#1e3a5f">post-process</text>
+
+                        <!-- HtoD memcpy -->
+                        <text x="10" y="100" font-size="11" font-weight="600" fill="#7f1d1d">HtoD</text>
+                        <rect x="180" y="88" width="50" height="22" fill="#fca5a5" stroke="#dc2626"/>
+                        <text x="184" y="103" font-size="9" fill="#7f1d1d">memcpy</text>
+
+                        <!-- Kernel stream -->
+                        <text x="10" y="140" font-size="11" font-weight="600" fill="#065f46">Kernel</text>
+                        <rect x="240" y="128" width="120" height="22" fill="#86efac" stroke="#059669"/>
+                        <text x="245" y="143" font-size="10" fill="#065f46">conv</text>
+                        <rect x="365" y="128" width="80" height="22" fill="#6ee7b7" stroke="#059669"/>
+                        <text x="370" y="143" font-size="10" fill="#065f46">threshold</text>
+                        <rect x="450" y="128" width="50" height="22" fill="#86efac" stroke="#059669"/>
+                        <text x="454" y="143" font-size="10" fill="#065f46">blob</text>
+
+                        <!-- DtoH memcpy -->
+                        <text x="10" y="180" font-size="11" font-weight="600" fill="#7f1d1d">DtoH</text>
+                        <rect x="500" y="168" width="20" height="22" fill="#fca5a5" stroke="#dc2626"/>
+
+                        <!-- 강조 영역 -->
+                        <rect x="180" y="44" width="60" height="110" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 2"/>
+                        <text x="180" y="215" font-size="10" fill="#92400e">↑ CPU 대기 — 비동기화 가능</text>
+                    </svg>
+                    <div class="diagram-caption">Nsight Systems 타임라인 예시 — CPU·메모리 전송·커널을 한 화면에서 본다</div>
+                </div>
+
+<pre class="language-bash"><code class="language-bash"># 기본 프로파일링 (.nsys-rep 파일 생성).
+nsys profile -o report ./my_cuda_app
+
+# CUDA + NVTX + OS 런타임 API 추적.
+nsys profile --trace=cuda,nvtx,osrt -o report ./my_cuda_app
+
+# 특정 구간만 (NVTX 범위로).
+nsys profile --capture-range=nvtx --nvtx-capture="MeasureRegion" \
+             -o report ./my_cuda_app
+
+# 콘솔에 요약 출력.
+nsys stats report.nsys-rep</code></pre>
+
+                <h3 id="nvtx"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> NVTX로 코드 구간 라벨링</h3>
+                <p>NVTX(NVIDIA Tools Extension)로 코드에 색깔 있는 라벨을 박으면 타임라인에서 어떤 단계인지 한눈에 보인다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;nvtx3/nvToolsExt.h&gt;
+
+void RunInspection(const Image&amp; src)
+{
+    nvtxRangePush("Preprocess");
+    Preprocess(src);
+    nvtxRangePop();
+
+    nvtxRangePush("Convolution");
+    RunConvKernel(src);
+    nvtxRangePop();
+
+    nvtxRangePush("BlobAnalysis");
+    RunBlobKernel(src);
+    nvtxRangePop();
+}</code></pre>
+
+                <!-- 6. Nsight Compute -->
+                <h2 id="nsight-compute"><i class="fa-solid fa-microscope"></i> Nsight Compute — 커널 단위 깊이 분석</h2>
+                <p>Nsight Compute(<code>ncu</code>)는 <strong>단일 커널을 현미경으로 들여다보는</strong> 도구다. SM 점유율, 메모리 처리량, warp 분기, 명령어 믹스, 캐시 히트율 등 수백 개의 메트릭을 수집한다. Nsight Systems가 "병목 커널을 찾는 도구"라면, Nsight Compute는 "찾은 커널을 왜 느린지 분석하는 도구"다.</p>
+
+<pre class="language-bash"><code class="language-bash"># 전체 커널 기본 분석.
+ncu -o profile ./my_cuda_app
+
+# 특정 커널만 (이름·정규식).
+ncu --kernel-name convKernel ./my_cuda_app
+ncu --kernel-name regex:'conv.*' ./my_cuda_app
+
+# 특정 메트릭만 (빠르고 가볍다).
+ncu --metrics sm__warps_active.avg.pct_of_peak_sustained_active,\
+              dram__throughput.avg.pct_of_peak_sustained_elapsed \
+    ./my_cuda_app
+
+# 커널의 N번째 호출만.
+ncu --launch-skip 10 --launch-count 1 ./my_cuda_app
+
+# 풀 메트릭 — 매우 느림(커널당 수십 번 재실행).
+ncu --set full -o profile ./my_cuda_app</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Nsight Compute는 커널을 여러 번 재실행한다</strong>
+                        모든 메트릭을 한 번에 수집할 수 없어 커널을 메트릭 그룹별로 재실행한다. <code>--set full</code>은 같은 커널을 수십~수백 번 돌릴 수 있으므로, 큰 입력에서는 <code>--launch-count 1</code>로 1회만 수집하자.
+                    </div>
+                </div>
+
+                <!-- 7. 주요 메트릭 -->
+                <h2 id="metrics"><i class="fa-solid fa-gauge-high"></i> 주요 메트릭 읽기</h2>
+                <p>수백 개 메트릭 중 실전에서 자주 보는 것은 6~7개다.</p>
+
+                <table class="spec-table">
+                    <tr><th>메트릭</th><th>의미</th><th>해석</th></tr>
+                    <tr><td><code>Achieved Occupancy</code></td><td>SM 한 개당 활성 warp 비율</td><td>낮으면(&lt;30%) 블록 크기·레지스터·공유 메모리 조정</td></tr>
+                    <tr><td><code>SM Active Cycles</code></td><td>SM이 실제로 일한 사이클</td><td>낮으면 GPU가 놀고 있음 — grid 부족 의심</td></tr>
+                    <tr><td><code>Global Load Efficiency</code></td><td>실제 / 요청 메모리 비율</td><td>낮으면(&lt;80%) 메모리 결합(coalescing) 깨짐</td></tr>
+                    <tr><td><code>Global Store Efficiency</code></td><td>쓰기 결합 비율</td><td>스캐터 패턴 의심 — 인덱싱 점검</td></tr>
+                    <tr><td><code>Branch Efficiency</code></td><td>분기 후 같이 가는 warp 비율</td><td>낮으면 warp divergence 심함</td></tr>
+                    <tr><td><code>DRAM Throughput</code></td><td>실제 / 이론 대역폭</td><td>높으면(80%+) 메모리 바운드</td></tr>
+                    <tr><td><code>Compute Throughput</code></td><td>실제 / 이론 FLOPS</td><td>높으면 연산 바운드</td></tr>
+                </table>
+
+                <h3 id="bottleneck"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 메모리 바운드 vs 연산 바운드 판별</h3>
+                <p>Nsight Compute의 "Speed of Light" 섹션이 가장 먼저 봐야 할 곳이다. 두 막대(<code>SM</code>, <code>Memory</code>) 중 어느 쪽이 90%에 가까운지가 병목을 결정한다.</p>
+
+                <div class="diagram-box">
+                    <svg width="100%" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg" style="max-width:600px;">
+                        <!-- 케이스 A: 메모리 바운드 -->
+                        <text x="100" y="20" font-size="12" font-weight="700" fill="#1e3a5f">A. 메모리 바운드</text>
+                        <text x="20" y="50" font-size="10" fill="#64748b">SM</text>
+                        <rect x="50" y="40" width="80" height="16" fill="#cbd5e1"/>
+                        <rect x="50" y="40" width="20" height="16" fill="#3b82f6"/>
+                        <text x="135" y="52" font-size="10" fill="#1e3a5f">25%</text>
+                        <text x="20" y="78" font-size="10" fill="#64748b">Mem</text>
+                        <rect x="50" y="68" width="80" height="16" fill="#cbd5e1"/>
+                        <rect x="50" y="68" width="76" height="16" fill="#ef4444"/>
+                        <text x="135" y="80" font-size="10" fill="#7f1d1d">95%</text>
+                        <text x="20" y="105" font-size="10" fill="#92400e">→ 결합·shared mem 최적화</text>
+
+                        <!-- 케이스 B: 연산 바운드 -->
+                        <text x="380" y="20" font-size="12" font-weight="700" fill="#1e3a5f">B. 연산 바운드</text>
+                        <text x="300" y="50" font-size="10" fill="#64748b">SM</text>
+                        <rect x="330" y="40" width="80" height="16" fill="#cbd5e1"/>
+                        <rect x="330" y="40" width="74" height="16" fill="#3b82f6"/>
+                        <text x="415" y="52" font-size="10" fill="#1e3a5f">92%</text>
+                        <text x="300" y="78" font-size="10" fill="#64748b">Mem</text>
+                        <rect x="330" y="68" width="80" height="16" fill="#cbd5e1"/>
+                        <rect x="330" y="68" width="30" height="16" fill="#ef4444"/>
+                        <text x="415" y="80" font-size="10" fill="#7f1d1d">38%</text>
+                        <text x="300" y="105" font-size="10" fill="#92400e">→ FMA·반정밀도·알고리즘 변경</text>
+
+                        <!-- 케이스 C: 둘 다 낮음 -->
+                        <text x="240" y="135" font-size="12" font-weight="700" fill="#1e3a5f">C. 둘 다 낮음 → Latency 바운드 (Occupancy·동기화 점검)</text>
+                    </svg>
+                    <div class="diagram-caption">Speed-of-Light로 본 병목 분류 — 다음 최적화 방향이 결정된다</div>
+                </div>
+
+                <!-- 8. 워크플로우 -->
+                <h2 id="workflow"><i class="fa-solid fa-arrows-rotate"></i> 프로파일링 워크플로우</h2>
+                <p>실무에서 권장하는 절차는 <strong>"넓게 보고 → 좁혀서 파고 → 다시 검증"</strong>이다.</p>
+
+                <div class="diagram-box">
+                    <svg width="100%" viewBox="0 0 720 180" xmlns="http://www.w3.org/2000/svg" style="max-width:720px;">
+                        <!-- 1 -->
+                        <rect x="10" y="60" width="130" height="60" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+                        <text x="75" y="85" font-size="11" font-weight="700" fill="#1e3a5f" text-anchor="middle">1. Nsight Systems</text>
+                        <text x="75" y="102" font-size="10" fill="#1e3a5f" text-anchor="middle">전체 타임라인</text>
+                        <text x="75" y="115" font-size="10" fill="#1e3a5f" text-anchor="middle">병목 단계 식별</text>
+
+                        <path d="M145 90 L185 90" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+                        <!-- 2 -->
+                        <rect x="190" y="60" width="130" height="60" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+                        <text x="255" y="85" font-size="11" font-weight="700" fill="#78350f" text-anchor="middle">2. 핫스팟 커널</text>
+                        <text x="255" y="102" font-size="10" fill="#78350f" text-anchor="middle">시간 점유율</text>
+                        <text x="255" y="115" font-size="10" fill="#78350f" text-anchor="middle">상위 1~2개 선정</text>
+
+                        <path d="M325 90 L365 90" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+                        <!-- 3 -->
+                        <rect x="370" y="60" width="130" height="60" rx="8" fill="#dcfce7" stroke="#059669" stroke-width="1.5"/>
+                        <text x="435" y="85" font-size="11" font-weight="700" fill="#065f46" text-anchor="middle">3. Nsight Compute</text>
+                        <text x="435" y="102" font-size="10" fill="#065f46" text-anchor="middle">메트릭 분석</text>
+                        <text x="435" y="115" font-size="10" fill="#065f46" text-anchor="middle">SoL·Occupancy</text>
+
+                        <path d="M505 90 L545 90" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+                        <!-- 4 -->
+                        <rect x="550" y="60" width="130" height="60" rx="8" fill="#fce7f3" stroke="#be185d" stroke-width="1.5"/>
+                        <text x="615" y="85" font-size="11" font-weight="700" fill="#831843" text-anchor="middle">4. 최적화·재측정</text>
+                        <text x="615" y="102" font-size="10" fill="#831843" text-anchor="middle">코드 수정</text>
+                        <text x="615" y="115" font-size="10" fill="#831843" text-anchor="middle">A/B 비교</text>
+
+                        <!-- 순환 화살표 -->
+                        <path d="M615 130 Q 615 160 400 160 Q 75 160 75 130" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)" stroke-dasharray="4 3"/>
+                        <text x="345" y="175" font-size="10" fill="#64748b" font-style="italic">반복 — 새 병목 등장</text>
+
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    <div class="diagram-caption">표준 GPU 프로파일링 워크플로우 — 한 사이클 끝나면 새 병목이 위로 올라온다</div>
+                </div>
+
+                <ol>
+                    <li><strong>Nsight Systems로 전체 흐름 캡처</strong> — 호스트 대기 시간, 전송 vs 커널 비율, 스트림 겹침 여부 확인</li>
+                    <li><strong>핫스팟 커널 선정</strong> — 시간 점유율 상위 1~2개를 다음 분석 대상으로</li>
+                    <li><strong>Nsight Compute로 해당 커널만 깊이 분석</strong> — SoL → Occupancy → Memory Workload Analysis 순서</li>
+                    <li><strong>가설 → 수정 → 재측정</strong> — 한 번에 한 가지만 바꾼다. 그래야 효과를 분리할 수 있다</li>
+                    <li><strong>다음 병목으로 이동</strong> — 한 커널이 빨라지면 다른 곳이 새 병목이 된다</li>
+                </ol>
+
+                <!-- 9. 산업 비전 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전 관점 — 사이클 타임 검증</h2>
+                <p>산업 비전 시스템은 <strong>검사 사이클 타임</strong>이라는 절대 마감 시간이 있다. 컨베이어가 30 ms마다 한 장씩 보내면, 처리 파이프라인은 30 ms 안에 끝나야 한다. 평균 25 ms라도 99 percentile이 35 ms면 라인이 멈춘다.</p>
+
+                <p>따라서 GPU 프로파일링은 단순한 평균이 아니라 <strong>최악 케이스 분포</strong>까지 봐야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 사이클 타임 분포 측정 — 평균뿐 아니라 max·p99까지.
+#include &lt;algorithm&gt;
+#include &lt;vector&gt;
+
+constexpr int kRuns = 1000;
+std::vector&lt;float&gt; samples;
+samples.reserve(kRuns);
+
+for (int i = 0; i &lt; kRuns; ++i)
+{
+    cudaEvent_t s;
+    cudaEvent_t e;
+    cudaEventCreate(&amp;s);
+    cudaEventCreate(&amp;e);
+    cudaEventRecord(s, 0);
+
+    RunInspectionPipeline(image);  // 검사 파이프라인 전체.
+
+    cudaEventRecord(e, 0);
+    cudaEventSynchronize(e);
+    float ms = 0.0f;
+    cudaEventElapsedTime(&amp;ms, s, e);
+    samples.push_back(ms);
+
+    cudaEventDestroy(s);
+    cudaEventDestroy(e);
+}
+
+std::sort(samples.begin(), samples.end());
+float avg = std::accumulate(samples.begin(), samples.end(), 0.0f) / kRuns;
+float p50 = samples[kRuns / 2];
+float p99 = samples[kRuns * 99 / 100];
+float max = samples.back();
+
+std::cout &lt;&lt; "avg=" &lt;&lt; avg &lt;&lt; " p50=" &lt;&lt; p50
+          &lt;&lt; " p99=" &lt;&lt; p99 &lt;&lt; " max=" &lt;&lt; max &lt;&lt; " ms\n";</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실제 카메라 트리거 환경에서 측정하자</strong>
+                        벤치마크 환경(루프에서 같은 영상 반복)은 캐시가 너무 잘 듣는다. 실제 산업 현장의 트리거 간격·전송 부하·다른 프로세스 간섭까지 포함해야 의미 있는 사이클 타임이 나온다.
+                    </div>
+                </div>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <h3 id="pitfall-1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 1 — 측정 없이 최적화</h3>
+                <p>"여기가 느릴 것 같아"라는 직관으로 일주일 갈아엎고 보면 핵심 병목은 다른 곳이다. 단 10분의 프로파일링이 일주일을 절약한다.</p>
+
+                <h3 id="pitfall-2"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 2 — 워밍업 누락</h3>
+                <p>첫 커널 실행은 JIT 컴파일, 메모리 할당, 캐시 적재로 본 실행보다 10~100배 느리다. 첫 측정값은 버리거나 별도 표기한다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>워밍업은 최소 3회</strong>
+                        커널 JIT, cuBLAS 핸들 생성, GPU 클럭 부스트 안정화에 시간이 걸린다. 3~5회 실행 후 측정 시작.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-3"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 3 — 동기화 누락</h3>
+                <p>CPU 타이머로 잴 때 <code>cudaDeviceSynchronize()</code>를 잊으면 0에 가까운 시간이 나온다. 반대로 너무 자주 동기화하면 측정값이 진짜 성능보다 나빠진다.</p>
+
+                <h3 id="pitfall-4"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 4 — 일회성 측정</h3>
+                <p>같은 코드를 두 번 돌려도 5~10% 편차가 흔하다. 클럭 부스트, OS 스케줄링, 다른 GPU 작업이 영향을 준다. 최소 10회 반복하고 중앙값을 보자.</p>
+
+                <h3 id="pitfall-5"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 5 — 디버그 빌드 프로파일링</h3>
+                <p><code>-G</code>(디바이스 디버그) 옵션은 모든 최적화를 끄고 레지스터 spill을 유발한다. 릴리스 빌드(<code>-O3 -lineinfo</code>)로 프로파일링하자. <code>-lineinfo</code>는 소스 매핑을 유지하면서 최적화는 살린다.</p>
+
+                <h3 id="pitfall-6"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 6 — 입력 크기 한 가지만 보기</h3>
+                <p>작은 입력에서는 커널 시작 오버헤드가 지배적이고, 큰 입력에서는 메모리 대역폭이 지배적이다. 최소 3가지 크기(작음·중간·실제)로 측정해야 스케일링을 본다.</p>
+
+                <h3 id="pitfall-7"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 7 — 메모리 전송 무시</h3>
+                <p>커널만 빠르게 만들었는데 전체는 그대로인 경우, HtoD/DtoH 전송이 진짜 병목인 경우가 많다. Nsight Systems 타임라인에서 빨간 막대(memcpy)가 얼마나 차지하는지 먼저 확인하자.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>측정은 코드와 함께 살아 있어야 한다</strong>
+                        한 번 측정하고 끝내지 말고, <code>--metrics</code> 옵션 몇 개를 CI에 넣어 회귀를 잡자. 어느 커밋부터 점유율이 떨어졌는지 추적하면 원인 파악이 훨씬 빠르다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA Nsight Systems 공식 문서 — docs.nvidia.com/nsight-systems</li>
+                        <li>NVIDIA Nsight Compute 공식 문서 — docs.nvidia.com/nsight-compute</li>
+                        <li>CUDA C++ Best Practices Guide — Chapter on Profiling</li>
+                        <li>NVIDIA Developer Blog — "Pro Tip: Profiling with Nsight" 시리즈</li>
+                        <li>NVTX Library — github.com/NVIDIA/NVTX</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
