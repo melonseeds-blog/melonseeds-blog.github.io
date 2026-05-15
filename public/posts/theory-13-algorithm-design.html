@@ -1,0 +1,975 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알고리즘 설계 기법 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .diagram-box {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .diagram-box svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-light); margin-top: 12px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#design-intro" data-section="design-intro">설계 기법이란</a>
+        <a href="#divide-conquer" data-section="divide-conquer">분할정복</a>
+        <a href="#dynamic-programming" data-section="dynamic-programming">동적 계획법</a>
+        <a href="#greedy" data-section="greedy">그리디</a>
+        <a href="#backtracking" data-section="backtracking">백트래킹</a>
+        <a href="#brute-force" data-section="brute-force">완전 탐색</a>
+        <a href="#choosing" data-section="choosing">기법 선택 가이드</a>
+        <a href="#dp-vs-dc" data-section="dp-vs-dc">DP vs 분할정복</a>
+        <a href="#greedy-vs-dp" data-section="greedy-vs-dp">그리디 vs DP</a>
+        <a href="#industrial" data-section="industrial">산업 SW 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">프로그래밍 이론</span>
+                </div>
+                <h1>알고리즘 설계 기법 — 분할정복·DP·그리디·백트래킹</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>알고리즘 설계 기법 — 문제를 푸는 사고의 틀이라는 개념</li>
+                        <li>분할정복·동적 계획법·그리디·백트래킹·완전 탐색 — 다섯 기법의 정의와 C++ 예제</li>
+                        <li>점화식과 마스터 정리, 최적 부분 구조, 탐욕 선택 속성, 가지치기</li>
+                        <li>기법 선택 가이드 — 문제 특성별 비교표, DP vs 분할정복, 그리디 vs DP</li>
+                        <li>산업 SW 관점과 흔한 함정 — 그리디 오해, 메모이제이션 누락, 가지치기 실수</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#design-intro">알고리즘 설계 기법이란?</a></li>
+                        <li><a href="#divide-conquer">분할정복 (Divide and Conquer)</a></li>
+                        <li><a href="#dynamic-programming">동적 계획법 (Dynamic Programming)</a></li>
+                        <li><a href="#greedy">그리디 (Greedy)</a></li>
+                        <li><a href="#backtracking">백트래킹 (Backtracking)</a></li>
+                        <li><a href="#brute-force">완전 탐색 (Brute Force)</a></li>
+                        <li><a href="#choosing">기법 선택 가이드</a></li>
+                        <li><a href="#dp-vs-dc">DP vs 분할정복</a></li>
+                        <li><a href="#greedy-vs-dp">그리디 vs DP</a></li>
+                        <li><a href="#industrial">산업 SW 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 설계 기법이란 -->
+                <h2 id="design-intro"><i class="fa-solid fa-compass-drafting"></i> 알고리즘 설계 기법이란?</h2>
+                <p><strong>알고리즘 설계 기법(algorithm design paradigm)</strong>은 문제를 푸는 <strong>사고의 틀</strong>이다. 자료구조가 데이터를 담는 그릇이라면, 설계 기법은 그 데이터를 다뤄 답에 도달하는 <em>전략</em>이다. 구체적인 알고리즘 하나하나가 아니라, 여러 알고리즘이 공유하는 공통된 접근 방식을 가리킨다.</p>
+                <p>같은 문제도 어떤 틀로 접근하느냐에 따라 전혀 다른 해법이 나온다. 예를 들어 "정렬된 배열에서 값을 찾는다"는 문제는 완전 탐색으로 처음부터 끝까지 훑을 수도 있고, 분할정복으로 절반씩 잘라 들어갈 수도 있다. 전자는 O(n), 후자는 O(log n)이다. 문제는 같지만 <em>틀</em>이 다르므로 결과가 다르다.</p>
+                <p>이 글은 대표적인 다섯 가지 틀 — 분할정복·동적 계획법·그리디·백트래킹·완전 탐색 — 을 다룬다. 각 기법은 "문제를 어떻게 쪼개고, 부분의 답을 어떻게 모으는가"에 대한 서로 다른 답이다.</p>
+
+                <h3 id="why-paradigm"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 왜 틀을 알아야 하는가</h3>
+                <p>새로운 문제를 만났을 때, 설계 기법을 알면 "이 문제는 부분 문제가 겹치니 DP 후보다", "선택지가 트리처럼 펼쳐지니 백트래킹이다" 같은 <strong>분류</strong>가 가능하다. 분류가 되면 이미 검증된 틀의 구조를 빌려 쓸 수 있다. 틀을 모르면 매번 맨바닥에서 다시 발명해야 한다.</p>
+
+                <!-- 2. 분할정복 -->
+                <h2 id="divide-conquer"><i class="fa-solid fa-scissors"></i> 분할정복 (Divide and Conquer)</h2>
+                <p><strong>분할정복</strong>은 문제를 같은 형태의 더 작은 부분 문제로 <em>나누고(divide)</em>, 각 부분을 <em>풀고(conquer)</em>, 그 답을 <em>합치는(combine)</em> 기법이다. 부분 문제는 원래 문제와 구조가 같으므로 보통 재귀로 표현된다.</p>
+
+                <h3 id="dc-structure"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 세 단계 구조</h3>
+                <p>분할정복은 항상 세 단계를 거친다. 나눌 수 없을 만큼 작아진 부분 문제는 <strong>기저 사례(base case)</strong>로 직접 푼다.</p>
+
+                <div class="diagram-box">
+                    <svg width="640" height="280" viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 루트 -->
+                        <rect x="250" y="20" width="140" height="40" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+                        <text x="320" y="45" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#1e3a5f">[8 3 5 1 9 2]</text>
+                        <!-- 레벨 1 -->
+                        <rect x="120" y="110" width="120" height="38" rx="8" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.5"/>
+                        <text x="180" y="134" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#065f46">[8 3 5]</text>
+                        <rect x="400" y="110" width="120" height="38" rx="8" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.5"/>
+                        <text x="460" y="134" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#065f46">[1 9 2]</text>
+                        <!-- 레벨 2 -->
+                        <rect x="60" y="200" width="50" height="34" rx="7" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+                        <text x="85" y="222" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#78350f">[8]</text>
+                        <rect x="155" y="200" width="70" height="34" rx="7" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+                        <text x="190" y="222" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#78350f">[3 5]</text>
+                        <rect x="415" y="200" width="50" height="34" rx="7" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+                        <text x="440" y="222" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#78350f">[1]</text>
+                        <rect x="500" y="200" width="70" height="34" rx="7" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+                        <text x="535" y="222" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#78350f">[9 2]</text>
+                        <!-- 선: 루트 -> 레벨1 -->
+                        <line x1="290" y1="60" x2="200" y2="108" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="350" y1="60" x2="440" y2="108" stroke="#94a3b8" stroke-width="1.6"/>
+                        <!-- 선: 레벨1 -> 레벨2 -->
+                        <line x1="155" y1="148" x2="95" y2="198" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="205" y1="148" x2="190" y2="198" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="435" y1="148" x2="445" y2="198" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="485" y1="148" x2="525" y2="198" stroke="#94a3b8" stroke-width="1.6"/>
+                        <!-- 라벨 -->
+                        <text x="600" y="42" text-anchor="end" font-family="sans-serif" font-size="10.5" fill="#64748b">↓ 나눈다 (divide)</text>
+                        <text x="600" y="133" text-anchor="end" font-family="sans-serif" font-size="10.5" fill="#64748b">↓ 계속 나눈다</text>
+                        <text x="600" y="222" text-anchor="end" font-family="sans-serif" font-size="10.5" fill="#64748b">기저 사례 → 합친다 ↑</text>
+                        <text x="320" y="270" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#475569">병합 정렬: 절반씩 나누고 → 정렬된 부분끼리 합친다</text>
+                    </svg>
+                    <div class="diagram-caption">분할정복 트리 — 문제를 절반씩 나누고, 기저 사례에 도달하면 거꾸로 합쳐 올라간다</div>
+                </div>
+
+                <h3 id="dc-mergesort"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 대표 예 — 병합 정렬</h3>
+                <p>병합 정렬은 배열을 절반으로 나누고, 각 절반을 재귀적으로 정렬한 뒤, 정렬된 두 절반을 합친다. 합치는 과정은 두 정렬된 배열을 앞에서부터 비교하며 이어 붙이는 단순한 작업이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 정렬된 두 구간 [left, mid], [mid+1, right]을 하나로 합친다.
+void Merge(std::vector&lt;int&gt;&amp; data, int left, int mid, int right)
+{
+    std::vector&lt;int&gt; merged;
+    merged.reserve(right - left + 1);
+
+    int i = left;
+    int j = mid + 1;
+    while (i &lt;= mid &amp;&amp; j &lt;= right)
+    {
+        if (data[i] &lt;= data[j])
+        {
+            merged.push_back(data[i++]);
+        }
+        else
+        {
+            merged.push_back(data[j++]);
+        }
+    }
+    while (i &lt;= mid)   { merged.push_back(data[i++]); }
+    while (j &lt;= right) { merged.push_back(data[j++]); }
+
+    for (int k = 0; k &lt; static_cast&lt;int&gt;(merged.size()); ++k)
+    {
+        data[left + k] = merged[k];
+    }
+}
+
+// 분할정복 — 나누고, 각각 풀고, 합친다.
+void MergeSort(std::vector&lt;int&gt;&amp; data, int left, int right)
+{
+    if (left &gt;= right)   // 기저 사례: 원소가 하나뿐이면 이미 정렬됨
+    {
+        return;
+    }
+    int mid = left + (right - left) / 2;
+    MergeSort(data, left, mid);        // divide + conquer
+    MergeSort(data, mid + 1, right);   // divide + conquer
+    Merge(data, left, mid, right);     // combine
+}</code></pre>
+
+                <p>이진 탐색도 같은 틀이다. 탐색 구간을 절반으로 나누고, 찾는 값이 어느 쪽에 있는지 판단해 그쪽만 다시 탐색한다. 퀵 정렬은 피벗을 기준으로 나눈 뒤 양쪽을 재귀적으로 정렬한다 — 합치는 단계가 거의 없는 분할정복이다.</p>
+
+                <h3 id="dc-recurrence"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 점화식과 마스터 정리</h3>
+                <p>분할정복의 시간 복잡도는 <strong>점화식(recurrence relation)</strong>으로 표현된다. 크기 n 문제를 a개의 크기 n/b 부분 문제로 나누고, 나누고 합치는 데 f(n)이 든다면 다음과 같다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 병합 정렬의 점화식:
+//   T(n) = 2 * T(n/2) + O(n)
+//          ^^^         ^^^^
+//   2개 부분 문제      합치는 비용(Merge)
+//
+// 이진 탐색의 점화식:
+//   T(n) = 1 * T(n/2) + O(1)
+//          ^^^         ^^^^
+//   1개 부분 문제만    상수 비교</code></pre>
+
+                <p><strong>마스터 정리(master theorem)</strong>는 <code>T(n) = a·T(n/b) + f(n)</code> 형태의 점화식을 바로 푸는 공식이다. <code>n<sup>log<sub>b</sub>a</sup></code>와 f(n)의 크기를 비교해 세 경우로 나뉜다.</p>
+                <table>
+                    <tr><th>경우</th><th>조건</th><th>결과</th><th>예</th></tr>
+                    <tr><td>1</td><td>f(n)이 n<sup>log<sub>b</sub>a</sup>보다 작다</td><td>T(n) = Θ(n<sup>log<sub>b</sub>a</sup>)</td><td>—</td></tr>
+                    <tr><td>2</td><td>f(n)이 n<sup>log<sub>b</sub>a</sup>와 같은 차수</td><td>T(n) = Θ(n<sup>log<sub>b</sub>a</sup> log n)</td><td>병합 정렬 → Θ(n log n)</td></tr>
+                    <tr><td>3</td><td>f(n)이 n<sup>log<sub>b</sub>a</sup>보다 크다</td><td>T(n) = Θ(f(n))</td><td>—</td></tr>
+                </table>
+                <p>병합 정렬은 a=2, b=2이므로 n<sup>log<sub>2</sub>2</sup> = n이고, f(n) = n이라 경우 2에 해당해 <strong>Θ(n log n)</strong>이 나온다. 이진 탐색은 a=1, b=2이므로 n<sup>log<sub>2</sub>1</sup> = n<sup>0</sup> = 1이고 f(n) = 1이라 역시 경우 2, <strong>Θ(log n)</strong>이다.</p>
+
+                <!-- 3. 동적 계획법 -->
+                <h2 id="dynamic-programming"><i class="fa-solid fa-table-cells"></i> 동적 계획법 (Dynamic Programming)</h2>
+                <p><strong>동적 계획법(DP)</strong>은 큰 문제를 부분 문제로 나누되, <strong>겹치는 부분 문제</strong>를 한 번만 풀고 그 답을 <em>저장</em>해 재사용하는 기법이다. 분할정복과 닮았지만 결정적 차이가 있다 — 분할정복의 부분 문제는 서로 독립이고, DP의 부분 문제는 서로 겹친다.</p>
+
+                <h3 id="dp-two-conditions"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 두 가지 전제 조건</h3>
+                <p>DP를 적용하려면 문제가 두 성질을 모두 만족해야 한다.</p>
+                <ul>
+                    <li><strong>최적 부분 구조(optimal substructure)</strong> — 큰 문제의 최적해가 부분 문제의 최적해로 구성된다.</li>
+                    <li><strong>겹치는 부분 문제(overlapping subproblems)</strong> — 같은 부분 문제가 여러 번 반복해서 등장한다.</li>
+                </ul>
+                <p>둘 중 겹침이 없다면 그냥 분할정복이다. 최적 부분 구조가 없다면 DP로 풀 수 없다.</p>
+
+                <h3 id="dp-fibonacci"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 피보나치 — 메모이제이션 vs 타뷸레이션</h3>
+                <p>피보나치를 단순 재귀로 짜면 <code>fib(n-1)</code>과 <code>fib(n-2)</code>가 같은 값을 수없이 다시 계산한다. <code>fib(50)</code>은 약 10억 번 호출되며 지수 시간 O(2<sup>n</sup>)이 된다. DP는 이 중복을 없앤다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 방법 1: 메모이제이션 (Top-Down) — 재귀하되 결과를 캐시에 저장한다.
+class FibMemo
+{
+public:
+    long long Compute(int n)
+    {
+        m_cache.assign(n + 1, -1);
+        return solve(n);
+    }
+
+private:
+    long long solve(int n)
+    {
+        if (n &lt;= 1)
+        {
+            return n;
+        }
+        if (m_cache[n] != -1)   // 이미 푼 부분 문제는 재계산하지 않는다
+        {
+            return m_cache[n];
+        }
+        m_cache[n] = solve(n - 1) + solve(n - 2);
+        return m_cache[n];
+    }
+
+    std::vector&lt;long long&gt; m_cache;
+};
+
+// 방법 2: 타뷸레이션 (Bottom-Up) — 작은 답부터 표를 채워 올라간다.
+long long FibTabulation(int n)
+{
+    if (n &lt;= 1)
+    {
+        return n;
+    }
+    std::vector&lt;long long&gt; table(n + 1);
+    table[0] = 0;
+    table[1] = 1;
+    for (int i = 2; i &lt;= n; ++i)
+    {
+        table[i] = table[i - 1] + table[i - 2];   // 이전 두 답을 재사용
+    }
+    return table[n];
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> fib(50) 호출 횟수 비교</div>
+단순 재귀       : 약 2,075,316,483 회 호출  (지수 시간)
+메모이제이션    : 99 회 호출               (선형 시간)
+타뷸레이션      : 49 회 반복               (선형 시간)</div>
+
+                <p>두 방식 모두 O(n)이다. <strong>메모이제이션</strong>은 위에서 아래로 필요한 부분 문제만 푼다. <strong>타뷸레이션</strong>은 아래에서 위로 모든 부분 문제를 순서대로 푼다. 재귀 호출 오버헤드가 없는 타뷸레이션이 보통 약간 빠르지만, 모든 부분 문제가 필요하지 않은 경우엔 메모이제이션이 유리하다.</p>
+
+                <h3 id="dp-knapsack"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 0-1 배낭 문제</h3>
+                <p>무게 한도가 있는 배낭에 물건을 담아 가치 합을 최대화하는 문제다. 각 물건은 담거나(1) 안 담거나(0) 둘 중 하나다. 상태를 <code>dp[i][w]</code> = "앞에서 i개 물건만 고려하고 무게 한도가 w일 때 최대 가치"로 정의한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 0-1 배낭 문제 — 타뷸레이션.
+// weights, values는 각 물건의 무게와 가치, capacity는 배낭 한도.
+int Knapsack(const std::vector&lt;int&gt;&amp; weights,
+             const std::vector&lt;int&gt;&amp; values,
+             int capacity)
+{
+    int itemCount = static_cast&lt;int&gt;(weights.size());
+    std::vector&lt;std::vector&lt;int&gt;&gt; dp(itemCount + 1,
+                                    std::vector&lt;int&gt;(capacity + 1, 0));
+
+    for (int i = 1; i &lt;= itemCount; ++i)
+    {
+        int weight = weights[i - 1];
+        int value = values[i - 1];
+        for (int w = 0; w &lt;= capacity; ++w)
+        {
+            // i번째 물건을 담지 않는 경우
+            dp[i][w] = dp[i - 1][w];
+
+            // i번째 물건을 담을 수 있다면, 담는 경우와 비교한다
+            if (weight &lt;= w)
+            {
+                int withItem = dp[i - 1][w - weight] + value;
+                dp[i][w] = std::max(dp[i][w], withItem);
+            }
+        }
+    }
+    return dp[itemCount][capacity];
+}</code></pre>
+
+                <p>핵심은 <strong>상태 정의</strong>다. "무엇을 dp 배열의 인덱스로 삼고, 그 칸에 무슨 값을 담을 것인가"를 정확히 정하면 점화식은 자연스럽게 따라온다. 배낭 문제의 점화식은 "i번째 물건을 담느냐 마느냐"의 두 선택 중 최댓값이다.</p>
+
+                <h3 id="dp-lcs"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 최장 공통 부분수열 (LCS)</h3>
+                <p>두 문자열에서 순서를 유지하며 공통으로 뽑을 수 있는 가장 긴 부분수열의 길이를 구한다. <code>dp[i][j]</code> = "A의 앞 i글자와 B의 앞 j글자의 LCS 길이"로 정의한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 최장 공통 부분수열의 길이를 구한다.
+int LongestCommonSubsequence(const std::string&amp; a, const std::string&amp; b)
+{
+    int lenA = static_cast&lt;int&gt;(a.size());
+    int lenB = static_cast&lt;int&gt;(b.size());
+    std::vector&lt;std::vector&lt;int&gt;&gt; dp(lenA + 1,
+                                    std::vector&lt;int&gt;(lenB + 1, 0));
+
+    for (int i = 1; i &lt;= lenA; ++i)
+    {
+        for (int j = 1; j &lt;= lenB; ++j)
+        {
+            if (a[i - 1] == b[j - 1])
+            {
+                // 두 글자가 같으면 대각선 값에 1을 더한다
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            }
+            else
+            {
+                // 다르면 한쪽을 버린 두 경우 중 큰 값을 택한다
+                dp[i][j] = std::max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+    }
+    return dp[lenA][lenB];
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>DP 설계의 4단계</strong>
+                        ① 상태를 정의한다 (dp 배열의 의미). ② 점화식을 세운다 (상태 간 전이 규칙). ③ 기저 사례를 정한다 (가장 작은 부분 문제). ④ 계산 순서를 정한다 (Top-Down이면 메모이제이션, Bottom-Up이면 표를 채우는 순서). 이 중 ①번 상태 정의가 가장 어렵고 가장 중요하다.
+                    </div>
+                </div>
+
+                <!-- 4. 그리디 -->
+                <h2 id="greedy"><i class="fa-solid fa-hand-holding-dollar"></i> 그리디 (Greedy)</h2>
+                <p><strong>그리디(탐욕법)</strong>는 매 순간 <strong>그 시점에서 가장 좋아 보이는 선택</strong>을 하고, 한 번 한 선택은 절대 되돌리지 않는 기법이다. 전체를 내다보지 않고 지역적 최선만 반복한다. 그래서 매우 빠르지만 — <strong>항상 최적해를 주지는 않는다.</strong></p>
+
+                <h3 id="greedy-condition"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 그리디가 통하는 조건</h3>
+                <p>그리디가 최적해를 보장하려면 문제가 두 성질을 만족해야 한다.</p>
+                <ul>
+                    <li><strong>탐욕 선택 속성(greedy choice property)</strong> — 매 단계의 지역적 최선 선택이 전체 최적해에 포함된다.</li>
+                    <li><strong>최적 부분 구조(optimal substructure)</strong> — 한 선택을 한 뒤 남은 문제도 같은 방식으로 최적해를 구성한다.</li>
+                </ul>
+                <p>이 두 성질이 성립함을 <em>증명</em>해야 비로소 그리디를 안심하고 쓸 수 있다. 증명 없이 "그럴듯하니 그리디로 풀자"는 위험하다.</p>
+
+                <h3 id="greedy-coin"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 동전 거스름돈 — 통할 때와 안 통할 때</h3>
+                <p>거스름돈을 최소 개수의 동전으로 주는 문제다. 큰 동전부터 최대한 많이 쓰는 그리디가 직관적이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 큰 단위 동전부터 욕심껏 사용한다.
+// coins는 내림차순 정렬되어 있다고 가정한다.
+int CoinChangeGreedy(const std::vector&lt;int&gt;&amp; coins, int amount)
+{
+    int count = 0;
+    int remaining = amount;
+    for (int coin : coins)
+    {
+        count += remaining / coin;   // 이 동전을 최대한 많이 사용
+        remaining %= coin;
+    }
+    return (remaining == 0) ? count : -1;   // 거슬러주지 못하면 -1
+}</code></pre>
+
+                <p>동전이 <code>{500, 100, 50, 10}</code>처럼 서로 배수 관계면 그리디가 항상 최적이다. 그러나 동전이 <code>{4, 3, 1}</code>이고 6원을 거슬러야 한다면 그리디는 <code>4 + 1 + 1</code>로 3개를 쓰지만, 최적은 <code>3 + 3</code>으로 2개다. <strong>같은 알고리즘이 동전 구성에 따라 맞기도 하고 틀리기도 한다.</strong></p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>그리디가 항상 최적이라는 오해</strong>
+                        그리디는 "빠르고 간단하니 일단 그리디로"라는 유혹이 크다. 하지만 그리디는 <em>탐욕 선택 속성이 증명될 때만</em> 최적이다. 증명 없이 쓰면, 대부분의 입력에서는 맞다가 특정 입력에서 조용히 틀린 답을 낸다 — 가장 발견하기 어려운 종류의 버그다. 확신이 없으면 DP로 풀거나, 최소한 반례를 찾으려 시도해야 한다.
+                    </div>
+                </div>
+
+                <h3 id="greedy-activity"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 활동 선택 문제</h3>
+                <p>시작·종료 시각이 정해진 활동들 중 겹치지 않게 최대 개수를 고르는 문제다. <strong>종료 시각이 빠른 순</strong>으로 정렬해 욕심껏 고르는 그리디가 최적임이 증명되어 있다 — 빨리 끝나는 활동을 고를수록 뒤에 남는 시간이 많기 때문이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct Activity
+{
+    int m_start;
+    int m_finish;
+};
+
+// 겹치지 않게 고를 수 있는 최대 활동 수를 구한다.
+int SelectActivities(std::vector&lt;Activity&gt; activities)
+{
+    // 종료 시각 오름차순 정렬 — 그리디 선택의 핵심
+    std::sort(activities.begin(), activities.end(),
+              [](const Activity&amp; a, const Activity&amp; b)
+              {
+                  return a.m_finish &lt; b.m_finish;
+              });
+
+    int count = 0;
+    int lastFinish = -1;
+    for (const Activity&amp; act : activities)
+    {
+        if (act.m_start &gt;= lastFinish)   // 직전 활동과 겹치지 않으면 선택
+        {
+            ++count;
+            lastFinish = act.m_finish;
+        }
+    }
+    return count;
+}</code></pre>
+
+                <!-- 5. 백트래킹 -->
+                <h2 id="backtracking"><i class="fa-solid fa-arrows-turn-to-dots"></i> 백트래킹 (Backtracking)</h2>
+                <p><strong>백트래킹</strong>은 해를 만들어가는 도중, 지금까지의 선택으로는 <strong>가망이 없다고 판단되면 즉시 되돌아가(backtrack)</strong> 다른 선택을 시도하는 기법이다. 모든 후보를 탐색하되, 답이 될 수 없는 가지는 <strong>가지치기(pruning)</strong>로 잘라낸다.</p>
+
+                <h3 id="bt-search-tree"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 탐색 트리와 가지치기</h3>
+                <p>백트래킹은 가능한 선택들을 <strong>상태 공간 트리</strong>로 본다. 루트에서 시작해 한 선택씩 내려가며 해를 키우고, 막다른 곳이면 부모로 올라가 다음 가지를 본다. 가지치기는 "이 가지 아래엔 답이 없다"를 미리 알아차려 아예 내려가지 않는 것이다.</p>
+
+                <div class="diagram-box">
+                    <svg width="640" height="270" viewBox="0 0 640 270" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 루트 -->
+                        <circle cx="320" cy="35" r="18" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+                        <text x="320" y="40" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#1e3a5f">시작</text>
+                        <!-- 레벨 1 -->
+                        <circle cx="160" cy="115" r="18" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.5"/>
+                        <text x="160" y="120" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#065f46">A</text>
+                        <circle cx="320" cy="115" r="18" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+                        <text x="320" y="120" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#7f1d1d">B</text>
+                        <circle cx="480" cy="115" r="18" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.5"/>
+                        <text x="480" y="120" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#065f46">C</text>
+                        <!-- 레벨 2 (A의 자식) -->
+                        <circle cx="100" cy="200" r="18" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+                        <text x="100" y="205" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#78350f">해</text>
+                        <circle cx="200" cy="200" r="18" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+                        <text x="200" y="205" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="700" fill="#7f1d1d">막힘</text>
+                        <!-- 레벨 2 (C의 자식) -->
+                        <circle cx="440" cy="200" r="18" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+                        <text x="440" y="205" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#78350f">해</text>
+                        <circle cx="540" cy="200" r="18" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+                        <text x="540" y="205" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="700" fill="#7f1d1d">막힘</text>
+                        <!-- 선 -->
+                        <line x1="305" y1="50" x2="172" y2="100" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="320" y1="53" x2="320" y2="97" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="4 3"/>
+                        <line x1="335" y1="50" x2="468" y2="100" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="148" y1="130" x2="110" y2="184" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="172" y1="130" x2="190" y2="184" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="468" y1="130" x2="450" y2="184" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="492" y1="130" x2="530" y2="184" stroke="#94a3b8" stroke-width="1.6"/>
+                        <!-- 가지치기 표시 -->
+                        <text x="320" y="80" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#dc2626" font-weight="700">✕ 가지치기</text>
+                        <text x="395" y="85" text-anchor="start" font-family="sans-serif" font-size="9.5" fill="#b91c1c">B 가지는 조건 위반 → 안 내려간다</text>
+                        <text x="320" y="255" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#475569">유망하지 않은 가지(B)는 탐색하지 않고, 막다른 곳에선 부모로 되돌아간다</text>
+                    </svg>
+                    <div class="diagram-caption">백트래킹 탐색 트리 — 점선(B)은 가지치기로 잘려나간 가지, 막힌 노드에선 한 단계 위로 되돌아간다</div>
+                </div>
+
+                <h3 id="bt-nqueen"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> N-Queen 문제</h3>
+                <p>N×N 체스판에 N개의 퀸을 서로 공격하지 못하게 놓는 경우의 수를 센다. 한 행에 퀸 하나씩 놓되, 열·대각선이 겹치면 그 가지는 더 내려가지 않고 되돌아간다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class NQueenSolver
+{
+public:
+    int CountSolutions(int boardSize)
+    {
+        m_size = boardSize;
+        m_columns.assign(boardSize, 0);
+        return solve(0);
+    }
+
+private:
+    // row 행에 퀸을 놓는 모든 경우를 시도한다.
+    int solve(int row)
+    {
+        if (row == m_size)   // 모든 행에 놓는 데 성공
+        {
+            return 1;
+        }
+        int total = 0;
+        for (int col = 0; col &lt; m_size; ++col)
+        {
+            if (isSafe(row, col))   // 가지치기: 안전한 칸만 내려간다
+            {
+                m_columns[row] = col;
+                total += solve(row + 1);
+                // 되돌아옴 — 다음 col 시도. 별도 복원 불필요(다음 루프에서 덮어씀)
+            }
+        }
+        return total;
+    }
+
+    // (row, col)에 퀸을 놓아도 기존 퀸과 충돌하지 않는지 검사한다.
+    bool isSafe(int row, int col) const
+    {
+        for (int prevRow = 0; prevRow &lt; row; ++prevRow)
+        {
+            int prevCol = m_columns[prevRow];
+            if (prevCol == col)   // 같은 열
+            {
+                return false;
+            }
+            if (std::abs(prevCol - col) == std::abs(prevRow - row))   // 대각선
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    int m_size = 0;
+    std::vector&lt;int&gt; m_columns;   // m_columns[row] = 그 행의 퀸이 놓인 열
+};</code></pre>
+
+                <p>가지치기가 핵심이다. <code>isSafe</code> 검사 없이 모든 칸 조합을 다 만들면 N=8에서 16,777,216가지를 모두 생성한다. 가지치기를 넣으면 실제로 탐색하는 노드는 그 일부에 불과하다 — 충돌이 확정된 순간 그 아래 전체 가지를 통째로 건너뛰기 때문이다.</p>
+
+                <h3 id="bt-permutation"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 순열과 조합 생성</h3>
+                <p>순열·조합 생성도 백트래킹의 전형이다. 한 자리씩 선택을 채워 넣고, 다 채우면 결과에 기록하고, 되돌아와 다음 선택을 시도한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 1..n의 모든 순열을 생성한다.
+class PermutationGenerator
+{
+public:
+    std::vector&lt;std::vector&lt;int&gt;&gt; Generate(int n)
+    {
+        m_n = n;
+        m_used.assign(n + 1, false);
+        m_current.clear();
+        m_results.clear();
+        backtrack();
+        return m_results;
+    }
+
+private:
+    void backtrack()
+    {
+        if (static_cast&lt;int&gt;(m_current.size()) == m_n)   // 한 순열 완성
+        {
+            m_results.push_back(m_current);
+            return;
+        }
+        for (int value = 1; value &lt;= m_n; ++value)
+        {
+            if (m_used[value])   // 이미 쓴 숫자는 건너뛴다 (가지치기)
+            {
+                continue;
+            }
+            m_used[value] = true;
+            m_current.push_back(value);   // 선택
+            backtrack();                  // 다음 자리로 내려간다
+            m_current.pop_back();         // 되돌리기 (backtrack)
+            m_used[value] = false;
+        }
+    }
+
+    int m_n = 0;
+    std::vector&lt;bool&gt; m_used;
+    std::vector&lt;int&gt; m_current;
+    std::vector&lt;std::vector&lt;int&gt;&gt; m_results;
+};</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>백트래킹의 정형 — 선택, 탐색, 되돌리기</strong>
+                        백트래킹 코드는 거의 항상 같은 골격을 가진다. ① 선택을 한다(상태 변경). ② 재귀로 다음 단계를 탐색한다. ③ 되돌린다(상태 복원). 이 "선택 → 탐색 → 되돌리기"의 짝을 정확히 맞추는 것이 버그 없는 백트래킹의 핵심이다. 선택만 하고 되돌리기를 빠뜨리면 상태가 오염된다.
+                    </div>
+                </div>
+
+                <!-- 6. 완전 탐색 -->
+                <h2 id="brute-force"><i class="fa-solid fa-magnifying-glass-plus"></i> 완전 탐색 (Brute Force)</h2>
+                <p><strong>완전 탐색</strong>은 가능한 <strong>모든 경우를 빠짐없이 다 시도</strong>해 답을 찾는 가장 단순한 기법이다. 영리한 통찰이 없는 대신, 답이 존재한다면 반드시 찾아낸다는 확실함이 있다.</p>
+
+                <h3 id="bf-basic"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 모든 경우를 시도한다</h3>
+                <p>아래는 "배열에서 합이 target이 되는 두 수가 있는가"를 완전 탐색으로 푸는 코드다. 모든 쌍을 다 확인하므로 O(n²)이지만, 입력이 작으면 이걸로 충분하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 합이 target이 되는 두 원소가 있는지 모든 쌍을 검사한다.
+bool HasPairWithSum(const std::vector&lt;int&gt;&amp; numbers, int target)
+{
+    int n = static_cast&lt;int&gt;(numbers.size());
+    for (int i = 0; i &lt; n; ++i)
+    {
+        for (int j = i + 1; j &lt; n; ++j)
+        {
+            if (numbers[i] + numbers[j] == target)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}</code></pre>
+
+                <h3 id="bf-foundation"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 완전 탐색은 출발점이다</h3>
+                <p>완전 탐색은 그 자체로 끝이 아니라 <strong>다른 기법의 출발점</strong>이다. 백트래킹은 완전 탐색에 가지치기를 더한 것이고, DP는 완전 탐색의 중복 계산을 메모이제이션으로 제거한 것이다. 문제를 만나면 먼저 "완전 탐색으로 어떻게 풀리는가"를 그려보고, 거기서 비효율을 찾아 개선해 나가는 것이 정석적인 접근이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>입력 크기로 완전 탐색 가능 여부를 가늠한다</strong>
+                        완전 탐색이 시간 내에 끝나는지는 입력 크기로 대략 판단할 수 있다. 1초에 약 1억 연산이 기준이다. O(n²)은 n이 약 1만까지, O(2<sup>n</sup>)은 n이 약 20~25까지, O(n!)은 n이 약 10까지가 현실적인 한계다. 이 범위를 넘으면 완전 탐색 대신 DP·그리디·가지치기를 고민해야 한다.
+                    </div>
+                </div>
+
+                <!-- 7. 기법 선택 가이드 -->
+                <h2 id="choosing"><i class="fa-solid fa-signs-post"></i> 기법 선택 가이드</h2>
+                <p>문제를 만났을 때 어떤 틀을 꺼낼지는 문제의 <strong>구조적 특징</strong>으로 판단한다. 아래 표는 네 가지 핵심 설계 기법의 비교다.</p>
+
+                <table>
+                    <tr><th>기법</th><th>핵심 아이디어</th><th>적용 조건</th><th>대표 예시</th></tr>
+                    <tr>
+                        <td><strong>분할정복</strong></td>
+                        <td>독립적인 부분 문제로 나눠 풀고 합친다</td>
+                        <td>부분 문제가 서로 겹치지 않는다</td>
+                        <td>병합 정렬, 퀵 정렬, 이진 탐색</td>
+                    </tr>
+                    <tr>
+                        <td><strong>동적 계획법</strong></td>
+                        <td>겹치는 부분 문제를 한 번만 풀고 저장한다</td>
+                        <td>최적 부분 구조 + 겹치는 부분 문제</td>
+                        <td>피보나치, 배낭 문제, LCS</td>
+                    </tr>
+                    <tr>
+                        <td><strong>그리디</strong></td>
+                        <td>매 순간 지역적 최선을 선택한다</td>
+                        <td>탐욕 선택 속성 + 최적 부분 구조</td>
+                        <td>활동 선택, 허프만 코딩, 최소 신장 트리</td>
+                    </tr>
+                    <tr>
+                        <td><strong>백트래킹</strong></td>
+                        <td>모든 후보를 탐색하되 가망 없으면 되돌아간다</td>
+                        <td>해가 단계적 선택으로 구성되고 가지치기가 가능</td>
+                        <td>N-Queen, 순열·조합, 미로 탐색</td>
+                    </tr>
+                </table>
+
+                <p>판단의 실마리는 이렇다. 문제가 "절반씩 잘라 들어갈 수 있는가" → 분할정복. "같은 계산이 반복되는가" → DP. "한 번의 선택으로 문제가 줄고, 그 선택이 항상 옳다고 증명되는가" → 그리디. "선택지가 트리처럼 펼쳐지고 일부 가지를 잘라낼 수 있는가" → 백트래킹. 어느 것도 명확하지 않으면 완전 탐색부터 시작한다.</p>
+
+                <!-- 8. DP vs 분할정복 -->
+                <h2 id="dp-vs-dc"><i class="fa-solid fa-code-compare"></i> DP vs 분할정복</h2>
+                <p>DP와 분할정복은 둘 다 "문제를 부분 문제로 나눈다"는 점이 같다. 그래서 자주 헷갈린다. 결정적 차이는 단 하나 — <strong>부분 문제가 서로 겹치는가</strong>이다.</p>
+
+                <table>
+                    <tr><th>비교</th><th>분할정복</th><th>동적 계획법</th></tr>
+                    <tr><td>부분 문제 관계</td><td>서로 독립 — 겹치지 않는다</td><td>서로 겹친다 — 같은 것이 반복 등장</td></tr>
+                    <tr><td>중복 계산</td><td>원래 없음</td><td>저장(메모)으로 제거</td></tr>
+                    <tr><td>방향</td><td>주로 Top-Down (재귀)</td><td>Top-Down 또는 Bottom-Up</td></tr>
+                    <tr><td>추가 메모리</td><td>재귀 스택 정도</td><td>부분 문제 답을 담을 표가 필요</td></tr>
+                    <tr><td>대표 예</td><td>병합 정렬 — 각 절반은 독립</td><td>피보나치 — fib(n-2)가 양쪽에서 재사용됨</td></tr>
+                </table>
+
+                <p>병합 정렬에서 왼쪽 절반과 오른쪽 절반은 완전히 별개의 데이터다. 한쪽을 정렬해도 다른 쪽 계산에 쓸 일이 없다 — 그래서 저장할 이유가 없다. 반면 피보나치에서 <code>fib(5)</code>를 구할 때 <code>fib(3)</code>은 <code>fib(4)</code> 계산에도, <code>fib(5)</code> 계산에도 등장한다. 이 겹침이 있기에 저장이 의미를 가지며, 그 순간 분할정복은 DP가 된다.</p>
+
+                <!-- 9. 그리디 vs DP -->
+                <h2 id="greedy-vs-dp"><i class="fa-solid fa-scale-balanced"></i> 그리디 vs DP</h2>
+                <p>그리디와 DP는 둘 다 최적화 문제(최댓값·최솟값 찾기)에 쓰이고, 둘 다 최적 부분 구조를 요구한다. 차이는 <strong>선택의 방식</strong>에 있다.</p>
+                <p>그리디는 매 단계에서 <strong>하나의 선택만</strong> 하고 절대 되돌아보지 않는다. DP는 매 단계에서 <strong>가능한 모든 선택을 고려</strong>하고 그중 최선을 표에 남긴다. 그래서 그리디는 빠르지만(보통 한 번의 정렬 + 선형 순회), 그 한 번의 선택이 틀리면 답 전체가 틀린다. DP는 느리지만(모든 상태를 다 채움) 모든 가능성을 검토했으므로 최적을 보장한다.</p>
+
+                <table>
+                    <tr><th>비교</th><th>그리디</th><th>동적 계획법</th></tr>
+                    <tr><td>선택 방식</td><td>매 단계 하나의 선택, 되돌리지 않음</td><td>매 단계 모든 선택 고려 후 최선 저장</td></tr>
+                    <tr><td>속도</td><td>빠름 (보통 O(n log n) 이하)</td><td>상대적으로 느림 (상태 수 × 전이 비용)</td></tr>
+                    <tr><td>최적 보장</td><td>탐욕 선택 속성이 증명될 때만</td><td>항상 보장</td></tr>
+                    <tr><td>메모리</td><td>거의 불필요</td><td>상태 표가 필요</td></tr>
+                    <tr><td>거스름돈 예</td><td>동전이 배수 관계일 때만 정답</td><td>어떤 동전 구성에서도 정답</td></tr>
+                </table>
+
+                <p>실전 전략은 이렇다 — 그리디로 풀릴 것 같으면 <strong>탐욕 선택 속성을 증명하거나 반례를 찾는다</strong>. 증명되면 그리디(빠름)를 쓰고, 반례가 나오면 DP(안전함)로 간다. 증명도 반례도 못 찾았다면, 작은 입력에서 그리디와 완전 탐색의 결과를 대조해보는 것이 현실적인 검증법이다.</p>
+
+                <!-- 10. 산업 SW 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 SW 관점</h2>
+                <p>알고리즘 설계 기법은 코딩 테스트용 지식이 아니라, 산업용 소프트웨어의 핵심 로직에 그대로 쓰인다. 산업용 이미징·검사 시스템에서도 마찬가지다.</p>
+
+                <h3 id="ind-inspection-path"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 검사 경로 최적화</h3>
+                <p>여러 검사 지점을 가장 짧은 경로로 도는 문제는 외판원 문제(TSP)의 형태다. 검사 지점이 적으면 비트마스크 DP로 정확한 최적 경로를, 많으면 그리디(가장 가까운 지점부터)나 휴리스틱으로 근사해를 구한다. 스테이지 이동 시간이 곧 처리량(throughput)이므로, 경로 최적화는 장비 성능에 직결된다.</p>
+
+                <h3 id="ind-resource"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 자원 배분과 매칭</h3>
+                <p>제한된 GPU 메모리 안에서 어떤 처리 블록을 GPU에 올릴지 고르는 문제는 배낭 문제와 같은 구조다 — 각 블록의 "메모리 비용"과 "속도 이득"을 두고 한정된 용량에 최대 이득을 담는다. 작업과 처리 코어를 짝짓는 스케줄링은 매칭 문제이며, 부분 문제로 나뉘는 구조라면 DP가, 단순한 우선순위 규칙이면 그리디가 적용된다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>복잡도 글과 연결</strong>
+                        설계 기법의 선택은 결국 시간·공간 복잡도의 trade-off다. 그리디가 O(n log n), DP가 O(n·W)일 때 어느 쪽을 택할지는 입력 규모와 정확도 요구에 달려 있다. 복잡도 분석의 기초는 시리즈 10편에서 다룬다.
+                    </div>
+                </div>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <h3 id="pit-greedy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 1 — 그리디가 항상 최적이라는 오해</h3>
+                <p>가장 흔하고 가장 위험한 함정이다. 그리디는 코드가 짧고 직관적이라 "당연히 맞겠지"라고 넘기기 쉽다. 그러나 탐욕 선택 속성이 성립하지 않는 문제에 그리디를 쓰면, 대부분의 입력에서는 맞다가 특정 입력에서만 조용히 틀린다. 반드시 증명하거나 반례를 탐색해야 한다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>메모이제이션을 빠뜨린 재귀 — 지수 시간 폭발</strong>
+                        DP로 풀어야 할 문제를 단순 재귀로만 짜면, 겹치는 부분 문제를 매번 다시 계산해 O(2<sup>n</sup>)으로 폭발한다. <code>fib(50)</code>이 20억 번 호출되는 것이 그 예다. 코드는 "정상 동작"하므로 작은 입력으로 한 테스트는 통과하고, 실제 입력에서 응답 없음으로 멈춘다. 재귀가 같은 인자로 두 번 이상 호출된다면 메모이제이션이 빠진 것은 아닌지 의심해야 한다.
+                    </div>
+                </div>
+
+                <h3 id="pit-dp-state"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 2 — DP의 상태 정의 실수</h3>
+                <p>DP가 틀리는 원인의 대부분은 점화식이 아니라 <strong>상태 정의</strong>에 있다. 상태에 필요한 정보가 빠져 있으면(예: 배낭 문제에서 "남은 무게"를 상태에 안 넣음) 점화식이 아무리 정교해도 답이 틀린다. 반대로 불필요한 정보를 상태에 넣으면 상태 공간이 폭발해 메모리·시간이 초과된다. "이 부분 문제를 풀려면 무엇을 알아야 하는가"를 정확히 짚어야 한다.</p>
+
+                <h3 id="pit-pruning"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 3 — 백트래킹 가지치기 누락</h3>
+                <p>백트래킹에서 가지치기를 빠뜨리면 사실상 완전 탐색이 되어 시간 초과가 난다. N-Queen에서 <code>isSafe</code> 검사 없이 모든 칸 조합을 생성하거나, 순열 생성에서 이미 쓴 숫자를 거르지 않으면 탐색량이 기하급수적으로 늘어난다. 또한 "선택 → 탐색 → 되돌리기"에서 <strong>되돌리기를 누락</strong>하면 상태가 오염되어 엉뚱한 답이 나온다 — 선택한 만큼 정확히 되돌려야 한다.</p>
+
+                <h3 id="pit-wrong-paradigm"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 4 — 틀에 문제를 억지로 끼우기</h3>
+                <p>한 기법에 익숙해지면 모든 문제를 그 틀로 보려는 경향이 생긴다. 겹치지 않는 독립 문제에 DP 표를 만들어 메모리를 낭비하거나, 그리디로 충분한 문제에 무거운 DP를 쓰는 식이다. 기법은 문제의 구조에서 <em>도출</em>되어야지, 먼저 정해놓고 문제를 끼워 맞추면 안 된다. 문제의 특징을 먼저 분석하고 틀을 고르는 순서를 지켜야 한다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Cormen, Leiserson, Rivest, Stein — <em>Introduction to Algorithms</em> (CLRS, 4th Edition) — Divide-and-Conquer, Dynamic Programming, Greedy Algorithms</li>
+                        <li>Jon Kleinberg, Éva Tardos — <em>Algorithm Design</em> — 설계 기법별 장 구성과 증명</li>
+                        <li>Steven Skiena — <em>The Algorithm Design Manual</em> (3rd Edition) — Backtracking, Combinatorial Search</li>
+                        <li>Sanjoy Dasgupta, Christos Papadimitriou, Umesh Vazirani — <em>Algorithms</em> — 마스터 정리, 점화식 분석</li>
+                        <li>cp-algorithms.com — Dynamic Programming, Backtracking 구현 패턴</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-theory');
+    renderPostNav('dev-theory');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

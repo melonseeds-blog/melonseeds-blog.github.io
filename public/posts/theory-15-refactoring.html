@@ -1,0 +1,852 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>리팩토링 — 코드 스멜과 개선 기법 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .diagram-box {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .diagram-box svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-light); margin-top: 12px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">리팩토링이란</a>
+        <a href="#why" data-section="why">왜 하는가</a>
+        <a href="#precondition" data-section="precondition">전제 조건</a>
+        <a href="#code-smell" data-section="code-smell">코드 스멜</a>
+        <a href="#techniques" data-section="techniques">대표 기법</a>
+        <a href="#vs-rewrite" data-section="vs-rewrite">리팩토링 vs 재작성</a>
+        <a href="#tools" data-section="tools">리팩토링 도구</a>
+        <a href="#when" data-section="when">언제 하나</a>
+        <a href="#industrial" data-section="industrial">산업 SW 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">프로그래밍 이론</span>
+                </div>
+                <h1>리팩토링 — 코드 스멜과 개선 기법</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>리팩토링의 정의 — 동작을 바꾸지 않고 내부 구조만 개선한다</li>
+                        <li>코드 스멜 — 리팩토링이 필요하다는 신호 읽기</li>
+                        <li>대표 리팩토링 기법 — 함수 추출, 보호 절, 다형성으로 조건문 대체 등</li>
+                        <li>before / after C++ 코드 쌍으로 보는 실제 변환</li>
+                        <li>리팩토링 vs 재작성, 언제 리팩토링하나, 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">리팩토링이란?</a></li>
+                        <li><a href="#why">왜 리팩토링하는가</a></li>
+                        <li><a href="#precondition">리팩토링의 전제 — 테스트</a></li>
+                        <li><a href="#code-smell">코드 스멜 (Code Smell)</a></li>
+                        <li><a href="#techniques">대표 리팩토링 기법</a></li>
+                        <li><a href="#vs-rewrite">리팩토링 vs 재작성</a></li>
+                        <li><a href="#tools">리팩토링 도구</a></li>
+                        <li><a href="#when">리팩토링을 언제 하나</a></li>
+                        <li><a href="#industrial">산업 SW 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 리팩토링이란 -->
+                <h2 id="what-is"><i class="fa-solid fa-screwdriver-wrench"></i> 리팩토링이란?</h2>
+                <p><strong>리팩토링(refactoring)</strong>은 <strong>코드의 외부 동작을 바꾸지 않으면서</strong> 내부 구조를 개선하는 작업이다. 같은 입력에 같은 출력을 내지만, 더 읽기 쉽고 더 고치기 쉬운 형태로 코드를 다듬는 것이다.</p>
+                <p>여기서 핵심은 "동작을 바꾸지 않는다"는 제약이다. 리팩토링은 기능 추가도 버그 수정도 아니다. 이 셋을 명확히 분리해야 한다.</p>
+
+                <table>
+                    <tr><th>작업</th><th>외부 동작</th><th>목적</th></tr>
+                    <tr><td><strong>리팩토링</strong></td><td>바뀌지 않음</td><td>내부 구조 개선</td></tr>
+                    <tr><td>기능 추가</td><td>새 동작이 생김</td><td>요구사항 충족</td></tr>
+                    <tr><td>버그 수정</td><td>잘못된 동작이 고쳐짐</td><td>결함 제거</td></tr>
+                </table>
+
+                <p>Martin Fowler는 이를 "두 개의 모자"에 비유한다. 리팩토링 모자를 쓰고 있을 때는 기능을 추가하지 않고 구조만 바꾼다. 기능 추가 모자를 쓰고 있을 때는 기존 코드를 건드리지 않고 새 코드를 더한다. 한 번에 한 모자만 쓴다 — 모자를 바꾸는 것은 자유지만, 두 모자를 동시에 쓰면 안 된다.</p>
+
+                <!-- 2. 왜 리팩토링하는가 -->
+                <h2 id="why"><i class="fa-solid fa-circle-question"></i> 왜 리팩토링하는가</h2>
+                <p>코드는 가만히 두면 <strong>부패(rot)</strong>한다. 기능이 하나씩 더해지고 급한 수정이 쌓이면서, 처음의 깔끔했던 구조는 점점 얽히고 이해하기 어려워진다. 리팩토링은 이 부패를 막고 코드를 건강한 상태로 되돌리는 작업이다.</p>
+
+                <h3 id="why-debt"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기술 부채 관리</h3>
+                <p>지저분한 코드는 <strong>기술 부채(technical debt)</strong>다. 당장은 동작하니 빚을 진 줄 모르지만, 그 코드를 건드릴 때마다 "이자"를 낸다 — 이해하는 데 더 오래 걸리고, 고치다 다른 곳을 깨뜨린다. 리팩토링은 이 부채를 갚는 행위다. 갚지 않으면 이자가 불어나 결국 코드를 손댈 수 없는 지경에 이른다.</p>
+                <p>리팩토링이 주는 가치는 결국 하나로 모인다 — <strong>이해·수정·확장이 쉬워진다</strong>. 같은 기능을 더 빠르게 추가할 수 있고, 버그를 더 빨리 찾을 수 있고, 새 팀원이 더 빨리 코드를 파악할 수 있다. 리팩토링은 미래의 개발 속도에 투자하는 것이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>리팩토링은 그 자체가 목적이 아니다</strong>
+                        리팩토링은 "예쁜 코드"를 위한 취미가 아니라 <em>경제적인 행위</em>다. 앞으로 자주 손댈 코드일수록 리팩토링의 수익률이 높고, 다시는 건드리지 않을 코드라면 리팩토링할 이유가 거의 없다. 항상 "이 개선이 미래의 작업을 얼마나 쉽게 만드는가"를 기준으로 판단한다.
+                    </div>
+                </div>
+
+                <!-- 3. 전제 조건 -->
+                <h2 id="precondition"><i class="fa-solid fa-shield-halved"></i> 리팩토링의 전제 — 테스트</h2>
+                <p>리팩토링의 정의는 "동작을 바꾸지 않는다"이다. 그런데 동작을 바꾸지 않았다는 것을 <em>어떻게 확신하는가?</em> 답은 <strong>테스트</strong>다. 믿을 만한 테스트 모음이 없으면 리팩토링은 "동작을 바꾸지 않았기를 바라는 작업"으로 전락한다.</p>
+                <p>테스트는 리팩토링의 안전망이다. 구조를 바꾼 뒤 테스트를 돌려 모두 통과하면, 외부 동작이 보존되었다는 객관적 증거를 얻는다. 테스트가 빨간불이면 즉시 되돌린다. 이 안전망이 있어야 과감하게 구조를 바꿀 수 있다.</p>
+
+                <h3 id="precondition-small"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 작은 단계로, 한 번에 하나</h3>
+                <p>리팩토링은 한 번에 큰 변경을 하는 것이 아니라, <strong>아주 작은 단계</strong>를 연달아 밟는 것이다. 함수 하나를 추출하고 → 테스트를 돌리고 → 변수 하나의 이름을 바꾸고 → 다시 테스트를 돌린다. 각 단계 사이에 코드는 항상 동작하는 상태로 유지된다.</p>
+                <p>작은 단계의 이점은 분명하다. 무언가 깨졌을 때 원인이 직전의 작은 변경 하나로 좁혀진다. 한 번에 열 가지를 바꾸고 테스트가 깨지면, 무엇이 원인인지 찾는 데 더 오래 걸린다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>테스트 없이 리팩토링하지 않는다</strong>
+                        테스트가 없는 코드를 리팩토링하는 것은 안전망 없이 줄타기를 하는 것과 같다. 구조를 바꾸다 동작이 미묘하게 깨져도 알아챌 방법이 없다. 테스트가 없다면, 리팩토링 <em>전에</em> 먼저 현재 동작을 고정하는 특성 테스트(characterization test)부터 작성해야 한다. 테스트 작성과 리팩토링의 순서를 바꾸면 안 된다.
+                    </div>
+                </div>
+
+                <!-- 4. 코드 스멜 -->
+                <h2 id="code-smell"><i class="fa-solid fa-nose"></i> 코드 스멜 (Code Smell)</h2>
+                <p><strong>코드 스멜</strong>은 코드에서 풍기는 "냄새" — 즉 무언가 잘못되었을 가능성을 알리는 <strong>신호</strong>다. 스멜이 있다고 반드시 문제인 것은 아니지만, "여기를 더 들여다보라"는 표지판 역할을 한다. Kent Beck과 Martin Fowler가 이 비유를 대중화했다.</p>
+
+                <h3 id="smell-list"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 대표적인 코드 스멜</h3>
+                <table>
+                    <tr><th>코드 스멜</th><th>설명</th><th>주로 쓰는 리팩토링</th></tr>
+                    <tr><td>중복 코드 (Duplicated Code)</td><td>같은 구조의 코드가 여러 곳에 반복</td><td>함수 추출, 클래스 추출</td></tr>
+                    <tr><td>긴 함수 (Long Function)</td><td>한 함수가 너무 많은 일을 함</td><td>함수 추출, 조건문 분해</td></tr>
+                    <tr><td>거대 클래스 (Large Class)</td><td>한 클래스가 책임을 너무 많이 가짐</td><td>클래스 추출</td></tr>
+                    <tr><td>긴 매개변수 목록 (Long Parameter List)</td><td>인자가 너무 많아 호출이 혼란스러움</td><td>매개변수 객체로 묶기</td></tr>
+                    <tr><td>기능 욕심 (Feature Envy)</td><td>메서드가 자기 클래스보다 남의 클래스 데이터에 더 관심</td><td>함수 이동</td></tr>
+                    <tr><td>부적절한 친밀 (Inappropriate Intimacy)</td><td>두 클래스가 서로의 내부에 과도하게 의존</td><td>함수/필드 이동, 위임</td></tr>
+                    <tr><td>산탄총 수술 (Shotgun Surgery)</td><td>한 변경이 여러 클래스를 조금씩 건드리게 함</td><td>함수/필드 한곳으로 모으기</td></tr>
+                    <tr><td>주석 떡칠 (Comments)</td><td>코드가 불명확해서 주석으로 때움</td><td>함수 추출, 이름 변경</td></tr>
+                    <tr><td>죽은 코드 (Dead Code)</td><td>실행되지 않거나 쓰이지 않는 코드</td><td>삭제</td></tr>
+                    <tr><td>매직 넘버 (Magic Number)</td><td>의미를 알 수 없는 숫자 리터럴</td><td>매직 넘버를 명명 상수로</td></tr>
+                </table>
+
+                <h3 id="smell-feature-envy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기능 욕심과 산탄총 수술</h3>
+                <p>두 스멜은 헷갈리기 쉽지만 방향이 반대다. <strong>기능 욕심</strong>은 한 메서드가 다른 클래스의 데이터를 자기 데이터보다 더 많이 만지는 경우다 — 그 메서드는 사실 다른 클래스에 있어야 한다. <strong>산탄총 수술</strong>은 하나의 개념적 변경이 여러 클래스에 흩어진 코드를 조금씩 고치게 만드는 경우다 — 흩어진 책임을 한곳으로 모아야 한다.</p>
+
+                <pre class="language-cpp"><code class="language-cpp">// 기능 욕심 — CalculateScore가 Region의 데이터만 잔뜩 만진다
+class InspectionReport
+{
+public:
+    double CalculateScore(const Region&amp; region)
+    {
+        double area = region.GetWidth() * region.GetHeight();
+        double perimeter = 2 * (region.GetWidth() + region.GetHeight());
+        double compactness = area / (perimeter * perimeter);
+        return compactness * region.GetConfidence();   // 전부 region의 것
+    }
+};
+
+// 개선 — 계산을 데이터가 있는 Region으로 옮긴다 (함수 이동)
+class Region
+{
+public:
+    double CalculateScore() const
+    {
+        double area = m_width * m_height;
+        double perimeter = 2 * (m_width + m_height);
+        double compactness = area / (perimeter * perimeter);
+        return compactness * m_confidence;
+    }
+};</code></pre>
+
+                <!-- 5. 대표 리팩토링 기법 -->
+                <h2 id="techniques"><i class="fa-solid fa-toolbox"></i> 대표 리팩토링 기법</h2>
+                <p>리팩토링 기법은 "이런 스멜이 보이면 이렇게 바꾼다"는 이름 붙은 변환 절차다. 각 기법은 작고 검증된 단계로 이루어져 있어, 순서대로 따르면 동작을 보존하면서 구조를 바꿀 수 있다. 아래는 가장 자주 쓰는 기법들을 before → after 코드 쌍으로 본다.</p>
+
+                <h3 id="tech-extract-function"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함수 추출 (Extract Function)</h3>
+                <p>가장 기본이 되는 기법이다. 코드 한 덩어리가 하나의 의도를 가진다면, 그 덩어리를 의도를 드러내는 이름의 함수로 빼낸다. 긴 함수와 중복 코드를 동시에 잡는다.</p>
+
+                <pre class="language-cpp"><code class="language-cpp">// before — 한 함수가 검출, 필터링, 출력을 다 한다
+ErrorCode InspectPanel(const Image&amp; image, std::vector&lt;Defect&gt;&amp; outDefects)
+{
+    std::vector&lt;Blob&gt; blobs;
+    // ... 블롭 검출 20줄 ...
+
+    std::vector&lt;Blob&gt; filtered;
+    for (const auto&amp; blob : blobs)
+    {
+        if (blob.GetArea() &gt; 50.0 &amp;&amp; blob.GetCircularity() &lt; 0.8)
+        {
+            filtered.push_back(blob);
+        }
+    }
+
+    for (const auto&amp; blob : filtered)
+    {
+        outDefects.push_back(ToDefect(blob));
+    }
+    return ErrorCode::Ok;
+}</code></pre>
+
+                <pre class="language-cpp"><code class="language-cpp">// after — 각 단계를 의도가 드러나는 함수로 추출
+ErrorCode InspectPanel(const Image&amp; image, std::vector&lt;Defect&gt;&amp; outDefects)
+{
+    std::vector&lt;Blob&gt; blobs = detectBlobs(image);
+    std::vector&lt;Blob&gt; defectBlobs = filterDefectCandidates(blobs);
+    convertToDefects(defectBlobs, outDefects);
+    return ErrorCode::Ok;
+}
+
+std::vector&lt;Blob&gt; filterDefectCandidates(const std::vector&lt;Blob&gt;&amp; blobs)
+{
+    std::vector&lt;Blob&gt; filtered;
+    for (const auto&amp; blob : blobs)
+    {
+        if (blob.GetArea() &gt; kMinDefectArea &amp;&amp; blob.GetCircularity() &lt; kMaxDefectCircularity)
+        {
+            filtered.push_back(blob);
+        }
+    }
+    return filtered;
+}</code></pre>
+
+                <p><code>InspectPanel</code>은 이제 "검출 → 필터링 → 변환"이라는 흐름을 한눈에 보여준다. 세부는 각 함수 안으로 숨었다.</p>
+
+                <h3 id="tech-extract-variable"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 변수 추출 (Extract Variable)</h3>
+                <p>복잡한 표현식의 일부를 의미 있는 이름의 지역 변수로 빼낸다. 표현식이 "무엇을 계산하는지"를 이름으로 설명한다.</p>
+
+                <pre class="language-cpp"><code class="language-cpp">// before — 조건식이 무엇을 뜻하는지 한눈에 안 들어온다
+if ((image.GetWidth() * image.GetHeight()) &gt; 4096 * 4096 &amp;&amp;
+    image.GetChannels() == 1 &amp;&amp; image.GetBitDepth() &gt; 8)
+{
+    UseStreamingPath(image);
+}
+
+// after — 중간 결과에 이름을 붙여 의도를 드러낸다
+const long pixelCount = image.GetWidth() * image.GetHeight();
+const bool isLargeImage = pixelCount &gt; kStreamingThresholdPixels;
+const bool isHighBitMono = image.GetChannels() == 1 &amp;&amp; image.GetBitDepth() &gt; 8;
+
+if (isLargeImage &amp;&amp; isHighBitMono)
+{
+    UseStreamingPath(image);
+}</code></pre>
+
+                <h3 id="tech-inline"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함수 인라인 (Inline Function)</h3>
+                <p>함수 추출의 반대다. 함수 본문이 이름만큼이나 명확하거나, 잘못 쪼개진 간접 호출이 오히려 흐름을 가린다면 본문을 호출 지점으로 되돌린다. 리팩토링은 항상 "더 쪼개기"가 아니다 — 명료함이 기준이다.</p>
+
+                <pre class="language-cpp"><code class="language-cpp">// before — 한 줄짜리 함수가 오히려 한 단계 더 따라가게 만든다
+bool isReady() const { return m_isConnected; }
+
+ErrorCode Capture()
+{
+    if (!isReady()) { return ErrorCode::NotReady; }
+    // ...
+}
+
+// after — 본문이 이름만큼 명확하면 인라인한다
+ErrorCode Capture()
+{
+    if (!m_isConnected) { return ErrorCode::NotReady; }
+    // ...
+}</code></pre>
+
+                <h3 id="tech-parameter-object"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 매개변수 객체로 묶기 (Introduce Parameter Object)</h3>
+                <p>늘 함께 다니는 매개변수 묶음은 하나의 개념이다. 그것을 객체로 묶으면 긴 매개변수 목록이 사라지고, 인자의 순서를 헷갈릴 위험도 없어진다.</p>
+
+                <pre class="language-cpp"><code class="language-cpp">// before — 늘 함께 다니는 인자 다섯 개. 순서를 틀리기 쉽다
+ErrorCode DetectEdges(const Image&amp; image,
+                      double lowThreshold, double highThreshold,
+                      int apertureSize, bool useL2Gradient);
+
+// after — 함께 다니는 값을 하나의 개념으로 묶는다
+struct CannyParams
+{
+    double lowThreshold = 50.0;
+    double highThreshold = 150.0;
+    int apertureSize = 3;
+    bool useL2Gradient = false;
+};
+
+ErrorCode DetectEdges(const Image&amp; image, const CannyParams&amp; params);</code></pre>
+
+                <h3 id="tech-guard-clause"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 중첩 조건문을 보호 절로 (Replace Nested Conditional with Guard Clauses)</h3>
+                <p>깊게 중첩된 <code>if</code>는 "정상 경로"가 어디인지 가린다. 예외적인 경우를 함수 앞쪽에서 먼저 걸러내고 일찍 반환하면(<strong>보호 절, guard clause</strong>), 중첩이 펴지고 정상 흐름이 드러난다.</p>
+
+                <pre class="language-cpp"><code class="language-cpp">// before — 중첩이 깊어 정상 경로가 묻힌다
+ErrorCode ProcessFrame(const Image&amp; image)
+{
+    if (!image.IsEmpty())
+    {
+        if (image.GetChannels() == 1)
+        {
+            if (m_isCalibrated)
+            {
+                // ... 실제 처리 ...
+                return ErrorCode::Ok;
+            }
+            else
+            {
+                return ErrorCode::NotCalibrated;
+            }
+        }
+        else
+        {
+            return ErrorCode::UnsupportedFormat;
+        }
+    }
+    else
+    {
+        return ErrorCode::EmptyImage;
+    }
+}
+
+// after — 예외 경우를 먼저 걸러내면 중첩이 사라진다
+ErrorCode ProcessFrame(const Image&amp; image)
+{
+    if (image.IsEmpty())          { return ErrorCode::EmptyImage; }
+    if (image.GetChannels() != 1) { return ErrorCode::UnsupportedFormat; }
+    if (!m_isCalibrated)          { return ErrorCode::NotCalibrated; }
+
+    // ... 실제 처리 — 들여쓰기 한 단계, 정상 경로가 명확하다 ...
+    return ErrorCode::Ok;
+}</code></pre>
+
+                <h3 id="tech-magic-number"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 매직 넘버를 명명 상수로 (Replace Magic Number with Named Constant)</h3>
+                <p>의미를 알 수 없는 숫자 리터럴은 코드를 읽는 사람에게 수수께끼다. 이름 붙은 상수로 바꾸면 의미가 드러나고, 값이 여러 곳에 흩어졌을 때 한곳만 고치면 된다.</p>
+
+                <pre class="language-cpp"><code class="language-cpp">// before — 255가 무엇인지, 0.299는 어디서 왔는지 알 수 없다
+unsigned char gray = static_cast&lt;unsigned char&gt;(
+    0.299 * r + 0.587 * g + 0.114 * b);
+if (gray &gt; 127) { gray = 255; }
+
+// after — 상수 이름이 의미를 설명한다
+constexpr double kRedLumaWeight   = 0.299;
+constexpr double kGreenLumaWeight = 0.587;
+constexpr double kBlueLumaWeight  = 0.114;
+constexpr unsigned char kMaxIntensity = 255;
+constexpr unsigned char kBinaryThreshold = 127;
+
+unsigned char gray = static_cast&lt;unsigned char&gt;(
+    kRedLumaWeight * r + kGreenLumaWeight * g + kBlueLumaWeight * b);
+if (gray &gt; kBinaryThreshold) { gray = kMaxIntensity; }</code></pre>
+
+                <h3 id="tech-extract-class"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 클래스 추출 (Extract Class)</h3>
+                <p>한 클래스가 두 가지 책임을 짊어지고 있다면, 한 책임에 해당하는 필드와 메서드를 새 클래스로 빼낸다. 거대 클래스 스멜의 표준 해법이다.</p>
+
+                <pre class="language-cpp"><code class="language-cpp">// before — Camera가 카메라 제어와 캘리브레이션을 모두 떠안았다
+class Camera
+{
+public:
+    ErrorCode Capture(Image&amp; outImage);
+    ErrorCode SetExposure(double us);
+    // 캘리브레이션 책임 — 사실 별개의 관심사
+    ErrorCode LoadCalibration(const std::string&amp; path);
+    Point2d UndistortPoint(const Point2d&amp; raw) const;
+
+private:
+    double m_exposureUs;
+    Matrix3x3 m_intrinsic;          // 캘리브레이션 데이터
+    std::vector&lt;double&gt; m_distCoeffs;
+};
+
+// after — 캘리브레이션 책임을 별도 클래스로 추출
+class CameraCalibration
+{
+public:
+    ErrorCode Load(const std::string&amp; path);
+    Point2d UndistortPoint(const Point2d&amp; raw) const;
+
+private:
+    Matrix3x3 m_intrinsic;
+    std::vector&lt;double&gt; m_distCoeffs;
+};
+
+class Camera
+{
+public:
+    ErrorCode Capture(Image&amp; outImage);
+    ErrorCode SetExposure(double us);
+
+private:
+    double m_exposureUs;
+    CameraCalibration m_calibration;   // 위임
+};</code></pre>
+
+                <h3 id="tech-replace-conditional"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 다형성으로 조건문 대체 (Replace Conditional with Polymorphism)</h3>
+                <p>타입에 따라 동작이 갈리는 <code>switch</code>/<code>if-else</code>는, 타입이 늘 때마다 모든 분기를 찾아 고쳐야 한다. 각 분기를 별도 클래스로 만들고 공통 인터페이스 뒤에 두면(Strategy 패턴 / 다형성), 새 타입은 새 클래스 추가만으로 끝난다.</p>
+
+                <pre class="language-cpp"><code class="language-cpp">// before — 필터가 늘 때마다 이 switch를 찾아 고쳐야 한다
+ErrorCode ApplyFilter(Image&amp; image, FilterType type)
+{
+    switch (type)
+    {
+        case FilterType::GaussianBlur:
+            // ... 가우시안 로직 ...
+            break;
+        case FilterType::Median:
+            // ... 미디언 로직 ...
+            break;
+        case FilterType::Sobel:
+            // ... 소벨 로직 ...
+            break;
+        default:
+            return ErrorCode::UnsupportedFilter;
+    }
+    return ErrorCode::Ok;
+}</code></pre>
+
+                <pre class="language-cpp"><code class="language-cpp">// after — 각 분기를 클래스로. 새 필터는 새 클래스만 추가하면 된다
+class IFilter
+{
+public:
+    virtual ~IFilter() = default;
+    virtual ErrorCode Apply(Image&amp; image) = 0;
+};
+
+class GaussianBlurFilter : public IFilter
+{
+public:
+    ErrorCode Apply(Image&amp; image) override;   // 가우시안 로직
+};
+
+class MedianFilter : public IFilter
+{
+public:
+    ErrorCode Apply(Image&amp; image) override;   // 미디언 로직
+};
+
+// 호출부에서 switch가 사라진다
+ErrorCode ApplyFilter(Image&amp; image, IFilter&amp; filter)
+{
+    return filter.Apply(image);
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>모든 조건문을 다형성으로 바꿀 필요는 없다</strong>
+                        조건이 단순하고 분기가 늘어날 일이 없다면 <code>if-else</code>가 더 명료하다. 다형성으로의 전환이 값어치를 하는 것은 <em>같은 타입 분기가 여러 곳에 반복</em>되거나 <em>분기 종류가 계속 늘어나는</em> 경우다. 분기 하나를 없애려고 클래스 세 개를 만드는 것은 과한 설계다.
+                    </div>
+                </div>
+
+                <h3 id="tech-decompose-conditional"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 조건문 분해 (Decompose Conditional)</h3>
+                <p>복잡한 조건식과 그 분기 본문을 각각 의도를 드러내는 함수로 추출한다. <code>if</code> 한 줄만 봐도 "왜 이 분기로 가는지"를 읽을 수 있게 된다.</p>
+
+                <pre class="language-cpp"><code class="language-cpp">// before — 조건과 본문이 모두 해독을 요구한다
+if (frameIndex % 2 == 0 &amp;&amp; m_bufferDepth &gt; 1 &amp;&amp; !m_isPaused)
+{
+    out = m_buffers[frameIndex % m_bufferDepth].Clone();
+}
+else
+{
+    out = m_lastValidFrame.Clone();
+}
+
+// after — 조건과 분기를 이름 붙은 함수로 분해
+if (canUseDoubleBuffering(frameIndex))
+{
+    out = pickBufferedFrame(frameIndex);
+}
+else
+{
+    out = m_lastValidFrame.Clone();
+}</code></pre>
+
+                <!-- 6. 리팩토링 vs 재작성 -->
+                <h2 id="vs-rewrite"><i class="fa-solid fa-code-compare"></i> 리팩토링 vs 재작성</h2>
+                <p>코드가 마음에 들지 않을 때 선택지는 둘이다. <strong>리팩토링</strong>은 기존 코드를 작은 단계로 점진적으로 개선한다. <strong>재작성(rewrite)</strong>은 기존 코드를 버리고 처음부터 다시 만든다.</p>
+
+                <table>
+                    <tr><th>비교</th><th>리팩토링</th><th>재작성</th></tr>
+                    <tr><td>방식</td><td>점진적 개선</td><td>처음부터 새로 만듦</td></tr>
+                    <tr><td>위험</td><td>낮음 — 항상 동작하는 상태 유지</td><td>높음 — 완성 전까지 동작 안 함</td></tr>
+                    <tr><td>기존 지식</td><td>코드에 쌓인 버그 수정·예외 처리 보존</td><td>쉽게 유실됨 (같은 버그 재발)</td></tr>
+                    <tr><td>중단 가능성</td><td>언제든 멈춰도 개선분이 남음</td><td>중간에 멈추면 아무것도 못 얻음</td></tr>
+                    <tr><td>적합한 경우</td><td>구조는 나쁘지만 동작은 맞을 때</td><td>설계가 근본적으로 틀렸거나 기술 스택을 바꿀 때</td></tr>
+                </table>
+
+                <p>대부분의 경우 리팩토링이 더 안전한 선택이다. 기존 코드에는 시간이 지나며 발견된 수많은 엣지 케이스 처리가 녹아 있고, 재작성은 그 지식을 통째로 잃기 쉽다 — "두 번째 시스템"이 첫 번째보다 나으리란 보장은 없다. 다만 설계의 전제 자체가 틀렸거나(예: 단일 스레드 가정이 무너짐), 언어·플랫폼을 바꿔야 한다면 재작성이 불가피하다. 그럴 때도 가능하면 한 번에 다 바꾸지 말고, 모듈 단위로 새 구현을 끼워 넣으며 점진적으로 교체하는 편이 위험이 낮다.</p>
+
+                <!-- 7. 리팩토링 도구 -->
+                <h2 id="tools"><i class="fa-solid fa-wrench"></i> 리팩토링 도구</h2>
+                <p>리팩토링의 많은 기법은 기계적이다. 그래서 도구의 도움을 받을 수 있다.</p>
+
+                <h3 id="tools-ide"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> IDE 자동 리팩토링</h3>
+                <p>Visual Studio, CLion, ReSharper 같은 IDE는 "이름 바꾸기(Rename)", "함수 추출(Extract Function)", "변수 인라인(Inline Variable)" 같은 기법을 메뉴 한 번으로 수행한다. 손으로 하면 빠뜨리기 쉬운 모든 참조 지점을 도구가 한 번에, 안전하게 바꿔준다. 자동 리팩토링이 가능한 변환은 손으로 하지 않는 편이 빠르고 정확하다.</p>
+
+                <h3 id="tools-static"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정적 분석 도구</h3>
+                <p>cppcheck, clang-tidy, SonarQube 같은 정적 분석 도구는 코드를 실행하지 않고 분석해 <strong>코드 스멜과 잠재적 결함을 자동으로 찾아준다</strong> — 죽은 코드, 지나치게 긴 함수, 높은 순환 복잡도, 사용되지 않는 변수 등. 리팩토링할 곳을 사람이 일일이 눈으로 찾을 필요 없이, 도구가 우선순위 목록을 만들어준다. CI 파이프라인에 정적 분석을 넣으면 스멜이 쌓이는 것을 지속적으로 감시할 수 있다.</p>
+
+                <!-- 8. 언제 하나 -->
+                <h2 id="when"><i class="fa-solid fa-clock"></i> 리팩토링을 언제 하나</h2>
+                <p>리팩토링은 "날을 잡아서 하는 이벤트"가 아니라 <strong>일상적인 개발의 일부</strong>다. 정해진 리팩토링 단계를 따로 두기보다, 평소 작업에 자연스럽게 녹여 넣는다.</p>
+
+                <h3 id="when-campsite"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캠핑장 규칙</h3>
+                <p>"<strong>캠핑장은 처음 왔을 때보다 깨끗하게 하고 떠나라</strong>(boy scout rule)." 코드를 만질 때마다, 손댄 그 자리를 조금이라도 더 낫게 만들고 떠난다. 변수 이름 하나, 작은 함수 하나. 큰 청소를 따로 계획하지 않아도 코드는 꾸준히 좋아진다.</p>
+
+                <h3 id="when-preparatory"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기능 추가 전 준비 리팩토링</h3>
+                <p>새 기능을 넣을 자리가 지저분하면, 기능을 욱여넣기 전에 먼저 그 자리를 정리한다. Kent Beck의 말처럼 "어려운 변경을 쉬운 변경으로 만든 다음(이게 어려울 수 있다), 쉬운 변경을 한다." 준비 리팩토링은 기능 추가를 더 빠르고 안전하게 만든다.</p>
+
+                <h3 id="when-review"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 코드 리뷰 후, 그리고 이해를 위한 리팩토링</h3>
+                <p>코드 리뷰에서 나온 개선 제안은 리팩토링의 좋은 입력이다. 또한 남의 코드를 읽다 이해가 안 될 때, 이해한 바를 코드에 반영하는 리팩토링(이름 바꾸기, 함수 추출)을 하면 다음 사람은 그 고생을 덜 한다.</p>
+
+                <div class="diagram-box">
+                    <svg width="660" height="240" viewBox="0 0 660 240" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L8,3 L0,6 Z" fill="#94a3b8"/>
+                            </marker>
+                        </defs>
+                        <!-- 1. 스멜 감지 -->
+                        <rect x="30" y="90" width="130" height="60" rx="10" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+                        <text x="95" y="115" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#78350f">코드 스멜 감지</text>
+                        <text x="95" y="134" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#b45309">신호를 읽는다</text>
+                        <!-- 2. 작은 변경 -->
+                        <rect x="210" y="90" width="130" height="60" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+                        <text x="275" y="115" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#1e3a5f">작은 변경 하나</text>
+                        <text x="275" y="134" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#1d4ed8">기법 하나 적용</text>
+                        <!-- 3. 테스트 -->
+                        <rect x="390" y="90" width="130" height="60" rx="10" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.5"/>
+                        <text x="455" y="115" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#065f46">테스트 실행</text>
+                        <text x="455" y="134" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#047857">동작 보존 확인</text>
+                        <!-- 4. 커밋 -->
+                        <rect x="540" y="90" width="100" height="60" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+                        <text x="590" y="115" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#334155">커밋</text>
+                        <text x="590" y="134" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#475569">작은 단위로</text>
+                        <!-- 화살표들 -->
+                        <line x1="160" y1="120" x2="206" y2="120" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow)"/>
+                        <line x1="340" y1="120" x2="386" y2="120" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow)"/>
+                        <line x1="520" y1="120" x2="536" y2="120" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow)"/>
+                        <!-- 통과 시 루프백 -->
+                        <path d="M 590 90 C 590 40, 275 40, 275 86" fill="none" stroke="#94a3b8" stroke-width="1.8" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+                        <text x="432" y="33" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">통과 → 다음 작은 변경 (반복)</text>
+                        <!-- 실패 시 되돌리기 -->
+                        <path d="M 455 150 C 455 200, 275 200, 275 154" fill="none" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+                        <text x="365" y="213" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#dc2626">실패 → 즉시 되돌리기</text>
+                    </svg>
+                    <div class="diagram-caption">리팩토링 사이클 — 스멜을 읽고, 작은 변경 하나를 하고, 테스트로 확인하고, 커밋한다. 깨지면 즉시 되돌린다.</div>
+                </div>
+
+                <!-- 9. 산업 SW 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 SW 관점</h2>
+                <p>산업용 이미징 SDK에서 리팩토링이 가장 절실해지는 곳은 <strong>검사 로직</strong>이다. 처음에는 "블롭을 찾아 결함을 판정한다"는 단순한 함수였던 것이, 제품군이 늘고 예외 조건이 쌓이면서 수백 줄짜리 거대 함수로 부푼다 — 긴 함수, 거대 클래스, 매직 넘버, 타입 분기가 한자리에 모인 전형적인 스멜 집합이다.</p>
+                <p>이때 해법은 <strong>책임 분리</strong>다. 검출 · 필터링 · 판정 · 리포팅을 각각 함수와 클래스로 추출하고, 제품군별로 갈리는 <code>switch</code>를 다형성으로 바꿔 검사 전략을 플러그인처럼 끼운다. 그러나 산업 SW에서 이 작업의 전제는 절대적이다 — <strong>테스트로 보호하면서 한다</strong>. 검사 로직은 곧 제품 품질 판정 기준이므로, 리팩토링 과정에서 판정 결과가 한 픽셀이라도 달라지면 안 된다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>검사 로직 리팩토링은 회귀 테스트가 먼저다</strong>
+                        검사 알고리즘을 리팩토링하기 전에, 대표 샘플 이미지 모음에 대한 판정 결과를 고정하는 회귀 테스트를 먼저 만든다. 입력 이미지 → 기대 판정 결과를 박제해두면, 리팩토링 후 같은 결과가 나오는지 자동으로 검증할 수 있다. 이 안전망 없이 검사 로직을 손대는 것은 제품 품질을 걸고 도박하는 것이다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>테스트 시리즈와 연결</strong>
+                        리팩토링의 안전망인 테스트 — 단위 테스트, 회귀 테스트, 특성 테스트를 어떻게 설계하고 작성하는지는 다음 글(테스트)에서 다룬다. 이 글에서는 "리팩토링에는 테스트가 전제된다"는 점만 확실히 짚는다.
+                    </div>
+                </div>
+
+                <!-- 10. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="pitfall-no-test"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 1 — 테스트 없이 리팩토링</h3>
+                <p>가장 위험한 함정이다. 테스트 없이 구조를 바꾸면, 동작이 깨졌는지 알 방법이 없다. "동작을 안 바꿨다"는 리팩토링의 정의 자체가 검증 불가능해진다. 테스트가 없다면 리팩토링이 아니라 그냥 "코드를 바꾸고 잘 되길 비는 것"이다. 항상 테스트부터 확보한다.</p>
+
+                <h3 id="pitfall-mixing"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 2 — 리팩토링과 기능 변경을 한 커밋에 섞기</h3>
+                <p>구조를 바꾸면서 동시에 기능도 바꾸면, 그 커밋은 리뷰하기 어렵고 문제가 생겼을 때 원인을 가려내기 힘들다. 테스트가 깨졌을 때 "리팩토링이 잘못됐나, 새 기능이 잘못됐나"를 구분할 수 없다. <strong>리팩토링 커밋과 기능 커밋을 분리한다</strong> — 한 커밋은 "동작 불변, 구조 변경", 다른 커밋은 "구조 불변, 동작 변경". Fowler의 "두 개의 모자"가 커밋 단위에도 그대로 적용된다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"리팩토링 겸 버그 수정 겸 기능 추가" 커밋은 지뢰다</strong>
+                        세 가지를 한 커밋에 섞으면, 나중에 그 기능만 되돌리고 싶어도 되돌릴 수 없고, 버그 수정만 다른 브랜치에 옮기고 싶어도 옮길 수 없다. 리뷰어는 무엇이 의도된 동작 변경이고 무엇이 단순 이동인지 구분하느라 시간을 쏟는다. 커밋 하나는 한 가지 종류의 변경만 담는다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-too-big"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 3 — 한 번에 너무 큰 리팩토링</h3>
+                <p>"이왕 손대는 김에 전부 갈아엎자"는 유혹은 위험하다. 큰 리팩토링은 중간에 코드가 동작하지 않는 긴 구간을 만들고, 그동안 다른 사람의 변경과 충돌하며, 깨졌을 때 원인을 좁히기 어렵다. 큰 개선이 필요해도 <strong>작은 단계로 쪼개</strong>, 각 단계마다 동작하는 상태를 유지하며 나아간다.</p>
+
+                <h3 id="pitfall-endless"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 4 — 끝없는 리팩토링 (완벽주의)</h3>
+                <p>리팩토링은 수단이지 목적이 아니다. "더 깔끔하게 만들 수 있다"는 이유만으로 무한히 다듬다 보면, 정작 만들어야 할 기능은 진척이 없다. 리팩토링은 <strong>충분히 좋으면 멈춘다</strong> — 기준은 "이 코드를 다음에 손댈 때 충분히 쉬운가"이지 "완벽한가"가 아니다. 완벽한 코드를 좇는 것은 기술 부채를 갚는 것이 아니라 새로운 종류의 낭비다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Martin Fowler — <em>Refactoring: Improving the Design of Existing Code</em> (2nd Edition, 2018) — 코드 스멜과 리팩토링 기법의 표준 카탈로그</li>
+                        <li>Kent Beck &amp; Martin Fowler — <em>Refactoring</em> 중 "Bad Smells in Code" 장 — 코드 스멜 개념의 출처</li>
+                        <li>Michael Feathers — <em>Working Effectively with Legacy Code</em> (2004) — 테스트 없는 코드에 특성 테스트를 씌우고 리팩토링하기</li>
+                        <li>Robert C. Martin — <em>Clean Code</em> (2008) — 함수, 이름 짓기, "보이스카우트 규칙"</li>
+                        <li>refactoring.com — Martin Fowler가 운영하는 리팩토링 기법 온라인 카탈로그</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-theory');
+    renderPostNav('dev-theory');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

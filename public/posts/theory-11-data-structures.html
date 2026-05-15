@@ -1,0 +1,883 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>핵심 자료구조 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .diagram-box {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .diagram-box svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-light); margin-top: 12px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#ds-intro" data-section="ds-intro">자료구조란</a>
+        <a href="#array" data-section="array">배열</a>
+        <a href="#linked-list" data-section="linked-list">연결 리스트</a>
+        <a href="#stack" data-section="stack">스택</a>
+        <a href="#queue" data-section="queue">큐</a>
+        <a href="#tree" data-section="tree">트리</a>
+        <a href="#hash-table" data-section="hash-table">해시 테이블</a>
+        <a href="#graph" data-section="graph">그래프</a>
+        <a href="#selection-guide" data-section="selection-guide">선택 가이드</a>
+        <a href="#stl-mapping" data-section="stl-mapping">STL 매핑</a>
+        <a href="#industrial" data-section="industrial">산업 SW 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">프로그래밍 이론</span>
+                </div>
+                <h1>핵심 자료구조 — 리스트·스택·큐·트리·해시·그래프</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>자료구조란 무엇이고, 왜 선택이 성능을 좌우하는가</li>
+                        <li>배열·연결 리스트 — 메모리 배치가 만드는 성능 차이</li>
+                        <li>스택·큐 — LIFO/FIFO의 단순함과 그 쓰임</li>
+                        <li>트리·해시 테이블·그래프 — 비선형 자료구조의 구조와 원리</li>
+                        <li>연산별 복잡도 비교, STL 자료구조 매핑, 산업 SW에서의 적용과 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#ds-intro">자료구조란 무엇인가</a></li>
+                        <li><a href="#array">배열 (Array)</a></li>
+                        <li><a href="#linked-list">연결 리스트 (Linked List)</a></li>
+                        <li><a href="#stack">스택 (Stack)</a></li>
+                        <li><a href="#queue">큐 (Queue)</a></li>
+                        <li><a href="#tree">트리 (Tree)</a></li>
+                        <li><a href="#hash-table">해시 테이블 (Hash Table)</a></li>
+                        <li><a href="#graph">그래프 (Graph)</a></li>
+                        <li><a href="#selection-guide">자료구조 선택 가이드</a></li>
+                        <li><a href="#stl-mapping">STL 자료구조 매핑</a></li>
+                        <li><a href="#industrial">산업 SW 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 자료구조란 -->
+                <h2 id="ds-intro"><i class="fa-solid fa-database"></i> 자료구조란 무엇인가</h2>
+                <p><strong>자료구조(data structure)</strong>는 데이터를 메모리에 어떻게 담고 조직하는가에 대한 약속이다. 같은 데이터라도 연속된 칸에 줄지어 담느냐, 흩어 놓고 포인터로 잇느냐, 계층으로 쌓느냐에 따라 "특정 연산이 얼마나 빠른가"가 달라진다.</p>
+                <p>핵심은 <strong>공짜 점심은 없다</strong>는 것이다. 모든 연산을 동시에 빠르게 하는 자료구조는 없다. 임의 접근이 빠르면 중간 삽입이 느리고, 삽입이 빠르면 탐색이 느리다. 자료구조를 고른다는 것은 <em>어떤 연산을 자주 하는가</em>에 맞춰 트레이드오프를 선택하는 일이다.</p>
+
+                <h3 id="ds-and-complexity"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 복잡도와의 연결</h3>
+                <p>이전 글에서 다룬 <strong>시간 복잡도</strong>는 자료구조를 평가하는 잣대다. 같은 "원소 찾기"라도 정렬되지 않은 배열은 O(n), 이진 탐색 트리는 O(log n), 해시 테이블은 평균 O(1)이다. 데이터가 100개일 때는 차이가 미미하지만, 100만 개를 초당 수천 번 조회하는 산업용 코드에서는 자료구조 선택 하나가 곧 제품의 응답성을 결정한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>복잡도 편과 함께 읽기</strong>
+                        이 글의 모든 복잡도 표기(O(1), O(n), O(log n))는 복잡도 편의 정의를 따른다. 복잡도가 "연산 비용을 어떻게 측정하는가"라면, 자료구조는 "그 비용을 어떻게 설계하는가"다. 두 글은 한 쌍이다.
+                    </div>
+                </div>
+
+                <!-- 2. 배열 -->
+                <h2 id="array"><i class="fa-solid fa-table-cells"></i> 배열 (Array)</h2>
+                <p><strong>배열</strong>은 같은 타입의 원소를 <strong>연속된 메모리</strong>에 줄지어 담는 자료구조다. 가장 단순하지만 가장 중요하다. 시작 주소와 인덱스만 알면 원하는 원소의 주소를 한 번의 곱셈과 덧셈으로 계산할 수 있다.</p>
+
+                <div class="diagram-box">
+                    <svg width="600" height="160" viewBox="0 0 600 160" xmlns="http://www.w3.org/2000/svg">
+                        <text x="300" y="24" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#334155">배열 — 연속 메모리 배치</text>
+                        <!-- cells -->
+                        <g font-family="sans-serif">
+                            <rect x="60" y="50" width="70" height="50" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+                            <rect x="130" y="50" width="70" height="50" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+                            <rect x="200" y="50" width="70" height="50" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+                            <rect x="270" y="50" width="70" height="50" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+                            <rect x="340" y="50" width="70" height="50" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+                            <rect x="410" y="50" width="70" height="50" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+                            <text x="95"  y="80" text-anchor="middle" font-size="14" fill="#065f46">12</text>
+                            <text x="165" y="80" text-anchor="middle" font-size="14" fill="#065f46">37</text>
+                            <text x="235" y="80" text-anchor="middle" font-size="14" fill="#065f46">5</text>
+                            <text x="305" y="80" text-anchor="middle" font-size="14" fill="#065f46">88</text>
+                            <text x="375" y="80" text-anchor="middle" font-size="14" fill="#065f46">21</text>
+                            <text x="445" y="80" text-anchor="middle" font-size="14" fill="#065f46">9</text>
+                            <!-- indices -->
+                            <text x="95"  y="118" text-anchor="middle" font-size="11" fill="#94a3b8">[0]</text>
+                            <text x="165" y="118" text-anchor="middle" font-size="11" fill="#94a3b8">[1]</text>
+                            <text x="235" y="118" text-anchor="middle" font-size="11" fill="#94a3b8">[2]</text>
+                            <text x="305" y="118" text-anchor="middle" font-size="11" fill="#94a3b8">[3]</text>
+                            <text x="375" y="118" text-anchor="middle" font-size="11" fill="#94a3b8">[4]</text>
+                            <text x="445" y="118" text-anchor="middle" font-size="11" fill="#94a3b8">[5]</text>
+                            <!-- addresses -->
+                            <text x="95"  y="138" text-anchor="middle" font-size="9" fill="#cbd5e1">0x100</text>
+                            <text x="165" y="138" text-anchor="middle" font-size="9" fill="#cbd5e1">0x104</text>
+                            <text x="235" y="138" text-anchor="middle" font-size="9" fill="#cbd5e1">0x108</text>
+                            <text x="305" y="138" text-anchor="middle" font-size="9" fill="#cbd5e1">0x10C</text>
+                            <text x="375" y="138" text-anchor="middle" font-size="9" fill="#cbd5e1">0x110</text>
+                            <text x="445" y="138" text-anchor="middle" font-size="9" fill="#cbd5e1">0x114</text>
+                        </g>
+                        <text x="540" y="80" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">주소 =</text>
+                        <text x="540" y="95" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">base + i&times;4</text>
+                    </svg>
+                    <div class="diagram-caption">원소가 메모리에 빈틈없이 줄지어 있어, 인덱스로 주소를 직접 계산한다</div>
+                </div>
+
+                <h3 id="array-perf"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 성능 특성</h3>
+                <p>배열의 강점과 약점은 모두 "연속 메모리"에서 나온다.</p>
+                <ul>
+                    <li><strong>임의 접근 O(1)</strong> — <code>arr[i]</code>는 인덱스로 주소를 즉시 계산한다. 원소가 1개든 100만 개든 같은 비용이다.</li>
+                    <li><strong>중간 삽입·삭제 O(n)</strong> — 빈틈을 만들거나 메우려면 뒤따르는 원소를 전부 한 칸씩 밀어야 한다.</li>
+                    <li><strong>캐시 친화적</strong> — 인접한 원소가 메모리에서도 인접하므로, CPU가 한 번에 끌어오는 캐시 라인에 다음 원소들이 함께 담긴다. 순차 순회가 매우 빠르다.</li>
+                </ul>
+
+<pre class="language-cpp"><code class="language-cpp">// 정적 배열 — 크기가 컴파일 타임에 고정된다
+int staticArr[6] = { 12, 37, 5, 88, 21, 9 };
+int third = staticArr[2];   // O(1) 임의 접근
+
+// 동적 배열(std::vector) — 런타임에 크기가 늘어난다
+std::vector&lt;int&gt; dynamicArr = { 12, 37, 5, 88 };
+dynamicArr.push_back(21);   // 끝에 추가, 분할 상환 O(1)
+dynamicArr.push_back(9);
+int value = dynamicArr[4];  // O(1) 임의 접근</code></pre>
+
+                <h3 id="dynamic-array"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정적 배열 vs 동적 배열</h3>
+                <p>정적 배열은 크기가 고정이라 늘릴 수 없다. <code>std::vector</code> 같은 <strong>동적 배열</strong>은 내부에 더 큰 연속 메모리를 잡고, 가득 차면 보통 두 배 크기의 새 메모리를 할당해 기존 원소를 복사한다. 이 재할당 때문에 개별 <code>push_back</code>은 가끔 O(n)이지만, 여러 번에 걸쳐 평균을 내면 <strong>분할 상환 O(1)</strong>이 된다. 재할당이 잦을 것을 안다면 <code>reserve()</code>로 미리 용량을 확보해 복사를 줄인다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>기본 선택은 거의 항상 동적 배열이다</strong>
+                        "어떤 자료구조를 쓸지 모르겠다"면 <code>std::vector</code>로 시작한다. 캐시 친화성과 O(1) 접근 덕분에, 이론적으로 더 나아 보이는 자료구조보다 실측이 빠른 경우가 많다. 다른 자료구조는 <em>vector로는 부족하다는 근거가 생겼을 때</em> 선택한다.
+                    </div>
+                </div>
+
+                <!-- 3. 연결 리스트 -->
+                <h2 id="linked-list"><i class="fa-solid fa-link"></i> 연결 리스트 (Linked List)</h2>
+                <p><strong>연결 리스트</strong>는 원소를 <strong>노드(node)</strong>에 담고, 각 노드가 다음 노드의 주소를 <strong>포인터</strong>로 가리켜 사슬처럼 잇는 자료구조다. 노드들은 메모리 여기저기 흩어져 있어도 된다 — 포인터만 따라가면 순서가 유지된다.</p>
+
+                <div class="diagram-box">
+                    <svg width="600" height="170" viewBox="0 0 600 170" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="ll-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+                                <path d="M0,0 L7,3 L0,6 Z" fill="#f59e0b"/>
+                            </marker>
+                        </defs>
+                        <text x="300" y="22" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#334155">단일 연결 리스트 — 노드 + next 포인터</text>
+                        <text x="40" y="78" font-family="sans-serif" font-size="11" font-weight="700" fill="#64748b">head</text>
+                        <g font-family="sans-serif">
+                            <!-- node 1 -->
+                            <rect x="80" y="55" width="90" height="44" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+                            <line x1="140" y1="55" x2="140" y2="99" stroke="#f59e0b" stroke-width="1"/>
+                            <text x="110" y="82" text-anchor="middle" font-size="13" fill="#78350f">12</text>
+                            <text x="155" y="82" text-anchor="middle" font-size="10" fill="#b45309">next</text>
+                            <!-- node 2 -->
+                            <rect x="240" y="55" width="90" height="44" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+                            <line x1="300" y1="55" x2="300" y2="99" stroke="#f59e0b" stroke-width="1"/>
+                            <text x="270" y="82" text-anchor="middle" font-size="13" fill="#78350f">37</text>
+                            <text x="315" y="82" text-anchor="middle" font-size="10" fill="#b45309">next</text>
+                            <!-- node 3 -->
+                            <rect x="400" y="55" width="90" height="44" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+                            <line x1="460" y1="55" x2="460" y2="99" stroke="#f59e0b" stroke-width="1"/>
+                            <text x="430" y="82" text-anchor="middle" font-size="13" fill="#78350f">5</text>
+                            <text x="475" y="82" text-anchor="middle" font-size="10" fill="#b45309">/</text>
+                        </g>
+                        <!-- pointer arrows -->
+                        <line x1="64" y1="77" x2="78" y2="77" stroke="#f59e0b" stroke-width="1.8" marker-end="url(#ll-arrow)"/>
+                        <line x1="170" y1="77" x2="238" y2="77" stroke="#f59e0b" stroke-width="1.8" marker-end="url(#ll-arrow)"/>
+                        <line x1="330" y1="77" x2="398" y2="77" stroke="#f59e0b" stroke-width="1.8" marker-end="url(#ll-arrow)"/>
+                        <text x="510" y="80" font-family="sans-serif" font-size="11" fill="#94a3b8">nullptr</text>
+                        <!-- scattered note -->
+                        <text x="125" y="128" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#cbd5e1">0x3A0</text>
+                        <text x="285" y="128" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#cbd5e1">0x9C8</text>
+                        <text x="445" y="128" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#cbd5e1">0x114</text>
+                        <text x="300" y="150" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">주소가 흩어져 있어도 포인터로 순서가 유지된다</text>
+                    </svg>
+                    <div class="diagram-caption">노드는 데이터와 next 포인터를 가진다 — 메모리상 위치는 제각각이다</div>
+                </div>
+
+                <h3 id="list-perf"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 성능 특성</h3>
+                <ul>
+                    <li><strong>삽입·삭제 O(1)</strong> — 삽입/삭제할 위치의 노드를 이미 가리키고 있다면, 포인터 몇 개만 고쳐 끼우거나 빼면 된다. 원소를 미는 일이 없다.</li>
+                    <li><strong>임의 접근 O(n)</strong> — <code>n</code>번째 노드를 찾으려면 head부터 포인터를 <code>n</code>번 따라가야 한다. 인덱스로 주소를 계산할 수 없다.</li>
+                    <li><strong>캐시 비친화</strong> — 노드가 메모리 여기저기 흩어져 있어, 순회할 때마다 캐시 미스가 난다. 같은 O(n) 순회라도 배열보다 훨씬 느린 경우가 많다.</li>
+                </ul>
+
+<pre class="language-cpp"><code class="language-cpp">// 단일 연결 리스트 노드
+struct Node
+{
+    int m_value;
+    Node* m_next;
+};
+
+// head 바로 뒤에 새 노드 삽입 — O(1), 원소를 밀지 않는다
+void InsertAfterHead(Node* head, int value)
+{
+    Node* node = new Node{ value, nullptr };
+    node-&gt;m_next = head-&gt;m_next;
+    head-&gt;m_next = node;
+}
+
+// n번째 노드 탐색 — O(n), 포인터를 하나씩 따라가야 한다
+Node* GetNodeAt(Node* head, int index)
+{
+    Node* current = head;
+    for (int i = 0; i &lt; index &amp;&amp; current != nullptr; ++i)
+    {
+        current = current-&gt;m_next;
+    }
+    return current;
+}</code></pre>
+
+                <h3 id="list-variants"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 단일 · 이중 · 원형</h3>
+                <ul>
+                    <li><strong>단일 연결 리스트</strong> — 각 노드가 <code>next</code>만 가진다. 앞으로만 이동할 수 있다.</li>
+                    <li><strong>이중 연결 리스트</strong> — <code>next</code>와 <code>prev</code>를 모두 가진다. 양방향 이동이 가능하고, 어떤 노드든 그 자체만으로 O(1) 삭제가 된다. <code>std::list</code>가 이 구조다.</li>
+                    <li><strong>원형 연결 리스트</strong> — 마지막 노드의 <code>next</code>가 다시 head를 가리킨다. 라운드 로빈 순회처럼 "끝없이 도는" 구조에 쓴다.</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"연결 리스트가 삽입이 빠르다"는 절반만 맞다</strong>
+                        삽입 자체는 O(1)이지만, <em>삽입할 위치를 먼저 찾는</em> 비용이 O(n)이다. 게다가 노드가 메모리에 흩어져 캐시 미스가 끊임없이 발생한다. 실제 측정에서는 "중간에 자주 삽입/삭제"하는 경우조차 <code>std::vector</code>가 <code>std::list</code>보다 빠른 일이 흔하다. 연결 리스트는 <em>이미 노드를 손에 쥐고 있고</em>, 원소 이동 비용이 클 때만 진짜 유리하다.
+                    </div>
+                </div>
+
+                <!-- 4. 스택 -->
+                <h2 id="stack"><i class="fa-solid fa-layer-group"></i> 스택 (Stack)</h2>
+                <p><strong>스택</strong>은 <strong>LIFO(Last In, First Out)</strong> 규칙을 따르는 자료구조다. 마지막에 넣은 것이 가장 먼저 나온다. 접시를 쌓았다가 위에서부터 꺼내는 모습과 같다. 한쪽 끝(top)에서만 넣고 빼므로 <code>push</code>와 <code>pop</code> 모두 O(1)이다.</p>
+
+                <h3 id="stack-usage"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 쓰임 — 함수 호출, undo, 괄호 검사</h3>
+                <p>스택은 "가장 최근의 것으로 되돌아간다"는 성질이 필요한 곳에 나타난다.</p>
+                <ul>
+                    <li><strong>함수 호출 스택</strong> — 함수가 호출되면 호출 프레임이 쌓이고, 반환되면 가장 위 프레임이 빠진다. 재귀가 동작하는 원리다.</li>
+                    <li><strong>undo 기능</strong> — 작업을 스택에 쌓고, 실행 취소는 가장 최근 작업을 pop한다.</li>
+                    <li><strong>괄호 검사</strong> — 여는 괄호를 push하고, 닫는 괄호를 만나면 pop해서 짝이 맞는지 확인한다.</li>
+                </ul>
+
+<pre class="language-cpp"><code class="language-cpp">// 스택으로 괄호 짝 검사 — push/pop 모두 O(1)
+bool IsBalanced(const std::string&amp; expr)
+{
+    std::stack&lt;char&gt; openStack;
+    for (char ch : expr)
+    {
+        if (ch == '(' || ch == '{' || ch == '[')
+        {
+            openStack.push(ch);
+        }
+        else if (ch == ')' || ch == '}' || ch == ']')
+        {
+            if (openStack.empty())
+            {
+                return false;   // 닫는 괄호가 더 많다
+            }
+            openStack.pop();    // 가장 최근에 연 괄호와 짝지음
+        }
+    }
+    return openStack.empty();   // 남은 여는 괄호가 없어야 균형
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> IsBalanced 실행 결과</div>
+IsBalanced("(a[b]{c})")  -> true
+IsBalanced("(a[b)c]")    -> false
+IsBalanced("((x)")       -> false</div>
+
+                <!-- 5. 큐 -->
+                <h2 id="queue"><i class="fa-solid fa-arrow-right-arrow-left"></i> 큐 (Queue)</h2>
+                <p><strong>큐</strong>는 <strong>FIFO(First In, First Out)</strong> 규칙을 따른다. 먼저 넣은 것이 먼저 나온다. 줄을 서는 모습과 같다 — 앞쪽(front)에서 빼내고(<code>dequeue</code>), 뒤쪽(back)에서 넣는다(<code>enqueue</code>). 양 끝 연산 모두 O(1)이다.</p>
+
+                <h3 id="queue-usage"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 쓰임 — 작업 큐, BFS</h3>
+                <p>큐는 "도착한 순서대로 처리한다"는 공정함이 필요한 곳에 쓴다. 카메라가 캡처한 프레임을 처리 순서대로 담는 <strong>작업 큐</strong>, 그래프를 가까운 곳부터 훑는 <strong>너비 우선 탐색(BFS)</strong>이 대표적이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 작업 큐 — 도착 순서대로 프레임을 처리한다
+std::queue&lt;Frame&gt; jobQueue;
+
+jobQueue.push(frameA);      // enqueue — 뒤에 넣음, O(1)
+jobQueue.push(frameB);
+jobQueue.push(frameC);
+
+while (!jobQueue.empty())
+{
+    Frame next = jobQueue.front();   // 가장 먼저 들어온 것
+    jobQueue.pop();                  // dequeue — 앞에서 뺌, O(1)
+    ProcessFrame(next);              // A -> B -> C 순서로 처리됨
+}</code></pre>
+
+                <h3 id="queue-variants"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 덱과 우선순위 큐</h3>
+                <p>큐에는 변종이 있다.</p>
+                <ul>
+                    <li><strong>덱(deque, double-ended queue)</strong> — 양쪽 끝 모두에서 넣고 뺄 수 있다. 스택으로도 큐로도 쓸 수 있다. <code>std::deque</code>가 이것이다.</li>
+                    <li><strong>우선순위 큐(priority queue)</strong> — 들어온 순서가 아니라 <em>우선순위가 가장 높은</em> 원소가 먼저 나온다. 보통 <strong>힙(heap)</strong>으로 구현하며, 삽입과 최댓값 추출이 O(log n)이다. <code>std::priority_queue</code>가 이에 해당한다.</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>스택·큐는 "인터페이스"이지 "구현"이 아니다</strong>
+                        스택과 큐는 LIFO/FIFO라는 <em>동작 규칙</em>을 정의할 뿐, 내부는 배열로도 연결 리스트로도 만들 수 있다. 실제로 <code>std::stack</code>과 <code>std::queue</code>는 다른 컨테이너(<code>std::deque</code> 등)를 감싼 <strong>어댑터</strong>다. "무엇을 할 수 있는가"와 "어떻게 만들었는가"를 구분하는 것이 자료구조 사고의 핵심이다.
+                    </div>
+                </div>
+
+                <!-- 6. 트리 -->
+                <h2 id="tree"><i class="fa-solid fa-sitemap"></i> 트리 (Tree)</h2>
+                <p><strong>트리</strong>는 원소가 <strong>계층(hierarchy)</strong>을 이루는 비선형 자료구조다. 하나의 <strong>루트(root)</strong>에서 시작해 각 노드가 여러 <strong>자식(child)</strong>을 가지며, 사이클이 없다. 파일 시스템, 조직도, 파싱 트리처럼 "포함 관계"가 있는 데이터에 자연스럽다.</p>
+
+                <div class="diagram-box">
+                    <svg width="560" height="220" viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg">
+                        <text x="280" y="22" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#334155">이진 탐색 트리 (BST) — 왼쪽 &lt; 부모 &lt; 오른쪽</text>
+                        <!-- edges -->
+                        <line x1="280" y1="60" x2="170" y2="110" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="280" y1="60" x2="390" y2="110" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="170" y1="110" x2="110" y2="165" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="170" y1="110" x2="230" y2="165" stroke="#94a3b8" stroke-width="1.6"/>
+                        <line x1="390" y1="110" x2="450" y2="165" stroke="#94a3b8" stroke-width="1.6"/>
+                        <!-- nodes -->
+                        <g font-family="sans-serif">
+                            <circle cx="280" cy="50" r="24" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
+                            <text x="280" y="56" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a5f">50</text>
+                            <circle cx="170" cy="110" r="24" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
+                            <text x="170" y="116" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a5f">30</text>
+                            <circle cx="390" cy="110" r="24" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
+                            <text x="390" y="116" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a5f">70</text>
+                            <circle cx="110" cy="175" r="24" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
+                            <text x="110" y="181" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a5f">20</text>
+                            <circle cx="230" cy="175" r="24" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
+                            <text x="230" y="181" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a5f">40</text>
+                            <circle cx="450" cy="175" r="24" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
+                            <text x="450" y="181" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a5f">80</text>
+                        </g>
+                        <text x="280" y="30" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">root</text>
+                        <text x="510" y="120" font-family="sans-serif" font-size="10" fill="#64748b">탐색: 한 단계마다</text>
+                        <text x="510" y="134" font-family="sans-serif" font-size="10" fill="#64748b">절반을 버린다</text>
+                    </svg>
+                    <div class="diagram-caption">BST는 정렬된 계층 구조 — 값을 비교하며 한쪽 가지로만 내려가면 O(log n)에 찾는다</div>
+                </div>
+
+                <h3 id="binary-tree"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 이진 트리와 이진 탐색 트리</h3>
+                <p><strong>이진 트리(binary tree)</strong>는 각 노드가 자식을 최대 둘(왼쪽·오른쪽)만 가지는 트리다. 여기에 <em>정렬 규칙</em>을 더한 것이 <strong>이진 탐색 트리(Binary Search Tree, BST)</strong>다 — 모든 노드에 대해 "왼쪽 서브트리의 값 &lt; 노드 값 &lt; 오른쪽 서브트리의 값"이 성립한다. 이 규칙 덕분에 탐색할 때 한 번 비교할 때마다 절반을 버릴 수 있어, 균형 잡힌 BST의 탐색·삽입·삭제는 O(log n)이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 이진 탐색 트리 노드
+struct TreeNode
+{
+    int m_value;
+    TreeNode* m_left;
+    TreeNode* m_right;
+};
+
+// BST 탐색 — 비교할 때마다 절반을 버린다, 균형 시 O(log n)
+TreeNode* Search(TreeNode* root, int target)
+{
+    TreeNode* current = root;
+    while (current != nullptr)
+    {
+        if (target == current-&gt;m_value)
+        {
+            return current;             // 찾음
+        }
+        else if (target &lt; current-&gt;m_value)
+        {
+            current = current-&gt;m_left;  // 왼쪽 가지로만 내려감
+        }
+        else
+        {
+            current = current-&gt;m_right; // 오른쪽 가지로만 내려감
+        }
+    }
+    return nullptr;                     // 없음
+}</code></pre>
+
+                <h3 id="balanced-tree"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 균형 트리 — AVL, Red-Black</h3>
+                <p>BST의 O(log n)은 트리가 <em>균형 잡혀 있을 때</em>만 보장된다. 정렬된 데이터를 순서대로 삽입하면 한쪽으로만 자라 사실상 연결 리스트가 되고, 탐색이 O(n)으로 퇴화한다. 이를 막는 것이 <strong>균형 트리(balanced tree)</strong>다.</p>
+                <ul>
+                    <li><strong>AVL 트리</strong> — 모든 노드에서 좌우 서브트리 높이 차가 1 이하가 되도록 삽입·삭제 때마다 회전(rotation)으로 재조정한다. 균형이 엄격해 탐색이 빠르다.</li>
+                    <li><strong>Red-Black 트리</strong> — 노드에 빨강/검정 색을 부여하고 색 규칙으로 높이 균형을 느슨하게 유지한다. AVL보다 회전이 적어 삽입·삭제가 잦을 때 유리하다. <code>std::map</code>과 <code>std::set</code>이 보통 이 구조다.</li>
+                </ul>
+
+                <h3 id="heap"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 힙 (Heap)</h3>
+                <p><strong>힙</strong>은 "부모가 자식보다 항상 크다(최대 힙) 또는 작다(최소 힙)"는 규칙만 지키는 <em>완전 이진 트리</em>다. BST와 달리 전체가 정렬되어 있지는 않지만, <strong>최댓값(또는 최솟값)이 항상 루트</strong>에 있다. 그래서 우선순위 큐 구현에 쓰인다 — 최댓값 추출 O(log n), 삽입 O(log n). 완전 이진 트리라 보통 배열 하나로 구현한다.</p>
+
+                <!-- 7. 해시 테이블 -->
+                <h2 id="hash-table"><i class="fa-solid fa-hashtag"></i> 해시 테이블 (Hash Table)</h2>
+                <p><strong>해시 테이블</strong>은 키(key)를 <strong>해시 함수</strong>에 통과시켜 얻은 숫자로 저장 위치(버킷)를 직접 계산하는 자료구조다. 트리처럼 비교하며 내려가지 않고, 키 하나로 위치를 단번에 계산하므로 평균 조회·삽입·삭제가 모두 <strong>O(1)</strong>이다.</p>
+
+                <div class="diagram-box">
+                    <svg width="580" height="220" viewBox="0 0 580 220" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="ht-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+                                <path d="M0,0 L7,3 L0,6 Z" fill="#8b5cf6"/>
+                            </marker>
+                        </defs>
+                        <text x="290" y="22" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#334155">해시 테이블 — 키 &rarr; 해시 함수 &rarr; 버킷</text>
+                        <!-- key -->
+                        <rect x="30" y="55" width="100" height="40" rx="6" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.5"/>
+                        <text x="80" y="80" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#5b21b6">"camera_01"</text>
+                        <!-- hash fn -->
+                        <rect x="180" y="52" width="90" height="46" rx="6" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+                        <text x="225" y="73" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#5b21b6">hash()</text>
+                        <text x="225" y="89" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#7c3aed">% 8 = 3</text>
+                        <line x1="130" y1="75" x2="178" y2="75" stroke="#8b5cf6" stroke-width="1.8" marker-end="url(#ht-arrow)"/>
+                        <line x1="270" y1="75" x2="350" y2="75" stroke="#8b5cf6" stroke-width="1.8" marker-end="url(#ht-arrow)"/>
+                        <!-- buckets -->
+                        <g font-family="sans-serif">
+                            <rect x="360" y="35" width="150" height="24" fill="#fafafa" stroke="#cbd5e1" stroke-width="1"/>
+                            <text x="370" y="51" font-size="10" fill="#94a3b8">[0]</text>
+                            <rect x="360" y="59" width="150" height="24" fill="#fafafa" stroke="#cbd5e1" stroke-width="1"/>
+                            <text x="370" y="75" font-size="10" fill="#94a3b8">[1]</text>
+                            <rect x="360" y="83" width="150" height="24" fill="#fafafa" stroke="#cbd5e1" stroke-width="1"/>
+                            <text x="370" y="99" font-size="10" fill="#94a3b8">[2]</text>
+                            <rect x="360" y="107" width="150" height="24" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.8"/>
+                            <text x="370" y="123" font-size="10" fill="#94a3b8">[3]</text>
+                            <text x="445" y="123" text-anchor="middle" font-size="10" fill="#5b21b6">camera_01</text>
+                            <rect x="360" y="131" width="150" height="24" fill="#fafafa" stroke="#cbd5e1" stroke-width="1"/>
+                            <text x="370" y="147" font-size="10" fill="#94a3b8">[4]</text>
+                            <rect x="360" y="155" width="150" height="24" fill="#fafafa" stroke="#cbd5e1" stroke-width="1"/>
+                            <text x="370" y="171" font-size="10" fill="#94a3b8">...</text>
+                        </g>
+                        <text x="225" y="125" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">키로 위치를</text>
+                        <text x="225" y="139" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">직접 계산</text>
+                    </svg>
+                    <div class="diagram-caption">해시 함수가 키를 버킷 인덱스로 변환한다 — 비교 없이 위치를 계산하므로 평균 O(1)</div>
+                </div>
+
+                <h3 id="hash-function"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 해시 함수와 부하율</h3>
+                <p><strong>해시 함수</strong>는 임의의 키를 고정 범위의 정수로 매핑한다. 좋은 해시 함수는 키를 버킷에 <em>고르게</em> 흩뿌려야 한다 — 한곳에 몰리면 O(1)이 깨진다. <strong>부하율(load factor)</strong>은 "원소 수 / 버킷 수"로, 이 값이 일정 임계(보통 0.75 정도)를 넘으면 버킷을 늘리고 전체를 다시 해싱(rehash)한다. 부하율이 낮을수록 충돌이 줄지만 메모리를 더 쓴다.</p>
+
+                <h3 id="collision"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 충돌 해결 — 체이닝과 개방 주소법</h3>
+                <p>서로 다른 키가 같은 버킷으로 매핑되는 것을 <strong>충돌(collision)</strong>이라 한다. 버킷 수는 유한하므로 충돌은 반드시 일어난다. 해결 방법은 둘이다.</p>
+                <ul>
+                    <li><strong>체이닝(chaining)</strong> — 각 버킷을 연결 리스트로 만들어, 충돌한 원소를 그 리스트에 잇는다. 구현이 단순하고 부하율이 높아도 견딘다. <code>std::unordered_map</code>이 이 방식이다.</li>
+                    <li><strong>개방 주소법(open addressing)</strong> — 충돌하면 정해진 규칙(선형 탐사 등)으로 <em>다른 빈 버킷</em>을 찾아 거기 넣는다. 모든 원소가 버킷 배열 안에 있어 캐시 친화적이지만, 부하율이 높아지면 급격히 느려진다.</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>해시 테이블의 O(1)은 "평균"이다 — 충돌을 무시하지 말 것</strong>
+                        해시 함수가 나쁘거나 키가 악의적으로 골라지면 모든 키가 한 버킷에 몰릴 수 있고, 그러면 조회가 O(n)으로 퇴화한다. "해시 = 항상 O(1)"이라고 믿고 최악 케이스를 고려하지 않으면, 데이터가 늘었을 때 원인을 알 수 없는 성능 저하를 만난다. 키 분포와 부하율을 항상 의식해야 한다.
+                    </div>
+                </div>
+
+                <!-- 8. 그래프 -->
+                <h2 id="graph"><i class="fa-solid fa-diagram-project"></i> 그래프 (Graph)</h2>
+                <p><strong>그래프</strong>는 <strong>정점(vertex)</strong>들과 그 사이를 잇는 <strong>간선(edge)</strong>으로 이루어진 자료구조다. 트리도 그래프의 한 종류지만, 그래프는 사이클을 가질 수 있고 계층이라는 제약이 없다. 도로망, SNS 친구 관계, 작업 의존성, 데이터 플로우 등 "무엇이 무엇과 연결되어 있는가"를 표현한다.</p>
+
+                <h3 id="graph-types"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 방향·무방향·가중치</h3>
+                <ul>
+                    <li><strong>무방향 그래프</strong> — 간선에 방향이 없다. "A와 B는 친구"처럼 대칭 관계를 나타낸다.</li>
+                    <li><strong>방향 그래프(directed graph)</strong> — 간선에 방향이 있다. "A 작업이 끝나야 B 작업 시작"처럼 비대칭 관계를 나타낸다.</li>
+                    <li><strong>가중치 그래프</strong> — 간선에 비용·거리 같은 값이 붙는다. 최단 경로 계산의 기반이다.</li>
+                </ul>
+
+                <h3 id="graph-representation"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 인접 행렬 vs 인접 리스트</h3>
+                <p>그래프를 메모리에 담는 방법은 크게 둘이다.</p>
+                <ul>
+                    <li><strong>인접 행렬(adjacency matrix)</strong> — V&times;V 크기의 2차원 배열. <code>matrix[i][j]</code>가 정점 i&rarr;j 간선의 유무(또는 가중치)다. 간선 존재 확인이 O(1)이지만, 간선이 적어도 O(V&sup2;) 메모리를 쓴다.</li>
+                    <li><strong>인접 리스트(adjacency list)</strong> — 각 정점마다 "연결된 정점들의 리스트"를 둔다. 메모리가 O(V+E)로 효율적이라, 간선이 희소한 대부분의 실제 그래프에 적합하다.</li>
+                </ul>
+
+<pre class="language-cpp"><code class="language-cpp">// 인접 리스트로 표현한 방향 그래프
+class Graph
+{
+public:
+    // 정점 from -&gt; to 방향 간선을 추가한다
+    void AddEdge(int from, int to)
+    {
+        m_adjacency[from].push_back(to);
+    }
+
+    // 한 정점에서 나가는 간선들을 돌려준다
+    const std::vector&lt;int&gt;&amp; GetNeighbors(int vertex) const
+    {
+        return m_adjacency.at(vertex);
+    }
+
+private:
+    // 정점 번호 -&gt; 인접 정점 목록
+    std::unordered_map&lt;int, std::vector&lt;int&gt;&gt; m_adjacency;
+};</code></pre>
+
+                <table>
+                    <tr><th>표현 방식</th><th>메모리</th><th>간선 확인</th><th>적합한 경우</th></tr>
+                    <tr><td>인접 행렬</td><td>O(V&sup2;)</td><td>O(1)</td><td>간선이 빽빽한 조밀 그래프</td></tr>
+                    <tr><td>인접 리스트</td><td>O(V+E)</td><td>O(degree)</td><td>간선이 적은 희소 그래프 (대부분)</td></tr>
+                </table>
+
+                <!-- 9. 선택 가이드 -->
+                <h2 id="selection-guide"><i class="fa-solid fa-compass"></i> 자료구조 선택 가이드</h2>
+                <p>자료구조 선택은 "자주 하는 연산이 무엇인가"에서 출발한다. 아래 표는 주요 자료구조의 연산별 평균 복잡도를 정리한 것이다.</p>
+
+                <table>
+                    <tr><th>자료구조</th><th>접근(인덱스)</th><th>탐색(값)</th><th>삽입</th><th>삭제</th><th>비고</th></tr>
+                    <tr><td>배열 / 동적 배열</td><td>O(1)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>끝 삽입은 분할 상환 O(1), 캐시 친화</td></tr>
+                    <tr><td>연결 리스트</td><td>O(n)</td><td>O(n)</td><td>O(1)*</td><td>O(1)*</td><td>* 위치를 이미 알 때, 캐시 비친화</td></tr>
+                    <tr><td>스택 / 큐</td><td>&mdash;</td><td>&mdash;</td><td>O(1)</td><td>O(1)</td><td>끝/양끝에서만 접근</td></tr>
+                    <tr><td>이진 탐색 트리(균형)</td><td>&mdash;</td><td>O(log n)</td><td>O(log n)</td><td>O(log n)</td><td>정렬 순회 가능</td></tr>
+                    <tr><td>힙</td><td>&mdash;</td><td>O(n)</td><td>O(log n)</td><td>O(log n)</td><td>최대/최솟값은 O(1) 조회</td></tr>
+                    <tr><td>해시 테이블</td><td>&mdash;</td><td>O(1)</td><td>O(1)</td><td>O(1)</td><td>평균값, 최악 O(n), 순서 없음</td></tr>
+                </table>
+
+                <h3 id="situation-choice"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 상황별 선택</h3>
+                <ul>
+                    <li><strong>인덱스로 빠르게 접근하고 순차 순회가 잦다</strong> &rarr; 동적 배열(<code>vector</code>)</li>
+                    <li><strong>키로 빠르게 찾되 순서는 필요 없다</strong> &rarr; 해시 테이블(<code>unordered_map</code>)</li>
+                    <li><strong>키로 찾으면서 정렬 순서도 유지해야 한다</strong> &rarr; 균형 트리(<code>map</code>)</li>
+                    <li><strong>가장 최근/먼저 들어온 것만 꺼낸다</strong> &rarr; 스택 / 큐</li>
+                    <li><strong>항상 우선순위가 가장 높은 것을 꺼낸다</strong> &rarr; 힙(<code>priority_queue</code>)</li>
+                    <li><strong>개체 간 연결 관계를 표현한다</strong> &rarr; 그래프(인접 리스트)</li>
+                </ul>
+
+                <!-- 10. STL 매핑 -->
+                <h2 id="stl-mapping"><i class="fa-solid fa-boxes-stacked"></i> STL 자료구조 매핑</h2>
+                <p>C++ 표준 라이브러리(STL)는 위 자료구조들을 검증된 구현으로 제공한다. 직접 구현하기 전에 STL에 이미 있는지부터 확인하는 것이 원칙이다.</p>
+
+                <table>
+                    <tr><th>STL 컨테이너</th><th>내부 자료구조</th><th>핵심 특성</th></tr>
+                    <tr><td><code>std::vector</code></td><td>동적 배열</td><td>O(1) 임의 접근, 끝 삽입 분할 상환 O(1), 캐시 친화</td></tr>
+                    <tr><td><code>std::list</code></td><td>이중 연결 리스트</td><td>위치를 알 때 O(1) 삽입·삭제, 임의 접근 불가</td></tr>
+                    <tr><td><code>std::deque</code></td><td>분할된 배열 묶음</td><td>양끝 O(1) 삽입·삭제, 임의 접근 O(1)</td></tr>
+                    <tr><td><code>std::stack</code></td><td>어댑터(기본 deque)</td><td>LIFO, push/pop O(1)</td></tr>
+                    <tr><td><code>std::queue</code></td><td>어댑터(기본 deque)</td><td>FIFO, enqueue/dequeue O(1)</td></tr>
+                    <tr><td><code>std::priority_queue</code></td><td>힙 (어댑터)</td><td>최댓값 추출 O(log n)</td></tr>
+                    <tr><td><code>std::map</code> / <code>std::set</code></td><td>균형 트리(Red-Black)</td><td>정렬 유지, 탐색·삽입·삭제 O(log n)</td></tr>
+                    <tr><td><code>std::unordered_map</code> / <code>std::unordered_set</code></td><td>해시 테이블(체이닝)</td><td>평균 O(1) 탐색·삽입·삭제, 순서 없음</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// 자료구조마다 STL의 적절한 컨테이너를 고른다
+std::vector&lt;Pixel&gt; pixels;                       // 연속 픽셀 버퍼
+std::queue&lt;Frame&gt; frameQueue;                    // 프레임 작업 큐
+std::priority_queue&lt;Job&gt; urgentJobs;             // 우선순위 작업
+std::map&lt;int, Camera&gt; camerasById;               // ID 정렬 유지
+std::unordered_map&lt;std::string, BlockInfo&gt; blockTable;  // 이름으로 빠른 조회</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>C++ 시리즈와 연결</strong>
+                        STL 컨테이너의 이터레이터, 메모리 관리, 커스텀 비교자 같은 구체적인 사용법은 C++ 시리즈에서 따로 다룬다. 이 글에서는 "어떤 컨테이너가 어떤 자료구조인가"라는 매핑만 잡아 둔다 — 컨테이너를 고를 때 그 안에서 일어나는 일을 알아야 올바른 선택을 한다.
+                    </div>
+                </div>
+
+                <!-- 11. 산업 SW 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 SW 관점</h2>
+                <p>산업용 이미징 SDK에서 자료구조는 추상적 이론이 아니라 코드 곳곳에 박혀 있다.</p>
+                <ul>
+                    <li><strong>이미지 픽셀은 배열이다</strong> — 한 장의 이미지는 결국 픽셀 값의 연속 메모리 블록이다. 행 단위 순차 접근이 압도적으로 많으므로, 배열의 캐시 친화성이 곧 처리 속도다. 픽셀을 연결 리스트에 담는다는 발상은 성능상 재앙이다.</li>
+                    <li><strong>작업 큐</strong> — 카메라가 초당 수십~수백 프레임을 쏟아낼 때, 도착한 프레임을 큐에 담아 처리 스레드가 FIFO로 꺼내 처리한다. 긴급 프레임이 섞이면 우선순위 큐로 바꾼다.</li>
+                    <li><strong>블록 그래프(데이터 플로우 에디터)</strong> — 비주얼 블록 에디터의 처리 블록들은 정점, 블록 간 연결은 간선인 <strong>방향 그래프</strong>다. 어떤 순서로 블록을 실행할지는 이 그래프의 위상 정렬로 결정한다.</li>
+                    <li><strong>이름 조회 테이블</strong> — 블록 종류를 이름 문자열로 찾을 때는 해시 테이블(<code>unordered_map</code>)이 자연스럽다.</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>자료구조가 아키텍처를 만든다</strong>
+                        "데이터 플로우 기반 블록 에디터"라는 제품 컨셉 자체가 그래프 자료구조의 직접적 표현이다. 자료구조를 제대로 고르면 아키텍처가 데이터의 자연스러운 형태를 따라간다. 잘못 고르면 데이터와 코드가 끊임없이 싸운다.
+                    </div>
+                </div>
+
+                <!-- 12. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <h3 id="pitfall-list"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 1 — 연결 리스트가 항상 빠르다는 오해</h3>
+                <p>"중간 삽입·삭제가 많으면 연결 리스트"라는 교과서 규칙은 캐시를 고려하지 않은 이론값이다. 현대 CPU에서는 메모리 접근 패턴이 곧 성능이다. 연결 리스트는 노드가 흩어져 매 순회마다 캐시 미스가 나는 반면, 배열은 연속 메모리라 순회가 수십 배 빠를 수 있다. 실제로는 "삽입 위치를 찾아 이동하는" 시나리오에서도 <code>std::vector</code>가 <code>std::list</code>를 이기는 일이 흔하다. <strong>추측하지 말고 측정해야 한다.</strong></p>
+
+                <h3 id="pitfall-collision"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 2 — 해시 충돌을 무시한다</h3>
+                <p>해시 테이블의 O(1)은 평균값이지 보장값이 아니다. 나쁜 해시 함수나 치우친 키 분포는 모든 원소를 한 버킷에 몰아넣어 O(n)을 만든다. 커스텀 타입을 키로 쓸 때 해시 함수를 대충 작성하면, 데이터가 적을 때는 멀쩡하다가 규모가 커지면 갑자기 느려진다. 부하율과 키 분포를 의식하고, 커스텀 키에는 제대로 된 해시 함수를 제공해야 한다.</p>
+
+                <h3 id="pitfall-map-confusion"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 3 — map과 unordered_map을 혼동한다</h3>
+                <p>이름이 비슷해 무심코 섞어 쓰지만 둘은 전혀 다른 자료구조다. <code>std::map</code>은 <strong>균형 트리</strong>로 O(log n)이며 키가 <em>정렬</em>되어 있다. <code>std::unordered_map</code>은 <strong>해시 테이블</strong>로 평균 O(1)이지만 <em>순서가 없다</em>. 정렬 순회나 범위 조회가 필요하면 <code>map</code>, 단순 조회 속도만 필요하면 <code>unordered_map</code>이다. "더 빠를 것 같아서" <code>unordered_map</code>을 골랐는데 정렬된 순회가 필요해지면 설계를 다시 해야 한다.</p>
+
+                <h3 id="pitfall-array-everything"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 4 — 자료구조 없이 배열로 다 해결하려 한다</h3>
+                <p>배열만으로도 어떻게든 동작은 한다 — 이름으로 찾기 위해 전체를 순회하고(O(n)), 정렬 유지를 위해 매번 다시 정렬하고, 계층 관계를 인덱스 계산으로 흉내 낸다. 작은 데이터에서는 문제가 드러나지 않지만, 규모가 커지면 곳곳에서 O(n)·O(n log n)이 누적되어 제품이 느려진다. "이 데이터에 자주 하는 연산이 무엇인가"를 묻고 그에 맞는 자료구조를 고르는 것은, 나중에 갈아엎는 것보다 처음에 하는 편이 훨씬 싸다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>자료구조 선택은 되돌리기 비싼 결정이다</strong>
+                        한번 자료구조를 정하면 그것을 다루는 코드가 그 위에 쌓인다. 나중에 바꾸려면 그 코드를 전부 손봐야 한다. 그래서 자료구조 선택은 "일단 되게 만들고 나중에 고치자"가 가장 잘 안 통하는 영역이다. 데이터의 형태와 주요 연산을 먼저 분석하고 시작해야 한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Cormen, Leiserson, Rivest, Stein — <em>Introduction to Algorithms</em> (CLRS, 3rd/4th Edition) — 자료구조 전반, 해시 테이블, 트리, 그래프</li>
+                        <li>Robert Sedgewick, Kevin Wayne — <em>Algorithms</em> (4th Edition) — 자료구조와 알고리즘의 실용적 접근</li>
+                        <li>Bjarne Stroustrup — <em>The C++ Programming Language</em> (4th Edition) — STL 컨테이너</li>
+                        <li>Scott Meyers — <em>Effective STL</em> — 컨테이너 선택과 사용 지침</li>
+                        <li>cppreference.com — Containers library (vector, list, deque, map, unordered_map 등)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-theory');
+    renderPostNav('dev-theory');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
