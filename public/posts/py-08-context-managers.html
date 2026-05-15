@@ -1,0 +1,800 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>컨텍스트 매니저 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 흐름 SVG */
+        .flow-svg {
+            display: block; margin: 20px auto; max-width: 100%;
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 16px;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#intro" data-section="intro">개념</a>
+        <a href="#with-open" data-section="with-open">with open</a>
+        <a href="#protocol" data-section="protocol">프로토콜</a>
+        <a href="#contextmanager" data-section="contextmanager">contextmanager</a>
+        <a href="#multiple" data-section="multiple">여러 자원</a>
+        <a href="#contextlib-tools" data-section="contextlib-tools">contextlib 도구</a>
+        <a href="#async" data-section="async">async with</a>
+        <a href="#usecases" data-section="usecases">활용 예</a>
+        <a href="#industrial" data-section="industrial">산업·이미지</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">Python 시리즈</span>
+                </div>
+                <h1>컨텍스트 매니저</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 10 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li><code>with</code> 문으로 자원 획득과 해제를 자동화하는 컨텍스트 매니저의 개념</li>
+                        <li><code>__enter__</code> / <code>__exit__</code> 프로토콜과 <code>@contextmanager</code> 데코레이터</li>
+                        <li><code>contextlib</code>의 보조 도구: <code>closing</code>, <code>suppress</code>, <code>redirect_stdout</code>, <code>ExitStack</code></li>
+                        <li><code>async with</code> 비동기 컨텍스트 매니저</li>
+                        <li>산업·이미지 처리에서의 활용 — 카메라 grab, GPU 메모리, 측정 컨텍스트</li>
+                        <li>흔한 함정과 피하는 방법</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">컨텍스트 매니저란?</a></li>
+                        <li><a href="#with-open">가장 흔한 예 — with open</a></li>
+                        <li><a href="#protocol">__enter__ / __exit__ 프로토콜</a></li>
+                        <li><a href="#contextmanager">contextlib.contextmanager</a></li>
+                        <li><a href="#multiple">여러 자원 동시에</a></li>
+                        <li><a href="#contextlib-tools">contextlib 도구 정리</a></li>
+                        <li><a href="#async">비동기 컨텍스트 매니저</a></li>
+                        <li><a href="#usecases">활용 예</a></li>
+                        <li><a href="#industrial">산업·이미지 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 개념 -->
+                <h2 id="intro"><i class="fa-solid fa-door-open"></i> 컨텍스트 매니저란?</h2>
+                <p><strong>컨텍스트 매니저</strong>는 자원의 <em>획득</em>과 <em>해제</em>를 한 쌍으로 묶어 안전하게 자동화하는 객체다. <code>with</code> 문과 함께 사용한다. 본문에서 예외가 발생해도 정리 코드가 반드시 실행되므로 자원 누수를 막을 수 있다.</p>
+
+                <svg class="flow-svg" viewBox="0 0 720 160" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                            <path d="M0,0 L10,5 L0,10 z" fill="#666"/>
+                        </marker>
+                    </defs>
+                    <rect x="20" y="50" width="160" height="60" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+                    <text x="100" y="80" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#0c4a6e">with 진입</text>
+                    <text x="100" y="98" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#334155">__enter__()</text>
+
+                    <line x1="185" y1="80" x2="265" y2="80" stroke="#666" stroke-width="2" marker-end="url(#arr)"/>
+
+                    <rect x="270" y="50" width="180" height="60" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+                    <text x="360" y="80" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#78350f">본문 실행</text>
+                    <text x="360" y="98" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#334155">정상 또는 예외</text>
+
+                    <line x1="455" y1="80" x2="535" y2="80" stroke="#666" stroke-width="2" marker-end="url(#arr)"/>
+
+                    <rect x="540" y="50" width="160" height="60" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+                    <text x="620" y="80" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#14532d">정리</text>
+                    <text x="620" y="98" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#334155">__exit__()</text>
+
+                    <text x="360" y="140" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="12" fill="#64748b">예외가 발생해도 __exit__ 는 반드시 호출된다</text>
+                </svg>
+
+                <h2 id="with-open"><i class="fa-solid fa-file-lines"></i> 가장 흔한 예 — with open</h2>
+                <p>파일을 열고 닫는 패턴이 가장 익숙한 예다. 명시적으로 <code>close()</code>를 호출하지 않아도 블록을 벗어날 때 자동으로 닫힌다.</p>
+
+<pre class="language-python"><code class="language-python"># 잘못된 패턴 — 예외가 나면 close()가 호출되지 않을 수 있다
+f = open("data.txt", "r")
+data = f.read()
+f.close()
+
+# 권장 — with 문
+with open("data.txt", "r", encoding="utf-8") as f:
+    data = f.read()
+# 블록을 벗어나면 자동으로 f.close() 호출</code></pre>
+
+                <h3 id="cpp-raii"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> C++ RAII와의 비교</h3>
+                <p>C++의 RAII(Resource Acquisition Is Initialization)는 객체의 생성자에서 자원을 획득하고 소멸자에서 해제한다. 파이썬의 컨텍스트 매니저는 같은 사상의 명시적 버전이다. <code>with</code> 블록의 진입·탈출 시점이 곧 자원의 생명주기다.</p>
+
+                <table>
+                    <tr><th>측면</th><th>C++ RAII</th><th>Python with</th></tr>
+                    <tr><td>획득 시점</td><td>생성자</td><td><code>__enter__</code></td></tr>
+                    <tr><td>해제 시점</td><td>소멸자 (스코프 끝)</td><td><code>__exit__</code> (블록 끝)</td></tr>
+                    <tr><td>예외 안전</td><td>스택 풀기로 보장</td><td><code>__exit__</code>가 항상 호출됨</td></tr>
+                    <tr><td>가시성</td><td>암묵적 (스코프 기반)</td><td>명시적 (<code>with</code> 키워드)</td></tr>
+                </table>
+
+                <!-- 3. 프로토콜 -->
+                <h2 id="protocol"><i class="fa-solid fa-puzzle-piece"></i> __enter__ / __exit__ 프로토콜</h2>
+                <p>클래스에 두 개의 더블 언더스코어 메서드를 구현하면 컨텍스트 매니저가 된다.</p>
+
+<pre class="language-python"><code class="language-python">class FileReader:
+    def __init__(self, path):
+        self.path = path
+        self.file = None
+
+    def __enter__(self):
+        print(f"open {self.path}")
+        self.file = open(self.path, "r", encoding="utf-8")
+        return self.file  # with ... as <var> 의 <var> 가 됨
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        print(f"close {self.path}")
+        if self.file:
+            self.file.close()
+        # False/None 반환 → 예외를 전파, True 반환 → 예외 삼킴
+
+with FileReader("data.txt") as f:
+    print(f.read())</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 흐름</div>
+open data.txt
+&lt;파일 내용&gt;
+close data.txt</div>
+
+                <h3 id="exit-args"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> __exit__의 세 인자</h3>
+                <p><code>__exit__</code>은 블록 안에서 예외가 발생하면 그 정보를 받는다. 정상 종료 시에는 세 인자가 모두 <code>None</code>이다.</p>
+
+<pre class="language-python"><code class="language-python">class Transaction:
+    def __enter__(self):
+        print("BEGIN")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            print("COMMIT")
+        else:
+            print(f"ROLLBACK ({exc_type.__name__}: {exc_val})")
+        return False  # 예외는 그대로 전파
+
+with Transaction():
+    raise ValueError("invalid input")</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+BEGIN
+ROLLBACK (ValueError: invalid input)
+Traceback (most recent call last):
+  ...
+ValueError: invalid input</div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>__exit__의 반환값에 주의</strong>
+                        <code>True</code>를 반환하면 예외가 <em>삼켜진다</em>. 의도하지 않게 <code>True</code>를 돌려주면 버그가 조용히 숨어버린다. 명시적으로 처리할 예외만 <code>True</code>로 반환하고, 그 외에는 <code>False</code>(또는 <code>None</code>) 반환을 기본으로 한다.
+                    </div>
+                </div>
+
+                <!-- 4. contextmanager -->
+                <h2 id="contextmanager"><i class="fa-solid fa-wand-magic-sparkles"></i> contextlib.contextmanager</h2>
+                <p>제너레이터 함수에 <code>@contextmanager</code> 데코레이터를 붙이면 클래스 없이 간단하게 컨텍스트 매니저를 만들 수 있다. <code>yield</code> 이전은 진입, 이후는 정리에 해당한다.</p>
+
+<pre class="language-python"><code class="language-python">from contextlib import contextmanager
+
+@contextmanager
+def opened(path, mode="r"):
+    f = open(path, mode, encoding="utf-8")
+    try:
+        yield f                # 이 값이 as 변수로 전달
+    finally:
+        f.close()              # 예외와 무관하게 실행
+
+with opened("data.txt") as f:
+    print(f.read())</code></pre>
+
+                <p><code>try / finally</code>로 감싸야 본문에서 예외가 나도 정리가 보장된다. 예외를 <em>처리</em>하려면 <code>except</code>를 추가한다.</p>
+
+<pre class="language-python"><code class="language-python">@contextmanager
+def timed(label):
+    import time
+    t0 = time.perf_counter()
+    try:
+        yield
+    finally:
+        dt = (time.perf_counter() - t0) * 1000
+        print(f"[{label}] {dt:.2f} ms")
+
+with timed("blur"):
+    cv_blur(image, ksize=5)</code></pre>
+
+                <!-- 5. 여러 자원 -->
+                <h2 id="multiple"><i class="fa-solid fa-layer-group"></i> 여러 자원 동시에</h2>
+                <p>쉼표로 구분하여 여러 컨텍스트를 한 줄에 사용할 수 있다. 앞쪽이 먼저 진입하고, 뒤쪽이 먼저 정리된다.</p>
+
+<pre class="language-python"><code class="language-python">with open("src.txt") as fin, open("dst.txt", "w") as fout:
+    fout.write(fin.read())</code></pre>
+
+                <h3 id="exitstack"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 동적인 개수 — ExitStack</h3>
+                <p>실행 시점에 결정되는 가변 개수의 자원에는 <code>ExitStack</code>을 쓴다. 등록된 컨텍스트들은 스택을 빠져나갈 때 역순으로 정리된다.</p>
+
+<pre class="language-python"><code class="language-python">from contextlib import ExitStack
+
+paths = ["a.txt", "b.txt", "c.txt"]
+
+with ExitStack() as stack:
+    files = [stack.enter_context(open(p)) for p in paths]
+    # 모든 파일이 동시에 열려 있는 상태
+    for f in files:
+        print(f.readline())
+# 블록을 벗어날 때 역순으로 close()</code></pre>
+
+                <!-- 6. contextlib 도구 -->
+                <h2 id="contextlib-tools"><i class="fa-solid fa-toolbox"></i> contextlib 도구 정리</h2>
+
+                <table>
+                    <tr><th>도구</th><th>용도</th><th>예시</th></tr>
+                    <tr><td><code>contextmanager</code></td><td>제너레이터로 CM 만들기</td><td><code>@contextmanager def f(): ...</code></td></tr>
+                    <tr><td><code>closing</code></td><td><code>close()</code>만 있고 CM 프로토콜 없는 객체 감싸기</td><td><code>with closing(urlopen(url)) as r:</code></td></tr>
+                    <tr><td><code>suppress</code></td><td>지정 예외를 조용히 무시</td><td><code>with suppress(FileNotFoundError): os.remove(p)</code></td></tr>
+                    <tr><td><code>redirect_stdout</code></td><td>표준 출력을 다른 스트림으로</td><td><code>with redirect_stdout(buf): print("x")</code></td></tr>
+                    <tr><td><code>redirect_stderr</code></td><td>표준 에러 리다이렉트</td><td>동일</td></tr>
+                    <tr><td><code>ExitStack</code></td><td>동적 컨텍스트 스택</td><td>위 예시</td></tr>
+                    <tr><td><code>nullcontext</code></td><td>아무 일도 안 하는 CM (조건부 분기용)</td><td><code>cm = lock if need else nullcontext()</code></td></tr>
+                </table>
+
+                <h3 id="closing-ex"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> closing 예시</h3>
+
+<pre class="language-python"><code class="language-python">from contextlib import closing
+from urllib.request import urlopen
+
+# urlopen 결과는 close()는 있지만 매번 CM이 아닌 시절을 고려
+with closing(urlopen("http://example.com")) as resp:
+    print(resp.read(100))</code></pre>
+
+                <h3 id="suppress-ex"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> suppress 예시</h3>
+
+<pre class="language-python"><code class="language-python">from contextlib import suppress
+import os
+
+# 파일이 없으면 그냥 넘어가기 — try/except/pass 보다 간결
+with suppress(FileNotFoundError):
+    os.remove("temp.cache")</code></pre>
+
+                <h3 id="redirect-ex"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> redirect_stdout 예시</h3>
+
+<pre class="language-python"><code class="language-python">from contextlib import redirect_stdout
+import io
+
+buf = io.StringIO()
+with redirect_stdout(buf):
+    print("captured")
+    help(int)        # 평소 같으면 화면으로 나가는 출력
+
+text = buf.getvalue()
+print("len:", len(text))</code></pre>
+
+                <h3 id="nullcontext-ex"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> nullcontext — 조건부 락</h3>
+
+<pre class="language-python"><code class="language-python">from contextlib import nullcontext
+import threading
+
+lock = threading.Lock()
+
+def process(item, thread_safe=True):
+    cm = lock if thread_safe else nullcontext()
+    with cm:
+        do_work(item)</code></pre>
+
+                <!-- 7. 비동기 -->
+                <h2 id="async"><i class="fa-solid fa-bolt"></i> 비동기 컨텍스트 매니저</h2>
+                <p>코루틴 안에서 자원을 다룰 때는 <code>async with</code>를 사용한다. 프로토콜은 <code>__aenter__</code> / <code>__aexit__</code>다.</p>
+
+<pre class="language-python"><code class="language-python">import asyncio
+import aiohttp
+
+async def fetch(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            return await resp.text()
+
+asyncio.run(fetch("http://example.com"))</code></pre>
+
+                <p>비동기 버전 컨텍스트 매니저도 데코레이터로 간단히 만들 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def db_session(url):
+    conn = await async_connect(url)
+    try:
+        yield conn
+    finally:
+        await conn.close()
+
+async def main():
+    async with db_session("postgres://...") as conn:
+        rows = await conn.fetch("SELECT 1")</code></pre>
+
+                <!-- 8. 활용 예 -->
+                <h2 id="usecases"><i class="fa-solid fa-screwdriver-wrench"></i> 활용 예</h2>
+
+                <h3 id="uc-file"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 파일 — 인코딩 보장</h3>
+<pre class="language-python"><code class="language-python">with open("log.csv", "w", encoding="utf-8", newline="") as f:
+    f.write("ts,level,msg\n")</code></pre>
+
+                <h3 id="uc-db"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> DB 트랜잭션 — 자동 commit / rollback</h3>
+<pre class="language-python"><code class="language-python">@contextmanager
+def transaction(conn):
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+with transaction(conn) as c:
+    c.execute("INSERT INTO log VALUES (?, ?)", (ts, msg))</code></pre>
+
+                <h3 id="uc-lock"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 락 — 동시성 제어</h3>
+<pre class="language-python"><code class="language-python">import threading
+lock = threading.Lock()
+
+with lock:
+    shared_counter += 1
+# 블록 끝에서 자동 release()</code></pre>
+
+                <h3 id="uc-tempdir"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 임시 디렉터리 — 자동 삭제</h3>
+<pre class="language-python"><code class="language-python">import tempfile, os
+
+with tempfile.TemporaryDirectory() as tmp:
+    out = os.path.join(tmp, "intermediate.png")
+    save_image(out, img)
+    upload(out)
+# 블록을 벗어나면 디렉터리와 내용물 모두 삭제</code></pre>
+
+                <h3 id="uc-timer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 시간 측정</h3>
+<pre class="language-python"><code class="language-python">@contextmanager
+def stopwatch(name):
+    import time
+    t0 = time.perf_counter()
+    try:
+        yield
+    finally:
+        print(f"{name}: {(time.perf_counter()-t0)*1000:.1f} ms")
+
+with stopwatch("preprocess"):
+    img = denoise(img)
+    img = enhance(img)</code></pre>
+
+                <!-- 9. 산업·이미지 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업·이미지 관점</h2>
+                <p>비전 검사 파이프라인에서도 컨텍스트 매니저가 자주 필요하다. 카메라·GPU·측정 세션은 모두 명확한 시작과 끝이 있는 자원이다.</p>
+
+                <h3 id="ind-camera"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 카메라 grab 세션</h3>
+<pre class="language-python"><code class="language-python">@contextmanager
+def grab_session(camera, exposure_us=10000):
+    camera.set_exposure(exposure_us)
+    camera.start_acquisition()
+    try:
+        yield camera
+    finally:
+        camera.stop_acquisition()  # 예외가 나도 반드시 정지
+
+with grab_session(cam, exposure_us=5000) as c:
+    for _ in range(100):
+        frame = c.grab()
+        inspect(frame)</code></pre>
+
+                <h3 id="ind-gpu"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 임시 GPU 메모리</h3>
+<pre class="language-python"><code class="language-python">@contextmanager
+def gpu_buffer(shape, dtype):
+    buf = cuda_alloc(shape, dtype)
+    try:
+        yield buf
+    finally:
+        cuda_free(buf)            # GPU 메모리 누수 방지
+
+with gpu_buffer((2048, 2048), "uint16") as gbuf:
+    upload(gbuf, host_image)
+    apply_filter_gpu(gbuf)
+    result = download(gbuf)</code></pre>
+
+                <h3 id="ind-measure"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 측정 컨텍스트 — 좌표계 push/pop</h3>
+<pre class="language-python"><code class="language-python">@contextmanager
+def measurement_frame(name, calibration):
+    push_coord_system(name, calibration)
+    try:
+        yield
+    finally:
+        pop_coord_system()        # 좌표계 스택 누수 방지
+
+with measurement_frame("part_local", calib):
+    width = measure_width(image)
+    angle = measure_angle(image)
+# 블록 밖에서는 다시 전역 좌표계</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>"시작/끝이 짝을 이루는 모든 것"이 후보다</strong>
+                        카메라 acquisition, DMA 채널, 락, 임시 디렉터리, 디버그 오버레이, 로그 들여쓰기 레벨 등 짝을 이루는 동작은 모두 컨텍스트 매니저로 표현하는 게 안전하다.
+                    </div>
+                </div>
+
+                <!-- 10. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <h3 id="pf-swallow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> __exit__에서 예외 삼킴</h3>
+                <p><code>__exit__</code>이 <code>True</code>를 반환하면 본문에서 발생한 예외가 사라진다. 의도치 않게 그렇게 되면 디버깅이 매우 어렵다.</p>
+
+<pre class="language-python"><code class="language-python"># 잘못된 예 — 모든 예외를 무조건 삼킴
+class BadCM:
+    def __enter__(self): return self
+    def __exit__(self, *exc):
+        return True            # 위험! 모든 예외가 사라진다
+
+with BadCM():
+    raise RuntimeError("important!")  # 조용히 사라짐</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>예외 삼킴 = 디버깅 지옥</strong>
+                        특정 예외만 처리하려면 <code>exc_type</code>을 확인하고 <code>isinstance</code>로 좁힌 뒤 <code>True</code>를 반환한다. 기본 반환값은 <code>False</code>(또는 <code>None</code>)로 두는 것이 안전하다.
+                    </div>
+                </div>
+
+                <h3 id="pf-leak"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> with를 안 써서 자원 누수</h3>
+<pre class="language-python"><code class="language-python"># 잘못된 예 — 예외가 나면 close()를 건너뛴다
+f = open("data.txt")
+data = process(f.read())   # 여기서 예외가 나면?
+f.close()                   # 영원히 호출되지 않을 수 있음
+
+# 올바른 예
+with open("data.txt") as f:
+    data = process(f.read())</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>GC에 의존하지 말 것</strong>
+                        CPython은 참조 카운트로 즉시 정리하지만, PyPy 등 다른 구현이나 순환 참조 상황에서는 그렇지 않다. 파일·소켓·DB 연결·GPU 핸들은 반드시 <code>with</code>로 명시적으로 닫는다.
+                    </div>
+                </div>
+
+                <h3 id="pf-yield"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> @contextmanager에서 yield 없이 빠지는 경로</h3>
+<pre class="language-python"><code class="language-python"># 잘못된 예 — try 없이 yield. 본문 예외 시 정리 안 됨
+@contextmanager
+def bad():
+    res = acquire()
+    yield res
+    release(res)            # 예외가 나면 도달 못 함
+
+# 올바른 예
+@contextmanager
+def good():
+    res = acquire()
+    try:
+        yield res
+    finally:
+        release(res)</code></pre>
+
+                <h3 id="pf-nest"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 잘못된 컨텍스트 중첩</h3>
+                <p>락 순서가 코드마다 다르면 데드락이 생긴다. 여러 컨텍스트를 동시에 잡을 때는 항상 같은 순서로 진입해야 한다.</p>
+
+<pre class="language-python"><code class="language-python"># 위험 — 스레드마다 락 획득 순서가 다르면 데드락
+# 스레드 A
+with lock_a, lock_b:
+    ...
+
+# 스레드 B — 순서가 거꾸로!
+with lock_b, lock_a:
+    ...
+
+# 안전 — 모든 곳에서 동일한 순서</code></pre>
+
+                <h3 id="pf-reuse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> @contextmanager로 만든 매니저는 재사용 불가</h3>
+                <p>제너레이터 기반 컨텍스트 매니저는 한 번 <code>with</code>를 빠져나오면 다시 <code>with</code>로 들어갈 수 없다. 같은 컨텍스트를 여러 번 쓰려면 클래스로 구현하거나 호출마다 새로 만든다.</p>
+
+<pre class="language-python"><code class="language-python">cm = opened("data.txt")
+with cm as f: ...           # OK
+with cm as f: ...           # RuntimeError: generator didn't yield
+
+# 올바른 방법 — 매번 새로
+for path in paths:
+    with opened(path) as f:
+        ...</code></pre>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Python 공식 문서 — <code>contextlib</code> (docs.python.org/3/library/contextlib.html)</li>
+                        <li>PEP 343 — The "with" Statement</li>
+                        <li>PEP 492 — Coroutines with async and await syntax (async with)</li>
+                        <li>Python Language Reference — <code>with</code> statement, <code>__enter__</code> / <code>__exit__</code></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-python');
+    renderPostNav('dev-lang-python');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

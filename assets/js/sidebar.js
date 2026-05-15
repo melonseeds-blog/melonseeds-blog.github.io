@@ -8,8 +8,10 @@ function renderSidebar(currentCat) {
               { id: 'dev-lang',   label: '언어 (C++, Python 등)',
                 subs: [
                     { id: 'dev-lang-cpp', label: 'C++ 시리즈' },
+                    { id: 'dev-lang-python', label: 'Python 시리즈' },
                 ]
               },
+              { id: 'dev-wpf',    label: 'WPF / C#' },
               { id: 'dev-cv',     label: 'CV (Computer Vision)' },
               { id: 'dev-theory', label: '프로그래밍 이론' },
           ]

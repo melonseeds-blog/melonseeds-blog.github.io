@@ -1,0 +1,911 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>데코레이터 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* SVG 다이어그램 */
+        .flow-svg-wrap {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px; margin: 20px 0;
+            text-align: center;
+        }
+        .flow-svg-wrap svg { max-width: 100%; height: auto; }
+        .flow-caption {
+            font-size: 0.82rem; color: var(--text-muted);
+            margin-top: 10px; font-style: italic;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#intro" data-section="intro">데코레이터란</a>
+        <a href="#first-class" data-section="first-class">일급 함수</a>
+        <a href="#closure" data-section="closure">클로저</a>
+        <a href="#basic-deco" data-section="basic-deco">기본 데코레이터</a>
+        <a href="#wraps" data-section="wraps">functools.wraps</a>
+        <a href="#args-deco" data-section="args-deco">인자 받는 데코레이터</a>
+        <a href="#class-deco" data-section="class-deco">클래스 데코레이터</a>
+        <a href="#builtin" data-section="builtin">내장 데코레이터</a>
+        <a href="#lru-cache" data-section="lru-cache">lru_cache</a>
+        <a href="#use-cases" data-section="use-cases">활용 예</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">Python 시리즈</span>
+                </div>
+                <h1>데코레이터</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>일급 함수와 클로저 — 데코레이터의 기반이 되는 개념</li>
+                        <li>기본 데코레이터 작성 — <code>@deco</code> 문법과 호출 흐름</li>
+                        <li><code>functools.wraps</code>로 메타데이터 보존</li>
+                        <li>인자를 받는 데코레이터 — 3중 함수 구조</li>
+                        <li>클래스 데코레이터와 내장 데코레이터(<code>@property</code> 등)</li>
+                        <li><code>lru_cache</code> 메모이제이션과 실전 활용 예</li>
+                        <li>흔한 함정 — <code>@wraps</code> 누락, 스택 순서, 가변 클로저</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">데코레이터란?</a></li>
+                        <li><a href="#first-class">일급 함수</a></li>
+                        <li><a href="#closure">클로저(closure)</a></li>
+                        <li><a href="#basic-deco">기본 데코레이터 작성</a></li>
+                        <li><a href="#wraps">functools.wraps — 메타데이터 보존</a></li>
+                        <li><a href="#args-deco">인자를 받는 데코레이터</a></li>
+                        <li><a href="#class-deco">클래스 데코레이터</a></li>
+                        <li><a href="#builtin">내장 데코레이터</a></li>
+                        <li><a href="#lru-cache">functools.lru_cache</a></li>
+                        <li><a href="#use-cases">데코레이터 활용 예</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 데코레이터란 -->
+                <h2 id="intro"><i class="fa-solid fa-gift"></i> 데코레이터란?</h2>
+                <p><strong>데코레이터(decorator)</strong>는 함수를 인자로 받아 새 함수를 반환하는 함수다. 원본 함수를 직접 수정하지 않고 호출 전후에 동작을 끼워 넣을 수 있다. Python은 이를 <code>@</code> 문법으로 간결하게 표현한다.</p>
+
+                <p>다음 두 코드는 완전히 동일하다.</p>
+
+<pre class="language-python"><code class="language-python">@deco
+def f():
+    pass
+
+# 위와 정확히 같다
+def f():
+    pass
+f = deco(f)</code></pre>
+
+                <p>즉 <code>@deco</code>는 정의 직후 <code>f = deco(f)</code>를 수행하는 단순한 문법 설탕(syntactic sugar)이다. 이 점만 기억하면 데코레이터의 동작 원리가 전부 설명된다.</p>
+
+                <div class="flow-svg-wrap">
+                    <svg viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#4f46e5"/>
+                            </marker>
+                        </defs>
+                        <!-- 원본 함수 -->
+                        <rect x="20" y="70" width="140" height="60" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+                        <text x="90" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#3730a3">원본 함수 f</text>
+                        <text x="90" y="115" text-anchor="middle" font-size="11" fill="#4b5563">def f(): ...</text>
+                        <!-- 화살표 -->
+                        <line x1="160" y1="100" x2="220" y2="100" stroke="#4f46e5" stroke-width="2" marker-end="url(#arr)"/>
+                        <text x="190" y="92" text-anchor="middle" font-size="11" fill="#4f46e5">@deco</text>
+                        <!-- 데코레이터 -->
+                        <rect x="230" y="50" width="180" height="100" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                        <text x="320" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="#92400e">deco(f)</text>
+                        <text x="320" y="105" text-anchor="middle" font-size="11" fill="#4b5563">def wrapper(*a, **kw):</text>
+                        <text x="320" y="120" text-anchor="middle" font-size="11" fill="#4b5563">  before(); r = f(*a, **kw)</text>
+                        <text x="320" y="135" text-anchor="middle" font-size="11" fill="#4b5563">  after(); return r</text>
+                        <!-- 화살표 -->
+                        <line x1="410" y1="100" x2="470" y2="100" stroke="#4f46e5" stroke-width="2" marker-end="url(#arr)"/>
+                        <text x="440" y="92" text-anchor="middle" font-size="11" fill="#4f46e5">반환</text>
+                        <!-- 새 함수 -->
+                        <rect x="480" y="70" width="220" height="60" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+                        <text x="590" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#065f46">새 함수 wrapper</text>
+                        <text x="590" y="115" text-anchor="middle" font-size="11" fill="#4b5563">f = deco(f) 로 바인딩</text>
+                    </svg>
+                    <div class="flow-caption">데코레이터의 호출 흐름 — 원본 함수가 wrapper로 감싸진 후 같은 이름에 다시 바인딩된다.</div>
+                </div>
+
+                <!-- 2. 일급 함수 -->
+                <h2 id="first-class"><i class="fa-solid fa-medal"></i> 일급 함수</h2>
+                <p>Python에서 함수는 <strong>일급 객체(first-class object)</strong>다. 즉 함수도 일반 값처럼 변수에 할당하고, 다른 함수의 인자로 전달하고, 반환값으로 돌려줄 수 있다. 데코레이터는 이 성질에 전적으로 의존한다.</p>
+
+<pre class="language-python"><code class="language-python">def greet(name):
+    return f"Hello, {name}"
+
+# 1) 변수에 할당
+say = greet
+print(say("Alice"))         # Hello, Alice
+
+# 2) 인자로 전달
+def call_twice(fn, x):
+    return fn(x), fn(x)
+
+print(call_twice(greet, "Bob"))   # ('Hello, Bob', 'Hello, Bob')
+
+# 3) 반환값으로 돌려줌
+def make_greeter(prefix):
+    def inner(name):
+        return f"{prefix}, {name}"
+    return inner
+
+hi = make_greeter("Hi")
+print(hi("Charlie"))        # Hi, Charlie</code></pre>
+
+                <p><code>make_greeter</code>가 내부 함수 <code>inner</code>를 반환하는 부분이 데코레이터의 핵심 패턴이다.</p>
+
+                <!-- 3. 클로저 -->
+                <h2 id="closure"><i class="fa-solid fa-box-archive"></i> 클로저(closure)</h2>
+                <p><strong>클로저</strong>는 내부 함수가 자신을 둘러싼 외부 함수의 지역 변수를 기억하는 메커니즘이다. 외부 함수가 종료된 뒤에도 캡처한 변수에 계속 접근할 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">def make_counter():
+    count = 0
+    def increment():
+        nonlocal count       # 외부 변수를 쓰기 위해 필요
+        count += 1
+        return count
+    return increment
+
+counter = make_counter()
+print(counter())   # 1
+print(counter())   # 2
+print(counter())   # 3</code></pre>
+
+                <p><code>count</code>는 <code>make_counter</code>가 끝난 후에도 살아 있다. <code>increment</code>가 <code>count</code>를 캡처했기 때문이다. 캡처된 변수는 함수의 <code>__closure__</code> 속성으로 확인할 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">print(counter.__closure__)
+# (&lt;cell at 0x...: int object at 0x...&gt;,)
+print(counter.__closure__[0].cell_contents)   # 3</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>nonlocal vs global</strong>
+                        외부 함수의 변수를 <em>수정</em>하려면 <code>nonlocal</code>이 필요하다. 모듈 전역 변수를 수정하려면 <code>global</code>. 단순히 <em>읽기</em>만 한다면 키워드 없이도 가능하다.
+                    </div>
+                </div>
+
+                <!-- 4. 기본 데코레이터 -->
+                <h2 id="basic-deco"><i class="fa-solid fa-code"></i> 기본 데코레이터 작성</h2>
+
+                <h3 id="basic-shape"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본 형태</h3>
+                <p>가장 단순한 데코레이터 형태는 다음과 같다.</p>
+
+<pre class="language-python"><code class="language-python">def my_decorator(func):
+    def wrapper(*args, **kwargs):
+        print("호출 전")
+        result = func(*args, **kwargs)
+        print("호출 후")
+        return result
+    return wrapper
+
+@my_decorator
+def say_hello(name):
+    print(f"Hello, {name}")
+
+say_hello("Alice")</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+호출 전
+Hello, Alice
+호출 후</div>
+
+                <p><code>*args, **kwargs</code>로 받는 이유는 어떤 시그니처의 함수가 들어와도 그대로 전달하기 위해서다.</p>
+
+                <h3 id="timing-deco"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 실행 시간 측정</h3>
+
+<pre class="language-python"><code class="language-python">import time
+
+def timed(func):
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        elapsed = time.perf_counter() - start
+        print(f"[{func.__name__}] {elapsed*1000:.2f} ms")
+        return result
+    return wrapper
+
+@timed
+def slow_sum(n):
+    return sum(range(n))
+
+slow_sum(1_000_000)</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+[slow_sum] 18.34 ms</div>
+
+                <h3 id="logging-deco"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 로깅 데코레이터</h3>
+
+<pre class="language-python"><code class="language-python">def log_calls(func):
+    def wrapper(*args, **kwargs):
+        arg_str = ", ".join([repr(a) for a in args] +
+                            [f"{k}={v!r}" for k, v in kwargs.items()])
+        print(f"-&gt; {func.__name__}({arg_str})")
+        result = func(*args, **kwargs)
+        print(f"&lt;- {func.__name__} = {result!r}")
+        return result
+    return wrapper
+
+@log_calls
+def add(a, b):
+    return a + b
+
+add(3, 5)</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+-> add(3, 5)
+<- add = 8</div>
+
+                <!-- 5. wraps -->
+                <h2 id="wraps"><i class="fa-solid fa-file-signature"></i> functools.wraps — 메타데이터 보존</h2>
+                <p>데코레이터를 그냥 작성하면 원본 함수의 <code>__name__</code>, <code>__doc__</code>이 <code>wrapper</code>의 것으로 바뀐다.</p>
+
+<pre class="language-python"><code class="language-python">def deco(func):
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
+
+@deco
+def hello():
+    """인사 함수."""
+    pass
+
+print(hello.__name__)   # wrapper  (원하지 않은 결과)
+print(hello.__doc__)    # None</code></pre>
+
+                <p><code>functools.wraps</code>를 사용하면 원본 함수의 메타데이터가 그대로 유지된다.</p>
+
+<pre class="language-python"><code class="language-python">from functools import wraps
+
+def deco(func):
+    @wraps(func)                       # 핵심
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
+
+@deco
+def hello():
+    """인사 함수."""
+    pass
+
+print(hello.__name__)   # hello
+print(hello.__doc__)    # 인사 함수.</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>@wraps는 사실상 필수다</strong>
+                        없어도 동작은 한다. 하지만 디버깅, 로깅, 문서화 도구가 모두 <code>__name__</code>과 <code>__doc__</code>에 의존한다. <code>help(hello)</code>가 깨지고 스택 트레이스도 이상해진다. 데코레이터를 만들 때는 항상 <code>@wraps(func)</code>를 붙이자.
+                    </div>
+                </div>
+
+                <!-- 6. 인자 받는 데코레이터 -->
+                <h2 id="args-deco"><i class="fa-solid fa-layer-group"></i> 인자를 받는 데코레이터</h2>
+                <p><code>@deco(times=3)</code>처럼 데코레이터 자체에 인자를 주려면 함수가 한 겹 더 필요하다. 즉 <strong>3중 함수 구조</strong>가 된다.</p>
+
+<pre class="language-python"><code class="language-python">from functools import wraps
+
+def repeat(times):                     # 1단: 인자 받음
+    def decorator(func):               # 2단: 함수 받음
+        @wraps(func)
+        def wrapper(*args, **kwargs):  # 3단: 호출 인자 받음
+            result = None
+            for _ in range(times):
+                result = func(*args, **kwargs)
+            return result
+        return wrapper
+    return decorator
+
+@repeat(times=3)
+def greet(name):
+    print(f"Hi, {name}")
+
+greet("Alice")</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+Hi, Alice
+Hi, Alice
+Hi, Alice</div>
+
+                <p>호출 흐름을 풀어 보면 다음과 같다.</p>
+
+<pre class="language-python"><code class="language-python">greet = repeat(times=3)(greet)
+# repeat(times=3) -> decorator
+# decorator(greet) -> wrapper
+# greet = wrapper</code></pre>
+
+                <table>
+                    <tr><th>패턴</th><th>구조</th><th>사용 예</th></tr>
+                    <tr><td>인자 없는 데코레이터</td><td><code>def deco(func): def wrapper: ...</code></td><td><code>@timed</code></td></tr>
+                    <tr><td>인자 받는 데코레이터</td><td><code>def deco(arg): def real(func): def wrapper: ...</code></td><td><code>@repeat(times=3)</code></td></tr>
+                    <tr><td>두 형태 모두 지원</td><td>인자 유무 분기 처리</td><td><code>@deco</code> 또는 <code>@deco(x=1)</code></td></tr>
+                </table>
+
+                <!-- 7. 클래스 데코레이터 -->
+                <h2 id="class-deco"><i class="fa-solid fa-cubes"></i> 클래스 데코레이터</h2>
+                <p>클래스를 데코레이터로 쓰려면 <code>__call__</code>을 구현하면 된다. 인스턴스가 함수처럼 호출 가능해진다.</p>
+
+<pre class="language-python"><code class="language-python">from functools import update_wrapper
+
+class CountCalls:
+    def __init__(self, func):
+        self.func = func
+        self.count = 0
+        update_wrapper(self, func)   # wraps의 클래스 버전
+
+    def __call__(self, *args, **kwargs):
+        self.count += 1
+        print(f"[{self.func.__name__}] 호출 횟수: {self.count}")
+        return self.func(*args, **kwargs)
+
+@CountCalls
+def say_hi():
+    print("Hi")
+
+say_hi()
+say_hi()
+print(say_hi.count)   # 2</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+[say_hi] 호출 횟수: 1
+Hi
+[say_hi] 호출 횟수: 2
+Hi
+2</div>
+
+                <p>클래스 데코레이터는 <strong>상태를 보관하기 쉽다</strong>는 장점이 있다. 호출 횟수, 캐시, 등록 목록 같은 데이터를 인스턴스 속성으로 깔끔하게 관리할 수 있다.</p>
+
+                <!-- 8. 내장 데코레이터 -->
+                <h2 id="builtin"><i class="fa-solid fa-puzzle-piece"></i> 내장 데코레이터</h2>
+                <p>Python은 클래스 작성에 자주 쓰이는 데코레이터 몇 가지를 표준으로 제공한다.</p>
+
+                <table>
+                    <tr><th>데코레이터</th><th>역할</th><th>첫 번째 인자</th></tr>
+                    <tr><td><code>@property</code></td><td>메서드를 속성처럼 접근</td><td><code>self</code></td></tr>
+                    <tr><td><code>@classmethod</code></td><td>클래스를 받는 메서드</td><td><code>cls</code></td></tr>
+                    <tr><td><code>@staticmethod</code></td><td>self/cls 없는 메서드</td><td>없음</td></tr>
+                    <tr><td><code>@dataclass</code></td><td>__init__·__repr__ 자동 생성</td><td>—</td></tr>
+                    <tr><td><code>@functools.cached_property</code></td><td>첫 호출 결과를 캐싱</td><td><code>self</code></td></tr>
+                </table>
+
+<pre class="language-python"><code class="language-python">class Circle:
+    PI = 3.14159
+
+    def __init__(self, radius):
+        self._radius = radius
+
+    @property
+    def radius(self):
+        """반지름 (읽기/쓰기)."""
+        return self._radius
+
+    @radius.setter
+    def radius(self, value):
+        if value &lt; 0:
+            raise ValueError("음수 불가")
+        self._radius = value
+
+    @property
+    def area(self):
+        """면적 — 읽기 전용."""
+        return Circle.PI * self._radius ** 2
+
+    @classmethod
+    def unit(cls):
+        """단위 원 생성."""
+        return cls(1.0)
+
+    @staticmethod
+    def is_valid_radius(r):
+        return r &gt; 0
+
+c = Circle(5)
+print(c.radius)        # 5      (메서드 호출 아님!)
+print(c.area)          # 78.539...
+c.radius = 10          # setter 호출
+unit = Circle.unit()   # 클래스 메서드로 생성
+print(Circle.is_valid_radius(-1))   # False</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>classmethod는 대체 생성자에 자주 쓴다</strong>
+                        <code>datetime.fromisoformat()</code>처럼 다양한 입력으로부터 인스턴스를 만드는 팩토리 메서드로 활용한다. <code>cls</code>를 받기 때문에 상속 시 자식 클래스의 인스턴스를 자연스럽게 반환할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 9. lru_cache -->
+                <h2 id="lru-cache"><i class="fa-solid fa-database"></i> functools.lru_cache</h2>
+                <p><code>lru_cache</code>는 함수의 호출 결과를 인자별로 캐싱하는 데코레이터다. 같은 인자로 다시 호출되면 함수 본문을 실행하지 않고 캐시된 값을 즉시 반환한다. 재귀 함수 메모이제이션에 특히 강력하다.</p>
+
+<pre class="language-python"><code class="language-python">from functools import lru_cache
+
+@lru_cache(maxsize=None)
+def fib(n):
+    if n &lt; 2:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+print(fib(100))
+# 354224848179261915075
+print(fib.cache_info())
+# CacheInfo(hits=98, misses=101, maxsize=None, currsize=101)</code></pre>
+
+                <p><code>maxsize</code>를 지정하면 가장 오래 안 쓰인 항목부터 제거(LRU 정책)된다. Python 3.9부터는 더 간결한 <code>@functools.cache</code>(무제한 캐시)도 추가됐다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>인자가 hashable이어야 한다</strong>
+                        캐시 키로 인자를 그대로 사용하기 때문에 <code>list</code>·<code>dict</code> 같은 가변 객체는 인자로 받을 수 없다. <code>tuple</code>이나 <code>frozenset</code>으로 바꿔서 넘기자.
+                    </div>
+                </div>
+
+                <!-- 10. 활용 예 -->
+                <h2 id="use-cases"><i class="fa-solid fa-toolbox"></i> 데코레이터 활용 예</h2>
+
+                <h3 id="auth-deco"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 인증 검사</h3>
+
+<pre class="language-python"><code class="language-python">from functools import wraps
+
+def require_admin(func):
+    @wraps(func)
+    def wrapper(user, *args, **kwargs):
+        if not user.get("is_admin"):
+            raise PermissionError("관리자 권한 필요")
+        return func(user, *args, **kwargs)
+    return wrapper
+
+@require_admin
+def delete_all(user):
+    print(f"{user['name']}이(가) 전체 삭제 수행")
+
+delete_all({"name": "root", "is_admin": True})    # OK
+# delete_all({"name": "guest", "is_admin": False}) # PermissionError</code></pre>
+
+                <h3 id="retry-deco"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 재시도</h3>
+
+<pre class="language-python"><code class="language-python">import time
+from functools import wraps
+
+def retry(times=3, delay=0.5, exceptions=(Exception,)):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(1, times + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    last_exc = e
+                    print(f"[{attempt}/{times}] 실패: {e}")
+                    time.sleep(delay)
+            raise last_exc
+        return wrapper
+    return decorator
+
+@retry(times=3, delay=0.2, exceptions=(ConnectionError,))
+def fetch():
+    import random
+    if random.random() &lt; 0.7:
+        raise ConnectionError("네트워크 오류")
+    return "OK"</code></pre>
+
+                <h3 id="validate-deco"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 입력 검증</h3>
+
+<pre class="language-python"><code class="language-python">from functools import wraps
+
+def validate_positive(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        for a in args:
+            if isinstance(a, (int, float)) and a &lt; 0:
+                raise ValueError(f"음수 불가: {a}")
+        return func(*args, **kwargs)
+    return wrapper
+
+@validate_positive
+def area(width, height):
+    return width * height
+
+print(area(3, 4))     # 12
+# area(-1, 4)         # ValueError</code></pre>
+
+                <h3 id="registry-deco"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 핸들러 등록</h3>
+
+<pre class="language-python"><code class="language-python">handlers = {}
+
+def route(path):
+    def decorator(func):
+        handlers[path] = func
+        return func               # 원본 그대로 반환 (감싸지 않음)
+    return decorator
+
+@route("/")
+def home():
+    return "home"
+
+@route("/about")
+def about():
+    return "about"
+
+print(handlers)
+# {'/': &lt;function home&gt;, '/about': &lt;function about&gt;}</code></pre>
+
+                <p>이 패턴이 Flask·FastAPI 같은 웹 프레임워크의 라우팅 데코레이터의 본질이다.</p>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="pitfall-wraps"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> @wraps 누락</h3>
+                <p>앞서 다뤘듯 <code>__name__</code>·<code>__doc__</code>·<code>__module__</code>이 모두 wrapper의 것으로 덮인다. 로깅, 디버거, Sphinx 같은 도구가 모두 망가지므로 <strong>모든 데코레이터에 <code>@wraps(func)</code></strong>를 붙이는 습관을 들이자.</p>
+
+                <h3 id="pitfall-order"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스택 순서</h3>
+                <p>데코레이터를 여러 개 쌓으면 <strong>아래에서 위로</strong> 적용된다.</p>
+
+<pre class="language-python"><code class="language-python">@A
+@B
+@C
+def f():
+    pass
+
+# 동치: f = A(B(C(f)))
+# 실행 시 호출 순서: A의 wrapper -&gt; B의 wrapper -&gt; C의 wrapper -&gt; 원본 f</code></pre>
+
+                <p>예를 들어 캐싱과 로깅을 함께 쓸 때 순서에 따라 동작이 달라진다.</p>
+
+<pre class="language-python"><code class="language-python">@log_calls       # 로그가 캐시 hit/miss 모두 찍힘
+@lru_cache
+def f(x): ...
+
+@lru_cache       # 캐시 hit이면 로그가 안 찍힘
+@log_calls
+def f(x): ...</code></pre>
+
+                <h3 id="pitfall-closure"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 반복문 안의 클로저</h3>
+                <p>for 루프 안에서 함수를 만들면서 루프 변수를 캡처하면, 모두 <strong>같은 변수</strong>를 공유하게 된다.</p>
+
+<pre class="language-python"><code class="language-python">funcs = []
+for i in range(3):
+    funcs.append(lambda: i)
+
+print([f() for f in funcs])   # [2, 2, 2]  (1, 2, 3 아님!)
+
+# 해결: 기본 인자로 캡처 강제
+funcs = []
+for i in range(3):
+    funcs.append(lambda i=i: i)
+
+print([f() for f in funcs])   # [0, 1, 2]</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>클로저는 변수를 캡처하지, 값을 캡처하지 않는다</strong>
+                        내부 함수는 외부 변수의 <em>최종 상태</em>를 본다. 루프 변수를 즉시 묶고 싶다면 기본 인자(<code>lambda i=i: ...</code>)나 <code>functools.partial</code>을 사용하자.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-overuse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 데코레이터 남용</h3>
+                <p>데코레이터는 깔끔해 보여서 과하게 쓰기 쉽다. 다음 신호가 보이면 의심해 보자.</p>
+                <ul>
+                    <li>데코레이터 5겹 이상으로 스택돼 호출 순서를 추적하기 어렵다</li>
+                    <li>같은 로직이 한 번만 등장하는데도 데코레이터로 추상화한다</li>
+                    <li>비즈니스 로직(돈 계산, 권한 처리 등)이 데코레이터에 숨어 있어 함수만 봐선 동작을 알 수 없다</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"마법"이 되지 않게 하라</strong>
+                        데코레이터는 횡단 관심사(cross-cutting concerns) — 로깅·캐싱·인증·재시도 같은 <em>반복되는 부가 기능</em>에 가장 잘 어울린다. 핵심 로직 자체를 데코레이터에 숨기면 가독성이 급격히 떨어진다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>PEP 318 — Decorators for Functions and Methods</li>
+                        <li>Python 공식 문서 — <code>functools</code> 모듈 (wraps, lru_cache, cache, cached_property)</li>
+                        <li>Python 공식 문서 — Glossary "decorator", "closure"</li>
+                        <li>Fluent Python (Luciano Ramalho) — 9장 함수 데코레이터와 클로저</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-python');
+    renderPostNav('dev-lang-python');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

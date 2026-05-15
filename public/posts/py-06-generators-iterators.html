@@ -1,0 +1,854 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제너레이터와 이터레이터 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .diagram-wrap {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .diagram-wrap svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 10px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#concepts" data-section="concepts">개념 구분</a>
+        <a href="#protocol" data-section="protocol">이터레이터 프로토콜</a>
+        <a href="#custom-iter" data-section="custom-iter">커스텀 이터레이터</a>
+        <a href="#generator" data-section="generator">제너레이터 함수</a>
+        <a href="#gen-expr" data-section="gen-expr">제너레이터 표현식</a>
+        <a href="#yield-from" data-section="yield-from">yield from</a>
+        <a href="#lazy" data-section="lazy">lazy evaluation</a>
+        <a href="#itertools" data-section="itertools">itertools</a>
+        <a href="#coroutine" data-section="coroutine">send/throw/close</a>
+        <a href="#industrial" data-section="industrial">산업 응용</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">Python 시리즈</span>
+                </div>
+                <h1>제너레이터와 이터레이터</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>iterable, iterator, generator의 명확한 구분과 관계</li>
+                        <li>이터레이터 프로토콜 (<code>__iter__</code>, <code>__next__</code>)과 커스텀 이터레이터 구현</li>
+                        <li><code>yield</code>로 만드는 제너레이터 함수와 제너레이터 표현식</li>
+                        <li><code>yield from</code>으로 위임, lazy evaluation으로 무한 시퀀스 표현</li>
+                        <li><code>itertools</code> 도구 모음, 산업 이미지 스트림 응용, 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#concepts">이터러블 · 이터레이터 · 제너레이터 구분</a></li>
+                        <li><a href="#protocol">이터레이터 프로토콜</a></li>
+                        <li><a href="#custom-iter">커스텀 이터레이터 클래스</a></li>
+                        <li><a href="#generator">제너레이터 함수와 yield</a></li>
+                        <li><a href="#gen-expr">제너레이터 표현식</a></li>
+                        <li><a href="#yield-from">yield from — 위임</a></li>
+                        <li><a href="#lazy">lazy evaluation과 무한 시퀀스</a></li>
+                        <li><a href="#itertools">itertools — 이터레이터 도구 모음</a></li>
+                        <li><a href="#coroutine">send / throw / close — coroutine 스타일</a></li>
+                        <li><a href="#industrial">산업 · 이미지 관점에서의 활용</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 개념 구분 -->
+                <h2 id="concepts"><i class="fa-solid fa-sitemap"></i> 이터러블 · 이터레이터 · 제너레이터 구분</h2>
+                <p>세 용어가 자주 혼용되지만, 실제로는 포함 관계가 명확하다. <strong>iterable</strong>은 순회 가능한 모든 객체이고, <strong>iterator</strong>는 순회 중인 상태를 들고 있는 객체이며, <strong>generator</strong>는 이터레이터를 간단히 만드는 문법적 도구다.</p>
+
+                <div class="diagram-wrap">
+                    <svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Iterable -->
+                        <rect x="20" y="40" width="200" height="160" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+                        <text x="120" y="70" text-anchor="middle" font-size="16" font-weight="700" fill="#1e3a8a">Iterable</text>
+                        <text x="120" y="92" text-anchor="middle" font-size="12" fill="#1e3a8a">__iter__()</text>
+                        <text x="120" y="120" text-anchor="middle" font-size="11" fill="#475569">list, tuple, dict,</text>
+                        <text x="120" y="138" text-anchor="middle" font-size="11" fill="#475569">set, str, file,</text>
+                        <text x="120" y="156" text-anchor="middle" font-size="11" fill="#475569">range, ...</text>
+
+                        <!-- Iterator -->
+                        <rect x="260" y="40" width="200" height="160" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+                        <text x="360" y="70" text-anchor="middle" font-size="16" font-weight="700" fill="#065f46">Iterator</text>
+                        <text x="360" y="92" text-anchor="middle" font-size="12" fill="#065f46">__iter__() + __next__()</text>
+                        <text x="360" y="120" text-anchor="middle" font-size="11" fill="#475569">상태를 가진 객체</text>
+                        <text x="360" y="138" text-anchor="middle" font-size="11" fill="#475569">next()로 진행</text>
+                        <text x="360" y="156" text-anchor="middle" font-size="11" fill="#475569">StopIteration 발생</text>
+
+                        <!-- Generator -->
+                        <rect x="500" y="40" width="200" height="160" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                        <text x="600" y="70" text-anchor="middle" font-size="16" font-weight="700" fill="#78350f">Generator</text>
+                        <text x="600" y="92" text-anchor="middle" font-size="12" fill="#78350f">yield 사용</text>
+                        <text x="600" y="120" text-anchor="middle" font-size="11" fill="#475569">함수 / 표현식</text>
+                        <text x="600" y="138" text-anchor="middle" font-size="11" fill="#475569">iterator의 부분집합</text>
+                        <text x="600" y="156" text-anchor="middle" font-size="11" fill="#475569">자동으로 프로토콜 구현</text>
+
+                        <!-- 화살표 -->
+                        <path d="M 220 120 L 260 120" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+                        <text x="240" y="112" text-anchor="middle" font-size="10" fill="#64748b">iter()</text>
+                        <path d="M 460 120 L 500 120" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+                        <text x="480" y="112" text-anchor="middle" font-size="10" fill="#64748b">⊃</text>
+
+                        <defs>
+                            <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
+                            </marker>
+                        </defs>
+
+                        <text x="360" y="225" text-anchor="middle" font-size="11" fill="#475569" font-style="italic">iterable에 iter()를 호출하면 iterator를 얻고, generator는 iterator의 특별한 형태다.</text>
+                    </svg>
+                    <div class="diagram-caption">iterable → iterator → generator 관계</div>
+                </div>
+
+<pre class="language-python"><code class="language-python">nums = [1, 2, 3]          # list — iterable
+it = iter(nums)           # list_iterator — iterator
+print(next(it))           # 1
+print(next(it))           # 2
+print(next(it))           # 3
+# print(next(it))         # StopIteration
+
+def gen():                # generator function
+    yield 1
+    yield 2
+
+g = gen()                 # generator object — iterator의 일종
+print(next(g))            # 1</code></pre>
+
+                <table>
+                    <tr><th>구분</th><th>iterable</th><th>iterator</th><th>generator</th></tr>
+                    <tr><td>핵심 메서드</td><td><code>__iter__</code></td><td><code>__iter__</code> + <code>__next__</code></td><td><code>yield</code></td></tr>
+                    <tr><td>상태 보유</td><td>X (보통)</td><td>O</td><td>O</td></tr>
+                    <tr><td>여러 번 순회</td><td>가능</td><td>1회 소진</td><td>1회 소진</td></tr>
+                    <tr><td>구현 비용</td><td>—</td><td>클래스 + 두 메서드</td><td>함수 + yield</td></tr>
+                </table>
+
+                <!-- 2. 이터레이터 프로토콜 -->
+                <h2 id="protocol"><i class="fa-solid fa-handshake"></i> 이터레이터 프로토콜</h2>
+                <p>파이썬의 <code>for</code> 루프는 내부적으로 다음과 같이 동작한다. 이것이 <strong>이터레이터 프로토콜</strong>이다.</p>
+
+<pre class="language-python"><code class="language-python"># for x in iterable: ... 와 동일한 동작
+it = iter(iterable)           # __iter__() 호출
+while True:
+    try:
+        x = next(it)          # __next__() 호출
+    except StopIteration:
+        break
+    # 루프 본문</code></pre>
+
+                <p>프로토콜의 두 가지 약속은 단순하다.</p>
+                <ul>
+                    <li><code>__iter__(self)</code> — iterator 객체를 반환한다. iterator 자기 자신이라면 <code>return self</code>.</li>
+                    <li><code>__next__(self)</code> — 다음 값을 반환하거나 더 이상 없으면 <code>StopIteration</code>을 발생시킨다.</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>iterable과 iterator를 분리하는 이유</strong>
+                        list 같은 컨테이너는 동시에 여러 위치에서 순회될 수 있어야 한다. 그래서 컨테이너 자신은 상태를 안 가지고, <code>iter()</code>를 호출할 때마다 새로운 iterator를 만들어 상태를 분리한다.
+                    </div>
+                </div>
+
+                <!-- 3. 커스텀 이터레이터 -->
+                <h2 id="custom-iter"><i class="fa-solid fa-hammer"></i> 커스텀 이터레이터 클래스</h2>
+                <p>0부터 n까지를 짝수만 돌려주는 이터레이터를 직접 만들어 본다.</p>
+
+<pre class="language-python"><code class="language-python">class EvenUpTo:
+    def __init__(self, limit):
+        self._limit = limit
+        self._cur = 0
+
+    def __iter__(self):
+        return self        # 자기 자신이 iterator
+
+    def __next__(self):
+        while self._cur &lt;= self._limit:
+            value = self._cur
+            self._cur += 1
+            if value % 2 == 0:
+                return value
+        raise StopIteration
+
+for x in EvenUpTo(10):
+    print(x, end=' ')</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+0 2 4 6 8 10</div>
+
+                <p>iterable과 iterator를 분리하면 동일한 데이터를 여러 번 순회할 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">class EvenRange:           # iterable
+    def __init__(self, limit):
+        self._limit = limit
+
+    def __iter__(self):    # 호출 시마다 새 iterator 생성
+        return _EvenIter(self._limit)
+
+class _EvenIter:           # iterator
+    def __init__(self, limit):
+        self._limit = limit
+        self._cur = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while self._cur &lt;= self._limit:
+            v = self._cur
+            self._cur += 1
+            if v % 2 == 0:
+                return v
+        raise StopIteration
+
+r = EvenRange(6)
+print(list(r))    # [0, 2, 4, 6]
+print(list(r))    # [0, 2, 4, 6]  — 다시 순회 가능</code></pre>
+
+                <!-- 4. 제너레이터 함수 -->
+                <h2 id="generator"><i class="fa-solid fa-rotate-right"></i> 제너레이터 함수와 yield</h2>
+                <p>위와 같은 이터레이터를 매번 클래스로 짜는 건 번거롭다. 함수 본문에 <code>yield</code>가 하나라도 있으면 그 함수는 호출 즉시 generator object를 반환한다. <strong>함수 본문은 즉시 실행되지 않는다.</strong></p>
+
+<pre class="language-python"><code class="language-python">def even_up_to(limit):
+    cur = 0
+    while cur &lt;= limit:
+        if cur % 2 == 0:
+            yield cur        # 여기서 멈췄다가 next() 호출 시 재개
+        cur += 1
+
+g = even_up_to(10)          # 함수 본문은 아직 실행되지 않음
+print(type(g))              # &lt;class 'generator'&gt;
+print(next(g))              # 0
+print(next(g))              # 2
+for x in g:                 # 남은 값 순회
+    print(x, end=' ')</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+&lt;class 'generator'&gt;
+0
+2
+4 6 8 10</div>
+
+                <p><code>yield</code>를 만나면 함수의 실행 상태(지역 변수, 명령어 위치)가 그대로 일시정지된다. <code>next()</code>가 다시 호출되면 그 자리에서 재개된다. 함수가 return하거나 끝까지 도달하면 자동으로 <code>StopIteration</code>이 발생한다.</p>
+
+                <h3 id="gen-pattern"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 자주 쓰는 패턴 — 파일 라인 처리</h3>
+
+<pre class="language-python"><code class="language-python">def read_nonempty_lines(path):
+    with open(path, encoding='utf-8') as f:
+        for line in f:                  # 파일 자체가 iterable
+            line = line.strip()
+            if line:
+                yield line
+
+for line in read_nonempty_lines('log.txt'):
+    process(line)                       # 한 줄씩만 메모리에 올라감</code></pre>
+
+                <table>
+                    <tr><th>비교</th><th>커스텀 iterator 클래스</th><th>generator 함수</th></tr>
+                    <tr><td>코드 길이</td><td>김 (클래스 + 메서드 2개)</td><td>짧음 (함수 + yield)</td></tr>
+                    <tr><td>상태 관리</td><td>인스턴스 변수로 직접</td><td>로컬 변수 자동 보존</td></tr>
+                    <tr><td>StopIteration</td><td>명시적으로 raise</td><td>함수 종료 시 자동</td></tr>
+                    <tr><td>재사용성</td><td>iterable 분리 시 가능</td><td>호출할 때마다 새로 생성</td></tr>
+                </table>
+
+                <!-- 5. 제너레이터 표현식 -->
+                <h2 id="gen-expr"><i class="fa-solid fa-code"></i> 제너레이터 표현식</h2>
+                <p>list comprehension의 대괄호를 괄호로 바꾸면 generator expression이 된다. 결과를 한꺼번에 리스트로 만들지 않고, 필요할 때마다 하나씩 생산한다.</p>
+
+<pre class="language-python"><code class="language-python">import sys
+
+lc = [x * 2 for x in range(1_000_000)]      # list comprehension
+ge = (x * 2 for x in range(1_000_000))      # generator expression
+
+print(sys.getsizeof(lc))   # 약 8 MB
+print(sys.getsizeof(ge))   # 약 200 B (고정)
+print(type(ge))            # &lt;class 'generator'&gt;
+
+# 함수 인자로 직접 넘길 때는 괄호 생략 가능
+total = sum(x * 2 for x in range(1_000_000))</code></pre>
+
+                <table>
+                    <tr><th>비교</th><th>list comprehension <code>[ ]</code></th><th>generator expression <code>( )</code></th></tr>
+                    <tr><td>결과</td><td>list 객체 (모든 값 메모리에)</td><td>generator 객체 (값 하나씩 생산)</td></tr>
+                    <tr><td>메모리</td><td>O(n)</td><td>O(1)</td></tr>
+                    <tr><td>다회 순회</td><td>가능</td><td>1회 소진</td></tr>
+                    <tr><td>인덱싱 / len</td><td>가능</td><td>불가</td></tr>
+                    <tr><td>적합한 상황</td><td>결과를 재사용 / 인덱스 필요</td><td>한 번만 흐르듯 처리</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실무 선택 기준</strong>
+                        결과 길이가 작고 여러 번 쓰면 list, 길이가 크고 단방향으로 한 번 흘려보내면 generator를 쓰면 된다. <code>sum()</code>, <code>max()</code>, <code>any()</code>처럼 한 번만 훑는 함수에 넘길 때는 generator expression이 거의 항상 낫다.
+                    </div>
+                </div>
+
+                <!-- 6. yield from -->
+                <h2 id="yield-from"><i class="fa-solid fa-share-nodes"></i> yield from — 위임</h2>
+                <p>다른 iterable의 값을 그대로 넘기고 싶을 때 매번 <code>for x in sub: yield x</code>를 쓰는 건 장황하다. <code>yield from</code>이 이를 한 줄로 줄인다.</p>
+
+<pre class="language-python"><code class="language-python">def chain_naive(*iterables):
+    for it in iterables:
+        for x in it:
+            yield x
+
+def chain_smart(*iterables):
+    for it in iterables:
+        yield from it       # 위임 — 더 짧고 빠름
+
+print(list(chain_smart([1, 2], (3, 4), 'ab')))
+# [1, 2, 3, 4, 'a', 'b']</code></pre>
+
+                <p>중첩 구조를 평탄화할 때도 자연스럽게 재귀로 풀린다.</p>
+
+<pre class="language-python"><code class="language-python">def flatten(nested):
+    for item in nested:
+        if isinstance(item, (list, tuple)):
+            yield from flatten(item)
+        else:
+            yield item
+
+print(list(flatten([1, [2, [3, 4], 5], (6, 7)])))
+# [1, 2, 3, 4, 5, 6, 7]</code></pre>
+
+                <p><code>yield from</code>은 단순 위임 외에도 서브 제너레이터의 <code>send()</code>, <code>throw()</code>, return 값을 투명하게 전달한다. coroutine 스타일에서 진가가 드러난다.</p>
+
+                <!-- 7. lazy evaluation -->
+                <h2 id="lazy"><i class="fa-solid fa-hourglass-half"></i> lazy evaluation과 무한 시퀀스</h2>
+                <p>제너레이터는 값을 요청받을 때만 계산한다. 그래서 끝이 없는 시퀀스도 표현할 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">def naturals():
+    n = 1
+    while True:             # 끝이 없음
+        yield n
+        n += 1
+
+def take(gen, k):
+    for _ in range(k):
+        yield next(gen)
+
+print(list(take(naturals(), 5)))    # [1, 2, 3, 4, 5]
+
+# 피보나치 무한 수열
+def fib():
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b
+
+print(list(take(fib(), 10)))
+# [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]</code></pre>
+
+                <p>메모리 절약 효과도 크다. 1억 개 숫자의 제곱합을 구할 때 list comprehension은 GB 단위 메모리를 잡지만, generator expression은 거의 0이다.</p>
+
+<pre class="language-python"><code class="language-python">total = sum(i * i for i in range(10_000_000))    # 메모리 거의 안 씀</code></pre>
+
+                <!-- 8. itertools -->
+                <h2 id="itertools"><i class="fa-solid fa-toolbox"></i> itertools — 이터레이터 도구 모음</h2>
+                <p>표준 라이브러리 <code>itertools</code>는 자주 쓰는 이터레이터 패턴을 C로 구현해 제공한다. 모두 lazy하다.</p>
+
+<pre class="language-python"><code class="language-python">import itertools as it
+
+# count(start, step) — 무한 카운터
+for i in it.islice(it.count(10, 2), 5):
+    print(i, end=' ')           # 10 12 14 16 18
+print()
+
+# cycle(iterable) — 무한 반복
+colors = it.cycle(['R', 'G', 'B'])
+print([next(colors) for _ in range(7)])
+# ['R', 'G', 'B', 'R', 'G', 'B', 'R']
+
+# chain — 여러 iterable을 이어붙임
+print(list(it.chain([1, 2], [3, 4], [5])))
+# [1, 2, 3, 4, 5]
+
+# islice(iterable, start, stop, step) — 슬라이싱
+print(list(it.islice(range(100), 5, 15, 2)))
+# [5, 7, 9, 11, 13]
+
+# groupby — 연속된 동일 값을 묶음 (정렬 선행 필요)
+data = [('A', 1), ('A', 2), ('B', 3), ('A', 4)]
+for key, group in it.groupby(data, key=lambda x: x[0]):
+    print(key, list(group))
+# A [('A', 1), ('A', 2)]
+# B [('B', 3)]
+# A [('A', 4)]   ← 연속된 것만 묶음에 주의
+
+# product / permutations / combinations
+print(list(it.product([0, 1], repeat=2)))
+# [(0, 0), (0, 1), (1, 0), (1, 1)]
+print(list(it.combinations('ABCD', 2)))
+# [('A','B'), ('A','C'), ('A','D'), ('B','C'), ('B','D'), ('C','D')]</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>groupby는 연속된 동일 키만 묶는다</strong>
+                        SQL의 GROUP BY와 다르다. 같은 키를 전부 한 그룹으로 묶고 싶다면 먼저 같은 키로 <code>sorted()</code>한 뒤 <code>groupby()</code>를 호출해야 한다.
+                    </div>
+                </div>
+
+                <!-- 9. coroutine 스타일 -->
+                <h2 id="coroutine"><i class="fa-solid fa-arrows-left-right"></i> send / throw / close — coroutine 스타일</h2>
+                <p>제너레이터는 값을 내보내기만 하는 게 아니라, 외부에서 값을 받을 수도 있다. <code>yield</code>가 표현식 위치에 오면 <code>send()</code>가 보낸 값이 그 표현식의 결과가 된다.</p>
+
+<pre class="language-python"><code class="language-python">def echo():
+    while True:
+        received = yield        # 값을 받아옴
+        print(f'received: {received}')
+
+co = echo()
+next(co)                        # priming — 첫 yield까지 진입
+co.send('hello')                # received: hello
+co.send(42)                     # received: 42
+co.close()                      # 정리
+
+# throw — 제너레이터 안으로 예외 주입
+def guarded():
+    try:
+        while True:
+            x = yield
+            print('got', x)
+    except ValueError as e:
+        print('caught:', e)
+
+g = guarded()
+next(g)
+g.send(1)
+g.throw(ValueError('bad'))      # caught: bad</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>요즘은 async/await를 쓴다</strong>
+                        과거에는 generator 기반 coroutine으로 비동기를 구현했지만, Python 3.5부터 정식 <code>async</code>/<code>await</code> 문법이 생긴 이후로는 generator coroutine은 거의 쓰지 않는다. 다만 동작 원리를 알아 두면 async도 자연스럽게 이해된다.
+                    </div>
+                </div>
+
+                <!-- 10. 산업 응용 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 · 이미지 관점에서의 활용</h2>
+                <p>머신비전 환경에서 카메라가 초당 수십~수백 프레임을 보낼 때, 전체 프레임을 리스트로 모으면 메모리가 금세 터진다. 이때 제너레이터로 <strong>스트림 파이프라인</strong>을 구성하면 한 프레임씩 흘려보낼 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">import cv2
+import numpy as np
+
+def frame_source(path):
+    """파일이나 카메라에서 프레임을 한 장씩 생산."""
+    cap = cv2.VideoCapture(path)
+    try:
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            yield frame
+    finally:
+        cap.release()           # 제너레이터가 닫힐 때도 보장됨
+
+def to_gray(frames):
+    for f in frames:
+        yield cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
+
+def threshold(frames, t=128):
+    for f in frames:
+        _, out = cv2.threshold(f, t, 255, cv2.THRESH_BINARY)
+        yield out
+
+def defect_count(binary_frames):
+    for bf in binary_frames:
+        n_labels, _, _, _ = cv2.connectedComponentsWithStats(bf)
+        yield n_labels - 1      # 배경 제외
+
+# 파이프라인 — 데이터는 lazy하게 흐른다
+pipeline = defect_count(threshold(to_gray(frame_source('line.mp4'))))
+
+for i, count in enumerate(pipeline):
+    if count &gt; 0:
+        print(f'frame {i}: {count} defects')</code></pre>
+
+                <p>이 구조의 장점은 명확하다. 메모리에 한 프레임만 올라간다. 단계가 함수로 분리되어 테스트하기 쉽다. 파이프라인 끝까지 도달하지 않으면 앞 단계도 더 이상 계산되지 않는다.</p>
+
+                <p>또 다른 흔한 패턴은 큰 이미지를 타일로 쪼개 처리하는 경우다.</p>
+
+<pre class="language-python"><code class="language-python">def tiles(image, tile_h, tile_w):
+    """큰 이미지를 (y, x, tile) 형태로 한 타일씩 생산."""
+    h, w = image.shape[:2]
+    for y in range(0, h, tile_h):
+        for x in range(0, w, tile_w):
+            yield y, x, image[y:y+tile_h, x:x+tile_w]
+
+big = np.zeros((4096, 4096), dtype=np.uint8)
+for y, x, tile in tiles(big, 512, 512):
+    process_tile(tile)          # 64개 타일이 lazy하게 처리됨</code></pre>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="pf-exhausted"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 소진된 제너레이터는 재사용되지 않는다</h3>
+
+<pre class="language-python"><code class="language-python">g = (x * 2 for x in range(3))
+print(list(g))     # [0, 2, 4]
+print(list(g))     # []   ← 이미 소진됨
+
+# 해결: 매번 새로 만들거나, 리스트로 보관
+def make():
+    return (x * 2 for x in range(3))
+
+print(list(make()))    # [0, 2, 4]
+print(list(make()))    # [0, 2, 4]</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>제너레이터를 함수 인자로 두 번 반복하지 말 것</strong>
+                        <code>data = (line for line in f)</code>로 만든 뒤 <code>train(data); validate(data)</code>를 하면 두 번째 호출 시 빈 시퀀스가 들어간다. 두 번 쓸 거면 list로 받거나, 호출마다 새 generator를 만드는 팩토리 함수를 넘겨야 한다.
+                    </div>
+                </div>
+
+                <h3 id="pf-len"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 길이를 모른다</h3>
+
+<pre class="language-python"><code class="language-python">g = (x for x in range(10))
+# len(g)           # TypeError: object of type 'generator' has no len()
+# g[0]             # TypeError: 'generator' object is not subscriptable
+
+# 해결: 리스트로 변환하거나, 카운트가 필요 없는 알고리즘 사용
+data = list(g)
+print(len(data), data[0])</code></pre>
+
+                <h3 id="pf-bool"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 빈 제너레이터도 truthy하다</h3>
+
+<pre class="language-python"><code class="language-python">g = (x for x in [] if x &gt; 0)
+print(bool(g))     # True  ← 비어 있어도 True
+print(list(g))     # []
+
+# 해결: 비어 있는지 확인하려면 next()와 default를 쓰거나 list로 변환
+sentinel = object()
+first = next(g, sentinel)
+if first is sentinel:
+    print('empty')</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>메모리 절약을 노렸는데 list로 변환하면 의미가 사라진다</strong>
+                        제너레이터 결과를 <code>list()</code>로 감싸는 순간 모든 값이 메모리에 올라온다. <code>sum()</code>, <code>any()</code>, <code>for</code>처럼 한 번만 훑는 소비자에게 직접 넘기는 게 핵심이다.
+                    </div>
+                </div>
+
+                <h3 id="pf-closure"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> late binding — 클로저 함정</h3>
+
+<pre class="language-python"><code class="language-python">gens = [(lambda: (yield i))() for i in range(3)]
+# 람다는 i를 캡처할 때 늦은 바인딩이라 모두 마지막 값을 본다.
+# generator 안에서 외부 변수를 캡처할 때도 마찬가지 — 주의해서 인자로 전달하자.
+def make_gen(i):
+    yield i
+
+gens = [make_gen(i) for i in range(3)]
+print([next(g) for g in gens])    # [0, 1, 2]</code></pre>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Python 공식 문서 — <em>Functional Programming HOWTO: Generators</em></li>
+                        <li>Python 공식 문서 — <em>itertools — Functions creating iterators for efficient looping</em></li>
+                        <li>PEP 255 — Simple Generators</li>
+                        <li>PEP 380 — Syntax for Delegating to a Subgenerator (<code>yield from</code>)</li>
+                        <li>PEP 342 — Coroutines via Enhanced Generators (<code>send</code>, <code>throw</code>, <code>close</code>)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-python');
+    renderPostNav('dev-lang-python');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,1118 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>데이터 플로우 블록 에디터 — WPF로 만드는 노드 그래프 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* SVG figure */
+        .figure-block {
+            background: #fafafa; border: 1px solid var(--border); border-radius: 10px;
+            padding: 16px; margin: 16px 0; text-align: center;
+        }
+        .figure-block svg { max-width: 100%; height: auto; }
+        .figure-block .figure-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#intro" data-section="intro">에디터란</a>
+        <a href="#requirements" data-section="requirements">핵심 요구</a>
+        <a href="#wpf-choice" data-section="wpf-choice">구성요소 선택</a>
+        <a href="#node-control" data-section="node-control">노드 컨트롤</a>
+        <a href="#connection" data-section="connection">연결선</a>
+        <a href="#interaction" data-section="interaction">인터랙션</a>
+        <a href="#zoom-pan" data-section="zoom-pan">줌/팬</a>
+        <a href="#selection" data-section="selection">선택</a>
+        <a href="#data-model" data-section="data-model">데이터 모델</a>
+        <a href="#serialization" data-section="serialization">직렬화</a>
+        <a href="#execution" data-section="execution">실행</a>
+        <a href="#imaginglib" data-section="imaginglib">ImagingLib 적용</a>
+        <a href="#performance" data-section="performance">성능</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">WPF / C#</span>
+                </div>
+                <h1>데이터 플로우 블록 에디터 — WPF로 만드는 노드 그래프</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>데이터 플로우 노드 그래프 에디터의 개념과 사례 (HDevelop, Adaptive Vision, Blueprint)</li>
+                        <li>WPF 구성요소 선택 — Canvas vs ItemsControl + Canvas ItemsPanel</li>
+                        <li>노드·포트·연결선 UI 구성과 베지에 곡선 연결</li>
+                        <li>드래그·연결·줌/팬·선택 인터랙션 구현</li>
+                        <li>Node/Port/Connection 데이터 모델과 MVVM 분리</li>
+                        <li>JSON 직렬화·토폴로지 정렬 기반 실행</li>
+                        <li>ImagingLib Viewer 설계 — IProcessBlock과 매핑</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">데이터 플로우 에디터란</a></li>
+                        <li><a href="#requirements">핵심 요구사항</a></li>
+                        <li><a href="#wpf-choice">WPF 구성요소 선택</a></li>
+                        <li><a href="#node-control">노드(Node) 컨트롤</a></li>
+                        <li><a href="#connection">연결선(Connection)</a></li>
+                        <li><a href="#interaction">드래그·연결 인터랙션</a></li>
+                        <li><a href="#zoom-pan">줌·팬</a></li>
+                        <li><a href="#selection">선택 처리</a></li>
+                        <li><a href="#data-model">데이터 모델</a></li>
+                        <li><a href="#serialization">직렬화</a></li>
+                        <li><a href="#execution">실행 (토폴로지 정렬)</a></li>
+                        <li><a href="#imaginglib">ImagingLib Viewer 적용</a></li>
+                        <li><a href="#performance">성능 고려</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 인트로 -->
+                <h2 id="intro"><i class="fa-solid fa-diagram-project"></i> 데이터 플로우 에디터란</h2>
+                <p><strong>데이터 플로우 에디터</strong>는 처리 단계를 <em>노드(Node, 블록)</em>로, 데이터 흐름을 <em>연결선(Edge, Wire)</em>으로 시각화하여 파이프라인을 마우스로 조립하는 도구다. 코드 대신 그래프를 그려 알고리즘을 구성하기 때문에 비개발자도 비전 검사 흐름을 빠르게 시제품화한다.</p>
+
+                <p>대표적인 사례는 다음과 같다.</p>
+                <table class="spec-table">
+                    <tr><th>도구</th><th>분야</th><th>특징</th></tr>
+                    <tr><td>HALCON HDevelop</td><td>머신비전</td><td>스크립트 + 시각 디버깅. 그래프형은 HDevEngine</td></tr>
+                    <tr><td>MVTec Merlic</td><td>머신비전</td><td>완전한 노드 그래프 UI</td></tr>
+                    <tr><td>Adaptive Vision Studio</td><td>머신비전</td><td>대표적인 데이터 플로우 비전 IDE</td></tr>
+                    <tr><td>NI LabVIEW</td><td>계측/제어</td><td>G 언어. 와이어가 곧 데이터</td></tr>
+                    <tr><td>Unreal Blueprint</td><td>게임 로직</td><td>실행 핀 + 데이터 핀 분리</td></tr>
+                    <tr><td>Blender Geometry Nodes</td><td>3D 모델링</td><td>기하 변환 파이프라인</td></tr>
+                    <tr><td>Node-RED</td><td>IoT</td><td>웹 기반 메시지 라우팅</td></tr>
+                </table>
+
+                <p>ImagingLib Viewer의 목표는 이 중 Adaptive Vision Studio에 가깝다. C++ 코어 라이브러리(<code>IProcessBlock</code>)를 WPF가 시각적으로 편집·실행한다.</p>
+
+                <!-- 2. 요구사항 -->
+                <h2 id="requirements"><i class="fa-solid fa-clipboard-list"></i> 핵심 요구사항</h2>
+                <p>구현 전에 무엇을 만들지 정리한다. 너무 많이 욕심내면 끝이 없으므로 MVP 범위를 좁힌다.</p>
+                <ul>
+                    <li><strong>노드 추가/삭제</strong> — 팔레트에서 끌어다 놓거나 컨텍스트 메뉴로 생성</li>
+                    <li><strong>노드 드래그</strong> — 캔버스 위에서 자유 이동</li>
+                    <li><strong>포트 연결</strong> — 출력 포트 → 입력 포트, 타입 호환 검사</li>
+                    <li><strong>줌·팬</strong> — 마우스 휠 줌, 중간 버튼 또는 스페이스+드래그로 팬</li>
+                    <li><strong>선택</strong> — 단일/다중 선택, Delete 키로 삭제</li>
+                    <li><strong>직렬화</strong> — JSON으로 저장/복원</li>
+                    <li><strong>실행</strong> — 토폴로지 정렬 후 노드별 처리 호출</li>
+                </ul>
+
+                <!-- 3. WPF 구성요소 선택 -->
+                <h2 id="wpf-choice"><i class="fa-solid fa-layer-group"></i> WPF 구성요소 선택</h2>
+                <p>WPF에서 자유 배치 캔버스를 만드는 방법은 두 가지다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방식</th><th>장점</th><th>단점</th></tr>
+                    <tr><td><code>Canvas</code> 직접 사용</td><td>간단, 절대좌표 명확</td><td>MVVM과 거리, Children에 직접 추가 필요</td></tr>
+                    <tr><td><code>ItemsControl</code> + <code>Canvas</code> ItemsPanel</td><td>ItemsSource 바인딩, MVVM 친화</td><td>ItemContainerStyle로 Canvas.Left/Top 바인딩 필요</td></tr>
+                </table>
+
+                <p>실무는 후자를 택한다. ViewModel의 <code>ObservableCollection&lt;NodeViewModel&gt;</code>이 곧 화면이다. 9편의 MVVM 패턴 위에 그대로 얹는다.</p>
+
+<pre class="language-xml"><code class="language-xml">&lt;ItemsControl ItemsSource="{Binding Nodes}"&gt;
+    &lt;ItemsControl.ItemsPanel&gt;
+        &lt;ItemsPanelTemplate&gt;
+            &lt;Canvas IsItemsHost="True" Background="#1E1E1E"/&gt;
+        &lt;/ItemsPanelTemplate&gt;
+    &lt;/ItemsControl.ItemsPanel&gt;
+
+    &lt;ItemsControl.ItemContainerStyle&gt;
+        &lt;Style TargetType="ContentPresenter"&gt;
+            &lt;Setter Property="Canvas.Left" Value="{Binding X}"/&gt;
+            &lt;Setter Property="Canvas.Top"  Value="{Binding Y}"/&gt;
+        &lt;/Style&gt;
+    &lt;/ItemsControl.ItemContainerStyle&gt;
+
+    &lt;ItemsControl.ItemTemplate&gt;
+        &lt;DataTemplate DataType="{x:Type vm:NodeViewModel}"&gt;
+            &lt;local:NodeControl /&gt;
+        &lt;/DataTemplate&gt;
+    &lt;/ItemsControl.ItemTemplate&gt;
+&lt;/ItemsControl&gt;</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>ItemContainerStyle이 왜 필요한가</strong>
+                        <code>ItemsControl</code>은 각 아이템을 <code>ContentPresenter</code>로 감싸 ItemsPanel에 넣는다. <code>Canvas.Left</code>·<code>Canvas.Top</code>은 그 ContentPresenter에 설정되어야 한다. NodeControl 안에 직접 <code>Canvas.Left</code>를 줘도 무시된다.
+                    </div>
+                </div>
+
+                <!-- 4. 노드 컨트롤 -->
+                <h2 id="node-control"><i class="fa-solid fa-cube"></i> 노드(Node) 컨트롤</h2>
+                <p>노드는 세 부분으로 나뉜다 — <strong>헤더(제목/타입)</strong>, <strong>본문(파라미터 요약·미리보기)</strong>, <strong>포트(입력/출력)</strong>.</p>
+
+                <div class="figure-block">
+                    <svg viewBox="0 0 460 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="블록 에디터 노드 구조 다이어그램">
+                        <defs>
+                            <linearGradient id="hdr" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0" stop-color="#3b82f6"/>
+                                <stop offset="1" stop-color="#2563eb"/>
+                            </linearGradient>
+                        </defs>
+                        <!-- 노드 A -->
+                        <rect x="20" y="40" width="160" height="120" rx="8" fill="#2d2d2d" stroke="#444"/>
+                        <rect x="20" y="40" width="160" height="28" rx="8" fill="url(#hdr)"/>
+                        <text x="100" y="59" fill="#fff" font-size="13" font-family="sans-serif" font-weight="700" text-anchor="middle">GaussianBlur</text>
+                        <text x="32" y="92" fill="#ddd" font-size="11" font-family="sans-serif">kernel: 5</text>
+                        <text x="32" y="110" fill="#ddd" font-size="11" font-family="sans-serif">sigma: 1.4</text>
+                        <!-- 입력 포트 -->
+                        <circle cx="20" cy="100" r="6" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+                        <text x="34" y="135" fill="#888" font-size="10" font-family="sans-serif">in: Image</text>
+                        <!-- 출력 포트 -->
+                        <circle cx="180" cy="100" r="6" fill="#f59e0b" stroke="#fff" stroke-width="1.5"/>
+                        <text x="130" y="135" fill="#888" font-size="10" font-family="sans-serif">out: Image</text>
+
+                        <!-- 베지에 연결선 -->
+                        <path d="M 180 100 C 230 100, 230 110, 280 110" stroke="#f59e0b" stroke-width="2" fill="none"/>
+
+                        <!-- 노드 B -->
+                        <rect x="280" y="50" width="160" height="120" rx="8" fill="#2d2d2d" stroke="#444"/>
+                        <rect x="280" y="50" width="160" height="28" rx="8" fill="url(#hdr)"/>
+                        <text x="360" y="69" fill="#fff" font-size="13" font-family="sans-serif" font-weight="700" text-anchor="middle">EdgeDetect</text>
+                        <text x="292" y="102" fill="#ddd" font-size="11" font-family="sans-serif">low: 50</text>
+                        <text x="292" y="120" fill="#ddd" font-size="11" font-family="sans-serif">high: 150</text>
+                        <circle cx="280" cy="110" r="6" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+                        <circle cx="440" cy="110" r="6" fill="#f59e0b" stroke="#fff" stroke-width="1.5"/>
+
+                        <!-- 라벨 -->
+                        <text x="100" y="22" fill="#444" font-size="11" font-family="sans-serif" text-anchor="middle">노드(Node)</text>
+                        <text x="230" y="92" fill="#444" font-size="10" font-family="sans-serif" text-anchor="middle">연결선(Bezier)</text>
+                    </svg>
+                    <div class="figure-caption">노드 = 헤더 + 본문 + 포트. 출력 포트와 입력 포트가 베지에 곡선으로 연결된다.</div>
+                </div>
+
+                <p>NodeControl은 UserControl로 만든다. ViewModel의 <code>InputPorts</code>/<code>OutputPorts</code>를 <code>ItemsControl</code>로 표시한다.</p>
+
+<pre class="language-xml"><code class="language-xml">&lt;UserControl x:Class="ImagingLib.Viewer.Controls.NodeControl"&gt;
+    &lt;Border CornerRadius="8" Background="#2D2D2D" BorderBrush="#444" BorderThickness="1"
+            Width="180" MouseLeftButtonDown="OnNodeMouseDown"&gt;
+        &lt;Grid&gt;
+            &lt;Grid.RowDefinitions&gt;
+                &lt;RowDefinition Height="Auto"/&gt;
+                &lt;RowDefinition Height="*"/&gt;
+            &lt;/Grid.RowDefinitions&gt;
+
+            &lt;!-- 헤더 --&gt;
+            &lt;Border Grid.Row="0" Background="#2563EB" CornerRadius="8,8,0,0" Padding="8,6"&gt;
+                &lt;TextBlock Text="{Binding Title}" Foreground="White" FontWeight="Bold"/&gt;
+            &lt;/Border&gt;
+
+            &lt;!-- 본문 --&gt;
+            &lt;Grid Grid.Row="1" Margin="0,8"&gt;
+                &lt;Grid.ColumnDefinitions&gt;
+                    &lt;ColumnDefinition Width="*"/&gt;
+                    &lt;ColumnDefinition Width="*"/&gt;
+                &lt;/Grid.ColumnDefinitions&gt;
+
+                &lt;!-- 입력 포트 --&gt;
+                &lt;ItemsControl Grid.Column="0" ItemsSource="{Binding InputPorts}"&gt;
+                    &lt;ItemsControl.ItemTemplate&gt;
+                        &lt;DataTemplate&gt;
+                            &lt;StackPanel Orientation="Horizontal" Margin="0,2"&gt;
+                                &lt;Ellipse Width="12" Height="12" Fill="#22C55E"
+                                         local:PortHook.IsPort="True"/&gt;
+                                &lt;TextBlock Text="{Binding Name}" Foreground="#DDD" Margin="6,0,0,0"/&gt;
+                            &lt;/StackPanel&gt;
+                        &lt;/DataTemplate&gt;
+                    &lt;/ItemsControl.ItemTemplate&gt;
+                &lt;/ItemsControl&gt;
+
+                &lt;!-- 출력 포트 --&gt;
+                &lt;ItemsControl Grid.Column="1" ItemsSource="{Binding OutputPorts}" HorizontalAlignment="Right"&gt;
+                    &lt;ItemsControl.ItemTemplate&gt;
+                        &lt;DataTemplate&gt;
+                            &lt;StackPanel Orientation="Horizontal" Margin="0,2" HorizontalAlignment="Right"&gt;
+                                &lt;TextBlock Text="{Binding Name}" Foreground="#DDD" Margin="0,0,6,0"/&gt;
+                                &lt;Ellipse Width="12" Height="12" Fill="#F59E0B"
+                                         local:PortHook.IsPort="True"/&gt;
+                            &lt;/StackPanel&gt;
+                        &lt;/DataTemplate&gt;
+                    &lt;/ItemsControl.ItemTemplate&gt;
+                &lt;/ItemsControl&gt;
+            &lt;/Grid&gt;
+        &lt;/Grid&gt;
+    &lt;/Border&gt;
+&lt;/UserControl&gt;</code></pre>
+
+                <!-- 5. 연결선 -->
+                <h2 id="connection"><i class="fa-solid fa-share-nodes"></i> 연결선(Connection)</h2>
+                <p>연결선은 <code>Path</code>로 그린다. <strong>3차 베지에 곡선</strong>이 자연스럽다. 두 포트 위치를 받아 컨트롤 포인트를 계산한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public sealed class ConnectionView : Shape
+{
+    public static readonly DependencyProperty StartPointProperty =
+        DependencyProperty.Register(nameof(StartPoint), typeof(Point), typeof(ConnectionView),
+            new FrameworkPropertyMetadata(default(Point), FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty EndPointProperty =
+        DependencyProperty.Register(nameof(EndPoint), typeof(Point), typeof(ConnectionView),
+            new FrameworkPropertyMetadata(default(Point), FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public Point StartPoint { get => (Point)GetValue(StartPointProperty); set => SetValue(StartPointProperty, value); }
+    public Point EndPoint   { get => (Point)GetValue(EndPointProperty);   set => SetValue(EndPointProperty, value); }
+
+    protected override Geometry DefiningGeometry
+    {
+        get
+        {
+            // Horizontal tangent: control points pulled along X axis.
+            double dx = Math.Max(40, Math.Abs(EndPoint.X - StartPoint.X) * 0.5);
+            var c1 = new Point(StartPoint.X + dx, StartPoint.Y);
+            var c2 = new Point(EndPoint.X   - dx, EndPoint.Y);
+
+            var figure = new PathFigure { StartPoint = StartPoint };
+            figure.Segments.Add(new BezierSegment(c1, c2, EndPoint, isStroked: true));
+            return new PathGeometry(new[] { figure });
+        }
+    }
+}</code></pre>
+
+                <p>XAML에서는 또 하나의 <code>ItemsControl</code>을 같은 캔버스에 겹쳐 두고 <code>Connections</code> 컬렉션을 표시한다.</p>
+
+<pre class="language-xml"><code class="language-xml">&lt;ItemsControl ItemsSource="{Binding Connections}"&gt;
+    &lt;ItemsControl.ItemsPanel&gt;
+        &lt;ItemsPanelTemplate&gt;&lt;Canvas IsItemsHost="True"/&gt;&lt;/ItemsPanelTemplate&gt;
+    &lt;/ItemsControl.ItemsPanel&gt;
+    &lt;ItemsControl.ItemTemplate&gt;
+        &lt;DataTemplate&gt;
+            &lt;local:ConnectionView Stroke="#F59E0B" StrokeThickness="2"
+                                  StartPoint="{Binding StartPoint}"
+                                  EndPoint="{Binding EndPoint}"/&gt;
+        &lt;/DataTemplate&gt;
+    &lt;/ItemsControl.ItemTemplate&gt;
+&lt;/ItemsControl&gt;</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>연결선이 노드 뒤에 깔리도록 Z-order를 정한다</strong>
+                        Connections 패널을 Nodes 패널보다 먼저(아래에) 둔다. 그래야 노드가 연결선을 덮어 깔끔해 보인다.
+                    </div>
+                </div>
+
+                <!-- 6. 인터랙션 -->
+                <h2 id="interaction"><i class="fa-solid fa-hand-pointer"></i> 드래그·연결 인터랙션</h2>
+
+                <h3 id="node-drag"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 노드 드래그</h3>
+                <p>가장 간단한 방법은 <strong>Attached Behavior</strong>다. 코드 비하인드 대신 첨부 동작으로 묶으면 재사용성이 높다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public static class DraggableBehavior
+{
+    public static readonly DependencyProperty IsEnabledProperty =
+        DependencyProperty.RegisterAttached("IsEnabled", typeof(bool), typeof(DraggableBehavior),
+            new PropertyMetadata(false, OnIsEnabledChanged));
+
+    public static void SetIsEnabled(DependencyObject d, bool v) => d.SetValue(IsEnabledProperty, v);
+    public static bool GetIsEnabled(DependencyObject d) => (bool)d.GetValue(IsEnabledProperty);
+
+    private static Point s_startMouse;
+    private static Point s_startPos;
+    private static bool  s_dragging;
+
+    private static void OnIsEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is FrameworkElement fe &amp;&amp; (bool)e.NewValue)
+        {
+            fe.MouseLeftButtonDown += (s, ev) =>
+            {
+                if (fe.DataContext is not NodeViewModel vm) return;
+                s_startMouse = ev.GetPosition(Application.Current.MainWindow);
+                s_startPos   = new Point(vm.X, vm.Y);
+                s_dragging   = true;
+                fe.CaptureMouse();
+            };
+            fe.MouseMove += (s, ev) =>
+            {
+                if (!s_dragging || fe.DataContext is not NodeViewModel vm) return;
+                var cur = ev.GetPosition(Application.Current.MainWindow);
+                vm.X = s_startPos.X + (cur.X - s_startMouse.X);
+                vm.Y = s_startPos.Y + (cur.Y - s_startMouse.Y);
+            };
+            fe.MouseLeftButtonUp += (s, ev) =>
+            {
+                s_dragging = false;
+                fe.ReleaseMouseCapture();
+            };
+        }
+    }
+}</code></pre>
+
+                <p>NodeControl에서 <code>local:DraggableBehavior.IsEnabled="True"</code>로 켠다. 좌표를 ViewModel의 <code>X</code>/<code>Y</code>에 쓰면 <code>Canvas.Left</code>/<code>Canvas.Top</code> 바인딩이 자동 갱신된다.</p>
+
+                <h3 id="port-connect"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 포트 드래그로 연결 만들기</h3>
+                <p>출력 포트를 누르고 있다가 입력 포트에서 떼면 연결선이 생긴다. 드래그 도중에는 <strong>임시 연결선</strong>이 마우스를 따라가야 한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public sealed class GraphCanvas : Canvas
+{
+    private PortViewModel? _dragSource;
+    private ConnectionView? _temp;
+
+    public void BeginConnection(PortViewModel source, Point start)
+    {
+        _dragSource = source;
+        _temp = new ConnectionView
+        {
+            Stroke = Brushes.Orange,
+            StrokeThickness = 2,
+            StrokeDashArray = new DoubleCollection { 4, 2 },
+            StartPoint = start,
+            EndPoint   = start
+        };
+        Children.Add(_temp);
+        CaptureMouse();
+    }
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        if (_temp != null)
+        {
+            _temp.EndPoint = e.GetPosition(this);
+        }
+    }
+
+    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+    {
+        if (_temp == null || _dragSource == null) return;
+
+        // Hit-test the element under the cursor.
+        var hit = InputHitTest(e.GetPosition(this)) as FrameworkElement;
+        if (hit?.DataContext is PortViewModel target &amp;&amp; CanConnect(_dragSource, target))
+        {
+            var graph = (GraphViewModel)DataContext;
+            graph.AddConnection(_dragSource, target);
+        }
+
+        Children.Remove(_temp);
+        _temp = null;
+        _dragSource = null;
+        ReleaseMouseCapture();
+    }
+
+    private static bool CanConnect(PortViewModel a, PortViewModel b)
+        =&gt; a.Direction != b.Direction
+        &amp;&amp; a.OwnerNode  != b.OwnerNode
+        &amp;&amp; a.DataType   == b.DataType;
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>포트의 화면 좌표 계산은 좌표 변환을 거쳐야 한다</strong>
+                        포트 <code>Ellipse</code>는 노드 안 깊이 위치한다. 캔버스 기준 좌표가 필요할 때는 <code>port.TransformToAncestor(canvas).Transform(new Point(width/2, height/2))</code>로 변환한다. 노드의 <code>Canvas.Left</code>만 읽으면 포트의 실제 위치와 어긋난다.
+                    </div>
+                </div>
+
+                <!-- 7. 줌·팬 -->
+                <h2 id="zoom-pan"><i class="fa-solid fa-magnifying-glass-plus"></i> 줌·팬</h2>
+                <p>캔버스 자체에 <code>RenderTransform</code>으로 <code>MatrixTransform</code>을 걸어 변환한다. <code>ScaleTransform</code>·<code>TranslateTransform</code>을 따로 두기보다 행렬 하나로 두는 편이 조합이 깔끔하다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public sealed partial class GraphCanvasHost : UserControl
+{
+    private readonly MatrixTransform _xf = new();
+    private Point _panStart;
+    private bool  _panning;
+
+    public GraphCanvasHost()
+    {
+        InitializeComponent();
+        Canvas.RenderTransform = _xf;
+    }
+
+    private void OnMouseWheel(object s, MouseWheelEventArgs e)
+    {
+        double scale = e.Delta &gt; 0 ? 1.1 : 1.0 / 1.1;
+        Point center = e.GetPosition(Canvas);
+
+        var m = _xf.Matrix;
+        m.ScaleAtPrepend(scale, scale, center.X, center.Y);
+        _xf.Matrix = m;
+    }
+
+    private void OnMouseDown(object s, MouseButtonEventArgs e)
+    {
+        if (e.MiddleButton == MouseButtonState.Pressed)
+        {
+            _panStart = e.GetPosition(this);
+            _panning  = true;
+            CaptureMouse();
+        }
+    }
+
+    private void OnMouseMove(object s, MouseEventArgs e)
+    {
+        if (!_panning) return;
+        var cur = e.GetPosition(this);
+        var dx  = cur.X - _panStart.X;
+        var dy  = cur.Y - _panStart.Y;
+        _panStart = cur;
+
+        var m = _xf.Matrix;
+        m.Translate(dx, dy);
+        _xf.Matrix = m;
+    }
+
+    private void OnMouseUp(object s, MouseButtonEventArgs e)
+    {
+        _panning = false;
+        ReleaseMouseCapture();
+    }
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>화면 좌표 ↔ 캔버스 좌표</strong>
+                        줌·팬이 걸리면 마우스의 화면 좌표와 캔버스 내부 좌표가 다르다. 노드 배치·히트 테스트는 항상 <code>e.GetPosition(canvas)</code>로 캔버스 좌표를 얻은 뒤 사용한다.
+                    </div>
+                </div>
+
+                <!-- 8. 선택 -->
+                <h2 id="selection"><i class="fa-solid fa-arrow-pointer"></i> 선택 처리</h2>
+                <p>선택은 ViewModel의 책임이다. <code>NodeViewModel.IsSelected</code>를 토글하고, 뷰는 <code>DataTrigger</code>로 외곽선을 강조한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public void SelectNode(NodeViewModel node, bool addToSelection)
+{
+    if (!addToSelection)
+    {
+        foreach (var n in Nodes) n.IsSelected = false;
+    }
+    node.IsSelected = true;
+}
+
+// Delete key handler at the canvas level.
+public void DeleteSelected()
+{
+    var doomed = Nodes.Where(n =&gt; n.IsSelected).ToList();
+    foreach (var n in doomed)
+    {
+        // Cascade: remove connections touching this node first.
+        var related = Connections.Where(c =&gt; c.Source.OwnerNode == n || c.Target.OwnerNode == n).ToList();
+        foreach (var c in related) Connections.Remove(c);
+        Nodes.Remove(n);
+    }
+}</code></pre>
+
+                <p><strong>박스 선택(러버밴드)</strong>은 빈 캔버스에서 좌클릭 드래그 시 <code>Rectangle</code>을 그리고, 종료 시 박스 안에 들어온 노드를 모두 선택한다. 박스 영역과 노드의 <code>Rect</code>를 <code>Rect.Contains</code>로 검사한다.</p>
+
+                <!-- 9. 데이터 모델 -->
+                <h2 id="data-model"><i class="fa-solid fa-database"></i> 데이터 모델</h2>
+                <p>UI를 한 줄도 건드리지 않고 그래프를 만들 수 있을 만큼 ViewModel이 자기 완결적이어야 한다. MVVM(9편)의 원칙을 그대로 따른다.</p>
+
+                <table class="spec-table">
+                    <tr><th>클래스</th><th>책임</th><th>주요 멤버</th></tr>
+                    <tr><td><code>PortViewModel</code></td><td>입출력 단자</td><td>Name, Direction, DataType, OwnerNode</td></tr>
+                    <tr><td><code>NodeViewModel</code></td><td>처리 블록 1개</td><td>Id, Title, X/Y, IsSelected, InputPorts, OutputPorts, Parameters</td></tr>
+                    <tr><td><code>ConnectionViewModel</code></td><td>포트 간 연결</td><td>Source, Target, StartPoint/EndPoint(파생)</td></tr>
+                    <tr><td><code>GraphViewModel</code></td><td>그래프 전체</td><td>Nodes, Connections, AddNode/AddConnection/Remove</td></tr>
+                </table>
+
+<pre class="language-csharp"><code class="language-csharp">public enum PortDirection { Input, Output }
+
+public sealed class PortViewModel : ObservableObject
+{
+    public string Name { get; init; } = "";
+    public PortDirection Direction { get; init; }
+    public Type DataType { get; init; } = typeof(object);
+    public NodeViewModel OwnerNode { get; internal set; } = default!;
+
+    // Cached screen-space position, updated when the node moves.
+    private Point _position;
+    public Point Position { get =&gt; _position; set =&gt; SetProperty(ref _position, value); }
+}
+
+public sealed class NodeViewModel : ObservableObject
+{
+    public Guid Id { get; } = Guid.NewGuid();
+    public string Title { get; init; } = "Node";
+    public string BlockType { get; init; } = "";
+
+    private double _x, _y;
+    public double X { get =&gt; _x; set =&gt; SetProperty(ref _x, value); }
+    public double Y { get =&gt; _y; set =&gt; SetProperty(ref _y, value); }
+
+    private bool _isSelected;
+    public bool IsSelected { get =&gt; _isSelected; set =&gt; SetProperty(ref _isSelected, value); }
+
+    public ObservableCollection&lt;PortViewModel&gt; InputPorts  { get; } = new();
+    public ObservableCollection&lt;PortViewModel&gt; OutputPorts { get; } = new();
+    public Dictionary&lt;string, object&gt; Parameters { get; } = new();
+}
+
+public sealed class ConnectionViewModel : ObservableObject
+{
+    public PortViewModel Source { get; init; } = default!;
+    public PortViewModel Target { get; init; } = default!;
+
+    // Derived from port positions; recomputed when nodes move.
+    public Point StartPoint =&gt; Source.Position;
+    public Point EndPoint   =&gt; Target.Position;
+}
+
+public sealed class GraphViewModel : ObservableObject
+{
+    public ObservableCollection&lt;NodeViewModel&gt; Nodes { get; } = new();
+    public ObservableCollection&lt;ConnectionViewModel&gt; Connections { get; } = new();
+
+    public void AddConnection(PortViewModel a, PortViewModel b)
+    {
+        var (src, dst) = a.Direction == PortDirection.Output ? (a, b) : (b, a);
+
+        // Reject duplicate connections targeting the same input port.
+        var existing = Connections.FirstOrDefault(c =&gt; c.Target == dst);
+        if (existing != null) Connections.Remove(existing);
+
+        Connections.Add(new ConnectionViewModel { Source = src, Target = dst });
+    }
+}</code></pre>
+
+                <!-- 10. 직렬화 -->
+                <h2 id="serialization"><i class="fa-solid fa-floppy-disk"></i> 직렬화</h2>
+                <p>JSON으로 저장한다. <code>System.Text.Json</code>이 표준이다. <strong>DTO 분리</strong>가 핵심이다. ViewModel을 그대로 직렬화하면 순환 참조(Port → OwnerNode → Ports → ...)가 생긴다. 평탄한 DTO로 변환한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public record GraphDto(List&lt;NodeDto&gt; Nodes, List&lt;ConnectionDto&gt; Connections);
+
+public record NodeDto(
+    Guid Id, string BlockType, string Title,
+    double X, double Y, Dictionary&lt;string, object&gt; Parameters);
+
+public record ConnectionDto(
+    Guid SourceNodeId, string SourcePort,
+    Guid TargetNodeId, string TargetPort);
+
+public static class GraphSerializer
+{
+    public static string Save(GraphViewModel g)
+    {
+        var dto = new GraphDto(
+            g.Nodes.Select(n =&gt; new NodeDto(n.Id, n.BlockType, n.Title, n.X, n.Y, n.Parameters)).ToList(),
+            g.Connections.Select(c =&gt; new ConnectionDto(
+                c.Source.OwnerNode.Id, c.Source.Name,
+                c.Target.OwnerNode.Id, c.Target.Name)).ToList());
+
+        return JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    public static GraphViewModel Load(string json, IBlockFactory factory)
+    {
+        var dto = JsonSerializer.Deserialize&lt;GraphDto&gt;(json)
+                  ?? throw new InvalidDataException("Empty graph.");
+
+        var graph = new GraphViewModel();
+        var byId  = new Dictionary&lt;Guid, NodeViewModel&gt;();
+
+        foreach (var nd in dto.Nodes)
+        {
+            var node = factory.Create(nd.BlockType);  // Builds ports based on block type.
+            node.X = nd.X; node.Y = nd.Y;
+            foreach (var kv in nd.Parameters) node.Parameters[kv.Key] = kv.Value;
+            graph.Nodes.Add(node);
+            byId[nd.Id] = node;
+        }
+
+        foreach (var cd in dto.Connections)
+        {
+            var src = byId[cd.SourceNodeId].OutputPorts.First(p =&gt; p.Name == cd.SourcePort);
+            var dst = byId[cd.TargetNodeId].InputPorts .First(p =&gt; p.Name == cd.TargetPort);
+            graph.Connections.Add(new ConnectionViewModel { Source = src, Target = dst });
+        }
+        return graph;
+    }
+}</code></pre>
+
+                <p>저장된 JSON 예시는 다음과 같다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">{
+  "Nodes": [
+    { "Id": "...", "BlockType": "GaussianBlur", "Title": "Blur",
+      "X": 120, "Y": 80,
+      "Parameters": { "kernel": 5, "sigma": 1.4 } },
+    { "Id": "...", "BlockType": "Canny", "Title": "Edge",
+      "X": 360, "Y": 80,
+      "Parameters": { "low": 50, "high": 150 } }
+  ],
+  "Connections": [
+    { "SourceNodeId": "...", "SourcePort": "out",
+      "TargetNodeId": "...", "TargetPort": "in" }
+  ]
+}</code></pre>
+
+                <!-- 11. 실행 -->
+                <h2 id="execution"><i class="fa-solid fa-play"></i> 실행 (토폴로지 정렬)</h2>
+                <p>그래프를 실행하려면 <strong>의존성 순서</strong>대로 노드를 처리해야 한다. DAG(방향 비순환 그래프) 가정에서 <strong>Kahn's algorithm</strong>으로 토폴로지 정렬한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public static IReadOnlyList&lt;NodeViewModel&gt; TopologicalSort(GraphViewModel g)
+{
+    var indeg = g.Nodes.ToDictionary(n =&gt; n, _ =&gt; 0);
+    foreach (var c in g.Connections) indeg[c.Target.OwnerNode]++;
+
+    var ready = new Queue&lt;NodeViewModel&gt;(indeg.Where(kv =&gt; kv.Value == 0).Select(kv =&gt; kv.Key));
+    var order = new List&lt;NodeViewModel&gt;();
+
+    while (ready.Count &gt; 0)
+    {
+        var n = ready.Dequeue();
+        order.Add(n);
+        foreach (var c in g.Connections.Where(c =&gt; c.Source.OwnerNode == n))
+        {
+            var t = c.Target.OwnerNode;
+            if (--indeg[t] == 0) ready.Enqueue(t);
+        }
+    }
+
+    if (order.Count != g.Nodes.Count)
+    {
+        throw new InvalidOperationException("Cycle detected in graph.");
+    }
+    return order;
+}
+
+public async Task ExecuteAsync(GraphViewModel g, CancellationToken ct = default)
+{
+    var order = TopologicalSort(g);
+    var portOutputs = new Dictionary&lt;PortViewModel, object?&gt;();
+
+    foreach (var node in order)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        // Gather inputs from upstream output ports.
+        var inputs = new Dictionary&lt;string, object?&gt;();
+        foreach (var inPort in node.InputPorts)
+        {
+            var conn = g.Connections.FirstOrDefault(c =&gt; c.Target == inPort);
+            inputs[inPort.Name] = conn != null ? portOutputs[conn.Source] : null;
+        }
+
+        // Invoke the actual block (delegates to C++ core via C++/CLI).
+        var block = _registry.Resolve(node.BlockType);
+        var outputs = await block.RunAsync(inputs, node.Parameters, ct);
+
+        foreach (var (name, value) in outputs)
+        {
+            var outPort = node.OutputPorts.First(p =&gt; p.Name == name);
+            portOutputs[outPort] = value;
+        }
+    }
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>비전 파이프라인 예시</strong>
+                        Source → GaussianBlur → Canny → ContourFind → Measure → Verdict. 각 노드가 위 순서로 실행되며, 이전 노드 출력 Image가 다음 노드의 입력으로 그대로 전달된다.
+                    </div>
+                </div>
+
+                <!-- 12. ImagingLib 적용 -->
+                <h2 id="imaginglib"><i class="fa-solid fa-microscope"></i> ImagingLib Viewer 적용</h2>
+                <p>WPF는 시각적 편집만 담당한다. <strong>실제 영상 처리는 C++ 코어가 한다</strong>. 두 세계를 잇는 다리는 12편에서 다룰 C++/CLI 래퍼다.</p>
+
+                <p>코어 측의 인터페이스는 다음과 같다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// C++/CLI projection of ImagingLib::Core::IProcessBlock.
+public interface IProcessBlock
+{
+    string TypeId { get; }                      // e.g. "GaussianBlur"
+    IReadOnlyList&lt;PortSpec&gt; InputSpecs  { get; }
+    IReadOnlyList&lt;PortSpec&gt; OutputSpecs { get; }
+
+    Task&lt;IReadOnlyDictionary&lt;string, object?&gt;&gt; RunAsync(
+        IReadOnlyDictionary&lt;string, object?&gt; inputs,
+        IReadOnlyDictionary&lt;string, object&gt;  parameters,
+        CancellationToken ct);
+}
+
+public sealed record PortSpec(string Name, Type DataType);</code></pre>
+
+                <p>BlockFactory가 <code>TypeId</code>에서 NodeViewModel을 빌드한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public sealed class BlockFactory : IBlockFactory
+{
+    private readonly Dictionary&lt;string, Func&lt;IProcessBlock&gt;&gt; _ctors = new();
+
+    public void Register(string typeId, Func&lt;IProcessBlock&gt; ctor) =&gt; _ctors[typeId] = ctor;
+
+    public NodeViewModel Create(string typeId)
+    {
+        var block = _ctors[typeId]();
+        var node  = new NodeViewModel { BlockType = typeId, Title = typeId };
+
+        foreach (var ps in block.InputSpecs)
+        {
+            var port = new PortViewModel { Name = ps.Name, Direction = PortDirection.Input,  DataType = ps.DataType };
+            port.OwnerNode = node;
+            node.InputPorts.Add(port);
+        }
+        foreach (var ps in block.OutputSpecs)
+        {
+            var port = new PortViewModel { Name = ps.Name, Direction = PortDirection.Output, DataType = ps.DataType };
+            port.OwnerNode = node;
+            node.OutputPorts.Add(port);
+        }
+        return node;
+    }
+}</code></pre>
+
+                <p>각 노드에는 <strong>파라미터 패널</strong>이 붙는다. 노드 선택 시 우측 패널이 <code>Parameters</code> 딕셔너리를 자동 바인딩하여 슬라이더/숫자 입력으로 표시한다. <code>kernel</code>·<code>sigma</code> 값을 바꾸면 ViewModel만 갱신되고, 사용자가 Run을 누르면 위의 <code>ExecuteAsync</code>가 새 파라미터로 코어를 호출한다.</p>
+
+                <!-- 13. 성능 -->
+                <h2 id="performance"><i class="fa-solid fa-gauge-high"></i> 성능 고려</h2>
+                <p>실무 그래프는 보통 20~100개 노드, 무거운 경우 500개에 이른다. 다음을 챙기면 큰 문제는 없다.</p>
+
+                <ul>
+                    <li><strong>UI 가상화</strong> — 화면 밖 노드는 렌더링 생략. 기본 <code>ItemsControl</code>은 가상화하지 않으므로 <code>VirtualizingStackPanel.IsVirtualizing="True"</code> 또는 직접 viewport culling 적용. Canvas는 가상화가 어렵기 때문에 보이는 영역 노드만 컬렉션에 노출하는 방식이 현실적이다.</li>
+                    <li><strong>연결선 캐싱</strong> — 한쪽 끝 노드가 움직일 때만 해당 연결선이 다시 그려지도록 <code>FrameworkPropertyMetadataOptions.AffectsRender</code>를 정확히 표시한다.</li>
+                    <li><strong>드래그 throttling</strong> — <code>MouseMove</code>는 초당 수백 번 발생한다. 매 이벤트마다 무거운 계산 금지. 좌표만 갱신.</li>
+                    <li><strong>오프스크린 미리보기</strong> — 노드 본문에 영상 썸네일을 표시할 때는 작은 해상도로 다운샘플링.</li>
+                    <li><strong>대형 그래프 그리드 표시 끄기</strong> — 격자 배경을 <code>VisualBrush</code>로 깔면 비싸다. 줌이 클 때만 그린다.</li>
+                </ul>
+
+                <!-- 14. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>1. Canvas 절대좌표에만 의존</strong>
+                        노드를 <code>canvas.Children.Add</code>로 직접 넣고 <code>Canvas.SetLeft</code>로 위치를 박으면 MVVM이 깨진다. 직렬화·Undo도 어려워진다. ItemsControl + ItemContainerStyle 바인딩이 정도.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>2. 좌표 변환 헷갈림</strong>
+                        화면 좌표·캔버스 좌표·줌/팬 후 좌표를 구분하지 않으면 포트가 빗나간다. 항상 <code>e.GetPosition(canvas)</code>로 같은 좌표계를 쓰고, 포트의 캔버스 좌표는 <code>TransformToAncestor(canvas)</code>로 구한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>3. 직렬화 시 순환 참조</strong>
+                        Port가 OwnerNode를 참조하고, Node가 Ports를 가진다. ViewModel 그대로 JSON 변환하면 무한 루프 또는 깊이 초과. DTO를 따로 두고 Id 기반 평탄화.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>4. MVVM 깨고 코드 비하인드 남발</strong>
+                        드래그·연결·선택을 NodeControl.xaml.cs에 잔뜩 박으면 테스트가 불가능해진다. Attached Behavior로 묶고, 상태는 ViewModel에 두는 규칙을 지킨다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>5. 사이클 검사 누락</strong>
+                        사용자가 출력 → 입력을 자기 자신의 조상으로 연결하면 무한 루프. 연결 추가 전에 DFS로 사이클을 검사한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>6. 포트 위치를 한 번만 계산</strong>
+                        노드가 움직이거나 사이즈가 바뀌면 포트 좌표가 변한다. <code>LayoutUpdated</code>·<code>SizeChanged</code>·노드 위치 변경 모두에서 PortViewModel.Position을 갱신해야 연결선이 따라온다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Microsoft Learn — Canvas Class (System.Windows.Controls)</li>
+                        <li>Microsoft Learn — ItemsControl, ItemContainerStyle, ItemsPanel</li>
+                        <li>Microsoft Learn — Freezable Objects, MatrixTransform</li>
+                        <li>Microsoft Learn — System.Text.Json overview</li>
+                        <li>NodeNetwork — github.com/Wouterdek/NodeNetwork (오픈소스 WPF 노드 에디터 참고)</li>
+                        <li>Sukhpinder Singh, "Building a Node-Based Editor in WPF" 시리즈</li>
+                        <li>Adaptive Vision Studio — 데이터 플로우 비전 IDE 사례 (공식 사이트)</li>
+                        <li>MVTec HALCON / Merlic — 노드 그래프 UI 사례</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-wpf');
+    renderPostNav('dev-wpf');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

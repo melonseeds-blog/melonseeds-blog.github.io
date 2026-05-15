@@ -1,0 +1,982 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>명령 패턴 — ICommand·RelayCommand - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec-table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.88rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+        .spec-table code { font-size: 0.85em; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 흐름 다이어그램 */
+        .flow-figure {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 18px 16px; margin: 20px 0; text-align: center;
+        }
+        .flow-figure svg { max-width: 100%; height: auto; }
+        .flow-figure .caption { margin-top: 8px; font-size: 0.82rem; color: var(--text-muted); }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#cmd-intro" data-section="cmd-intro">명령이란</a>
+        <a href="#icommand" data-section="icommand">ICommand</a>
+        <a href="#canexecute" data-section="canexecute">CanExecute</a>
+        <a href="#routed" data-section="routed">RoutedCommand</a>
+        <a href="#relay" data-section="relay">RelayCommand</a>
+        <a href="#async" data-section="async">AsyncRelayCommand</a>
+        <a href="#parameter" data-section="parameter">CommandParameter</a>
+        <a href="#binding-vs" data-section="binding-vs">바인딩 방식</a>
+        <a href="#toolkit" data-section="toolkit">CommunityToolkit</a>
+        <a href="#industrial" data-section="industrial">산업 적용</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">WPF / C#</span>
+                </div>
+                <h1>명령 패턴 — ICommand·RelayCommand</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li><code>ICommand</code> 인터페이스의 세 멤버: <code>Execute</code>, <code>CanExecute</code>, <code>CanExecuteChanged</code></li>
+                        <li><code>RelayCommand</code>·<code>AsyncRelayCommand</code>를 직접 구현하는 방법</li>
+                        <li><code>RoutedCommand</code>·<code>CommandBinding</code>과 ViewModel <code>Binding</code>의 차이</li>
+                        <li><code>CommunityToolkit.Mvvm</code>의 <code>[RelayCommand]</code> 소스 제너레이터</li>
+                        <li>이미지 검사 ViewModel에 검사 시작·정지·저장 명령을 붙이는 실전 예제</li>
+                        <li>흔한 함정: <code>CanExecuteChanged</code> 누락, <code>async void Execute</code>, <code>RequerySuggested</code> 의존</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#cmd-intro">WPF 명령(Command)이란?</a></li>
+                        <li><a href="#icommand">ICommand 인터페이스</a></li>
+                        <li><a href="#canexecute">CanExecute — UI 자동 비활성화</a></li>
+                        <li><a href="#routed">RoutedCommand 내장과 CommandBinding</a></li>
+                        <li><a href="#relay">RelayCommand 직접 구현</a></li>
+                        <li><a href="#async">AsyncRelayCommand — async/await 결합</a></li>
+                        <li><a href="#parameter">CommandParameter — XAML에서 매개변수 전달</a></li>
+                        <li><a href="#binding-vs">CommandBinding vs Binding to Command</a></li>
+                        <li><a href="#toolkit">CommunityToolkit.Mvvm — 현대적 방식</a></li>
+                        <li><a href="#industrial">산업·이미지 적용 예제</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 명령이란 -->
+                <h2 id="cmd-intro"><i class="fa-solid fa-bolt"></i> WPF 명령(Command)이란?</h2>
+                <p>WPF 명령은 사용자의 <strong>행동(action)을 객체로 캡슐화</strong>하는 메커니즘이다. <code>Button.Click</code> 같은 이벤트 핸들러를 코드비하인드에 두면 View와 로직이 강하게 묶여 ViewModel 테스트가 어렵다. 명령을 쓰면 행동을 ViewModel 속성으로 노출하고 View는 그것을 바인딩만 하면 된다. MVVM 패턴의 핵심 부품이다.</p>
+
+                <p>이벤트 핸들러 방식과 명령 방식을 비교하면 다음과 같다.</p>
+
+<pre class="language-xml"><code class="language-xml">&lt;!-- 이벤트 방식 — 코드비하인드에 핸들러 필요 --&gt;
+&lt;Button Content="저장" Click="SaveButton_Click"/&gt;
+
+&lt;!-- 명령 방식 — ViewModel의 SaveCommand에 바인딩 --&gt;
+&lt;Button Content="저장" Command="{Binding SaveCommand}"/&gt;</code></pre>
+
+<pre class="language-csharp"><code class="language-csharp">// 이벤트 방식 — View.xaml.cs (코드비하인드)
+private void SaveButton_Click(object sender, RoutedEventArgs e)
+{
+    var vm = (MainViewModel)DataContext;
+    vm.Save();   // View가 ViewModel을 직접 호출 — 결합 발생
+}
+
+// 명령 방식 — MainViewModel.cs
+public ICommand SaveCommand { get; }
+// 생성자에서 RelayCommand로 초기화. View는 ViewModel을 모른다.</code></pre>
+
+                <div class="flow-figure">
+                    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ICommand 호출 흐름">
+                        <defs>
+                            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 Z" fill="#64748b"/>
+                            </marker>
+                        </defs>
+                        <!-- View -->
+                        <rect x="20" y="30" width="170" height="160" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="1.5"/>
+                        <text x="105" y="55" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#1e3a5f">View (XAML)</text>
+                        <rect x="40" y="75" width="130" height="34" rx="6" fill="#ffffff" stroke="#93c5fd"/>
+                        <text x="105" y="97" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#1e3a5f">&lt;Button</text>
+                        <rect x="40" y="118" width="130" height="50" rx="6" fill="#ffffff" stroke="#93c5fd"/>
+                        <text x="105" y="138" text-anchor="middle" font-family="Consolas, monospace" font-size="10" fill="#1e3a5f">Command=</text>
+                        <text x="105" y="155" text-anchor="middle" font-family="Consolas, monospace" font-size="10" fill="#1e3a5f">"{Binding Save}"/&gt;</text>
+
+                        <!-- Binding 화살표 -->
+                        <line x1="195" y1="110" x2="265" y2="110" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+                        <text x="230" y="100" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#475569">Binding</text>
+
+                        <!-- ICommand -->
+                        <rect x="270" y="30" width="180" height="160" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+                        <text x="360" y="55" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#78350f">ICommand</text>
+                        <rect x="285" y="75" width="150" height="28" rx="6" fill="#ffffff" stroke="#fcd34d"/>
+                        <text x="360" y="94" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#78350f">Execute(p)</text>
+                        <rect x="285" y="110" width="150" height="28" rx="6" fill="#ffffff" stroke="#fcd34d"/>
+                        <text x="360" y="129" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#78350f">CanExecute(p)</text>
+                        <rect x="285" y="145" width="150" height="34" rx="6" fill="#ffffff" stroke="#fcd34d"/>
+                        <text x="360" y="160" text-anchor="middle" font-family="Consolas, monospace" font-size="10" fill="#78350f">CanExecuteChanged</text>
+                        <text x="360" y="172" text-anchor="middle" font-family="Consolas, monospace" font-size="9" fill="#78350f">(event)</text>
+
+                        <!-- Invoke -->
+                        <line x1="455" y1="110" x2="525" y2="110" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+                        <text x="490" y="100" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#475569">Invoke</text>
+
+                        <!-- ViewModel -->
+                        <rect x="530" y="30" width="170" height="160" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="1.5"/>
+                        <text x="615" y="55" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#065f46">ViewModel</text>
+                        <rect x="548" y="75" width="134" height="44" rx="6" fill="#ffffff" stroke="#6ee7b7"/>
+                        <text x="615" y="93" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#065f46">SaveCommand</text>
+                        <text x="615" y="109" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#065f46">(RelayCommand)</text>
+                        <rect x="548" y="128" width="134" height="44" rx="6" fill="#ffffff" stroke="#6ee7b7"/>
+                        <text x="615" y="148" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#065f46">Save() 메서드</text>
+                        <text x="615" y="163" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#065f46">실제 로직</text>
+                    </svg>
+                    <div class="caption">View → Binding → ICommand → ViewModel. View는 ViewModel의 구체 타입을 모른다.</div>
+                </div>
+
+                <!-- 2. ICommand -->
+                <h2 id="icommand"><i class="fa-solid fa-cube"></i> ICommand 인터페이스</h2>
+                <p><code>System.Windows.Input.ICommand</code>는 세 멤버만 가진 단순한 인터페이스다. 모든 명령 객체가 구현해야 하는 계약이다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">namespace System.Windows.Input;
+
+public interface ICommand
+{
+    // 명령이 실행 가능한지 반환. WPF는 이 결과로 컨트롤을 자동 enable/disable 한다.
+    bool CanExecute(object? parameter);
+
+    // 실제 명령 실행. CanExecute가 false여도 호출은 가능하다.
+    void Execute(object? parameter);
+
+    // 실행 가능 여부가 바뀌었음을 WPF에 알리는 이벤트.
+    event EventHandler? CanExecuteChanged;
+}</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>멤버</th><th>역할</th><th>호출 시점</th></tr>
+                    <tr><td><code>CanExecute</code></td><td>실행 가능 여부 질의</td><td>WPF가 UI 갱신마다 폴링</td></tr>
+                    <tr><td><code>Execute</code></td><td>실제 행동 수행</td><td>버튼 클릭, KeyGesture 발생 등</td></tr>
+                    <tr><td><code>CanExecuteChanged</code></td><td>WPF에 재질의 요청</td><td>ViewModel 상태가 바뀐 직후 발화</td></tr>
+                </table>
+
+                <!-- 3. CanExecute -->
+                <h2 id="canexecute"><i class="fa-solid fa-toggle-on"></i> CanExecute — UI 자동 비활성화</h2>
+                <p>WPF의 강력한 점이다. <code>Command</code>가 바인딩된 <code>Button</code>·<code>MenuItem</code>은 <code>CanExecute</code>가 <code>false</code>면 자동으로 회색 처리되어 클릭이 막힌다. ViewModel은 별도의 <code>IsEnabled</code> 속성을 만들 필요가 없다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public bool CanExecute(object? parameter)
+{
+    // 이미지가 로드되어 있을 때만 저장 가능.
+    return m_currentImage != null &amp;&amp; !m_isSaving;
+}
+
+// 상태가 바뀐 직후 — 반드시 CanExecuteChanged를 발화해야 UI가 갱신된다.
+public Image? CurrentImage
+{
+    get =&gt; m_currentImage;
+    set
+    {
+        m_currentImage = value;
+        OnPropertyChanged();
+        SaveCommand.RaiseCanExecuteChanged();   // ← 핵심
+    }
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>CanExecuteChanged를 발화하지 않으면 버튼이 회색에서 깨어나지 않는다</strong>
+                        상태가 바뀌었는데 <code>CanExecuteChanged</code>를 발화하지 않으면 WPF는 재질의하지 않는다. ViewModel에서 <code>CanExecute</code>에 영향을 주는 속성이 바뀔 때마다 잊지 말고 호출하자.
+                    </div>
+                </div>
+
+                <!-- 4. RoutedCommand -->
+                <h2 id="routed"><i class="fa-solid fa-route"></i> RoutedCommand 내장과 CommandBinding</h2>
+                <p>WPF는 자주 쓰는 명령을 <strong>내장 RoutedCommand</strong>로 제공한다. <code>ApplicationCommands.Save</code>, <code>Copy</code>, <code>Paste</code>, <code>Undo</code> 등이다. 이 명령들은 단축키(Ctrl+S, Ctrl+C 등)와 입력 제스처가 미리 매핑되어 있다.</p>
+
+<pre class="language-xml"><code class="language-xml">&lt;Window x:Class="Imaging.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"&gt;
+    &lt;Window.CommandBindings&gt;
+        &lt;!-- ApplicationCommands.Save에 핸들러를 연결 --&gt;
+        &lt;CommandBinding Command="ApplicationCommands.Save"
+                        Executed="SaveCommand_Executed"
+                        CanExecute="SaveCommand_CanExecute"/&gt;
+    &lt;/Window.CommandBindings&gt;
+
+    &lt;StackPanel&gt;
+        &lt;!-- 같은 명령을 버튼과 메뉴 양쪽에 바인딩 가능 --&gt;
+        &lt;Button Content="저장" Command="ApplicationCommands.Save"/&gt;
+        &lt;MenuItem Header="저장(_S)" Command="ApplicationCommands.Save"/&gt;
+        &lt;!-- Ctrl+S 단축키는 자동 지원 --&gt;
+    &lt;/StackPanel&gt;
+&lt;/Window&gt;</code></pre>
+
+<pre class="language-csharp"><code class="language-csharp">// 코드비하인드 — RoutedCommand는 보통 코드비하인드에서 처리한다.
+private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+{
+    // 이미지 저장 로직
+}
+
+private void SaveCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+{
+    e.CanExecute = m_currentImage != null;
+}</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>내장 명령 클래스</th><th>대표 명령</th><th>단축키</th></tr>
+                    <tr><td><code>ApplicationCommands</code></td><td>Save, Open, Copy, Paste, Undo</td><td>Ctrl+S/O/C/V/Z</td></tr>
+                    <tr><td><code>EditingCommands</code></td><td>Backspace, Delete, ToggleBold</td><td>각종 편집 제스처</td></tr>
+                    <tr><td><code>MediaCommands</code></td><td>Play, Pause, Stop</td><td>미디어 키</td></tr>
+                    <tr><td><code>NavigationCommands</code></td><td>BrowseBack, BrowseForward, Refresh</td><td>Alt+←/→, F5</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>RoutedCommand는 MVVM과 잘 안 맞는다</strong>
+                        <code>CommandBinding</code>은 코드비하인드에 핸들러를 두기 때문에 ViewModel 단위 테스트가 어렵다. MVVM에서는 ViewModel에 <code>ICommand</code> 속성을 노출하는 방식(<code>RelayCommand</code>)이 표준이다.
+                    </div>
+                </div>
+
+                <!-- 5. RelayCommand -->
+                <h2 id="relay"><i class="fa-solid fa-arrow-right-arrow-left"></i> RelayCommand 직접 구현</h2>
+                <p>MVVM에서 가장 흔히 쓰는 패턴이다. <code>Action</code>·<code>Func&lt;bool&gt;</code>을 받아 <code>Execute</code>·<code>CanExecute</code>로 단순히 위임만 한다. 한 번 만들어두면 모든 ViewModel에서 재사용한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">using System;
+using System.Windows.Input;
+
+namespace Imaging.Mvvm;
+
+// Generic relay command — parameter type T.
+public sealed class RelayCommand&lt;T&gt; : ICommand
+{
+    private readonly Action&lt;T?&gt; m_execute;
+    private readonly Predicate&lt;T?&gt;? m_canExecute;
+
+    public RelayCommand(Action&lt;T?&gt; execute, Predicate&lt;T?&gt;? canExecute = null)
+    {
+        m_execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        m_canExecute = canExecute;
+    }
+
+    public bool CanExecute(object? parameter)
+        =&gt; m_canExecute == null || m_canExecute((T?)parameter);
+
+    public void Execute(object? parameter)
+        =&gt; m_execute((T?)parameter);
+
+    public event EventHandler? CanExecuteChanged;
+
+    // ViewModel이 호출하여 UI 갱신을 트리거한다.
+    public void RaiseCanExecuteChanged()
+        =&gt; CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+}
+
+// Non-generic shortcut for parameter-less commands.
+public sealed class RelayCommand : ICommand
+{
+    private readonly Action m_execute;
+    private readonly Func&lt;bool&gt;? m_canExecute;
+
+    public RelayCommand(Action execute, Func&lt;bool&gt;? canExecute = null)
+    {
+        m_execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        m_canExecute = canExecute;
+    }
+
+    public bool CanExecute(object? parameter) =&gt; m_canExecute?.Invoke() ?? true;
+    public void Execute(object? parameter) =&gt; m_execute();
+
+    public event EventHandler? CanExecuteChanged;
+    public void RaiseCanExecuteChanged() =&gt; CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+}</code></pre>
+
+                <p>사용 예제다. ViewModel 생성자에서 람다로 동작을 주입한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public class MainViewModel : ObservableObject
+{
+    private string m_inputPath = string.Empty;
+
+    public string InputPath
+    {
+        get =&gt; m_inputPath;
+        set
+        {
+            if (SetProperty(ref m_inputPath, value))
+            {
+                LoadCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public RelayCommand LoadCommand { get; }
+    public RelayCommand ClearCommand { get; }
+
+    public MainViewModel()
+    {
+        LoadCommand = new RelayCommand(
+            execute: () =&gt; LoadImage(m_inputPath),
+            canExecute: () =&gt; !string.IsNullOrWhiteSpace(m_inputPath));
+
+        ClearCommand = new RelayCommand(() =&gt; m_inputPath = string.Empty);
+    }
+
+    private void LoadImage(string path) { /* ... */ }
+}</code></pre>
+
+                <!-- 6. AsyncRelayCommand -->
+                <h2 id="async"><i class="fa-solid fa-hourglass-half"></i> AsyncRelayCommand — async/await 결합</h2>
+                <p>이미지 처리·파일 I/O·네트워크 요청은 비동기로 실행해야 UI가 멈추지 않는다. 그러나 <code>ICommand.Execute</code>는 <code>void</code> 반환이라 <code>async void</code>로 만들면 예외가 누수된다. <code>AsyncRelayCommand</code>는 <code>Task</code>를 반환하는 람다를 받아 안전하게 await 하고, 실행 중에는 자동으로 <code>CanExecute</code>를 <code>false</code>로 만들어 중복 실행을 막는다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">using System;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace Imaging.Mvvm;
+
+public sealed class AsyncRelayCommand : ICommand
+{
+    private readonly Func&lt;Task&gt; m_executeAsync;
+    private readonly Func&lt;bool&gt;? m_canExecute;
+    private bool m_isRunning;
+
+    public AsyncRelayCommand(Func&lt;Task&gt; executeAsync, Func&lt;bool&gt;? canExecute = null)
+    {
+        m_executeAsync = executeAsync ?? throw new ArgumentNullException(nameof(executeAsync));
+        m_canExecute = canExecute;
+    }
+
+    public bool IsRunning
+    {
+        get =&gt; m_isRunning;
+        private set
+        {
+            m_isRunning = value;
+            RaiseCanExecuteChanged();
+        }
+    }
+
+    public bool CanExecute(object? parameter)
+        =&gt; !m_isRunning &amp;&amp; (m_canExecute?.Invoke() ?? true);
+
+    public async void Execute(object? parameter)
+    {
+        if (!CanExecute(parameter)) return;
+
+        IsRunning = true;
+        try
+        {
+            await m_executeAsync();   // 예외를 정상 캡처
+        }
+        catch (Exception ex)
+        {
+            // 로깅·에러 콜백 — async void로 예외 누수 방지.
+            Logger.Error(ex, "AsyncRelayCommand failed");
+        }
+        finally
+        {
+            IsRunning = false;
+        }
+    }
+
+    public event EventHandler? CanExecuteChanged;
+    public void RaiseCanExecuteChanged() =&gt; CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+}</code></pre>
+
+<pre class="language-csharp"><code class="language-csharp">// 사용 예제 — 이미지 비동기 로드.
+public AsyncRelayCommand LoadAsyncCommand { get; }
+
+public MainViewModel()
+{
+    LoadAsyncCommand = new AsyncRelayCommand(async () =&gt;
+    {
+        Status = "로딩 중...";
+        CurrentImage = await Task.Run(() =&gt; Image.LoadFromFile(InputPath));
+        Status = "완료";
+    });
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>async void Execute의 예외는 UI 스레드를 폭파시킨다</strong>
+                        <code>async void</code>에서 던진 예외는 호출자가 받지 못하고 SynchronizationContext로 올라가 앱이 종료될 수 있다. <code>AsyncRelayCommand</code>는 내부에서 try/catch로 잡아 로깅하거나 에러 콜백으로 전달해야 한다.
+                    </div>
+                </div>
+
+                <!-- 7. CommandParameter -->
+                <h2 id="parameter"><i class="fa-solid fa-share-from-square"></i> CommandParameter — XAML에서 매개변수 전달</h2>
+                <p>같은 명령을 여러 버튼에서 재사용하면서 버튼마다 다른 인자를 넘기고 싶을 때 <code>CommandParameter</code>를 쓴다. 이 값이 그대로 <code>Execute</code>·<code>CanExecute</code>의 인자로 전달된다.</p>
+
+<pre class="language-xml"><code class="language-xml">&lt;StackPanel&gt;
+    &lt;!-- 필터 종류를 매개변수로 전달 --&gt;
+    &lt;Button Content="블러" Command="{Binding ApplyFilterCommand}"
+            CommandParameter="Blur"/&gt;
+    &lt;Button Content="샤픈" Command="{Binding ApplyFilterCommand}"
+            CommandParameter="Sharpen"/&gt;
+    &lt;Button Content="엣지" Command="{Binding ApplyFilterCommand}"
+            CommandParameter="Edge"/&gt;
+
+    &lt;!-- 선택된 아이템 자체를 전달 --&gt;
+    &lt;ListBox x:Name="ImageList" ItemsSource="{Binding Images}"/&gt;
+    &lt;Button Content="삭제"
+            Command="{Binding DeleteCommand}"
+            CommandParameter="{Binding SelectedItem, ElementName=ImageList}"/&gt;
+&lt;/StackPanel&gt;</code></pre>
+
+<pre class="language-csharp"><code class="language-csharp">// ViewModel — 매개변수 타입을 RelayCommand&lt;T&gt;로 지정
+public RelayCommand&lt;string&gt; ApplyFilterCommand { get; }
+public RelayCommand&lt;ImageItem&gt; DeleteCommand { get; }
+
+public MainViewModel()
+{
+    ApplyFilterCommand = new RelayCommand&lt;string&gt;(
+        execute: kind =&gt; ApplyFilter(kind!),
+        canExecute: kind =&gt; CurrentImage != null &amp;&amp; !string.IsNullOrEmpty(kind));
+
+    DeleteCommand = new RelayCommand&lt;ImageItem&gt;(
+        execute: item =&gt; Images.Remove(item!),
+        canExecute: item =&gt; item != null);
+}
+
+private void ApplyFilter(string kind)
+{
+    switch (kind)
+    {
+        case "Blur":    /* ... */ break;
+        case "Sharpen": /* ... */ break;
+        case "Edge":    /* ... */ break;
+    }
+}</code></pre>
+
+                <!-- 8. 두 방식 비교 -->
+                <h2 id="binding-vs"><i class="fa-solid fa-code-compare"></i> CommandBinding vs Binding to Command</h2>
+                <p>XAML에서 명령을 연결하는 두 가지 방식이 있다. 차이를 알면 상황에 맞게 고를 수 있다.</p>
+
+<pre class="language-xml"><code class="language-xml">&lt;!-- (A) CommandBinding 방식 — RoutedCommand + 코드비하인드 --&gt;
+&lt;Window.CommandBindings&gt;
+    &lt;CommandBinding Command="ApplicationCommands.Save"
+                    Executed="OnSaveExecuted"/&gt;
+&lt;/Window.CommandBindings&gt;
+&lt;Button Command="ApplicationCommands.Save"/&gt;
+
+&lt;!-- (B) Binding to Command 방식 — ICommand + ViewModel --&gt;
+&lt;Button Command="{Binding SaveCommand}"/&gt;</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>비교</th><th>(A) CommandBinding</th><th>(B) Binding to Command</th></tr>
+                    <tr><td>로직 위치</td><td>코드비하인드</td><td>ViewModel</td></tr>
+                    <tr><td>명령 종류</td><td>RoutedCommand</td><td>임의의 ICommand</td></tr>
+                    <tr><td>이벤트 라우팅</td><td>지원 (Tunneling/Bubbling)</td><td>없음 (단순 호출)</td></tr>
+                    <tr><td>단위 테스트</td><td>어려움</td><td>쉬움</td></tr>
+                    <tr><td>MVVM 적합도</td><td>낮음</td><td>높음</td></tr>
+                    <tr><td>사용 시점</td><td>전역 단축키, 표준 편집 명령</td><td>대부분의 ViewModel 액션</td></tr>
+                </table>
+
+                <!-- 9. CommunityToolkit -->
+                <h2 id="toolkit"><i class="fa-solid fa-boxes-stacked"></i> CommunityToolkit.Mvvm — 현대적 방식</h2>
+                <p>Microsoft가 공식 지원하는 <code>CommunityToolkit.Mvvm</code> NuGet 패키지는 소스 제너레이터로 <code>RelayCommand</code>·<code>ObservableObject</code>를 자동 생성한다. 보일러플레이트가 거의 사라진다.</p>
+
+<pre class="language-xml"><code class="language-xml">&lt;!-- vcpkg가 아닌 .NET NuGet 패키지 --&gt;
+&lt;PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" /&gt;</code></pre>
+
+<pre class="language-csharp"><code class="language-csharp">using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System.Threading.Tasks;
+
+// partial class 필수 — 소스 제너레이터가 같은 클래스에 코드를 채워 넣는다.
+public partial class MainViewModel : ObservableObject
+{
+    // [ObservableProperty] — INotifyPropertyChanged 자동 구현.
+    // m_currentImage 필드에서 CurrentImage 속성이 자동 생성된다.
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private Image? m_currentImage;
+
+    [ObservableProperty]
+    private string m_status = "대기 중";
+
+    // [RelayCommand] — ICommand 속성이 메서드명에서 자동 생성.
+    // SaveAsync 메서드 → SaveCommand 속성.
+    [RelayCommand(CanExecute = nameof(CanSave))]
+    private async Task SaveAsync()
+    {
+        Status = "저장 중...";
+        await Task.Run(() =&gt; m_currentImage!.SaveToFile("out.png"));
+        Status = "저장 완료";
+    }
+
+    private bool CanSave() =&gt; m_currentImage != null;
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>새 프로젝트에서는 CommunityToolkit.Mvvm을 우선 검토하자</strong>
+                        Prism·MVVMLight를 대체하는 사실상 표준이다. async 명령·CanExecute 자동 갱신·INotifyPropertyChanged까지 모두 소스 제너레이터로 처리되어 ViewModel이 매우 간결해진다.
+                    </div>
+                </div>
+
+                <!-- 10. 산업 적용 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업·이미지 적용 예제</h2>
+                <p>비전 검사 ViewModel에 명령 패턴을 적용해본다. "검사 시작/정지", "이미지 저장" 같은 액션은 모두 <code>ICommand</code>로 노출한다. UI는 <code>IsInspecting</code> 상태에 따라 자동으로 버튼이 토글된다.</p>
+
+<pre class="language-xml"><code class="language-xml">&lt;Grid&gt;
+    &lt;Grid.RowDefinitions&gt;
+        &lt;RowDefinition Height="Auto"/&gt;
+        &lt;RowDefinition Height="*"/&gt;
+    &lt;/Grid.RowDefinitions&gt;
+
+    &lt;StackPanel Orientation="Horizontal" Margin="8"&gt;
+        &lt;Button Content="검사 시작" Width="100" Margin="4"
+                Command="{Binding StartInspectionCommand}"/&gt;
+        &lt;Button Content="검사 정지" Width="100" Margin="4"
+                Command="{Binding StopInspectionCommand}"/&gt;
+        &lt;Button Content="이미지 저장" Width="100" Margin="4"
+                Command="{Binding SaveImageCommand}"
+                CommandParameter="{Binding CurrentImage}"/&gt;
+        &lt;TextBlock Text="{Binding Status}" Margin="12,8" VerticalAlignment="Center"/&gt;
+    &lt;/StackPanel&gt;
+
+    &lt;Image Grid.Row="1" Source="{Binding CurrentImage.Preview}"/&gt;
+&lt;/Grid&gt;</code></pre>
+
+<pre class="language-csharp"><code class="language-csharp">using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+public partial class InspectionViewModel : ObservableObject
+{
+    private readonly IInspectionService m_service;
+    private CancellationTokenSource? m_cts;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StartInspectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StopInspectionCommand))]
+    private bool m_isInspecting;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveImageCommand))]
+    private ImageData? m_currentImage;
+
+    [ObservableProperty]
+    private string m_status = "대기 중";
+
+    public InspectionViewModel(IInspectionService service)
+    {
+        m_service = service;
+    }
+
+    // 검사 시작 — 비동기, 실행 중에는 자동으로 비활성화.
+    [RelayCommand(CanExecute = nameof(CanStart))]
+    private async Task StartInspectionAsync()
+    {
+        IsInspecting = true;
+        Status = "검사 중...";
+        m_cts = new CancellationTokenSource();
+        try
+        {
+            await foreach (var img in m_service.InspectAsync(m_cts.Token))
+            {
+                CurrentImage = img;
+            }
+            Status = "완료";
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "정지됨";
+        }
+        finally
+        {
+            IsInspecting = false;
+        }
+    }
+    private bool CanStart() =&gt; !IsInspecting;
+
+    // 검사 정지.
+    [RelayCommand(CanExecute = nameof(CanStop))]
+    private void StopInspection() =&gt; m_cts?.Cancel();
+    private bool CanStop() =&gt; IsInspecting;
+
+    // 이미지 저장 — CommandParameter로 받은 이미지를 저장.
+    [RelayCommand(CanExecute = nameof(CanSave))]
+    private async Task SaveImageAsync(ImageData? image)
+    {
+        if (image == null) return;
+        Status = "저장 중...";
+        await image.SaveAsync($"capture_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+        Status = "저장 완료";
+    }
+    private bool CanSave(ImageData? image) =&gt; image != null &amp;&amp; !IsInspecting;
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실전 패턴</strong>
+                        <code>IsInspecting</code> 같은 상태 플래그 하나에 <code>NotifyCanExecuteChangedFor</code>를 여러 개 붙여, 한 속성 변경으로 관련된 모든 명령이 갱신되도록 만든다. 검사 시작 시 정지·저장 버튼 상태가 자동으로 바뀐다.
+                    </div>
+                </div>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <h3 id="pitfall-1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 1 — CanExecuteChanged 발화 누락</h3>
+                <p>가장 흔한 버그다. <code>CanExecute</code>가 참조하는 속성을 바꿔놓고 <code>RaiseCanExecuteChanged</code>를 호출하지 않으면 버튼이 회색에서 깨어나지 않는다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 잘못된 예제
+public string InputPath
+{
+    get =&gt; m_inputPath;
+    set { m_inputPath = value; OnPropertyChanged(); }   // ← 빠진 호출
+}
+
+// 올바른 예제
+public string InputPath
+{
+    get =&gt; m_inputPath;
+    set
+    {
+        m_inputPath = value;
+        OnPropertyChanged();
+        LoadCommand.RaiseCanExecuteChanged();   // ← 반드시 호출
+    }
+}</code></pre>
+
+                <h3 id="pitfall-2"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 2 — async void Execute로 예외 누수</h3>
+                <p><code>ICommand.Execute</code>를 직접 <code>async void</code>로 구현하면 내부 예외가 호출자에게 전달되지 않고 <code>SynchronizationContext</code>로 올라가 앱이 죽는다. 반드시 try/catch로 감싸거나 <code>AsyncRelayCommand</code>를 사용하자.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 위험한 예제 — 예외가 누수된다
+public async void Execute(object? parameter)
+{
+    await DoWorkAsync();   // 여기서 예외가 나면 앱 종료 위험
+}
+
+// 안전한 예제
+public async void Execute(object? parameter)
+{
+    try { await DoWorkAsync(); }
+    catch (Exception ex) { Logger.Error(ex, "Command failed"); }
+}</code></pre>
+
+                <h3 id="pitfall-3"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 3 — CommandManager.RequerySuggested 의존</h3>
+                <p>예전 자료에서 자주 보이는 패턴이다. <code>CanExecuteChanged</code>를 <code>CommandManager.RequerySuggested</code>에 연결하면 WPF가 마우스·포커스 이벤트마다 자동 재질의한다. 편하지만 폴링 빈도가 높아 성능을 깎고, 트리거 시점도 모호하다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 비권장 — 폴링 기반, 시점 모호
+public event EventHandler? CanExecuteChanged
+{
+    add { CommandManager.RequerySuggested += value; }
+    remove { CommandManager.RequerySuggested -= value; }
+}
+
+// 권장 — 명시적 발화. 어디서 갱신되는지 코드로 보인다.
+public event EventHandler? CanExecuteChanged;
+public void RaiseCanExecuteChanged() =&gt; CanExecuteChanged?.Invoke(this, EventArgs.Empty);</code></pre>
+
+                <h3 id="pitfall-4"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함정 4 — RelayCommand 재발명</h3>
+                <p>프로젝트마다 <code>RelayCommand</code>를 새로 짜는 사람이 많다. 2026년 기준 <code>CommunityToolkit.Mvvm</code>이 사실상 표준이므로 새 프로젝트라면 우선 검토하자. 직접 구현은 학습용·라이브러리 의존을 줄이고 싶을 때만 한다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>요약 — 명령 패턴 체크리스트</strong>
+                        ViewModel 액션은 모두 <code>ICommand</code>로 노출 / 비동기는 <code>AsyncRelayCommand</code> 사용 / 상태 속성 변경 시 <code>RaiseCanExecuteChanged</code> 호출 / 새 프로젝트는 <code>CommunityToolkit.Mvvm</code> 우선 / <code>async void Execute</code>의 예외는 반드시 try/catch.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Microsoft Learn — <em>Commanding Overview (WPF)</em></li>
+                        <li>Microsoft Learn — <em>ICommand Interface</em></li>
+                        <li>CommunityToolkit.Mvvm 공식 문서 — <em>RelayCommand·ObservableObject</em></li>
+                        <li>Josh Smith — <em>WPF Apps With The Model-View-ViewModel Design Pattern</em> (MSDN Magazine)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-wpf');
+    renderPostNav('dev-wpf');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

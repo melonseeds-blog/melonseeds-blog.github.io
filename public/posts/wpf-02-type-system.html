@@ -1,0 +1,973 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C# 타입 시스템 — value/reference·제네릭 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 메모리 다이어그램 */
+        .mem-diagram {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 16px; margin: 20px 0;
+            display: flex; justify-content: center;
+        }
+        .mem-diagram svg { max-width: 100%; height: auto; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#two-kinds" data-section="two-kinds">2대 분류</a>
+        <a href="#value-vs-ref" data-section="value-vs-ref">value vs reference</a>
+        <a href="#boxing" data-section="boxing">박싱</a>
+        <a href="#nullable" data-section="nullable">nullable</a>
+        <a href="#string" data-section="string">string</a>
+        <a href="#record" data-section="record">record</a>
+        <a href="#generics" data-section="generics">제네릭</a>
+        <a href="#variance" data-section="variance">공변·반공변</a>
+        <a href="#delegate" data-section="delegate">delegate</a>
+        <a href="#interface" data-section="interface">인터페이스</a>
+        <a href="#cpp-view" data-section="cpp-view">C++ 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">WPF / C#</span>
+                </div>
+                <h1>C# 타입 시스템 — value/reference·제네릭</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>C# 타입의 2대 분류 — value type과 reference type, 스택과 힙</li>
+                        <li>복사 의미, 함수 인자 전달, 동등 비교의 차이</li>
+                        <li>박싱·언박싱 비용, nullable 타입, string의 특수성</li>
+                        <li>record / record struct, 제네릭과 제약, 공변·반공변</li>
+                        <li>delegate, 인터페이스 vs 추상 클래스</li>
+                        <li>C++ 개발자가 흔히 빠지는 함정과 차이점</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#two-kinds">타입의 2대 분류</a></li>
+                        <li><a href="#value-vs-ref">value vs reference 의미</a></li>
+                        <li><a href="#boxing">박싱과 언박싱</a></li>
+                        <li><a href="#nullable">nullable 타입</a></li>
+                        <li><a href="#string">string은 reference지만 immutable</a></li>
+                        <li><a href="#record">record와 record struct</a></li>
+                        <li><a href="#generics">제네릭과 타입 제약</a></li>
+                        <li><a href="#variance">공변·반공변</a></li>
+                        <li><a href="#delegate">delegate와 event</a></li>
+                        <li><a href="#interface">인터페이스 vs 추상 클래스</a></li>
+                        <li><a href="#cpp-view">C++ 개발자 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 2대 분류 -->
+                <h2 id="two-kinds"><i class="fa-solid fa-code-branch"></i> 타입의 2대 분류</h2>
+                <p>C# 타입은 크게 <strong>value type</strong>과 <strong>reference type</strong>으로 나뉜다. 이 구분은 메모리 저장 위치, 복사 의미, 동등 비교까지 모든 동작에 영향을 준다.</p>
+
+                <table>
+                    <tr><th>분류</th><th>종류</th><th>저장 위치</th><th>기본값</th></tr>
+                    <tr><td><strong>value type</strong></td><td><code>struct</code>, <code>enum</code>, 기본 숫자 타입(<code>int</code>, <code>double</code>, <code>bool</code>, <code>char</code>), <code>DateTime</code>, <code>Guid</code></td><td>스택 또는 객체 내부</td><td>0 / false</td></tr>
+                    <tr><td><strong>reference type</strong></td><td><code>class</code>, <code>interface</code>, <code>delegate</code>, <code>string</code>, 배열</td><td>힙 (스택에는 참조만)</td><td><code>null</code></td></tr>
+                </table>
+
+                <div class="mem-diagram">
+                    <svg width="640" height="240" viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg">
+                        <style>
+                            .lbl { font: 600 12px 'Pretendard', sans-serif; fill: #1f2937; }
+                            .sub { font: 500 11px 'Pretendard', sans-serif; fill: #6b7280; }
+                            .code { font: 600 12px Consolas, monospace; fill: #0f766e; }
+                            .box { fill: #ecfeff; stroke: #67e8f9; stroke-width: 1.5; }
+                            .heapbox { fill: #fef3c7; stroke: #fcd34d; stroke-width: 1.5; }
+                            .arrow { stroke: #0891b2; stroke-width: 2; fill: none; marker-end: url(#arr); }
+                        </style>
+                        <defs>
+                            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 z" fill="#0891b2"/>
+                            </marker>
+                        </defs>
+                        <!-- Stack header -->
+                        <text x="80" y="24" class="lbl">Stack (스택)</text>
+                        <text x="380" y="24" class="lbl">Heap (힙)</text>
+                        <!-- Stack frames -->
+                        <rect x="20" y="40" width="240" height="40" class="box"/>
+                        <text x="34" y="58" class="code">int x = 42;</text>
+                        <text x="200" y="72" class="sub">value 직접 저장</text>
+                        <rect x="20" y="90" width="240" height="40" class="box"/>
+                        <text x="34" y="108" class="code">Point p = (3, 4);</text>
+                        <text x="200" y="122" class="sub">struct 직접 저장</text>
+                        <rect x="20" y="140" width="240" height="40" class="box"/>
+                        <text x="34" y="158" class="code">Person q = new(...);</text>
+                        <text x="200" y="172" class="sub">참조만 저장</text>
+                        <!-- Heap object -->
+                        <rect x="380" y="140" width="220" height="60" class="heapbox"/>
+                        <text x="394" y="160" class="code">Person { Name, Age }</text>
+                        <text x="394" y="180" class="sub">실제 객체는 힙에</text>
+                        <!-- Arrow from q to heap -->
+                        <path d="M 260 160 C 320 160, 340 170, 380 170" class="arrow"/>
+                        <text x="270" y="222" class="sub">value type은 변수 자리에 값 자체, reference type은 힙 주소만 보관한다.</text>
+                    </svg>
+                </div>
+
+                <p>다만 "스택에 저장된다"는 표현은 단순화한 설명이다. value type이라도 클래스 필드로 들어가면 그 객체의 일부로 <em>힙에 함께</em> 놓인다. 핵심은 "변수가 값 자체를 들고 있느냐, 참조만 들고 있느냐"이다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">// value type 정의
+public struct Point
+{
+    public int X;
+    public int Y;
+}
+
+// reference type 정의
+public class Person
+{
+    public string Name { get; set; } = "";
+    public int Age { get; set; }
+}
+
+Point p = new Point { X = 3, Y = 4 };        // 스택에 저장
+Person person = new Person { Name = "Alice" }; // 힙에 객체, 스택에는 참조</code></pre>
+
+                <!-- 2. value vs reference -->
+                <h2 id="value-vs-ref"><i class="fa-solid fa-clone"></i> value vs reference 의미</h2>
+
+                <h3 id="copy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 복사 의미</h3>
+                <p>value type을 다른 변수에 대입하면 <strong>값 전체가 복사</strong>된다. reference type은 <strong>참조(주소)만 복사</strong>되어 두 변수가 같은 객체를 가리킨다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">// value type
+Point a = new Point { X = 1, Y = 2 };
+Point b = a;           // 값 복사 (별도 객체)
+b.X = 100;
+Console.WriteLine(a.X); // 1 (a는 안 바뀜)
+
+// reference type
+Person p1 = new Person { Name = "Alice" };
+Person p2 = p1;        // 참조 복사 (같은 객체)
+p2.Name = "Bob";
+Console.WriteLine(p1.Name); // "Bob" (같이 바뀜)</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+1
+Bob</div>
+
+                <h3 id="argument"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 함수 인자 전달</h3>
+                <p>기본 전달 방식은 <strong>값 전달</strong>이다. value type은 값 자체가, reference type은 참조 값이 복사된다. 참조형 매개변수의 내부 필드를 바꾸면 원본 객체에 반영되지만, 매개변수에 새 객체를 대입해도 호출자의 변수는 바뀌지 않는다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">void Modify(Point p) { p.X = 99; }
+void Rename(Person person) { person.Name = "Changed"; }
+void Replace(Person person) { person = new Person { Name = "New" }; }
+
+Point pt = new Point { X = 1 };
+Modify(pt);
+Console.WriteLine(pt.X);        // 1  (값 복사이므로 원본 영향 없음)
+
+Person p = new Person { Name = "Origin" };
+Rename(p);
+Console.WriteLine(p.Name);      // "Changed"  (같은 객체의 필드를 수정)
+
+Replace(p);
+Console.WriteLine(p.Name);      // "Changed"  (매개변수만 다른 객체를 가리킴)</code></pre>
+
+                <p>원본 변수 자체를 바꾸려면 <code>ref</code> 키워드를 쓴다. 출력 전용으로 받고 싶다면 <code>out</code>을 사용한다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">void Increment(ref int n) { n++; }
+void TryParse(string s, out int result) { result = int.Parse(s); }
+
+int x = 10;
+Increment(ref x);
+Console.WriteLine(x); // 11
+
+TryParse("42", out int y);
+Console.WriteLine(y); // 42</code></pre>
+
+                <h3 id="equality"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 동등 비교</h3>
+                <p>value type의 <code>==</code>는 <strong>값 비교</strong>이지만, reference type의 기본 <code>==</code>는 <strong>참조 비교</strong>다(즉 같은 객체인지). <code>Equals</code>는 타입에 따라 다르며, <code>string</code>·<code>record</code>는 값 의미로 오버라이드되어 있다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">int i1 = 5, i2 = 5;
+Console.WriteLine(i1 == i2);          // True (값 비교)
+
+Person p1 = new Person { Name = "A" };
+Person p2 = new Person { Name = "A" };
+Console.WriteLine(p1 == p2);          // False (다른 객체)
+Console.WriteLine(p1.Equals(p2));     // False (기본은 참조 비교)
+
+string s1 = "hello", s2 = "hello";
+Console.WriteLine(s1 == s2);          // True (string은 값 비교로 오버로드됨)</code></pre>
+
+                <!-- 3. 박싱 -->
+                <h2 id="boxing"><i class="fa-solid fa-box"></i> 박싱과 언박싱</h2>
+                <p>value type을 <code>object</code>나 인터페이스 참조로 다룰 때 일어나는 변환이다. value를 <strong>힙에 새 객체로 감싸는</strong> 동작이 <strong>박싱</strong>(boxing), 다시 꺼내는 것이 <strong>언박싱</strong>(unboxing)이다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">int n = 42;
+object boxed = n;        // 박싱: 힙에 객체 할당, n의 값을 그 안에 복사
+int unboxed = (int)boxed; // 언박싱: 캐스팅으로 값 추출
+
+// 박싱이 일어나는 흔한 상황
+ArrayList list = new ArrayList();
+list.Add(1);             // int → object 박싱
+list.Add(2);
+list.Add(3);
+
+int sum = 0;
+foreach (object o in list)
+{
+    sum += (int)o;       // 매 반복마다 언박싱
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>박싱은 비싸다</strong>
+                        힙 할당 + 복사 + GC 부담이 따라온다. 루프에서 박싱이 반복되면 성능이 크게 떨어진다. 제네릭 컬렉션(<code>List&lt;int&gt;</code>, <code>Dictionary&lt;int, T&gt;</code>)을 쓰면 박싱이 일어나지 않는다. <code>ArrayList</code>는 레거시이며 사용을 피한다.
+                    </div>
+                </div>
+
+                <p>인터페이스 호출도 박싱을 유발할 수 있다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">int x = 10;
+IComparable c = x;       // 박싱 발생 (struct → 인터페이스)
+c.CompareTo(20);
+
+// 제네릭 + 제약을 쓰면 박싱 없이 호출 가능
+void Compare&lt;T&gt;(T a, T b) where T : IComparable&lt;T&gt;
+{
+    a.CompareTo(b);      // T가 struct여도 박싱 없음
+}</code></pre>
+
+                <!-- 4. nullable -->
+                <h2 id="nullable"><i class="fa-solid fa-question-circle"></i> nullable 타입</h2>
+                <p>value type은 본래 <code>null</code>을 가질 수 없다. <code>?</code>를 붙이면 <code>Nullable&lt;T&gt;</code> 구조체로 감싸져 <code>null</code> 표현이 가능해진다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">int a = null;       // 컴파일 에러
+int? b = null;      // OK — Nullable&lt;int&gt;
+int? c = 42;
+
+if (c.HasValue)
+{
+    Console.WriteLine(c.Value);   // 42
+}
+
+// null 병합 연산자 ??
+int d = b ?? -1;    // b가 null이면 -1 사용
+
+// null 조건부 연산자 ?.
+string? name = person?.Name;
+int? len = name?.Length;</code></pre>
+
+                <h3 id="nrt"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> nullable reference types (C# 8+)</h3>
+                <p>참조형은 원래 항상 <code>null</code>을 받을 수 있었고, 이로 인한 <code>NullReferenceException</code>이 끊이지 않았다. C# 8부터 <strong>nullable reference types</strong>(NRT) 기능을 켜면 reference type도 nullable/non-nullable을 명시적으로 구분한다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">// .csproj 또는 파일 상단에 활성화
+// &lt;Nullable&gt;enable&lt;/Nullable&gt;
+#nullable enable
+
+string s1 = null;     // 경고: null을 non-nullable에 대입
+string? s2 = null;    // OK — null 허용
+
+void Print(string? s)
+{
+    Console.WriteLine(s.Length);  // 경고: null 가능
+    if (s != null)
+    {
+        Console.WriteLine(s.Length); // OK — 흐름 분석으로 null 아님 확인
+    }
+    Console.WriteLine(s!.Length); // null-forgiving — 개발자가 null 아님을 보증</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>NRT는 런타임 강제가 아니다</strong>
+                        컴파일러 분석/경고일 뿐 런타임에 <code>null</code>이 막히지는 않는다. 그래도 코드 의도를 명확히 하고 NPE를 크게 줄여 준다. 새 프로젝트에서는 반드시 켠다.
+                    </div>
+                </div>
+
+                <!-- 5. string -->
+                <h2 id="string"><i class="fa-solid fa-font"></i> string은 reference지만 immutable</h2>
+                <p><code>string</code>은 reference type이지만 두 가지 특수성이 있다.</p>
+
+                <ul>
+                    <li><strong>불변(immutable)</strong> — 한 번 만들면 내용을 바꿀 수 없다. <code>s + "x"</code>처럼 보이는 수정은 사실 새 문자열을 만든다.</li>
+                    <li><strong>값 의미의 비교</strong> — <code>==</code>가 참조가 아니라 내용을 비교하도록 오버로드되어 있다.</li>
+                </ul>
+
+                <pre class="language-csharp"><code class="language-csharp">string a = "hello";
+string b = "hello";
+Console.WriteLine(a == b);                 // True (내용 비교)
+Console.WriteLine(ReferenceEquals(a, b));  // True도 흔함 — interning으로 동일 객체 재사용
+
+string c = a + " world";   // 새 문자열 객체 생성
+// a는 그대로 "hello"
+
+// 반복 수정은 StringBuilder를 쓴다
+var sb = new StringBuilder();
+for (int i = 0; i &lt; 1000; i++)
+{
+    sb.Append(i);          // 매번 새 string 만들지 않음
+}
+string result = sb.ToString();</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>+= 반복은 함정</strong>
+                        루프 안에서 <code>s += "x"</code>는 매번 새 string과 새 할당을 만든다. n번 반복하면 O(n²) 할당이다. 다량의 문자열 조립에는 <code>StringBuilder</code>나 <code>string.Concat</code>·<code>string.Join</code>을 쓴다.
+                    </div>
+                </div>
+
+                <!-- 6. record -->
+                <h2 id="record"><i class="fa-solid fa-database"></i> record와 record struct</h2>
+                <p>C# 9에서 추가된 <code>record</code>는 <strong>값 의미의 reference type</strong>이다. C# 10의 <code>record struct</code>는 그 value 버전이다. 컴파일러가 구조적 동등성 비교, <code>ToString</code>, <code>with</code> 식 등을 자동 생성한다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">// 위치 매개변수 record (가장 간결)
+public record Point2D(double X, double Y);
+
+// 일반 record
+public record Person
+{
+    public string Name { get; init; } = "";
+    public int Age { get; init; }
+}
+
+var p1 = new Point2D(1.0, 2.0);
+var p2 = new Point2D(1.0, 2.0);
+
+Console.WriteLine(p1 == p2);            // True — 구조적 동등성
+Console.WriteLine(p1.ToString());       // Point2D { X = 1, Y = 2 }
+
+// with 식 — 일부 속성만 바꾼 복사본
+var p3 = p1 with { Y = 99.0 };          // (1.0, 99.0), p1은 그대로
+
+// 분해(deconstruction)
+var (x, y) = p1;</code></pre>
+
+                <h3 id="record-struct"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> record struct</h3>
+
+                <pre class="language-csharp"><code class="language-csharp">public readonly record struct Pixel(byte R, byte G, byte B);
+
+Pixel a = new(255, 0, 0);
+Pixel b = a with { R = 128 };  // value 복사 + 일부 수정
+Console.WriteLine(a == b);     // False (R 다름)</code></pre>
+
+                <table>
+                    <tr><th>구분</th><th>저장</th><th>동등성</th><th>주 용도</th></tr>
+                    <tr><td><code>class</code></td><td>힙</td><td>참조</td><td>일반 객체, 정체성 있는 엔티티</td></tr>
+                    <tr><td><code>struct</code></td><td>값</td><td>값(직접 정의)</td><td>작은 값, Point/Size 등</td></tr>
+                    <tr><td><code>record</code></td><td>힙</td><td>구조적</td><td>DTO, 불변 데이터 모델</td></tr>
+                    <tr><td><code>record struct</code></td><td>값</td><td>구조적</td><td>작은 불변 값 타입</td></tr>
+                </table>
+
+                <!-- 7. 제네릭 -->
+                <h2 id="generics"><i class="fa-solid fa-shapes"></i> 제네릭과 타입 제약</h2>
+                <p>C# 제네릭은 C++ 템플릿과 비슷하지만 <strong>런타임에 타입 정보가 보존</strong>되고, 컴파일이 아닌 <strong>JIT 시점</strong>에 타입별 코드가 만들어진다(value type별, reference type은 공유).</p>
+
+                <pre class="language-csharp"><code class="language-csharp">// 제네릭 클래스
+public class Box&lt;T&gt;
+{
+    public T Value { get; set; } = default!;
+    public void Print() => Console.WriteLine(Value);
+}
+
+var b1 = new Box&lt;int&gt; { Value = 42 };
+var b2 = new Box&lt;string&gt; { Value = "hi" };
+
+// 제네릭 메서드
+public static T Max&lt;T&gt;(T a, T b) where T : IComparable&lt;T&gt;
+{
+    return a.CompareTo(b) &gt;= 0 ? a : b;
+}
+
+int m = Max(3, 7);
+string s = Max("apple", "banana");</code></pre>
+
+                <h3 id="constraints"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 타입 제약(where)</h3>
+
+                <table>
+                    <tr><th>제약</th><th>의미</th></tr>
+                    <tr><td><code>where T : class</code></td><td>reference type만 허용 (T가 null 가능)</td></tr>
+                    <tr><td><code>where T : struct</code></td><td>value type만 허용 (T가 nullable 아님)</td></tr>
+                    <tr><td><code>where T : new()</code></td><td>매개변수 없는 public 생성자 보장</td></tr>
+                    <tr><td><code>where T : IDisposable</code></td><td>특정 인터페이스/기반 클래스를 구현</td></tr>
+                    <tr><td><code>where T : SomeBaseClass</code></td><td>특정 클래스를 상속</td></tr>
+                    <tr><td><code>where T : unmanaged</code></td><td>참조 필드 없는 값 타입 (interop용)</td></tr>
+                    <tr><td><code>where T : notnull</code></td><td>null 불가 (NRT 활성 시)</td></tr>
+                    <tr><td><code>where T : U</code></td><td>다른 타입 매개변수 U의 하위 타입</td></tr>
+                </table>
+
+                <pre class="language-csharp"><code class="language-csharp">// 복합 제약
+public class Repository&lt;T&gt; where T : class, IEntity, new()
+{
+    public T Create() =&gt; new T();      // new() 제약 덕에 가능
+    public int GetId(T item) =&gt; item.Id; // IEntity 제약 덕에 가능
+}
+
+// unmanaged — 픽셀 같은 POD 처리에 유용
+public unsafe void Fill&lt;T&gt;(Span&lt;T&gt; buffer, T value) where T : unmanaged
+{
+    for (int i = 0; i &lt; buffer.Length; i++) buffer[i] = value;
+}</code></pre>
+
+                <!-- 8. 공변·반공변 -->
+                <h2 id="variance"><i class="fa-solid fa-right-left"></i> 공변·반공변</h2>
+                <p>제네릭 인터페이스/델리게이트의 타입 매개변수에 <code>out</code>(공변) 또는 <code>in</code>(반공변)을 붙이면 상속 관계가 제네릭 타입으로 "전파"된다.</p>
+
+                <ul>
+                    <li><strong>공변(covariant) <code>out T</code></strong> — <code>T</code>를 반환만 한다. 더 파생된 타입으로 → 더 기본 타입으로 대입 가능.</li>
+                    <li><strong>반공변(contravariant) <code>in T</code></strong> — <code>T</code>를 입력만 받는다. 반대 방향 대입 가능.</li>
+                </ul>
+
+                <pre class="language-csharp"><code class="language-csharp">// IEnumerable&lt;out T&gt; — 공변
+IEnumerable&lt;string&gt; strings = new List&lt;string&gt; { "a", "b" };
+IEnumerable&lt;object&gt; objects = strings;  // OK — string은 object의 하위, T 위치는 반환만
+
+// IComparer&lt;in T&gt; — 반공변
+IComparer&lt;object&gt; objCmp = Comparer&lt;object&gt;.Default;
+IComparer&lt;string&gt; strCmp = objCmp;       // OK — object 비교기를 string 비교기로 사용
+
+// 배열은 (안전하지 않은) 공변
+object[] arr = new string[3];
+arr[0] = 42;   // 컴파일 OK, 런타임 ArrayTypeMismatchException</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>외우는 요령</strong>
+                        <code>out</code>은 출력(반환) 위치에서만, <code>in</code>은 입력 위치에서만 쓰인다는 뜻. 그래서 위쪽(<code>out</code>: 더 일반적인 타입)이나 아래쪽(<code>in</code>: 더 특수한 타입) 한 방향으로만 안전하게 대입할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 9. delegate -->
+                <h2 id="delegate"><i class="fa-solid fa-arrow-up-right-from-square"></i> delegate와 event</h2>
+                <p><code>delegate</code>는 메서드를 변수처럼 다루는 reference type이다. C++의 함수 포인터 + <code>std::function</code>에 가깝다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">// 직접 정의하는 delegate
+public delegate int BinaryOp(int a, int b);
+
+BinaryOp add = (a, b) =&gt; a + b;
+BinaryOp mul = (a, b) =&gt; a * b;
+Console.WriteLine(add(2, 3));  // 5
+
+// 표준 제네릭 delegate
+Func&lt;int, int, int&gt; sub = (a, b) =&gt; a - b;
+Action&lt;string&gt; log = msg =&gt; Console.WriteLine(msg);
+Predicate&lt;int&gt; isPositive = n =&gt; n &gt; 0;
+
+// 멀티캐스트 — + 로 체인 가능
+Action&lt;string&gt; loggers = log;
+loggers += msg =&gt; File.AppendAllText("log.txt", msg);
+loggers("hello"); // 두 핸들러 모두 호출</code></pre>
+
+                <p><code>event</code>는 delegate를 외부에서 안전하게 구독/해제할 수 있게 캡슐화한 키워드다. 자세한 패턴은 이후 다른 글에서 다룬다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">public class Button
+{
+    public event EventHandler? Clicked;
+
+    public void RaiseClick()
+    {
+        Clicked?.Invoke(this, EventArgs.Empty);
+    }
+}
+
+var btn = new Button();
+btn.Clicked += (s, e) =&gt; Console.WriteLine("clicked");
+btn.RaiseClick();</code></pre>
+
+                <!-- 10. interface vs abstract -->
+                <h2 id="interface"><i class="fa-solid fa-plug"></i> 인터페이스 vs 추상 클래스</h2>
+
+                <table>
+                    <tr><th>특성</th><th>interface</th><th>abstract class</th></tr>
+                    <tr><td>다중 구현/상속</td><td>다중 구현 가능</td><td>단일 상속만</td></tr>
+                    <tr><td>필드</td><td>불가 (속성은 가능)</td><td>가능</td></tr>
+                    <tr><td>생성자</td><td>없음</td><td>있음 (호출 가능)</td></tr>
+                    <tr><td>구현 포함</td><td>C# 8+ default method 가능</td><td>일반 메서드 포함 자유</td></tr>
+                    <tr><td>주 용도</td><td>능력/계약(can-do)</td><td>공통 기반(is-a) + 부분 구현</td></tr>
+                </table>
+
+                <pre class="language-csharp"><code class="language-csharp">// 인터페이스 — 능력
+public interface IShape
+{
+    double Area();              // 추상 멤버
+
+    // C# 8+ default 메서드
+    string Describe() =&gt; $"shape with area {Area()}";
+}
+
+public interface IDrawable
+{
+    void Draw();
+}
+
+// 다중 구현
+public class Circle : IShape, IDrawable
+{
+    public double Radius { get; init; }
+    public double Area() =&gt; Math.PI * Radius * Radius;
+    public void Draw() =&gt; Console.WriteLine($"circle r={Radius}");
+}
+
+// 추상 클래스 — 공통 기반 + 부분 구현
+public abstract class Animal
+{
+    public string Name { get; }
+    protected Animal(string name) { Name = name; }
+
+    public abstract string Sound();
+    public void Introduce() =&gt; Console.WriteLine($"{Name} says {Sound()}");
+}
+
+public class Dog : Animal
+{
+    public Dog(string name) : base(name) { }
+    public override string Sound() =&gt; "woof";
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>선택 기준</strong>
+                        "할 수 있는 것"(behavior contract)은 인터페이스, "무엇인가"(공통 상태 + 일부 구현)는 추상 클래스. WPF/MVVM 코드에서는 <code>INotifyPropertyChanged</code>, <code>ICommand</code> 같은 인터페이스를 매우 자주 만난다.
+                    </div>
+                </div>
+
+                <!-- 11. C++ 관점 -->
+                <h2 id="cpp-view"><i class="fa-brands fa-cuttlefish"></i> C++ 개발자 관점</h2>
+
+                <h3 id="struct-class-cpp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> struct과 class가 의미가 다르다</h3>
+                <p>C++에서 <code>struct</code>와 <code>class</code>의 차이는 기본 접근 지정자(public vs private) 정도다. C#에서는 본질적으로 다른 카테고리다.</p>
+
+                <table>
+                    <tr><th>구분</th><th>C++</th><th>C#</th></tr>
+                    <tr><td><code>struct</code></td><td>class와 동일(기본 public)</td><td><strong>value type</strong> — 복사, 스택 가능</td></tr>
+                    <tr><td><code>class</code></td><td>class(기본 private)</td><td><strong>reference type</strong> — 항상 힙</td></tr>
+                </table>
+
+                <h3 id="ref-meaning"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> "참조"의 의미가 다르다</h3>
+                <p>C++의 <code>T&amp;</code>는 호출 지점 문법으로 결정된다. 같은 타입을 <code>T</code>(복사), <code>T&amp;</code>(참조), <code>T*</code>(포인터)로 자유롭게 받을 수 있다. C#은 다르다.</p>
+
+                <ul>
+                    <li><strong>타입이 value/reference 의미를 결정한다.</strong> <code>class</code>로 선언했으면 어디서 받든 참조다.</li>
+                    <li>호출 지점 수식자는 <code>ref</code>, <code>out</code>, <code>in</code> 정도이며, 의미가 좁다(원본 변수 자체에 대한 참조 전달).</li>
+                </ul>
+
+                <pre class="language-cpp"><code class="language-cpp">// C++
+void f(Point p);     // 값 복사
+void g(Point&amp; p);    // 참조 (호출자 선택의 여지 없음, 시그니처가 결정)
+void h(const Point&amp; p);
+Point pt; f(pt); g(pt); h(pt);</code></pre>
+
+                <pre class="language-csharp"><code class="language-csharp">// C# — 타입 자체가 value/reference 의미를 가짐
+void F(Point p) { }    // Point가 struct면 값 복사
+void G(Person p) { }   // Person이 class면 참조 복사 (객체는 공유)
+
+// 원본 변수 자체를 참조로 받고 싶을 때만 ref
+void Swap(ref int a, ref int b) { (a, b) = (b, a); }
+int x = 1, y = 2;
+Swap(ref x, ref y);   // 호출자도 ref 표기 필수</code></pre>
+
+                <h3 id="lifetime"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 수명 관리</h3>
+                <p>C++은 RAII와 스마트 포인터로 수명을 명시한다. C#은 GC가 reference type을 관리한다. 그러나 파일/소켓/네이티브 핸들 같은 외부 자원은 <code>IDisposable</code> + <code>using</code>으로 결정론적으로 해제해야 한다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">// using 선언 (C# 8+) — 스코프 종료 시 Dispose
+using var file = File.OpenRead("a.bin");
+// ... 사용 ...
+// 메서드 종료 시 자동 file.Dispose()</code></pre>
+
+                <!-- 12. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <h3 id="trap-mutable-struct"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 가변 struct을 reference처럼 다루기</h3>
+
+                <pre class="language-csharp"><code class="language-csharp">public struct Counter
+{
+    public int Value;
+    public void Increment() =&gt; Value++;
+}
+
+var list = new List&lt;Counter&gt; { new Counter() };
+list[0].Increment();              // 컴파일 에러 또는 효과 없음 — 인덱서가 복사본 반환
+Console.WriteLine(list[0].Value); // 0
+
+// 회피: 값을 꺼내서 수정 후 다시 넣거나, 애초에 struct을 immutable로 설계
+var c = list[0];
+c.Increment();
+list[0] = c;</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>struct은 immutable이 기본</strong>
+                        가변 struct은 복사 시점마다 직관에 어긋나는 동작을 만든다. <code>readonly struct</code>로 선언하고, 변경이 필요하면 <code>with</code>로 새 인스턴스를 만든다.
+                    </div>
+                </div>
+
+                <h3 id="trap-big-struct"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 큰 struct을 값으로 넘기기</h3>
+
+                <pre class="language-csharp"><code class="language-csharp">public struct BigData     // 256바이트 가정
+{
+    public fixed byte Buffer[256];
+}
+
+void Process(BigData d) { /* ... */ }  // 호출마다 256바이트 복사
+
+// 회피: in 매개변수로 읽기 전용 참조 전달
+void Process(in BigData d) { /* d는 읽기 전용 */ }</code></pre>
+
+                <p>가이드라인: struct은 보통 16바이트 이하로 유지한다. 그보다 크면 class로 만들거나 <code>in</code> 매개변수로 전달한다.</p>
+
+                <h3 id="trap-boxing"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 의도치 않은 박싱</h3>
+
+                <pre class="language-csharp"><code class="language-csharp">int n = 42;
+
+// 문자열 보간 — ToString이 호출되므로 박싱 없음
+Console.WriteLine($"n = {n}");
+
+// 그러나 object로 받는 API는 박싱 유발
+void LogAny(object value) { /* ... */ }
+LogAny(n);                  // 박싱
+
+// 제네릭 + 제약을 쓰면 박싱 회피
+void LogAny&lt;T&gt;(T value) { /* ... */ }
+LogAny(n);                  // 박싱 없음 (T = int)
+
+// LINQ도 박싱 주의 — IEnumerable&lt;object&gt; 등
+var list = new List&lt;int&gt; { 1, 2, 3 };
+var sum = list.Sum();       // 박싱 없음 (전용 오버로드)</code></pre>
+
+                <h3 id="trap-npe"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> nullable 비활성에서의 NullReferenceException</h3>
+
+                <pre class="language-csharp"><code class="language-csharp">// NRT가 꺼진 코드 — 컴파일러가 도와주지 않음
+string GetName(Person p) =&gt; p.Name;  // p가 null이면 NRE
+
+GetName(null);   // 런타임 폭발
+
+// 방어 코드
+string GetName(Person? p) =&gt; p?.Name ?? "(unknown)";
+
+// 또는 ArgumentNullException으로 명시
+string GetName(Person p)
+{
+    ArgumentNullException.ThrowIfNull(p);
+    return p.Name;
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>새 프로젝트는 NRT 켜고 시작</strong>
+                        프로젝트 파일에 <code>&lt;Nullable&gt;enable&lt;/Nullable&gt;</code>를 넣는 것이 가장 비용 대비 효과가 큰 한 줄이다. NRE 종류의 버그 대부분을 컴파일 단계에서 잡아낸다.
+                    </div>
+                </div>
+
+                <h3 id="trap-default"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> struct의 기본 생성자</h3>
+
+                <pre class="language-csharp"><code class="language-csharp">public struct Vec2
+{
+    public double X, Y;
+    public Vec2(double x, double y) { X = x; Y = y; }
+}
+
+Vec2 v = new Vec2();   // 모든 필드가 0
+Vec2 w = default;      // 동일 — 모든 필드 0
+// 매개변수 없는 사용자 정의 생성자는 C# 10부터만 허용되며, default와 동작이 다를 수 있음</code></pre>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Microsoft Learn — <em>C# language reference: Types</em></li>
+                        <li>Microsoft Learn — <em>Value types</em> / <em>Reference types</em></li>
+                        <li>Microsoft Learn — <em>Generics in C#</em> 및 <em>Constraints on type parameters</em></li>
+                        <li>Microsoft Learn — <em>Nullable reference types</em></li>
+                        <li>Microsoft Learn — <em>Records</em>, <em>Covariance and contravariance</em></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-wpf');
+    renderPostNav('dev-wpf');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

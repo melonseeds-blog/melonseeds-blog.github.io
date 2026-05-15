@@ -1,0 +1,923 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINQ — 쿼리·메서드 체이닝 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* LINQ 체이닝 SVG */
+        .linq-svg-wrap {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; overflow-x: auto;
+        }
+        .linq-svg-wrap svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#intro" data-section="intro">LINQ란</a>
+        <a href="#query-syntax" data-section="query-syntax">쿼리 문법</a>
+        <a href="#method-syntax" data-section="method-syntax">메서드 문법</a>
+        <a href="#operators" data-section="operators">주요 연산자</a>
+        <a href="#deferred" data-section="deferred">지연 평가</a>
+        <a href="#ienumerable-iqueryable" data-section="ienumerable-iqueryable">IEnumerable/IQueryable</a>
+        <a href="#lambda-func" data-section="lambda-func">람다·Func</a>
+        <a href="#extension" data-section="extension">확장 메서드</a>
+        <a href="#anonymous" data-section="anonymous">익명 타입</a>
+        <a href="#industrial" data-section="industrial">산업·이미지</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">WPF / C#</span>
+                </div>
+                <h1>LINQ — 쿼리·메서드 체이닝</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>LINQ — 컬렉션에 SQL 비슷한 질의를 언어 차원에서 제공</li>
+                        <li>쿼리 문법(from·where·select) vs 메서드 문법(.Where·.Select 체이닝)</li>
+                        <li>주요 연산자 — Where, Select, OrderBy, GroupBy, Join, Aggregate 계열</li>
+                        <li>지연 평가(Deferred Execution)와 IEnumerable&lt;T&gt; vs IQueryable&lt;T&gt;</li>
+                        <li>람다·Func 델리게이트, 확장 메서드, 익명 타입</li>
+                        <li>산업·이미지 관점 활용과 흔한 함정 정리</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">LINQ란?</a></li>
+                        <li><a href="#query-syntax">쿼리 문법 (Query Syntax)</a></li>
+                        <li><a href="#method-syntax">메서드 문법 (Method Syntax)</a></li>
+                        <li><a href="#operators">주요 연산자</a></li>
+                        <li><a href="#deferred">지연 평가 (Deferred Execution)</a></li>
+                        <li><a href="#ienumerable-iqueryable">IEnumerable&lt;T&gt; vs IQueryable&lt;T&gt;</a></li>
+                        <li><a href="#lambda-func">람다와 Func 델리게이트</a></li>
+                        <li><a href="#extension">확장 메서드</a></li>
+                        <li><a href="#anonymous">익명 타입</a></li>
+                        <li><a href="#industrial">산업·이미지 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. LINQ란 -->
+                <h2 id="intro"><i class="fa-solid fa-database"></i> LINQ란?</h2>
+                <p><strong>LINQ</strong>는 <em>Language Integrated Query</em>의 약자다. 컬렉션·XML·데이터베이스·JSON 등 다양한 데이터 소스에 대해 SQL과 유사한 질의를 <strong>C# 언어 차원</strong>에서 작성할 수 있게 해 준다. 별도 문자열 쿼리가 아니라 컴파일러가 검증하는 코드라서 타입 안정성과 IntelliSense 지원을 모두 받는다.</p>
+
+                <p>핵심 가치는 두 가지다. 첫째, <strong>선언적</strong> 표현 — "무엇을 원하는지"를 쓰고 "어떻게 순회할지"는 LINQ에 맡긴다. 둘째, <strong>균일성</strong> — 메모리 리스트든, 데이터베이스든, XML이든 같은 문법을 쓴다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">using System;
+using System.Collections.Generic;
+using System.Linq;
+
+int[] numbers = { 5, 2, 8, 1, 9, 3, 7 };
+
+// "5보다 큰 수만 골라 정렬해서 리스트로 만든다"
+var result = numbers
+    .Where(n =&gt; n &gt; 5)
+    .OrderBy(n =&gt; n)
+    .ToList();
+
+// result: { 7, 8, 9 }
+Console.WriteLine(string.Join(", ", result));</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+7, 8, 9</div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>LINQ를 쓰려면 using System.Linq;가 필요하다</strong>
+                        LINQ는 확장 메서드 묶음이라 네임스페이스를 import해야 IntelliSense에 노출된다. 누락 시 <code>Where</code>·<code>Select</code>가 "정의되지 않음" 오류로 보인다.
+                    </div>
+                </div>
+
+                <!-- 2. 쿼리 문법 -->
+                <h2 id="query-syntax"><i class="fa-solid fa-magnifying-glass"></i> 쿼리 문법 (Query Syntax)</h2>
+                <p>SQL과 비슷한 형태로 쓰는 표현식이다. <code>from ... where ... orderby ... select ...</code> 구조를 따른다. SQL 경험자에게 친숙하다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">int[] numbers = { 5, 2, 8, 1, 9, 3, 7 };
+
+var result =
+    from n in numbers
+    where n &gt; 5
+    orderby n
+    select n;
+
+foreach (var n in result)
+{
+    Console.WriteLine(n);
+}</code></pre>
+
+                <p>객체 컬렉션도 동일하게 다룬다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public class Product
+{
+    public string Name { get; set; }
+    public string Category { get; set; }
+    public decimal Price { get; set; }
+}
+
+List&lt;Product&gt; products = GetProducts();
+
+var cheapElectronics =
+    from p in products
+    where p.Category == "Electronics" &amp;&amp; p.Price &lt; 100m
+    orderby p.Price descending
+    select p.Name;</code></pre>
+
+                <p>쿼리 문법은 <code>join</code>·<code>group by</code>·<code>let</code> 같은 키워드를 자연스럽게 표현한다. 다만 모든 연산자를 지원하지는 않아서, 일부는 메서드 문법과 섞어 써야 한다.</p>
+
+                <!-- 3. 메서드 문법 -->
+                <h2 id="method-syntax"><i class="fa-solid fa-link"></i> 메서드 문법 (Method Syntax)</h2>
+                <p>확장 메서드를 점(.)으로 이어 호출하는 방식이다. 실무에서 더 자주 본다. 모든 LINQ 연산자를 지원하며 람다와 잘 어울린다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">int[] numbers = { 5, 2, 8, 1, 9, 3, 7 };
+
+var result = numbers
+    .Where(n =&gt; n &gt; 5)
+    .OrderBy(n =&gt; n)
+    .Select(n =&gt; n);
+
+// 객체 예시
+var cheapElectronics = products
+    .Where(p =&gt; p.Category == "Electronics" &amp;&amp; p.Price &lt; 100m)
+    .OrderByDescending(p =&gt; p.Price)
+    .Select(p =&gt; p.Name);</code></pre>
+
+                <h3 id="query-vs-method"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 두 문법은 같은 것</h3>
+                <p>컴파일러는 쿼리 문법을 메서드 문법으로 <strong>변환</strong>해서 실행한다. 즉 IL 수준에서는 차이가 없다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 쿼리 문법
+var a = from n in numbers where n &gt; 5 select n * 2;
+
+// ↓ 컴파일러가 다음과 동일하게 변환
+var b = numbers.Where(n =&gt; n &gt; 5).Select(n =&gt; n * 2);</code></pre>
+
+                <div class="linq-svg-wrap">
+                    <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Source -->
+                        <rect x="20" y="70" width="110" height="60" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+                        <text x="75" y="95" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#075985">Source</text>
+                        <text x="75" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#0c4a6e">IEnumerable&lt;T&gt;</text>
+
+                        <!-- Where -->
+                        <rect x="170" y="70" width="110" height="60" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                        <text x="225" y="95" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#78350f">Where</text>
+                        <text x="225" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#78350f">필터링</text>
+
+                        <!-- OrderBy -->
+                        <rect x="320" y="70" width="110" height="60" rx="10" fill="#fce7f3" stroke="#db2777" stroke-width="2"/>
+                        <text x="375" y="95" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#831843">OrderBy</text>
+                        <text x="375" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#831843">정렬</text>
+
+                        <!-- Select -->
+                        <rect x="470" y="70" width="110" height="60" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                        <text x="525" y="95" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#14532d">Select</text>
+                        <text x="525" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#14532d">투영</text>
+
+                        <!-- ToList -->
+                        <rect x="620" y="70" width="110" height="60" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+                        <text x="675" y="95" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#4c1d95">ToList</text>
+                        <text x="675" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#4c1d95">즉시 평가</text>
+
+                        <!-- Arrows -->
+                        <defs>
+                            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+                            </marker>
+                        </defs>
+                        <line x1="130" y1="100" x2="170" y2="100" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="280" y1="100" x2="320" y2="100" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="430" y1="100" x2="470" y2="100" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="580" y1="100" x2="620" y2="100" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+
+                        <!-- Title -->
+                        <text x="380" y="30" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#334155">LINQ 체이닝 흐름 — 각 단계는 지연 평가, 마지막에 결과 구체화</text>
+
+                        <!-- Deferred badge -->
+                        <text x="297" y="170" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="12" font-style="italic" fill="#64748b">↑ 지연 (Deferred)</text>
+                        <text x="675" y="170" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="12" font-style="italic" fill="#64748b">↑ 즉시 (Immediate)</text>
+                    </svg>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실무에서는 메서드 문법이 더 흔하다</strong>
+                        체이닝이 자연스럽고, 람다 표현이 강력하며, 모든 연산자를 지원한다. 다만 다중 <code>join</code>이나 복잡한 <code>group by</code>는 쿼리 문법이 더 읽기 쉽다.
+                    </div>
+                </div>
+
+                <!-- 4. 주요 연산자 -->
+                <h2 id="operators"><i class="fa-solid fa-toolbox"></i> 주요 연산자</h2>
+
+                <table>
+                    <tr><th>분류</th><th>연산자</th><th>설명</th></tr>
+                    <tr><td rowspan="2">필터링</td><td><code>Where</code></td><td>조건 일치 요소만 선택</td></tr>
+                    <tr><td><code>Distinct</code></td><td>중복 제거</td></tr>
+                    <tr><td rowspan="2">투영</td><td><code>Select</code></td><td>각 요소를 다른 형태로 변환</td></tr>
+                    <tr><td><code>SelectMany</code></td><td>중첩 시퀀스를 평탄화</td></tr>
+                    <tr><td rowspan="2">정렬</td><td><code>OrderBy / OrderByDescending</code></td><td>오름/내림차순 정렬</td></tr>
+                    <tr><td><code>ThenBy / ThenByDescending</code></td><td>보조 정렬 기준</td></tr>
+                    <tr><td rowspan="2">그룹·조인</td><td><code>GroupBy</code></td><td>키로 그룹핑</td></tr>
+                    <tr><td><code>Join / GroupJoin</code></td><td>두 시퀀스 결합</td></tr>
+                    <tr><td rowspan="3">분할</td><td><code>Take / TakeWhile</code></td><td>앞에서 N개 / 조건 동안</td></tr>
+                    <tr><td><code>Skip / SkipWhile</code></td><td>앞에서 N개 / 조건 동안 건너뜀</td></tr>
+                    <tr><td><code>Chunk</code> (.NET 6+)</td><td>고정 크기로 나누기</td></tr>
+                    <tr><td rowspan="3">요소 추출</td><td><code>First / FirstOrDefault</code></td><td>첫 요소 (없으면 예외 / 기본값)</td></tr>
+                    <tr><td><code>Single / SingleOrDefault</code></td><td>유일 요소 — 2개 이상이면 예외</td></tr>
+                    <tr><td><code>ElementAt</code></td><td>인덱스 접근</td></tr>
+                    <tr><td rowspan="2">검사</td><td><code>Any / All</code></td><td>하나라도 / 전부 조건 만족</td></tr>
+                    <tr><td><code>Contains</code></td><td>특정 값 포함 여부</td></tr>
+                    <tr><td rowspan="2">집계</td><td><code>Count / Sum / Average</code></td><td>개수·합·평균</td></tr>
+                    <tr><td><code>Min / Max / Aggregate</code></td><td>최소·최대·일반 누적</td></tr>
+                    <tr><td rowspan="3">변환</td><td><code>ToList / ToArray</code></td><td>즉시 평가하여 자료구조로</td></tr>
+                    <tr><td><code>ToDictionary / ToLookup</code></td><td>키-값 매핑</td></tr>
+                    <tr><td><code>Cast / OfType</code></td><td>타입 변환·필터</td></tr>
+                </table>
+
+                <h3 id="filter-select"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Where / Select 기본</h3>
+
+<pre class="language-csharp"><code class="language-csharp">var people = new List&lt;Person&gt;
+{
+    new Person { Name = "Alice", Age = 30 },
+    new Person { Name = "Bob",   Age = 17 },
+    new Person { Name = "Carol", Age = 25 }
+};
+
+// 성인만 골라 이름만 추출
+var adultNames = people
+    .Where(p =&gt; p.Age &gt;= 18)
+    .Select(p =&gt; p.Name)
+    .ToList();
+// { "Alice", "Carol" }</code></pre>
+
+                <h3 id="orderby"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> OrderBy / ThenBy</h3>
+
+<pre class="language-csharp"><code class="language-csharp">var sorted = people
+    .OrderBy(p =&gt; p.Age)
+    .ThenBy(p =&gt; p.Name)
+    .ToList();
+
+// 내림차순
+var desc = people.OrderByDescending(p =&gt; p.Age).ToList();</code></pre>
+
+                <h3 id="groupby"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> GroupBy</h3>
+                <p>키별로 묶어 <code>IGrouping&lt;TKey, TElement&gt;</code>를 반환한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">var byCategory = products.GroupBy(p =&gt; p.Category);
+
+foreach (var group in byCategory)
+{
+    Console.WriteLine($"[{group.Key}] count={group.Count()}");
+    foreach (var p in group)
+    {
+        Console.WriteLine($"  - {p.Name}: {p.Price}");
+    }
+}
+
+// 그룹별 집계 한 줄
+var summary = products
+    .GroupBy(p =&gt; p.Category)
+    .Select(g =&gt; new
+    {
+        Category = g.Key,
+        Count    = g.Count(),
+        Total    = g.Sum(p =&gt; p.Price)
+    })
+    .ToList();</code></pre>
+
+                <h3 id="join"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Join</h3>
+
+<pre class="language-csharp"><code class="language-csharp">var orders     = GetOrders();      // OrderId, CustomerId, Amount
+var customers  = GetCustomers();   // CustomerId, Name
+
+var joined = orders.Join(
+    customers,
+    o =&gt; o.CustomerId,    // 외부 키
+    c =&gt; c.CustomerId,    // 내부 키
+    (o, c) =&gt; new { o.OrderId, c.Name, o.Amount });
+
+foreach (var row in joined)
+{
+    Console.WriteLine($"{row.OrderId} / {row.Name} / {row.Amount}");
+}</code></pre>
+
+                <h3 id="aggregate"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 집계 — Sum, Max, Aggregate</h3>
+
+<pre class="language-csharp"><code class="language-csharp">int[] nums = { 3, 1, 4, 1, 5, 9, 2, 6 };
+
+int sum  = nums.Sum();
+int max  = nums.Max();
+double avg = nums.Average();
+int count = nums.Count(n =&gt; n &gt; 3);   // 4
+
+// Aggregate — 일반 누적 (fold)
+int product = nums.Aggregate(1, (acc, n) =&gt; acc * n);
+// 시드 1로 시작, 모두 곱함</code></pre>
+
+                <h3 id="any-all"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Any / All / Contains</h3>
+
+<pre class="language-csharp"><code class="language-csharp">bool hasMinor    = people.Any(p =&gt; p.Age &lt; 18);   // true
+bool allAdult    = people.All(p =&gt; p.Age &gt;= 18);  // false
+bool hasAlice    = people.Select(p =&gt; p.Name).Contains("Alice");</code></pre>
+
+                <!-- 5. 지연 평가 -->
+                <h2 id="deferred"><i class="fa-solid fa-hourglass-half"></i> 지연 평가 (Deferred Execution)</h2>
+                <p>LINQ의 핵심 특성이다. <code>Where</code>·<code>Select</code>·<code>OrderBy</code> 같은 연산자는 호출 즉시 실행되지 <strong>않는다</strong>. 대신 "어떻게 계산할지"를 담은 <code>IEnumerable&lt;T&gt;</code>를 반환한다. 실제 계산은 <strong>열거하는 순간</strong> 일어난다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">var numbers = new List&lt;int&gt; { 1, 2, 3 };
+
+// 이 시점에 아무 일도 일어나지 않는다
+var query = numbers.Where(n =&gt;
+{
+    Console.WriteLine($"checking {n}");
+    return n &gt; 1;
+});
+
+Console.WriteLine("--- before foreach ---");
+foreach (var n in query)   // ← 여기서 실행
+{
+    Console.WriteLine($"got {n}");
+}</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+--- before foreach ---
+checking 1
+checking 2
+got 2
+checking 3
+got 3</div>
+
+                <h3 id="immediate"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 즉시 평가하기 — ToList / ToArray</h3>
+                <p>지연을 끝내고 지금 계산을 끝마치고 싶으면 <code>ToList()</code>·<code>ToArray()</code>·<code>ToDictionary()</code>·<code>Count()</code>·<code>First()</code> 등을 호출한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">var snapshot = numbers.Where(n =&gt; n &gt; 1).ToList();  // 지금 평가
+
+numbers.Add(99);  // 원본을 바꿔도 snapshot은 영향 없음</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>지연 평가 함정 — 같은 쿼리를 두 번 열거하면 두 번 계산된다</strong>
+                        <code>foreach</code>를 두 번 돌리거나 <code>.Count()</code> + <code>.First()</code>를 같은 쿼리 변수에 호출하면 소스를 두 번 순회한다. DB·파일·네트워크 소스라면 비용이 두 배다. 결과를 재사용하려면 <code>ToList()</code>로 구체화해서 보관한다.
+                    </div>
+                </div>
+
+                <!-- 6. IEnumerable vs IQueryable -->
+                <h2 id="ienumerable-iqueryable"><i class="fa-solid fa-arrows-split-up-and-left"></i> IEnumerable&lt;T&gt; vs IQueryable&lt;T&gt;</h2>
+                <p>LINQ는 두 종류 인터페이스 위에서 동작한다. 둘 다 LINQ 연산자를 지원하지만 실행 방식이 다르다.</p>
+
+                <table>
+                    <tr><th>항목</th><th>IEnumerable&lt;T&gt;</th><th>IQueryable&lt;T&gt;</th></tr>
+                    <tr><td>실행 위치</td><td>로컬 메모리 (LINQ to Objects)</td><td>원격 (LINQ to SQL / EF Core 등)</td></tr>
+                    <tr><td>람다 표현</td><td><code>Func&lt;T, bool&gt;</code> — 컴파일된 코드</td><td><code>Expression&lt;Func&lt;T, bool&gt;&gt;</code> — 표현식 트리</td></tr>
+                    <tr><td>변환 대상</td><td>없음 — CLR이 직접 실행</td><td>SQL·CosmosDB 쿼리 등으로 번역</td></tr>
+                    <tr><td>전체 로드</td><td>전체를 메모리에서 순회</td><td>서버 측에서 필터·정렬 후 결과만 가져옴</td></tr>
+                    <tr><td>대표 사용처</td><td>List·Array·Dictionary</td><td>EF Core DbSet, IQueryable&lt;T&gt; 리포지토리</td></tr>
+                </table>
+
+<pre class="language-csharp"><code class="language-csharp">// IEnumerable — 메모리 컬렉션
+IEnumerable&lt;Product&gt; local = products;
+var cheap1 = local.Where(p =&gt; p.Price &lt; 100m).ToList();
+// → 전체 컬렉션을 순회, CLR에서 람다 실행
+
+// IQueryable — EF Core 등 (가상 예시)
+IQueryable&lt;Product&gt; remote = db.Products;
+var cheap2 = remote.Where(p =&gt; p.Price &lt; 100m).ToList();
+// → 표현식 트리를 SQL로 번역
+// → "SELECT * FROM Products WHERE Price &lt; 100" 만 서버 실행</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>경계를 의식하자</strong>
+                        <code>IQueryable</code>에 <code>.ToList()</code>·<code>.AsEnumerable()</code>이 호출되는 순간 이후 연산은 모두 메모리에서 일어난다. 의도치 않게 일찍 메모리로 끌어오면 서버 필터링 기회를 잃는다.
+                    </div>
+                </div>
+
+                <!-- 7. 람다·Func -->
+                <h2 id="lambda-func"><i class="fa-solid fa-code"></i> 람다와 Func 델리게이트</h2>
+                <p>LINQ 연산자의 인자는 대부분 <strong>델리게이트</strong>다. C#은 람다 표현식으로 짧게 표현한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 람다 — 매개변수 =&gt; 식
+Func&lt;int, bool&gt; isPositive = n =&gt; n &gt; 0;
+Func&lt;int, int, int&gt; add    = (a, b) =&gt; a + b;
+
+// 블록 본문 람다
+Func&lt;int, string&gt; describe = n =&gt;
+{
+    if (n &gt; 0) return "positive";
+    if (n &lt; 0) return "negative";
+    return "zero";
+};
+
+// LINQ는 이런 델리게이트를 받는다
+var positives = numbers.Where(isPositive).ToList();
+var positives2 = numbers.Where(n =&gt; n &gt; 0).ToList();  // 동일</code></pre>
+
+                <h3 id="func-action"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Func, Action, Predicate</h3>
+
+                <table>
+                    <tr><th>타입</th><th>시그니처</th><th>반환</th></tr>
+                    <tr><td><code>Func&lt;T, TResult&gt;</code></td><td>입력 T → 결과 TResult</td><td>있음</td></tr>
+                    <tr><td><code>Action&lt;T&gt;</code></td><td>입력 T → 동작</td><td>void</td></tr>
+                    <tr><td><code>Predicate&lt;T&gt;</code></td><td>입력 T → bool</td><td>bool</td></tr>
+                </table>
+
+<pre class="language-csharp"><code class="language-csharp">Func&lt;int, int, int&gt; mul = (a, b) =&gt; a * b;       // (int, int) =&gt; int
+Action&lt;string&gt;       log = msg =&gt; Console.WriteLine(msg);
+Predicate&lt;int&gt;       even = n =&gt; n % 2 == 0;</code></pre>
+
+                <!-- 8. 확장 메서드 -->
+                <h2 id="extension"><i class="fa-solid fa-puzzle-piece"></i> 확장 메서드</h2>
+                <p>LINQ 연산자는 모두 <code>IEnumerable&lt;T&gt;</code>의 <strong>확장 메서드</strong>다. <code>static class</code>의 <code>static</code> 메서드에 첫 인자로 <code>this</code> 키워드를 붙여 정의한다. 컴파일러가 메서드 호출처럼 보이게 해 준다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public static class EnumerableExtensions
+{
+    // 짝수만 골라내는 우리만의 LINQ 연산자
+    public static IEnumerable&lt;int&gt; WhereEven(this IEnumerable&lt;int&gt; source)
+    {
+        foreach (var n in source)
+        {
+            if (n % 2 == 0) yield return n;
+        }
+    }
+}
+
+// 사용 — 마치 원래 메서드인 것처럼
+var evens = numbers.WhereEven().ToList();</code></pre>
+
+                <p>실제 <code>System.Linq.Enumerable</code> 클래스가 이런 확장 메서드를 수십 개 정의해 두었기 때문에 <code>using System.Linq;</code> 한 줄로 모두 사용할 수 있다.</p>
+
+                <!-- 9. 익명 타입 -->
+                <h2 id="anonymous"><i class="fa-solid fa-mask"></i> 익명 타입</h2>
+                <p><code>Select</code>에서 그 자리에서 임시 타입을 만들 때 쓴다. 컴파일러가 자동으로 클래스를 생성한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">var summary = people
+    .Where(p =&gt; p.Age &gt;= 18)
+    .Select(p =&gt; new { p.Name, p.Age, IsAdult = true })
+    .ToList();
+
+foreach (var item in summary)
+{
+    Console.WriteLine($"{item.Name} ({item.Age}) - {item.IsAdult}");
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>익명 타입은 메서드 안에서만 쓸모 있다</strong>
+                        타입 이름을 적을 수 없어서 메서드 반환 타입으로는 불가. 외부로 노출해야 한다면 <code>record</code>나 일반 클래스를 정의하자. 메서드 내부에서 <code>foreach</code>·즉시 집계용으로 쓰기 좋다.
+                    </div>
+                </div>
+
+                <h3 id="record"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> record (C# 9+) — 익명 타입의 더 강한 사촌</h3>
+
+<pre class="language-csharp"><code class="language-csharp">public record CategorySummary(string Category, int Count, decimal Total);
+
+var report = products
+    .GroupBy(p =&gt; p.Category)
+    .Select(g =&gt; new CategorySummary(g.Key, g.Count(), g.Sum(p =&gt; p.Price)))
+    .ToList();</code></pre>
+
+                <!-- 10. 산업·이미지 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업·이미지 관점에서의 LINQ</h2>
+                <p>비전 시스템 코드에서도 LINQ는 매우 자주 등장한다. C++ 코어가 만들어 낸 검사 결과를 C# 뷰어에서 다룰 때, 컬렉션 처리가 깔끔해진다.</p>
+
+                <h3 id="inspection-filter"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 검사 결과 필터링·집계</h3>
+
+<pre class="language-csharp"><code class="language-csharp">public record DefectInfo(int Id, string Type, double Area, double Score);
+
+List&lt;DefectInfo&gt; defects = inspector.RunAll();
+
+// NG 후보만 추출
+var ngCandidates = defects
+    .Where(d =&gt; d.Score &gt;= 0.8 &amp;&amp; d.Area &gt; 30.0)
+    .OrderByDescending(d =&gt; d.Score)
+    .ToList();
+
+// 결함 종류별 카운트
+var byType = defects
+    .GroupBy(d =&gt; d.Type)
+    .Select(g =&gt; new { Type = g.Key, Count = g.Count(), AvgArea = g.Average(d =&gt; d.Area) })
+    .OrderByDescending(x =&gt; x.Count)
+    .ToList();
+
+// 최악의 결함 한 개
+var worst = defects
+    .OrderByDescending(d =&gt; d.Score)
+    .FirstOrDefault();</code></pre>
+
+                <h3 id="roi-overlap"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ROI 겹침 검사</h3>
+
+<pre class="language-csharp"><code class="language-csharp">public record Roi(int Id, int X, int Y, int W, int H);
+
+// 검사 영역끼리 겹치는 쌍을 찾는다
+var overlaps =
+    from a in rois
+    from b in rois
+    where a.Id &lt; b.Id &amp;&amp; Intersects(a, b)
+    select new { A = a.Id, B = b.Id };</code></pre>
+
+                <h3 id="log-analysis"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 로그 분석</h3>
+
+<pre class="language-csharp"><code class="language-csharp">var lines = File.ReadAllLines("inspection.log");
+
+// 시간대별 NG 건수 — 1시간 버킷
+var ngPerHour = lines
+    .Select(ParseLogEntry)
+    .Where(e =&gt; e != null &amp;&amp; e.Result == "NG")
+    .GroupBy(e =&gt; new DateTime(e.Time.Year, e.Time.Month, e.Time.Day, e.Time.Hour, 0, 0))
+    .Select(g =&gt; new { Hour = g.Key, Count = g.Count() })
+    .OrderBy(x =&gt; x.Hour)
+    .ToList();</code></pre>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <h3 id="pitfall-deferred"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1. 지연 평가 두 번 열거</h3>
+
+<pre class="language-csharp"><code class="language-csharp">// 나쁜 예 — Where가 두 번 실행된다
+var slow = bigCollection.Where(IsExpensiveCheck);
+int count = slow.Count();          // 첫 번째 순회
+var first = slow.FirstOrDefault(); // 두 번째 순회
+
+// 좋은 예 — 한 번만 평가
+var snapshot = bigCollection.Where(IsExpensiveCheck).ToList();
+int count2 = snapshot.Count;
+var first2 = snapshot.FirstOrDefault();</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>같은 IEnumerable 변수에 LINQ를 여러 번 부르지 말자</strong>
+                        파일·DB·네트워크 소스라면 매번 다시 읽는다. 큰 컬렉션이라면 <code>ToList()</code>로 한 번 구체화하는 비용이 훨씬 싸다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-first"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2. First() vs FirstOrDefault()</h3>
+
+<pre class="language-csharp"><code class="language-csharp">// First — 비어있으면 InvalidOperationException
+var item = collection.First(x =&gt; x.Id == 999);
+
+// FirstOrDefault — 비어있으면 default(T) (참조 타입은 null)
+var item2 = collection.FirstOrDefault(x =&gt; x.Id == 999);
+
+// Single — 정확히 1개. 0개나 2개 이상이면 예외
+var unique = collection.Single(x =&gt; x.IsPrimary);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"없을 수도 있다"면 무조건 OrDefault 계열</strong>
+                        <code>First()</code>를 쓰면 빈 결과가 곧장 런타임 예외가 된다. UI 코드에서 깨지면 사용자에게 그대로 노출되기 십상이다. 반대로 <strong>정확히 하나만 있어야 한다</strong>는 비즈니스 규칙이라면 <code>Single()</code>로 명시해서 위반 시 빨리 실패하게 만든다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-n-plus-1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3. GroupBy 후 Count로 인한 N+1 (EF Core)</h3>
+
+<pre class="language-csharp"><code class="language-csharp">// 나쁜 예 — 각 그룹의 Count를 따로따로 쿼리
+foreach (var category in db.Products.Select(p =&gt; p.Category).Distinct().ToList())
+{
+    int count = db.Products.Count(p =&gt; p.Category == category);  // 매번 DB 호출
+    Console.WriteLine($"{category}: {count}");
+}
+
+// 좋은 예 — 한 번에 그룹 집계
+var summary = db.Products
+    .GroupBy(p =&gt; p.Category)
+    .Select(g =&gt; new { Category = g.Key, Count = g.Count() })
+    .ToList();  // SQL 한 방</code></pre>
+
+                <h3 id="pitfall-closure"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4. 람다 클로저 변수 캡처</h3>
+                <p>람다 안에서 외부 변수를 참조하면 <strong>참조로 캡처</strong>된다. 반복문 변수를 그대로 캡처하면 모든 람다가 마지막 값을 가리킨다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">var actions = new List&lt;Action&gt;();
+
+// 나쁜 예 (C# 5 이전 스타일 — 지금은 for 변수만 이런 버그가 남음)
+for (int i = 0; i &lt; 3; i++)
+{
+    actions.Add(() =&gt; Console.WriteLine(i));
+}
+foreach (var a in actions) a();   // 3, 3, 3 (!)
+
+// 좋은 예 — 지역 변수로 복사
+for (int i = 0; i &lt; 3; i++)
+{
+    int captured = i;
+    actions.Add(() =&gt; Console.WriteLine(captured));
+}
+// 0, 1, 2
+
+// foreach는 C# 5부터 매 반복마다 새 변수 — 안전
+foreach (var x in items)
+{
+    actions.Add(() =&gt; Console.WriteLine(x));  // 각자 다른 x
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>for 루프 변수는 람다 안에서 위험하다</strong>
+                        <code>for (int i = ...)</code>의 <code>i</code>는 모든 반복이 공유하는 한 변수다. 람다가 그대로 캡처하면 모든 람다가 같은 값을 본다. 캡처 직전에 지역 변수로 복사하거나 <code>foreach</code>를 쓰자.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Microsoft Learn — Language Integrated Query (LINQ)</li>
+                        <li>Microsoft Learn — Standard Query Operators Overview</li>
+                        <li>Microsoft Learn — Deferred Execution and Lazy Evaluation in LINQ</li>
+                        <li>Microsoft Learn — IEnumerable&lt;T&gt; vs IQueryable&lt;T&gt;</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-wpf');
+    renderPostNav('dev-wpf');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

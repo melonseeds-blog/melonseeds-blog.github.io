@@ -1,0 +1,818 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C# async/await - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 다이어그램 박스 */
+        .diagram-box {
+            background: #fafafa; border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why-async" data-section="why-async">왜 비동기</a>
+        <a href="#task" data-section="task">Task</a>
+        <a href="#async-await" data-section="async-await">async/await</a>
+        <a href="#task-run" data-section="task-run">Task.Run</a>
+        <a href="#when-all" data-section="when-all">WhenAll/WhenAny</a>
+        <a href="#cancellation" data-section="cancellation">CancellationToken</a>
+        <a href="#configure-await" data-section="configure-await">ConfigureAwait</a>
+        <a href="#sync-context" data-section="sync-context">SyncContext</a>
+        <a href="#exception" data-section="exception">예외 처리</a>
+        <a href="#dispatcher" data-section="dispatcher">Dispatcher</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#cpp-compare" data-section="cpp-compare">C++ 비교</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">WPF / C#</span>
+                </div>
+                <h1>C# async/await</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>비동기가 필요한 이유 — UI 스레드 블로킹과 I/O 효율</li>
+                        <li><code>Task</code>/<code>Task&lt;T&gt;</code>, <code>async</code>/<code>await</code>, <code>Task.Run</code></li>
+                        <li><code>WhenAll</code>/<code>WhenAny</code>, <code>CancellationToken</code>, <code>ConfigureAwait</code></li>
+                        <li><code>SynchronizationContext</code>와 WPF <code>Dispatcher</code></li>
+                        <li>흔한 함정 — <code>async void</code>, <code>.Result</code> 데드락, fire-and-forget</li>
+                        <li>C++ <code>std::async</code>/코루틴과의 비교</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-async">왜 비동기가 필요한가</a></li>
+                        <li><a href="#task">Task와 Task&lt;T&gt;</a></li>
+                        <li><a href="#async-await">async/await 키워드</a></li>
+                        <li><a href="#task-run">Task.Run과 스레드풀</a></li>
+                        <li><a href="#when-all">WhenAll / WhenAny</a></li>
+                        <li><a href="#cancellation">CancellationToken</a></li>
+                        <li><a href="#configure-await">ConfigureAwait(false)</a></li>
+                        <li><a href="#sync-context">SynchronizationContext</a></li>
+                        <li><a href="#exception">예외 처리</a></li>
+                        <li><a href="#dispatcher">UI 스레드와 Dispatcher</a></li>
+                        <li><a href="#pitfalls">비동기 함정</a></li>
+                        <li><a href="#cpp-compare">C++ std::async / 코루틴 비교</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 비동기 -->
+                <h2 id="why-async"><i class="fa-solid fa-bolt"></i> 왜 비동기가 필요한가</h2>
+                <p>WPF UI는 단일 스레드로 동작한다. 이 스레드가 파일 읽기·네트워크 요청·이미지 처리 같은 긴 작업에 막히면 창이 얼어붙고 사용자 입력에 반응하지 않는다. 비동기는 이런 블로킹을 피하기 위해 존재한다.</p>
+
+                <h3 id="blocking-example"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 블로킹의 문제</h3>
+<pre class="language-csharp"><code class="language-csharp">// 나쁜 예 — UI 스레드에서 동기 호출
+private void OnLoadClick(object sender, RoutedEventArgs e)
+{
+    // 큰 파일 읽기 — 수 초 동안 UI가 얼어붙는다.
+    byte[] data = File.ReadAllBytes(@"D:\large_image.tif");
+    ImageView.Source = Decode(data);
+}</code></pre>
+
+                <p>UI 스레드가 디스크 I/O를 기다리는 동안에는 다른 일을 못 한다. 비동기로 바꾸면 OS가 I/O를 처리하는 동안 UI 스레드는 자유로워진다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 좋은 예 — 비동기 호출
+private async void OnLoadClick(object sender, RoutedEventArgs e)
+{
+    // 파일 I/O가 끝날 때까지 UI는 계속 반응한다.
+    byte[] data = await File.ReadAllBytesAsync(@"D:\large_image.tif");
+    ImageView.Source = Decode(data);
+}</code></pre>
+
+                <h3 id="io-vs-cpu"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> I/O 바운드와 CPU 바운드</h3>
+                <table>
+                    <tr><th>구분</th><th>특징</th><th>처리 방식</th></tr>
+                    <tr><td><strong>I/O 바운드</strong></td><td>디스크·네트워크 대기</td><td><code>await</code>로 OS 완료 통지를 기다린다. 스레드 점유 안 함.</td></tr>
+                    <tr><td><strong>CPU 바운드</strong></td><td>계산·이미지 처리</td><td><code>Task.Run</code>으로 스레드풀에 던진다.</td></tr>
+                </table>
+
+                <!-- 2. Task -->
+                <h2 id="task"><i class="fa-solid fa-cube"></i> Task와 Task&lt;T&gt;</h2>
+                <p><code>Task</code>는 "언젠가 끝날 작업"을 표현하는 객체다. 결과 없이 끝나는 작업은 <code>Task</code>, 값을 돌려주는 작업은 <code>Task&lt;T&gt;</code>를 쓴다. C++의 <code>std::future</code>와 비슷하지만 훨씬 통합된 도구다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 결과 없는 작업
+Task t1 = Task.Delay(1000);
+
+// 결과 있는 작업
+Task&lt;int&gt; t2 = Task.FromResult(42);
+
+// 완료 대기 (비동기적으로)
+await t1;
+int value = await t2;</code></pre>
+
+                <h3 id="task-states"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Task의 상태</h3>
+                <table>
+                    <tr><th>상태</th><th>의미</th></tr>
+                    <tr><td><code>Created</code></td><td>생성됨, 아직 시작 전</td></tr>
+                    <tr><td><code>Running</code></td><td>실행 중</td></tr>
+                    <tr><td><code>RanToCompletion</code></td><td>정상 완료</td></tr>
+                    <tr><td><code>Faulted</code></td><td>예외로 실패</td></tr>
+                    <tr><td><code>Canceled</code></td><td>취소됨</td></tr>
+                </table>
+
+                <h3 id="task-api"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 주요 Task API</h3>
+                <table>
+                    <tr><th>API</th><th>설명</th></tr>
+                    <tr><td><code>Task.Delay(ms)</code></td><td>지정 시간 후 완료되는 Task. <code>Thread.Sleep</code> 비동기 버전.</td></tr>
+                    <tr><td><code>Task.Run(action)</code></td><td>스레드풀에 작업 등록.</td></tr>
+                    <tr><td><code>Task.FromResult(v)</code></td><td>즉시 완료된 Task 생성.</td></tr>
+                    <tr><td><code>Task.CompletedTask</code></td><td>이미 완료된 빈 Task (싱글톤).</td></tr>
+                    <tr><td><code>Task.WhenAll(tasks)</code></td><td>모두 끝나면 완료.</td></tr>
+                    <tr><td><code>Task.WhenAny(tasks)</code></td><td>하나라도 끝나면 완료.</td></tr>
+                </table>
+
+                <!-- 3. async/await -->
+                <h2 id="async-await"><i class="fa-solid fa-rotate"></i> async/await 키워드</h2>
+                <p><code>async</code> 함수 안에서만 <code>await</code>를 쓸 수 있다. <code>await</code>는 Task가 끝날 때까지 함수를 "일시 정지"한 뒤, 끝나면 이어서 실행한다. 스레드를 막지 않는다는 점이 핵심이다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public async Task&lt;string&gt; DownloadHtmlAsync(string url)
+{
+    using HttpClient client = new();
+    string html = await client.GetStringAsync(url);  // 여기서 일시 정지
+    return html.ToLower();                            // 완료되면 이어서 실행
+}</code></pre>
+
+                <h3 id="state-machine"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 컴파일러는 state machine으로 변환한다</h3>
+                <p>겉보기에는 순차 코드지만, 컴파일러는 <code>await</code> 지점마다 분할되는 상태 머신을 만든다. 각 <code>await</code> 직전 상태를 저장하고, 콜백으로 이어 실행한다.</p>
+
+                <div class="diagram-box">
+                    <svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg" style="max-width:100%; height:auto;">
+                        <defs>
+                            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M0,0 L10,5 L0,10 z" fill="#666"/>
+                            </marker>
+                        </defs>
+                        <!-- States -->
+                        <rect x="20" y="30" width="140" height="50" rx="8" fill="#e0f2fe" stroke="#0284c7"/>
+                        <text x="90" y="60" text-anchor="middle" font-size="13" font-family="Consolas" fill="#075985">State -1: Start</text>
+
+                        <rect x="200" y="30" width="160" height="50" rx="8" fill="#fef3c7" stroke="#d97706"/>
+                        <text x="280" y="55" text-anchor="middle" font-size="12" font-family="Consolas" fill="#78350f">State 0:</text>
+                        <text x="280" y="70" text-anchor="middle" font-size="11" font-family="Consolas" fill="#78350f">await GetStringAsync</text>
+
+                        <rect x="400" y="30" width="160" height="50" rx="8" fill="#fef3c7" stroke="#d97706"/>
+                        <text x="480" y="55" text-anchor="middle" font-size="12" font-family="Consolas" fill="#78350f">State 1:</text>
+                        <text x="480" y="70" text-anchor="middle" font-size="11" font-family="Consolas" fill="#78350f">await ParseAsync</text>
+
+                        <rect x="600" y="30" width="100" height="50" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+                        <text x="650" y="60" text-anchor="middle" font-size="13" font-family="Consolas" fill="#14532d">Final</text>
+
+                        <line x1="160" y1="55" x2="200" y2="55" stroke="#666" stroke-width="1.5" marker-end="url(#arr)"/>
+                        <line x1="360" y1="55" x2="400" y2="55" stroke="#666" stroke-width="1.5" marker-end="url(#arr)"/>
+                        <line x1="560" y1="55" x2="600" y2="55" stroke="#666" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                        <!-- pause/resume -->
+                        <path d="M 280,80 Q 280,130 360,130" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,3"/>
+                        <path d="M 360,130 Q 280,130 280,80" fill="none" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr)"/>
+                        <text x="370" y="135" font-size="11" fill="#666">I/O 완료 콜백으로 재진입</text>
+
+                        <!-- UI thread -->
+                        <line x1="20" y1="200" x2="700" y2="200" stroke="#94a3b8" stroke-width="1.5"/>
+                        <text x="20" y="195" font-size="11" fill="#475569">UI 스레드</text>
+                        <rect x="20" y="190" width="140" height="20" fill="#bfdbfe" opacity="0.7"/>
+                        <rect x="400" y="190" width="160" height="20" fill="#bfdbfe" opacity="0.7"/>
+                        <rect x="600" y="190" width="100" height="20" fill="#bfdbfe" opacity="0.7"/>
+                        <text x="200" y="225" font-size="11" fill="#64748b">(UI 스레드 자유: 메시지 펌프 동작)</text>
+
+                        <text x="20" y="260" font-size="11" fill="#475569">파란 구간 = 내 코드 실행, 회색 구간 = OS가 I/O 처리 중</text>
+                    </svg>
+                    <div class="diagram-caption">async 함수의 상태 머신 변환과 UI 스레드 점유</div>
+                </div>
+
+                <h3 id="return-types"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> async 반환 타입</h3>
+                <table>
+                    <tr><th>반환 타입</th><th>용도</th></tr>
+                    <tr><td><code>Task</code></td><td>결과 없는 비동기 메서드. 가장 기본.</td></tr>
+                    <tr><td><code>Task&lt;T&gt;</code></td><td>결과를 돌려주는 비동기 메서드.</td></tr>
+                    <tr><td><code>ValueTask&lt;T&gt;</code></td><td>핫 패스 최적화. 동기 완료가 잦을 때.</td></tr>
+                    <tr><td><code>void</code></td><td>이벤트 핸들러 전용. <strong>그 외에는 금지</strong>.</td></tr>
+                </table>
+
+                <!-- 4. Task.Run -->
+                <h2 id="task-run"><i class="fa-solid fa-microchip"></i> Task.Run과 스레드풀</h2>
+                <p>I/O는 OS가 비동기로 처리해 주지만, CPU 작업은 누군가는 실제로 계산해야 한다. <code>Task.Run</code>이 작업을 스레드풀로 옮겨 UI 스레드를 비워 준다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// CPU 바운드 — 이미지 처리, 무거운 계산
+private async void OnFilterClick(object sender, RoutedEventArgs e)
+{
+    // 스레드풀에서 처리, UI는 그대로 응답
+    Bitmap result = await Task.Run(() => ApplyGaussianBlur(_source, 5));
+    ImageView.Source = ToBitmapSource(result);
+}
+
+// I/O 바운드는 Task.Run으로 감싸지 말 것
+// 잘못된 예: await Task.Run(() => File.ReadAllBytesAsync(path));
+// 올바른 예: await File.ReadAllBytesAsync(path);</code></pre>
+
+                <h3 id="run-vs-factory"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Task.Run vs Task.Factory.StartNew</h3>
+                <p>오래된 코드에서는 <code>Task.Factory.StartNew</code>를 보게 된다. 옵션이 풍부하지만 기본값이 위험하다. 일반 코드는 <code>Task.Run</code>을 쓴다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>StartNew의 함정</strong>
+                        async 람다를 <code>StartNew</code>에 넘기면 <code>Task&lt;Task&gt;</code>가 반환된다. <code>Unwrap()</code>이 필요하다. 그냥 <code>Task.Run</code>을 쓰면 자동으로 풀어 준다.
+                    </div>
+                </div>
+
+                <!-- 5. WhenAll/WhenAny -->
+                <h2 id="when-all"><i class="fa-solid fa-object-group"></i> WhenAll / WhenAny</h2>
+                <p>여러 비동기 작업을 동시에 돌리고 합칠 때 쓴다. 순차 <code>await</code>와 결과가 크게 다르다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 순차 — 9초 (각 3초씩)
+string a = await DownloadAsync(url1);
+string b = await DownloadAsync(url2);
+string c = await DownloadAsync(url3);
+
+// 병렬 — 3초 (동시에 시작)
+Task&lt;string&gt; ta = DownloadAsync(url1);
+Task&lt;string&gt; tb = DownloadAsync(url2);
+Task&lt;string&gt; tc = DownloadAsync(url3);
+string[] results = await Task.WhenAll(ta, tb, tc);</code></pre>
+
+                <h3 id="when-any"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> WhenAny — 가장 빠른 결과 / 타임아웃</h3>
+<pre class="language-csharp"><code class="language-csharp">// 타임아웃 패턴
+Task&lt;string&gt; download = DownloadAsync(url);
+Task timeout = Task.Delay(TimeSpan.FromSeconds(5));
+
+Task winner = await Task.WhenAny(download, timeout);
+if (winner == timeout)
+{
+    throw new TimeoutException("다운로드 5초 초과");
+}
+string html = await download;</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>WhenAll의 예외 동작</strong>
+                        여러 Task가 예외를 던지면 <code>WhenAll</code>의 결과 Task는 모든 예외를 모은 <code>AggregateException</code>을 보관한다. 하지만 <code>await</code>는 첫 번째 예외만 throw한다. 모든 예외를 보려면 <code>task.Exception.InnerExceptions</code>를 확인한다.
+                    </div>
+                </div>
+
+                <!-- 6. CancellationToken -->
+                <h2 id="cancellation"><i class="fa-solid fa-ban"></i> CancellationToken</h2>
+                <p>비동기 작업의 취소는 강제 종료가 아니라 <strong>협력적 취소</strong>다. 작업 측이 토큰을 주기적으로 확인하고 스스로 중단한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">public async Task&lt;int&gt; CountAsync(CancellationToken ct)
+{
+    int count = 0;
+    for (int i = 0; i &lt; 1_000_000; i++)
+    {
+        ct.ThrowIfCancellationRequested();  // 협력 지점
+        count += Compute(i);
+        if (i % 1000 == 0)
+        {
+            await Task.Delay(1, ct);  // Delay 자체도 토큰을 받는다
+        }
+    }
+    return count;
+}
+
+// 호출 측
+var cts = new CancellationTokenSource();
+cts.CancelAfter(TimeSpan.FromSeconds(3));  // 3초 후 자동 취소
+
+try
+{
+    int result = await CountAsync(cts.Token);
+}
+catch (OperationCanceledException)
+{
+    // 취소는 정상 흐름으로 처리
+    Log("사용자 취소");
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>표준 라이브러리 API는 대부분 CancellationToken을 받는다</strong>
+                        <code>HttpClient.GetAsync</code>, <code>Stream.ReadAsync</code>, <code>Task.Delay</code> 모두 토큰 오버로드가 있다. 자신이 만든 비동기 API에도 마지막 파라미터로 토큰을 받자.
+                    </div>
+                </div>
+
+                <!-- 7. ConfigureAwait -->
+                <h2 id="configure-await"><i class="fa-solid fa-gears"></i> ConfigureAwait(false)</h2>
+                <p><code>await</code>는 기본적으로 호출 직전의 <code>SynchronizationContext</code>(WPF에선 UI 스레드)로 돌아온다. 라이브러리 코드처럼 UI 컨텍스트가 필요 없는 곳에서는 이 복귀가 오버헤드이자 데드락 원인이 된다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 라이브러리 — UI 스레드로 돌아갈 필요 없음
+public async Task&lt;byte[]&gt; LoadImageAsync(string path)
+{
+    using var fs = File.OpenRead(path);
+    var buf = new byte[fs.Length];
+    await fs.ReadAsync(buf).ConfigureAwait(false);  // 컨텍스트 복귀 회피
+    return Process(buf).ConfigureAwait(false) is var x ? x : buf;
+}
+
+// UI 코드 — 그대로 두기 (UI 업데이트 필요)
+private async void OnClick(...)
+{
+    byte[] data = await LoadImageAsync(path);  // ConfigureAwait 없이
+    ImageView.Source = Decode(data);           // UI 스레드에서 실행됨
+}</code></pre>
+
+                <table>
+                    <tr><th>코드 종류</th><th>권장</th></tr>
+                    <tr><td>라이브러리/Core 코드</td><td><code>ConfigureAwait(false)</code> 일관 적용</td></tr>
+                    <tr><td>WPF UI 코드</td><td>붙이지 않음 (UI 컨텍스트로 복귀해야 함)</td></tr>
+                    <tr><td>ASP.NET Core / 콘솔</td><td>SynchronizationContext가 없어 차이 없음</td></tr>
+                </table>
+
+                <!-- 8. SyncContext -->
+                <h2 id="sync-context"><i class="fa-solid fa-arrows-rotate"></i> 동기 컨텍스트 (SynchronizationContext)</h2>
+                <p>"<code>await</code> 후 어디로 돌아갈까?"를 결정하는 객체다. 런타임 환경마다 다르다.</p>
+
+                <table>
+                    <tr><th>환경</th><th>SynchronizationContext</th><th>await 복귀 위치</th></tr>
+                    <tr><td>WPF</td><td><code>DispatcherSynchronizationContext</code></td><td>UI 스레드 (Dispatcher)</td></tr>
+                    <tr><td>WinForms</td><td><code>WindowsFormsSynchronizationContext</code></td><td>UI 스레드</td></tr>
+                    <tr><td>ASP.NET (Classic)</td><td><code>AspNetSynchronizationContext</code></td><td>요청 컨텍스트</td></tr>
+                    <tr><td>ASP.NET Core</td><td><strong>없음 (null)</strong></td><td>임의의 스레드풀 스레드</td></tr>
+                    <tr><td>콘솔 앱</td><td><strong>없음 (null)</strong></td><td>임의의 스레드풀 스레드</td></tr>
+                </table>
+
+                <p>WPF에서 <code>await</code> 후 자연스럽게 <code>ImageView.Source = ...</code>를 할 수 있는 이유는 컨텍스트가 자동으로 UI 스레드로 끌어와 주기 때문이다.</p>
+
+                <!-- 9. 예외 처리 -->
+                <h2 id="exception"><i class="fa-solid fa-triangle-exclamation"></i> 예외 처리</h2>
+                <p>비동기 함수의 예외는 Task 안에 보관됐다가 <code>await</code> 시점에 다시 throw된다. 따라서 일반 <code>try/catch</code>로 처리된다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">try
+{
+    string html = await DownloadHtmlAsync(url);
+}
+catch (HttpRequestException ex)
+{
+    Log($"네트워크 오류: {ex.Message}");
+}
+catch (OperationCanceledException)
+{
+    Log("취소됨");
+}</code></pre>
+
+                <h3 id="aggregate"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> AggregateException</h3>
+                <p>여러 Task가 예외를 던지는 경우 <code>WhenAll</code>의 Task에는 <code>AggregateException</code>이 담긴다. <code>await</code>는 첫 예외만 풀어 throw하므로 모든 예외를 잡으려면 직접 본다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">Task all = Task.WhenAll(t1, t2, t3);
+try
+{
+    await all;
+}
+catch
+{
+    // all.Exception에 모든 예외가 들어 있다.
+    foreach (var inner in all.Exception!.InnerExceptions)
+    {
+        Log(inner.Message);
+    }
+}</code></pre>
+
+                <!-- 10. Dispatcher -->
+                <h2 id="dispatcher"><i class="fa-solid fa-display"></i> UI 스레드와 Dispatcher</h2>
+                <p>WPF의 UI 요소는 자신이 만들어진 스레드(UI 스레드)에서만 접근할 수 있다. 다른 스레드에서 <code>ImageView.Source = ...</code>를 하면 <code>InvalidOperationException</code>이 난다. 이때 <code>Dispatcher</code>로 마샬링한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 백그라운드 스레드에서 직접 UI 업데이트
+await Task.Run(() =&gt;
+{
+    for (int i = 0; i &lt; 100; i++)
+    {
+        int progress = i;
+        Application.Current.Dispatcher.Invoke(() =&gt;
+        {
+            ProgressBar.Value = progress;  // UI 스레드에서 실행
+        });
+    }
+});
+
+// await 패턴이라면 Dispatcher가 거의 필요 없다
+private async void OnProcessClick(...)
+{
+    var progress = new Progress&lt;int&gt;(p =&gt; ProgressBar.Value = p);
+    await Task.Run(() =&gt; HeavyWork(progress));
+    // 여기서는 자동으로 UI 스레드 복귀
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>IProgress&lt;T&gt;는 마샬링까지 처리한다</strong>
+                        UI 스레드에서 만든 <code>Progress&lt;T&gt;</code>는 <code>Report</code> 호출을 자동으로 UI 스레드로 옮긴다. <code>Dispatcher.Invoke</code>를 직접 부르지 않아도 된다. 자세한 내용은 WPF 편에서 다룬다.
+                    </div>
+                </div>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bomb"></i> 비동기 함정</h2>
+
+                <h3 id="pit-async-void"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> async void는 이벤트 핸들러에서만</h3>
+                <p><code>async void</code>는 호출자가 완료를 알 수 없고, 예외가 <code>SynchronizationContext</code>로 직접 던져져 보통 앱이 죽는다. 이벤트 핸들러 시그니처 때문에 어쩔 수 없는 경우 외에는 반드시 <code>async Task</code>로 한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 금지
+public async void DoWork()
+{
+    throw new InvalidOperationException();  // 앱 크래시
+}
+
+// OK — 이벤트 핸들러는 예외
+private async void OnButtonClick(object sender, RoutedEventArgs e)
+{
+    try
+    {
+        await DoWorkAsync();
+    }
+    catch (Exception ex)
+    {
+        ShowError(ex);  // 반드시 자체에서 try/catch
+    }
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>위험: async void</strong>
+                        예외가 잡히지 않고, 단위 테스트도 불가능하다. 이벤트 핸들러가 아니면 <strong>절대 쓰지 말 것</strong>.
+                    </div>
+                </div>
+
+                <h3 id="pit-result"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> .Result / .Wait() 데드락</h3>
+                <p>동기 코드에서 비동기 함수를 <code>.Result</code>로 받으면 WPF에서는 데드락이 발생한다. UI 스레드가 Task 완료를 기다리는데, Task 안의 <code>await</code>는 같은 UI 스레드로 돌아오려 하기 때문이다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 데드락
+private void OnSyncClick(object sender, RoutedEventArgs e)
+{
+    string html = DownloadHtmlAsync(url).Result;  // 멈춤
+}
+
+// 올바른 해법 — async로 전염시키기
+private async void OnAsyncClick(object sender, RoutedEventArgs e)
+{
+    string html = await DownloadHtmlAsync(url);
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                    <div class="callout-body">
+                        <strong>위험: .Result, .Wait(), GetAwaiter().GetResult()</strong>
+                        WPF·WinForms·ASP.NET Classic에서 UI/요청 컨텍스트가 있는 동안 호출하면 데드락. 라이브러리 안 어디서든 합쳐서 한 번이라도 호출하면 위험하다. "비동기는 끝까지 비동기"가 규칙이다.
+                    </div>
+                </div>
+
+                <h3 id="pit-fire-forget"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> fire-and-forget의 예외 손실</h3>
+<pre class="language-csharp"><code class="language-csharp">// 나쁜 예 — 예외가 묻힌다
+_ = SaveLogAsync(message);
+
+// 좋은 예 — 최소한 로깅
+_ = SaveLogAsync(message).ContinueWith(
+    t =&gt; Log(t.Exception),
+    TaskContinuationOptions.OnlyOnFaulted);</code></pre>
+
+                <h3 id="pit-misc"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기타 흔한 실수</h3>
+                <ul>
+                    <li><strong>CancellationToken 무시</strong> — 비동기 API를 만들면서 토큰을 받지 않으면 호출자가 취소할 방법이 없다.</li>
+                    <li><strong>foreach 안에서 순차 await</strong> — 동시 가능한 작업을 순차 처리해 느려진다. <code>Task.WhenAll(items.Select(asyncFn))</code>을 고려한다.</li>
+                    <li><strong>I/O를 Task.Run으로 감싸기</strong> — 이미 비동기인 I/O를 스레드풀로 옮기는 건 스레드 낭비다.</li>
+                    <li><strong>람다 캡처에 의한 누수</strong> — Task가 오래 살아 있으면 캡처한 객체도 살아 있다.</li>
+                </ul>
+
+                <!-- 12. C++ 비교 -->
+                <h2 id="cpp-compare"><i class="fa-brands fa-cuttlefish"></i> C++ std::async / 코루틴과 비교</h2>
+                <p>C++ 시리즈에서 다룬 <code>std::async</code>·<code>std::future</code>·코루틴과 개념적으로 대응된다.</p>
+
+                <table>
+                    <tr><th>개념</th><th>C#</th><th>C++</th></tr>
+                    <tr><td>비동기 결과</td><td><code>Task&lt;T&gt;</code></td><td><code>std::future&lt;T&gt;</code></td></tr>
+                    <tr><td>스레드풀 실행</td><td><code>Task.Run</code></td><td><code>std::async(std::launch::async, ...)</code></td></tr>
+                    <tr><td>대기 (비차단)</td><td><code>await task</code></td><td><code>co_await</code> (C++20 코루틴)</td></tr>
+                    <tr><td>대기 (차단)</td><td><code>task.Result</code> (위험)</td><td><code>future.get()</code></td></tr>
+                    <tr><td>여러 작업</td><td><code>Task.WhenAll</code></td><td><code>when_all</code> (C++23) 또는 수동</td></tr>
+                    <tr><td>취소</td><td><code>CancellationToken</code></td><td><code>std::stop_token</code> (C++20)</td></tr>
+                    <tr><td>상태 머신</td><td>컴파일러 자동 생성</td><td>코루틴 프롬프트 객체 + 핸들</td></tr>
+                </table>
+
+                <p>C++는 코루틴 인프라(promise type, awaiter 등)를 직접 만들어야 하지만, C#은 <code>Task</code>와 <code>SynchronizationContext</code>가 표준 라이브러리에 통합돼 있어 그냥 <code>async/await</code>만 쓰면 된다. 반대로 C++는 실행기·할당자 등 저수준 제어가 가능하다.</p>
+
+                <!-- 13. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table>
+                    <tr><th>상황</th><th>패턴</th></tr>
+                    <tr><td>파일·네트워크 I/O</td><td><code>await XxxAsync(...)</code> — Task.Run 감싸지 않기</td></tr>
+                    <tr><td>이미지 처리·계산</td><td><code>await Task.Run(() =&gt; ...)</code></td></tr>
+                    <tr><td>여러 작업 병렬</td><td><code>await Task.WhenAll(...)</code></td></tr>
+                    <tr><td>타임아웃</td><td><code>Task.WhenAny(work, Task.Delay(...))</code></td></tr>
+                    <tr><td>취소</td><td><code>CancellationTokenSource</code> + 토큰 전파</td></tr>
+                    <tr><td>라이브러리 코드</td><td><code>ConfigureAwait(false)</code> 일관 적용</td></tr>
+                    <tr><td>이벤트 핸들러</td><td><code>async void</code> + 자체 try/catch</td></tr>
+                    <tr><td>그 외 비동기 메서드</td><td><code>async Task</code> / <code>async Task&lt;T&gt;</code></td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>한 줄 요약</strong>
+                        "비동기는 끝까지 비동기로." UI 스레드를 비워 두고, 컨텍스트를 의식하고, 토큰을 전파한다. <code>.Result</code>와 <code>async void</code>만 피해도 사고 대부분이 사라진다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Microsoft Learn — Asynchronous programming with async and await</li>
+                        <li>Microsoft Learn — Task-based asynchronous pattern (TAP)</li>
+                        <li>Stephen Cleary — "Async and Await" 블로그 시리즈</li>
+                        <li>Stephen Toub — .NET async/await 내부 동작 글</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-wpf');
+    renderPostNav('dev-wpf');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

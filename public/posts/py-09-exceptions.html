@@ -1,0 +1,802 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예외 처리 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* spec-table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+        .spec-table th { background: var(--primary-50); color: var(--primary-dark); font-weight: 700; }
+        .spec-table tr:nth-child(even) td { background: #fafafa; }
+
+        /* flow svg */
+        .flow-svg-wrap { display: flex; justify-content: center; margin: 16px 0 24px; }
+        .flow-svg-wrap svg { max-width: 100%; height: auto; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#intro" data-section="intro">예외란</a>
+        <a href="#four-clauses" data-section="four-clauses">4개 절</a>
+        <a href="#except" data-section="except">except</a>
+        <a href="#hierarchy" data-section="hierarchy">예외 계층</a>
+        <a href="#raise" data-section="raise">raise</a>
+        <a href="#custom" data-section="custom">커스텀 예외</a>
+        <a href="#eafp-lbyl" data-section="eafp-lbyl">EAFP vs LBYL</a>
+        <a href="#assert" data-section="assert">assert</a>
+        <a href="#logging" data-section="logging">logging 결합</a>
+        <a href="#exception-groups" data-section="exception-groups">ExceptionGroup</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">Python 시리즈</span>
+                </div>
+                <h1>예외 처리</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Python의 예외 처리 철학 — EAFP, 정상 흐름 통제 메커니즘</li>
+                        <li><code>try / except / else / finally</code> 4개 절의 역할과 흐름</li>
+                        <li>예외 계층 구조, <code>raise</code>와 원인 체이닝</li>
+                        <li>커스텀 예외, <code>assert</code>, <code>logging</code> 결합</li>
+                        <li>Python 3.11+의 <code>ExceptionGroup</code>과 <code>except*</code></li>
+                        <li>흔한 함정 — 침묵 처리, 광범위한 catch, finally 트랩</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">Python의 예외 — EAFP 철학</a></li>
+                        <li><a href="#four-clauses">try / except / else / finally</a></li>
+                        <li><a href="#except">except 절 사용법</a></li>
+                        <li><a href="#hierarchy">예외 계층 구조</a></li>
+                        <li><a href="#raise">raise — 예외 발생과 체이닝</a></li>
+                        <li><a href="#custom">커스텀 예외 만들기</a></li>
+                        <li><a href="#eafp-lbyl">EAFP vs LBYL</a></li>
+                        <li><a href="#assert">assert — 디버깅용 단언</a></li>
+                        <li><a href="#logging">logging과 결합</a></li>
+                        <li><a href="#exception-groups">Exception Groups (3.11+)</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 예외란 -->
+                <h2 id="intro"><i class="fa-solid fa-bolt"></i> Python의 예외 — EAFP 철학</h2>
+                <p>Python에서 예외(exception)는 단순한 오류 신호가 아니라 <strong>정상 흐름을 통제하는 메커니즘</strong>의 하나다. 파일이 없을 때, 키가 사전에 없을 때, 반복자가 끝났을 때 모두 예외로 처리한다. 그래서 Python 프로그래머는 다음 원칙을 따른다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-quote-left"></i>
+                    <div class="callout-body">
+                        <strong>EAFP — Easier to Ask Forgiveness than Permission</strong>
+                        "쉽게 허락받기보다 용서 구하기". 미리 조건을 검사하기보다 일단 시도하고 실패하면 그때 처리한다는 Pythonic한 사고방식이다.
+                    </div>
+                </div>
+
+                <p>C++이나 Java처럼 예외가 "비정상 상황"만을 의미하지 않는다. <code>for</code> 루프 종료도 내부적으로는 <code>StopIteration</code> 예외다. 그러니 예외 처리는 "에러 잡기"가 아니라 "흐름 분기"로 받아들이는 것이 자연스럽다.</p>
+
+                <!-- 2. 4개 절 -->
+                <h2 id="four-clauses"><i class="fa-solid fa-diagram-project"></i> try / except / else / finally</h2>
+                <p>Python의 예외 처리 블록은 최대 4개 절로 구성된다. 각 절의 역할과 실행 시점은 다음과 같다.</p>
+
+                <div class="flow-svg-wrap">
+                    <svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+                            </marker>
+                        </defs>
+                        <!-- try -->
+                        <rect x="280" y="20" width="160" height="50" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+                        <text x="360" y="50" text-anchor="middle" font-family="Consolas, monospace" font-size="15" fill="#1e3a8a" font-weight="700">try: 본문 실행</text>
+
+                        <!-- decision -->
+                        <polygon points="360,100 460,150 360,200 260,150" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                        <text x="360" y="148" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#78350f" font-weight="700">예외 발생?</text>
+                        <text x="360" y="166" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#78350f">Yes / No</text>
+
+                        <!-- except -->
+                        <rect x="50" y="220" width="200" height="50" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+                        <text x="150" y="244" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#7f1d1d" font-weight="700">except: 매칭되면</text>
+                        <text x="150" y="260" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#7f1d1d">예외 처리</text>
+
+                        <!-- else -->
+                        <rect x="470" y="220" width="200" height="50" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                        <text x="570" y="244" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#14532d" font-weight="700">else: 예외 없으면</text>
+                        <text x="570" y="260" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#14532d">정상 후속 처리</text>
+
+                        <!-- finally -->
+                        <rect x="280" y="320" width="160" height="50" rx="8" fill="#e9d5ff" stroke="#7c3aed" stroke-width="2"/>
+                        <text x="360" y="350" text-anchor="middle" font-family="Consolas, monospace" font-size="15" fill="#4c1d95" font-weight="700">finally: 항상 실행</text>
+
+                        <!-- arrows -->
+                        <line x1="360" y1="70" x2="360" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="260" y1="150" x2="155" y2="220" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="460" y1="150" x2="565" y2="220" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="150" y1="270" x2="290" y2="325" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+                        <line x1="570" y1="270" x2="430" y2="325" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+                        <text x="200" y="195" font-family="sans-serif" font-size="11" fill="#dc2626" font-weight="700">Yes</text>
+                        <text x="490" y="195" font-family="sans-serif" font-size="11" fill="#16a34a" font-weight="700">No</text>
+                    </svg>
+                </div>
+
+                <table class="spec-table">
+                    <tr><th>절</th><th>실행 시점</th><th>주 용도</th></tr>
+                    <tr><td><code>try</code></td><td>항상 진입, 본문 실행</td><td>예외가 발생할 수 있는 코드</td></tr>
+                    <tr><td><code>except</code></td><td>매칭되는 예외 발생 시</td><td>예외 처리 / 복구</td></tr>
+                    <tr><td><code>else</code></td><td>예외가 없었을 때만</td><td>예외 없을 때만 실행할 후속 작업</td></tr>
+                    <tr><td><code>finally</code></td><td>예외 유무와 무관하게 항상</td><td>리소스 정리 (close, unlock)</td></tr>
+                </table>
+
+<pre class="language-python"><code class="language-python">def read_int(path):
+    try:
+        f = open(path, "r", encoding="utf-8")
+        value = int(f.read())
+    except FileNotFoundError:
+        print("파일이 없다.")
+        return None
+    except ValueError:
+        print("정수 형식이 아니다.")
+        return None
+    else:
+        # 예외가 없었을 때만 실행
+        print(f"성공적으로 읽었다: {value}")
+        return value
+    finally:
+        # 예외 유무와 관계없이 반드시 실행
+        try:
+            f.close()
+        except NameError:
+            pass</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>else의 진짜 가치</strong>
+                        <code>try</code> 안에 너무 많은 코드를 넣으면 어느 줄에서 예외가 나는지 흐려진다. "예외가 날 가능성이 있는 줄"만 <code>try</code>에 두고, 정상 흐름은 <code>else</code>로 분리하면 의도가 명확해진다.
+                    </div>
+                </div>
+
+                <!-- 3. except -->
+                <h2 id="except"><i class="fa-solid fa-filter"></i> except 절 사용법</h2>
+
+                <h3 id="except-specific"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 특정 예외 잡기</h3>
+                <p>예외 타입은 가능한 구체적으로 지정한다. 막연한 <code>except:</code>는 <code>KeyboardInterrupt</code>까지 잡아 Ctrl+C도 무력화시킨다.</p>
+
+<pre class="language-python"><code class="language-python">try:
+    x = int(input("숫자 입력: "))
+except ValueError:
+    print("정수가 아니다.")</code></pre>
+
+                <h3 id="except-tuple"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 여러 예외를 하나로 묶기</h3>
+                <p>처리 방식이 같다면 튜플로 묶는다.</p>
+
+<pre class="language-python"><code class="language-python">try:
+    do_something()
+except (ValueError, TypeError, KeyError) as e:
+    print(f"입력 오류: {e}")</code></pre>
+
+                <h3 id="except-as"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> as 키워드로 예외 객체 받기</h3>
+                <p>예외 객체에는 메시지·인자·트레이스백 정보가 담겨 있다.</p>
+
+<pre class="language-python"><code class="language-python">try:
+    int("hello")
+except ValueError as e:
+    print(type(e).__name__)  # ValueError
+    print(e.args)            # ("invalid literal for int() with base 10: 'hello'",)
+    print(str(e))            # invalid literal for int() with base 10: 'hello'</code></pre>
+
+                <h3 id="except-multiple"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 여러 except 절 — 위에서 아래로 매칭</h3>
+                <p>예외 매칭은 위에서 아래로 순서대로 시도된다. <strong>구체적인 예외를 위에</strong>, 일반적인 예외를 아래에 둔다.</p>
+
+<pre class="language-python"><code class="language-python">try:
+    risky()
+except FileNotFoundError:        # 구체적
+    print("파일 없음")
+except OSError:                  # FileNotFoundError의 부모
+    print("OS 오류")
+except Exception as e:           # 가장 일반적 — 마지막
+    print(f"기타 오류: {e}")</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>순서가 뒤바뀌면 안 잡힌다</strong>
+                        <code>except OSError</code>가 위에 있으면 <code>FileNotFoundError</code>도 거기서 잡혀버려서, 그 아래 <code>except FileNotFoundError</code>는 영원히 실행되지 않는다.
+                    </div>
+                </div>
+
+                <!-- 4. 예외 계층 -->
+                <h2 id="hierarchy"><i class="fa-solid fa-sitemap"></i> 예외 계층 구조</h2>
+                <p>모든 내장 예외는 <code>BaseException</code>에서 출발하는 트리를 이룬다. 사용자 코드에서는 보통 <code>Exception</code>을 기준으로 다룬다.</p>
+
+<pre class="language-python"><code class="language-python">BaseException
+ ├── SystemExit              # sys.exit() — 잡지 말 것
+ ├── KeyboardInterrupt       # Ctrl+C — 잡지 말 것
+ ├── GeneratorExit
+ └── Exception               # ★ 사용자 예외는 여기 아래
+      ├── ArithmeticError
+      │    ├── ZeroDivisionError
+      │    └── OverflowError
+      ├── LookupError
+      │    ├── IndexError
+      │    └── KeyError
+      ├── ValueError
+      ├── TypeError
+      ├── AttributeError
+      ├── NameError
+      ├── OSError
+      │    ├── FileNotFoundError
+      │    ├── PermissionError
+      │    └── TimeoutError
+      ├── RuntimeError
+      │    └── RecursionError
+      └── StopIteration</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>예외</th><th>발생 상황</th></tr>
+                    <tr><td><code>ValueError</code></td><td>타입은 맞지만 값이 부적절 — <code>int("abc")</code></td></tr>
+                    <tr><td><code>TypeError</code></td><td>타입 자체가 부적절 — <code>"a" + 1</code></td></tr>
+                    <tr><td><code>KeyError</code></td><td>딕셔너리에 키가 없음</td></tr>
+                    <tr><td><code>IndexError</code></td><td>시퀀스 인덱스 범위 초과</td></tr>
+                    <tr><td><code>AttributeError</code></td><td>객체에 속성 없음</td></tr>
+                    <tr><td><code>OSError</code></td><td>파일·네트워크 등 OS 관련 오류</td></tr>
+                    <tr><td><code>StopIteration</code></td><td>반복자 종료 (내부적 사용)</td></tr>
+                </table>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>BaseException은 잡지 말 것</strong>
+                        <code>except BaseException:</code>이나 맨 <code>except:</code>는 <code>KeyboardInterrupt</code>, <code>SystemExit</code>까지 삼킨다. 사용자가 Ctrl+C로도 못 끄는 프로그램을 만들지 말자. 항상 <code>except Exception:</code>까지만 잡는다.
+                    </div>
+                </div>
+
+                <!-- 5. raise -->
+                <h2 id="raise"><i class="fa-solid fa-arrow-up-from-bracket"></i> raise — 예외 발생과 체이닝</h2>
+
+                <h3 id="raise-basic"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본 raise</h3>
+
+<pre class="language-python"><code class="language-python">def set_age(age):
+    if not isinstance(age, int):
+        raise TypeError(f"age는 int여야 한다: {type(age).__name__}")
+    if age &lt; 0:
+        raise ValueError(f"age는 0 이상이어야 한다: {age}")
+    return age</code></pre>
+
+                <h3 id="raise-rethrow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 재발생 (re-raise)</h3>
+                <p>로깅만 하고 예외는 그대로 위로 넘기고 싶을 때 인자 없이 <code>raise</code>만 쓴다.</p>
+
+<pre class="language-python"><code class="language-python">try:
+    do_work()
+except ValueError:
+    log.exception("처리 실패, 상위로 위임")
+    raise   # 동일 예외를 그대로 다시 던진다</code></pre>
+
+                <h3 id="raise-from"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 원인 체이닝 — raise X from Y</h3>
+                <p>저수준 예외를 의미 있는 도메인 예외로 변환하면서, 원인을 보존한다.</p>
+
+<pre class="language-python"><code class="language-python">class ConfigError(Exception):
+    pass
+
+def load_config(path):
+    try:
+        with open(path) as f:
+            return parse(f.read())
+    except FileNotFoundError as e:
+        raise ConfigError(f"설정 파일을 찾을 수 없다: {path}") from e</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 트레이스백 출력</div>
+FileNotFoundError: [Errno 2] No such file or directory: 'config.ini'
+
+The above exception was the direct cause of the following exception:
+
+ConfigError: 설정 파일을 찾을 수 없다: config.ini</div>
+
+                <p><code>from None</code>을 쓰면 원인을 의도적으로 숨길 수 있다. <code>from</code>을 생략해도 암묵적 체이닝(<code>__context__</code>)은 남는다.</p>
+
+                <!-- 6. 커스텀 예외 -->
+                <h2 id="custom"><i class="fa-solid fa-cube"></i> 커스텀 예외 만들기</h2>
+                <p>도메인에 의미 있는 이름을 가진 예외는 가독성을 크게 높인다. <code>Exception</code>을 상속하는 것으로 충분하다.</p>
+
+<pre class="language-python"><code class="language-python">class ImageError(Exception):
+    """이미지 처리 관련 예외의 베이스."""
+
+class ImageLoadError(ImageError):
+    """이미지를 디스크에서 읽지 못했다."""
+
+class ImageFormatError(ImageError):
+    """지원하지 않는 이미지 포맷이다."""
+    def __init__(self, path, fmt):
+        super().__init__(f"지원하지 않는 포맷: {fmt} ({path})")
+        self.path = path
+        self.fmt = fmt
+
+# 사용 측
+try:
+    img = load_image("frame.xyz")
+except ImageFormatError as e:
+    print(f"포맷 오류: {e.fmt}, 경로: {e.path}")
+except ImageError:
+    print("이미지 처리 중 오류")</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>패키지마다 베이스 예외를 둔다</strong>
+                        라이브러리를 만든다면 모든 커스텀 예외가 한 베이스(예: <code>ImageError</code>)를 상속하게 하자. 사용자가 <code>except ImageError</code> 한 줄로 라이브러리 예외만 깔끔히 잡을 수 있다.
+                    </div>
+                </div>
+
+                <!-- 7. EAFP vs LBYL -->
+                <h2 id="eafp-lbyl"><i class="fa-solid fa-scale-balanced"></i> EAFP vs LBYL</h2>
+                <p><strong>LBYL</strong>(Look Before You Leap, 뛰기 전에 살펴라)은 사전 검사를 우선하는 방식이고, <strong>EAFP</strong>는 일단 시도하고 실패하면 처리하는 방식이다.</p>
+
+<pre class="language-python"><code class="language-python"># LBYL — C 스타일
+if "key" in d and isinstance(d["key"], int):
+    use(d["key"])
+
+# EAFP — Pythonic
+try:
+    use(d["key"])
+except (KeyError, TypeError):
+    pass</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>관점</th><th>EAFP</th><th>LBYL</th></tr>
+                    <tr><td>철학</td><td>시도 후 처리</td><td>사전 확인</td></tr>
+                    <tr><td>경쟁 조건</td><td>없음 (원자적)</td><td>존재 (체크 사이에 변경 가능)</td></tr>
+                    <tr><td>성공 빈도 높을 때 성능</td><td>유리 (예외 없음)</td><td>불리 (매번 체크)</td></tr>
+                    <tr><td>실패 빈도 높을 때 성능</td><td>불리 (예외 비용)</td><td>유리</td></tr>
+                    <tr><td>스타일</td><td>Pythonic</td><td>전통적 / 명시적</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>파일 검사 — EAFP가 안전</strong>
+                        <code>if os.path.exists(p): open(p)</code> 사이에 파일이 사라지면 LBYL은 실패한다. <code>try: open(p) except FileNotFoundError</code>가 원자적이라 안전하다.
+                    </div>
+                </div>
+
+                <!-- 8. assert -->
+                <h2 id="assert"><i class="fa-solid fa-magnifying-glass-chart"></i> assert — 디버깅용 단언</h2>
+                <p><code>assert</code>는 "이 조건이 참이어야만 하는 불변식"을 표현한다. 거짓이면 <code>AssertionError</code>가 발생한다.</p>
+
+<pre class="language-python"><code class="language-python">def average(values):
+    assert len(values) &gt; 0, "values가 비어 있다"
+    return sum(values) / len(values)</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>assert를 입력 검증에 쓰지 말 것</strong>
+                        Python을 <code>-O</code>(최적화) 옵션으로 실행하면 모든 <code>assert</code>가 통째로 제거된다. 사용자 입력·외부 데이터 검증은 반드시 <code>if ... raise</code>로 작성한다. <code>assert</code>는 "개발자의 가정"을 표현하는 용도다.
+                    </div>
+                </div>
+
+<pre class="language-python"><code class="language-python"># 나쁜 예 — -O 옵션에서 통째로 사라진다
+def set_age(age):
+    assert age &gt;= 0   # ❌ 사용자 입력 검증
+
+# 좋은 예
+def set_age(age):
+    if age &lt; 0:
+        raise ValueError("age는 0 이상이어야 한다")   # ✅</code></pre>
+
+                <!-- 9. logging -->
+                <h2 id="logging"><i class="fa-solid fa-clipboard-list"></i> logging과 결합</h2>
+                <p>예외를 잡으면 정보가 사라지기 쉽다. 트레이스백은 <code>logging.exception()</code>이나 <code>logger.error(..., exc_info=True)</code>로 보존한다.</p>
+
+<pre class="language-python"><code class="language-python">import logging
+log = logging.getLogger(__name__)
+
+def process(item):
+    try:
+        do_work(item)
+    except ValueError:
+        # 트레이스백까지 자동으로 포함된다 (level=ERROR)
+        log.exception("item 처리 실패: %r", item)
+    except Exception:
+        log.exception("예기치 못한 오류")
+        raise   # 위로 다시 던진다</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>메서드</th><th>레벨</th><th>트레이스백 포함</th></tr>
+                    <tr><td><code>log.exception(msg)</code></td><td>ERROR</td><td>자동 포함 (except 블록 안에서만)</td></tr>
+                    <tr><td><code>log.error(msg, exc_info=True)</code></td><td>ERROR</td><td>포함</td></tr>
+                    <tr><td><code>log.error(msg)</code></td><td>ERROR</td><td>미포함 (메시지만)</td></tr>
+                </table>
+
+                <!-- 10. ExceptionGroup -->
+                <h2 id="exception-groups"><i class="fa-solid fa-layer-group"></i> Exception Groups (3.11+)</h2>
+                <p>Python 3.11에서 도입된 <code>ExceptionGroup</code>은 <strong>여러 예외를 동시에 묶어 던지는</strong> 기능이다. 비동기 작업이나 병렬 처리에서 여러 작업이 동시에 실패한 경우를 자연스럽게 표현한다.</p>
+
+<pre class="language-python"><code class="language-python"># 여러 예외를 묶어 던지기
+def run_all():
+    errors = []
+    for task in tasks:
+        try:
+            task.run()
+        except Exception as e:
+            errors.append(e)
+    if errors:
+        raise ExceptionGroup("작업 일부가 실패했다", errors)
+
+# except* 로 그룹 안의 특정 타입만 골라 잡기
+try:
+    run_all()
+except* ValueError as eg:
+    print(f"ValueError {len(eg.exceptions)}건")
+except* OSError as eg:
+    print(f"OSError {len(eg.exceptions)}건")</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>except* 의 특이점</strong>
+                        일반 <code>except</code>는 첫 번째로 매칭된 절만 실행되지만, <code>except*</code>는 그룹 안의 예외들을 타입별로 <em>여러 절이 동시에</em> 처리할 수 있다. <code>asyncio.TaskGroup</code>이 이 방식으로 자식 예외를 모은다.
+                    </div>
+                </div>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-skull-crossbones"></i> 흔한 함정</h2>
+
+                <h3 id="pitfall-silent"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 침묵 처리 — <code>except: pass</code></h3>
+
+<pre class="language-python"><code class="language-python"># ❌ 매우 나쁜 코드
+try:
+    important_work()
+except:
+    pass   # 모든 예외를 조용히 삼킨다. 버그가 영원히 숨는다.</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>가장 흔하고 가장 위험한 안티패턴</strong>
+                        예외를 무시해야 한다면 최소한 <strong>구체 타입</strong>을 지정하고, 의도를 주석으로 남기거나 <code>log.debug</code>로 흔적을 남긴다. <code>contextlib.suppress(ValueError)</code>도 의도를 명확히 드러내는 좋은 선택지다.
+                    </div>
+                </div>
+
+<pre class="language-python"><code class="language-python"># ✅ 의도를 명확히 — 특정 예외만 의도적으로 무시
+from contextlib import suppress
+with suppress(FileNotFoundError):
+    os.remove(tmp_path)</code></pre>
+
+                <h3 id="pitfall-broad"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 너무 광범위한 catch</h3>
+
+<pre class="language-python"><code class="language-python"># ❌ 정확히 무엇을 처리하는지 알 수 없다
+try:
+    user = db.get_user(user_id)
+    send_email(user.email, render(template))
+    audit.log(user_id)
+except Exception:
+    return "error"</code></pre>
+
+                <p>세 줄 모두 예외 가능성이 있지만 원인이 무엇인지 알 수 없다. DB 오류와 이메일 오류는 처리도 달라야 한다. 가능하면 <strong>좁은 범위 + 구체 예외</strong>로 분리한다.</p>
+
+                <h3 id="pitfall-finally"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> finally에서 return — 예외 삼킴</h3>
+
+<pre class="language-python"><code class="language-python"># ❌ finally의 return이 예외를 삼킨다
+def risky():
+    try:
+        raise ValueError("문제 발생")
+    finally:
+        return "ok"   # ValueError가 사라지고 "ok"가 반환된다
+
+print(risky())   # "ok" — 예외가 어디로 갔는지 모른다</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>finally에서는 return·break·continue 금지</strong>
+                        이 흐름 제어문들은 예외를 조용히 삼킨다. finally는 <strong>정리(close, unlock, 자원 반환)</strong>만 하고, 흐름 제어는 try나 except에서 처리한다.
+                    </div>
+                </div>
+
+                <h3 id="pitfall-assert"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> assert로 입력 검증</h3>
+                <p>앞서 다뤘듯, <code>-O</code> 옵션에서 <code>assert</code>가 모두 사라진다. 외부 입력 검증은 <strong>반드시</strong> <code>if ... raise</code>로 작성한다.</p>
+
+                <h3 id="pitfall-wrong-type"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 잘못된 예외 타입</h3>
+                <p>관습을 따르지 않으면 호출자가 잡기 어렵다.</p>
+
+<pre class="language-python"><code class="language-python"># ❌ 모든 오류에 Exception
+raise Exception("나이가 음수")
+
+# ✅ 의미에 맞는 구체 타입
+raise ValueError("나이는 0 이상이어야 한다")</code></pre>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Python 공식 문서 — <a href="https://docs.python.org/3/tutorial/errors.html" target="_blank">Errors and Exceptions</a></li>
+                        <li>Python 공식 문서 — <a href="https://docs.python.org/3/library/exceptions.html" target="_blank">Built-in Exceptions</a></li>
+                        <li>PEP 654 — <a href="https://peps.python.org/pep-0654/" target="_blank">Exception Groups and except*</a></li>
+                        <li>Python HOWTO — <a href="https://docs.python.org/3/howto/logging.html" target="_blank">Logging HOWTO</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-python');
+    renderPostNav('dev-lang-python');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

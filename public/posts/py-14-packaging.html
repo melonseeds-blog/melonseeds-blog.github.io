@@ -1,0 +1,977 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>패키징과 배포 — pyproject·pip·venv - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 다이어그램 */
+        .diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#ecosystem" data-section="ecosystem">생태계</a>
+        <a href="#module-vs-package" data-section="module-vs-package">모듈·패키지</a>
+        <a href="#venv" data-section="venv">가상환경</a>
+        <a href="#modern-tools" data-section="modern-tools">현대 도구</a>
+        <a href="#pyproject" data-section="pyproject">pyproject.toml</a>
+        <a href="#build-backend" data-section="build-backend">빌드 백엔드</a>
+        <a href="#build" data-section="build">빌드</a>
+        <a href="#publish" data-section="publish">PyPI 배포</a>
+        <a href="#versioning" data-section="versioning">버전 관리</a>
+        <a href="#native-ext" data-section="native-ext">C++ 확장</a>
+        <a href="#lockfile" data-section="lockfile">lockfile</a>
+        <a href="#internal" data-section="internal">사내 배포</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">Python 시리즈</span>
+                </div>
+                <h1>패키징과 배포 — pyproject·pip·venv</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>PyPI·pip·가상환경으로 이뤄진 Python 패키지 생태계</li>
+                        <li>모듈·패키지·<code>__init__.py</code>의 구조와 임포트 메커니즘</li>
+                        <li><code>pyproject.toml</code> 표준 (PEP 518·621) 작성법</li>
+                        <li>uv·poetry·hatch·pdm 비교와 uv 사용 흐름</li>
+                        <li>sdist·wheel 빌드와 twine을 통한 PyPI 업로드</li>
+                        <li>lockfile, semantic versioning, C++ 확장(pybind11)</li>
+                        <li>사내 패키지 배포와 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#ecosystem">Python 패키지 생태계</a></li>
+                        <li><a href="#module-vs-package">모듈 vs 패키지</a></li>
+                        <li><a href="#venv">가상환경 복습</a></li>
+                        <li><a href="#modern-tools">현대 도구 — uv·poetry·hatch·pdm</a></li>
+                        <li><a href="#pyproject">pyproject.toml 표준</a></li>
+                        <li><a href="#build-backend">빌드 백엔드 선택</a></li>
+                        <li><a href="#build">빌드 — sdist와 wheel</a></li>
+                        <li><a href="#publish">PyPI 배포 — twine</a></li>
+                        <li><a href="#versioning">버전 관리</a></li>
+                        <li><a href="#native-ext">C++ 확장 — pybind11·Cython</a></li>
+                        <li><a href="#lockfile">lockfile과 재현성</a></li>
+                        <li><a href="#internal">산업·연구 — 사내 배포</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 생태계 -->
+                <h2 id="ecosystem"><i class="fa-solid fa-network-wired"></i> Python 패키지 생태계</h2>
+                <p>Python 코드를 다른 사람에게 전달하는 방법은 세 가지다. 소스 파일을 그대로 주거나, PyPI에 올려 <code>pip install</code>로 받게 하거나, 사내 인덱스·Git URL로 배포한다. 어느 쪽이든 <strong>패키징 표준</strong>을 따라야 재현 가능하고 의존성을 안전하게 묶을 수 있다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <style>
+                                .lbl { font: 700 13px 'Pretendard', sans-serif; fill: #1e3a5f; }
+                                .sub { font: 500 10.5px 'Pretendard', sans-serif; fill: #64748b; }
+                                .b1 { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.5; rx: 8; }
+                                .b2 { fill: #fef3c7; stroke: #d97706; stroke-width: 1.5; rx: 8; }
+                                .b3 { fill: #ecfdf5; stroke: #059669; stroke-width: 1.5; rx: 8; }
+                                .b4 { fill: #ede9fe; stroke: #7c3aed; stroke-width: 1.5; rx: 8; }
+                                .b5 { fill: #fee2e2; stroke: #dc2626; stroke-width: 1.5; rx: 8; }
+                                .arr { stroke: #475569; stroke-width: 1.8; fill: none; marker-end: url(#ah2); }
+                            </style>
+                            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+                            </marker>
+                        </defs>
+                        <rect class="b1" x="20" y="70" width="120" height="80"/>
+                        <text class="lbl" x="80" y="105" text-anchor="middle">소스 코드</text>
+                        <text class="sub" x="80" y="125" text-anchor="middle">my_pkg/*.py</text>
+
+                        <rect class="b2" x="170" y="70" width="120" height="80"/>
+                        <text class="lbl" x="230" y="100" text-anchor="middle">pyproject</text>
+                        <text class="sub" x="230" y="118" text-anchor="middle">메타데이터</text>
+                        <text class="sub" x="230" y="134" text-anchor="middle">+ 의존성</text>
+
+                        <rect class="b3" x="320" y="70" width="120" height="80"/>
+                        <text class="lbl" x="380" y="100" text-anchor="middle">python -m build</text>
+                        <text class="sub" x="380" y="120" text-anchor="middle">백엔드 호출</text>
+
+                        <rect class="b4" x="470" y="70" width="120" height="80"/>
+                        <text class="lbl" x="530" y="100" text-anchor="middle">dist/</text>
+                        <text class="sub" x="530" y="118" text-anchor="middle">*.whl</text>
+                        <text class="sub" x="530" y="134" text-anchor="middle">*.tar.gz</text>
+
+                        <rect class="b5" x="620" y="70" width="120" height="80"/>
+                        <text class="lbl" x="680" y="100" text-anchor="middle">PyPI</text>
+                        <text class="sub" x="680" y="120" text-anchor="middle">twine upload</text>
+
+                        <path class="arr" d="M 140 110 L 170 110"/>
+                        <path class="arr" d="M 290 110 L 320 110"/>
+                        <path class="arr" d="M 440 110 L 470 110"/>
+                        <path class="arr" d="M 590 110 L 620 110"/>
+                    </svg>
+                    <div class="diagram-caption">코드 → pyproject → 빌드 → wheel/sdist → PyPI 업로드. 모든 단계가 표준화돼 있다.</div>
+                </div>
+
+                <h3 id="three-pillars"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 세 가지 기둥</h3>
+                <ul>
+                    <li><strong>PyPI</strong> — <a href="https://pypi.org" target="_blank">pypi.org</a>. 전 세계 Python 패키지가 모인 공식 저장소.</li>
+                    <li><strong>pip</strong> — PyPI에서 패키지를 받아 설치하는 표준 클라이언트.</li>
+                    <li><strong>venv</strong> — 프로젝트마다 독립된 인터프리터·패키지 디렉터리를 두는 가상환경.</li>
+                </ul>
+
+                <!-- 2. 모듈 vs 패키지 -->
+                <h2 id="module-vs-package"><i class="fa-solid fa-cubes"></i> 모듈 vs 패키지</h2>
+                <p>패키징을 이해하려면 먼저 <strong>모듈</strong>과 <strong>패키지</strong>의 차이를 분명히 한다.</p>
+
+                <table>
+                    <tr><th>구분</th><th>실체</th><th>임포트 예</th></tr>
+                    <tr><td>모듈 (module)</td><td>하나의 <code>.py</code> 파일</td><td><code>import math</code></td></tr>
+                    <tr><td>패키지 (package)</td><td><code>__init__.py</code>를 포함한 디렉터리</td><td><code>import numpy</code></td></tr>
+                    <tr><td>서브패키지</td><td>패키지 안의 또 다른 패키지</td><td><code>from numpy import linalg</code></td></tr>
+                    <tr><td>네임스페이스 패키지</td><td><code>__init__.py</code> 없는 디렉터리 (PEP 420)</td><td>여러 위치에 분산 가능</td></tr>
+                </table>
+
+                <h3 id="layout"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 표준 디렉터리 구조 (src-layout)</h3>
+
+<pre class="language-bash"><code class="language-bash">my-vision-tool/
+├── pyproject.toml          # 메타데이터·빌드 설정
+├── README.md
+├── LICENSE
+├── src/
+│   └── vision_tool/        # 실제 패키지 (배포 단위)
+│       ├── __init__.py     # 패키지 표식 + 공개 API
+│       ├── core.py         # 모듈
+│       ├── filters.py
+│       └── io/             # 서브패키지
+│           ├── __init__.py
+│           ├── reader.py
+│           └── writer.py
+├── tests/
+│   ├── test_core.py
+│   └── test_filters.py
+└── .venv/                  # 가상환경 (gitignore)</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>왜 src-layout인가</strong>
+                        <code>src/</code> 안에 패키지를 두면 테스트가 <em>설치된</em> 패키지를 임포트하도록 강제된다. 작업 디렉터리에 우연히 같은 이름 폴더가 있어 "내 컴에선 되네" 식의 거짓 성공을 막아준다.
+                    </div>
+                </div>
+
+                <h3 id="init-py"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> __init__.py의 역할</h3>
+
+<pre class="language-python"><code class="language-python"># src/vision_tool/__init__.py
+
+# 1. 패키지의 공개 API를 정의한다.
+from .core import ImageProcessor
+from .filters import gaussian_blur, canny_edge
+
+# 2. 버전을 노출한다.
+__version__ = "0.1.0"
+
+# 3. wildcard import 대상 제한
+__all__ = ["ImageProcessor", "gaussian_blur", "canny_edge"]</code></pre>
+
+<pre class="language-python"><code class="language-python"># 사용자는 짧은 경로로 접근한다
+from vision_tool import ImageProcessor, gaussian_blur
+# 내부 모듈 경로(vision_tool.core)를 노출하지 않는다.</code></pre>
+
+                <!-- 3. 가상환경 -->
+                <h2 id="venv"><i class="fa-solid fa-box-archive"></i> 가상환경 복습</h2>
+                <p>1편에서 다룬 venv를 패키징 관점에서 다시 본다. 패키지 개발자는 가상환경 없이는 단 한 줄도 시작하지 않는다.</p>
+
+<pre class="language-bash"><code class="language-bash"># 프로젝트 루트에서
+python -m venv .venv
+
+# 활성화
+source .venv/bin/activate           # Linux / macOS
+.venv\Scripts\Activate.ps1          # Windows PowerShell
+
+# 개발 모드로 자기 자신을 설치 (editable install)
+pip install -e .
+
+# 또는 개발용 의존성까지
+pip install -e ".[dev]"</code></pre>
+
+                <h3 id="editable"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> editable install (-e)</h3>
+                <p><code>pip install -e .</code>은 소스 파일을 <em>심볼릭 링크처럼</em> 가상환경에 연결한다. 코드를 수정하면 재설치 없이 즉시 반영된다. 패키지 개발 중에는 반드시 이 방식으로 설치한다.</p>
+
+                <h3 id="requirements-limit"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> requirements.txt의 한계</h3>
+
+<pre class="language-bash"><code class="language-bash"># 흔히 쓰는 방식
+pip freeze &gt; requirements.txt</code></pre>
+
+                <p>이 파일은 <strong>현재 설치된 모든 패키지의 평면 목록</strong>일 뿐이다. 직접 의존성과 간접(전이) 의존성을 구분하지 못하고, 다른 플랫폼·Python 버전에서 동일한 해결을 보장하지 않는다. 진짜 재현성이 필요하면 lockfile을 쓰는 도구로 넘어가야 한다.</p>
+
+                <!-- 4. 현대 도구 -->
+                <h2 id="modern-tools"><i class="fa-solid fa-rocket"></i> 현대 도구 — uv·poetry·hatch·pdm</h2>
+                <p>pip + venv는 표준이지만 의존성 해결이 느리고 lockfile이 없다. 최근에는 <strong>uv</strong>가 사실상 새 표준 자리를 차지하고 있다.</p>
+
+                <table>
+                    <tr><th>도구</th><th>구현</th><th>특징</th><th>추천 용도</th></tr>
+                    <tr><td><strong>uv</strong></td><td>Rust</td><td>pip의 10~100배. venv·pip·pyenv 통합. lockfile 내장</td><td>2026년 기준 새 프로젝트의 기본</td></tr>
+                    <tr><td><strong>poetry</strong></td><td>Python</td><td>의존성 해결·lockfile·빌드·게시 일체화. 오래된 안정성</td><td>중대형 라이브러리, 팀 표준이 잡힌 곳</td></tr>
+                    <tr><td><strong>hatch</strong></td><td>Python</td><td>PyPA 공식. 멀티 환경·매트릭스 테스트. hatchling 백엔드 제공</td><td>여러 Python 버전·환경 매트릭스가 필요한 라이브러리</td></tr>
+                    <tr><td><strong>pdm</strong></td><td>Python</td><td>PEP 표준 충실. PEP 582(가상환경 없이 __pypackages__) 지원</td><td>PEP 표준만 쓰고 싶을 때</td></tr>
+                    <tr><td><strong>pip + venv</strong></td><td>Python</td><td>표준 기본기. lockfile 없음</td><td>학습·간단 스크립트</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 시리즈에서는 uv를 권장한다</strong>
+                        Rust로 작성돼 압도적으로 빠르고, <code>pyproject.toml</code> 표준을 그대로 따른다. pip·venv·pip-tools·pyenv가 했던 일을 한 바이너리에서 처리한다. 산업 환경에서 의존성 설치 시간을 분 단위에서 초 단위로 줄여 준다.
+                    </div>
+                </div>
+
+                <h3 id="uv-flow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> uv 사용 흐름</h3>
+
+<pre class="language-bash"><code class="language-bash"># 설치 — Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+# 또는 pipx / brew
+pipx install uv
+brew install uv
+
+# 프로젝트 초기화
+uv init my-vision-tool
+cd my-vision-tool
+
+# 의존성 추가 (자동으로 .venv 생성 + 설치 + lockfile 갱신)
+uv add numpy opencv-python
+uv add --dev pytest ruff mypy        # 개발 의존성
+
+# 실행 (자동으로 .venv 사용)
+uv run python -m vision_tool
+uv run pytest
+
+# lockfile 기반 동기화 (협업자가 클론 후)
+uv sync</code></pre>
+
+                <h3 id="poetry-flow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> poetry 흐름 (비교)</h3>
+
+<pre class="language-bash"><code class="language-bash">pipx install poetry
+poetry new my-vision-tool --src
+cd my-vision-tool
+
+poetry add numpy opencv-python
+poetry add --group dev pytest
+
+poetry install                       # lockfile 기반 설치
+poetry run pytest
+poetry build                         # sdist + wheel 생성
+poetry publish                       # PyPI 업로드</code></pre>
+
+                <!-- 5. pyproject.toml -->
+                <h2 id="pyproject"><i class="fa-solid fa-file-code"></i> pyproject.toml 표준</h2>
+                <p><strong>PEP 518</strong>(2016)이 <code>pyproject.toml</code>을 빌드 설정 파일로 도입했고, <strong>PEP 621</strong>(2020)이 프로젝트 메타데이터의 표준 위치로 확장했다. 이제 <code>setup.py</code>·<code>setup.cfg</code>는 레거시고, 모든 새 프로젝트는 <code>pyproject.toml</code> 하나로 통일한다.</p>
+
+                <h3 id="pyproject-skeleton"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본 골격</h3>
+
+<pre class="language-toml"><code class="language-toml">[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vision-tool"
+version = "0.1.0"
+description = "Industrial vision utilities"
+readme = "README.md"
+requires-python = "&gt;=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Your Name", email = "you@example.com" },
+]
+keywords = ["vision", "image-processing", "opencv"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+dependencies = [
+    "numpy&gt;=1.24",
+    "opencv-python&gt;=4.10",
+    "pillow&gt;=10.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest&gt;=8.0", "ruff", "mypy"]
+gpu = ["cupy-cuda12x"]
+
+[project.urls]
+Homepage = "https://github.com/you/vision-tool"
+Issues = "https://github.com/you/vision-tool/issues"
+
+[project.scripts]
+vision-cli = "vision_tool.cli:main"     # 콘솔 명령으로 노출</code></pre>
+
+                <h3 id="pyproject-fields"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 주요 필드</h3>
+
+                <table>
+                    <tr><th>필드</th><th>의미</th></tr>
+                    <tr><td><code>[build-system]</code></td><td>이 프로젝트를 <em>빌드</em>할 때 필요한 도구. pip이 격리 환경에서 먼저 설치한다</td></tr>
+                    <tr><td><code>[project]</code></td><td>PEP 621 표준 메타데이터. 이름·버전·설명·의존성</td></tr>
+                    <tr><td><code>dependencies</code></td><td>런타임 필수 의존성. <code>pip install</code> 시 함께 설치</td></tr>
+                    <tr><td><code>optional-dependencies</code></td><td>extra. <code>pip install vision-tool[dev,gpu]</code>로 선택 설치</td></tr>
+                    <tr><td><code>[project.scripts]</code></td><td>설치 시 <code>PATH</code>에 노출될 콘솔 명령</td></tr>
+                    <tr><td><code>[tool.*]</code></td><td>도구별 설정 (ruff·pytest·mypy 등)</td></tr>
+                </table>
+
+                <h3 id="version-spec"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 버전 지정자 (PEP 440)</h3>
+
+<pre class="language-toml"><code class="language-toml">dependencies = [
+    "numpy&gt;=1.24,&lt;2.0",       # 범위
+    "opencv-python==4.10.*",   # 와일드카드
+    "torch~=2.3.0",            # compatible release (2.3.* 허용)
+    "pillow!=10.1.0",          # 특정 버전 제외
+]</code></pre>
+
+                <!-- 6. 빌드 백엔드 -->
+                <h2 id="build-backend"><i class="fa-solid fa-screwdriver-wrench"></i> 빌드 백엔드 선택</h2>
+                <p><strong>빌드 백엔드</strong>는 소스 트리를 sdist·wheel로 만드는 도구다. <code>[build-system]</code>의 <code>build-backend</code>로 지정한다. 백엔드는 바꿔도 결과물의 형식은 동일하다.</p>
+
+                <table>
+                    <tr><th>백엔드</th><th>장점</th><th>단점</th></tr>
+                    <tr><td><strong>setuptools</strong></td><td>가장 오래되고 호환성 최고. C 확장 빌드의 사실상 표준</td><td>설정이 복잡. 레거시 코드와 섞임</td></tr>
+                    <tr><td><strong>hatchling</strong></td><td>가볍고 빠름. PyPA 공식 권장. 순수 Python에 최적</td><td>네이티브 확장은 어색</td></tr>
+                    <tr><td><strong>poetry-core</strong></td><td>poetry와 자연스럽게 통합</td><td>poetry 생태계에 묶임</td></tr>
+                    <tr><td><strong>pdm-backend</strong></td><td>pdm과 통합. PEP 표준 충실</td><td>점유율 낮음</td></tr>
+                    <tr><td><strong>scikit-build-core</strong> / <strong>meson-python</strong></td><td>CMake·Meson 기반. C++ 확장에 최적</td><td>설정 비용</td></tr>
+                </table>
+
+<pre class="language-toml"><code class="language-toml"># setuptools 예시
+[build-system]
+requires = ["setuptools&gt;=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]</code></pre>
+
+<pre class="language-toml"><code class="language-toml"># hatchling 예시 (권장 — 순수 Python)
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vision_tool"]</code></pre>
+
+                <!-- 7. 빌드 -->
+                <h2 id="build"><i class="fa-solid fa-box"></i> 빌드 — sdist와 wheel</h2>
+                <p>표준 빌드 명령은 단 한 줄이다.</p>
+
+<pre class="language-bash"><code class="language-bash">pip install build       # 한 번만
+python -m build         # dist/ 폴더에 sdist + wheel 생성</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+* Creating isolated environment: venv+pip...
+* Installing packages in isolated environment:
+  - hatchling
+* Building sdist...
+* Building wheel from sdist
+Successfully built vision_tool-0.1.0.tar.gz and vision_tool-0.1.0-py3-none-any.whl</div>
+
+                <h3 id="sdist-vs-wheel"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> sdist vs wheel</h3>
+
+                <table>
+                    <tr><th>산출물</th><th>확장자</th><th>형식</th><th>설치 속도</th><th>네이티브 확장</th></tr>
+                    <tr><td><strong>sdist</strong> (source distribution)</td><td><code>.tar.gz</code></td><td>소스 코드 압축</td><td>느림 (설치 시 빌드)</td><td>설치 시 컴파일러 필요</td></tr>
+                    <tr><td><strong>wheel</strong></td><td><code>.whl</code></td><td>빌드된 ZIP 아카이브</td><td>빠름 (압축만 해제)</td><td>플랫폼별 prebuilt 가능</td></tr>
+                </table>
+
+                <p>wheel 파일명은 <strong>호환성 태그</strong>를 포함한다.</p>
+
+<pre class="language-bash"><code class="language-bash"># 순수 Python 패키지 — 모든 환경에서 동작
+vision_tool-0.1.0-py3-none-any.whl
+
+# 플랫폼·Python 버전별 — numpy, opencv 같은 네이티브 확장
+numpy-1.26.4-cp312-cp312-win_amd64.whl
+numpy-1.26.4-cp312-cp312-manylinux_2_17_x86_64.whl
+numpy-1.26.4-cp312-cp312-macosx_11_0_arm64.whl
+# {name}-{version}-{python}-{abi}-{platform}.whl</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>wheel을 반드시 함께 배포한다</strong>
+                        sdist만 올리면 사용자는 설치 시점에 컴파일러·헤더가 필요해진다. 순수 Python이면 <code>py3-none-any.whl</code> 하나로 충분하고, 네이티브 확장이면 cibuildwheel·CI 매트릭스로 플랫폼별 wheel을 모두 만든다.
+                    </div>
+                </div>
+
+                <!-- 8. PyPI 배포 -->
+                <h2 id="publish"><i class="fa-solid fa-cloud-arrow-up"></i> PyPI 배포 — twine</h2>
+                <p>빌드한 산출물을 PyPI에 올릴 때는 <strong>twine</strong>을 쓴다. <code>python setup.py upload</code>는 절대 쓰지 않는다(보안·인증 문제).</p>
+
+                <h3 id="testpypi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> TestPyPI 먼저</h3>
+                <p>실제 PyPI는 <strong>이름을 한 번 쓰면 회수 불가</strong>다. 잘못 올린 버전은 다시 같은 번호로 올릴 수 없다. 먼저 TestPyPI에서 리허설한다.</p>
+
+<pre class="language-bash"><code class="language-bash">pip install twine
+
+# TestPyPI 업로드 (https://test.pypi.org 계정·토큰 필요)
+twine upload --repository testpypi dist/*
+
+# TestPyPI에서 설치 검증
+pip install --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            vision-tool
+
+# 문제 없으면 진짜 PyPI로
+twine upload dist/*</code></pre>
+
+                <h3 id="token"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> API 토큰</h3>
+                <p>2024년부터 PyPI는 비밀번호 대신 <strong>API 토큰</strong>을 요구한다. <code>~/.pypirc</code>에 저장하거나 환경 변수로 전달한다.</p>
+
+<pre class="language-bash"><code class="language-bash"># ~/.pypirc
+[pypi]
+username = __token__
+password = pypi-AgEIcHlwaS5vcmcC...
+
+# 또는 환경 변수
+export TWINE_USERNAME=__token__
+export TWINE_PASSWORD=pypi-AgEIcHlwaS5vcmcC...</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>Trusted Publishing (OIDC) 권장</strong>
+                        GitHub Actions에서 PyPI로 배포할 때는 토큰조차 저장하지 않는 <em>Trusted Publishing</em>을 쓸 수 있다. PyPI 프로젝트 설정에서 GitHub 저장소·워크플로명을 등록하면 OIDC로 자동 인증된다.
+                    </div>
+                </div>
+
+                <!-- 9. 버전 관리 -->
+                <h2 id="versioning"><i class="fa-solid fa-tag"></i> 버전 관리</h2>
+                <p>패키지 버전은 <strong>Semantic Versioning</strong>(MAJOR.MINOR.PATCH)을 따른다.</p>
+
+                <ul>
+                    <li><strong>MAJOR</strong> — 하위 호환을 깨는 변경.</li>
+                    <li><strong>MINOR</strong> — 하위 호환되는 기능 추가.</li>
+                    <li><strong>PATCH</strong> — 하위 호환되는 버그 수정.</li>
+                </ul>
+
+                <p>사전 릴리스는 PEP 440이 정의한 접미사를 쓴다.</p>
+
+<pre class="language-bash"><code class="language-bash">0.1.0a1     # alpha
+0.1.0b2     # beta
+0.1.0rc1    # release candidate
+0.1.0       # final
+0.1.0.post1 # post release (메타데이터 수정 등)
+0.1.0.dev3  # development</code></pre>
+
+                <h3 id="version-source"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 버전 단일 출처</h3>
+                <p>버전을 <code>pyproject.toml</code>·<code>__init__.py</code>·Git 태그 세 군데에 적으면 반드시 어긋난다. 단일 출처에서 읽는다.</p>
+
+<pre class="language-python"><code class="language-python"># src/vision_tool/__init__.py
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("vision-tool")     # 설치된 메타데이터에서 읽음
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"</code></pre>
+
+<pre class="language-toml"><code class="language-toml"># hatch는 동적 버전을 지원한다 — 코드의 __version__ 읽어 옴
+[project]
+name = "vision-tool"
+dynamic = ["version"]
+
+[tool.hatch.version]
+path = "src/vision_tool/__about__.py"</code></pre>
+
+                <!-- 10. C++ 확장 -->
+                <h2 id="native-ext"><i class="fa-solid fa-microchip"></i> C++ 확장 — pybind11·Cython</h2>
+                <p>OpenCV·NumPy·PyTorch가 빠른 이유는 C/C++ 코드를 Python에 바인딩하기 때문이다. 직접 C++ 확장을 만들 때는 <strong>pybind11</strong>이 사실상 표준이다.</p>
+
+<pre class="language-toml"><code class="language-toml"># pyproject.toml — scikit-build-core + pybind11
+[build-system]
+requires = ["scikit-build-core&gt;=0.8", "pybind11&gt;=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "fast-blur"
+version = "0.1.0"
+requires-python = "&gt;=3.10"</code></pre>
+
+<pre class="language-python"><code class="language-python"># src/fast_blur/__init__.py
+from ._core import gaussian_blur     # C++로 작성된 함수
+__all__ = ["gaussian_blur"]</code></pre>
+
+<pre class="language-python"><code class="language-python"># C++ 쪽 (src/_core.cpp) — pybind11
+#include &lt;pybind11/pybind11.h&gt;
+#include &lt;pybind11/numpy.h&gt;
+namespace py = pybind11;
+
+py::array_t&lt;uint8_t&gt; gaussian_blur(py::array_t&lt;uint8_t&gt; input, int ksize)
+{
+    // ... OpenCV 호출 ...
+    return input;
+}
+
+PYBIND11_MODULE(_core, m)
+{
+    m.def("gaussian_blur", &amp;gaussian_blur, "Apply Gaussian blur");
+}</code></pre>
+
+                <p><strong>Cython</strong>은 Python과 비슷한 문법으로 C 확장을 작성하는 도구다. NumPy 내부의 많은 부분이 Cython으로 작성됐다. 새 프로젝트라면 pybind11이 더 자연스럽다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>cibuildwheel로 모든 플랫폼 빌드</strong>
+                        네이티브 확장을 배포할 때는 GitHub Actions에서 <code>cibuildwheel</code>을 돌려 Linux·macOS·Windows × Python 3.10~3.13 매트릭스 wheel을 자동 생성한다. 그렇지 않으면 사용자가 컴파일러를 직접 갖춰야 한다.
+                    </div>
+                </div>
+
+                <!-- 11. lockfile -->
+                <h2 id="lockfile"><i class="fa-solid fa-lock"></i> lockfile과 재현성</h2>
+                <p><code>pyproject.toml</code>은 <strong>"무엇을 원하는가"</strong>를 적는다. lockfile은 <strong>"실제로 무엇이 어디서 설치됐는가"</strong>를 한 줄도 빠짐없이 기록한다.</p>
+
+                <table>
+                    <tr><th>도구</th><th>lockfile</th><th>커밋 대상</th></tr>
+                    <tr><td>uv</td><td><code>uv.lock</code></td><td>예</td></tr>
+                    <tr><td>poetry</td><td><code>poetry.lock</code></td><td>예</td></tr>
+                    <tr><td>pdm</td><td><code>pdm.lock</code></td><td>예</td></tr>
+                    <tr><td>pip-tools</td><td><code>requirements.txt</code> (해시 포함 컴파일된)</td><td>예</td></tr>
+                </table>
+
+<pre class="language-bash"><code class="language-bash"># pip-tools — pip + venv 표준에서 lockfile 흉내
+pip install pip-tools
+
+# requirements.in (사람이 작성)
+# ----------
+# numpy
+# opencv-python
+# ----------
+
+pip-compile requirements.in --generate-hashes
+# requirements.txt가 해시 포함으로 만들어짐
+pip-sync requirements.txt</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>lockfile 없는 협업은 사실상 비결정적</strong>
+                        직접 의존성만 적어 두면 전이 의존성은 설치 시점마다 달라진다. 어제는 잘 돌던 코드가 오늘 빌드에서 새로 올라온 마이너 버전 때문에 깨진다. 라이브러리는 lockfile을 안 올리고 애플리케이션·서비스는 반드시 올린다.
+                    </div>
+                </div>
+
+                <!-- 12. 사내 배포 -->
+                <h2 id="internal"><i class="fa-solid fa-industry"></i> 산업·연구 — 사내 패키지 배포</h2>
+                <p>회사 코드를 공개 PyPI에 올릴 수는 없다. 대신 사내 인덱스나 Git URL을 쓴다.</p>
+
+                <h3 id="private-index"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 사내 인덱스 (Nexus·Artifactory·devpi)</h3>
+
+<pre class="language-bash"><code class="language-bash"># 사내 인덱스 + 공개 PyPI를 함께 사용
+pip install vision-tool \
+    --index-url https://pypi.company.local/simple/ \
+    --extra-index-url https://pypi.org/simple/
+
+# 영구 설정 — pip.conf
+# Linux/macOS: ~/.config/pip/pip.conf
+# Windows:     %APPDATA%\pip\pip.ini
+[global]
+index-url = https://pypi.company.local/simple/
+extra-index-url = https://pypi.org/simple/</code></pre>
+
+                <h3 id="git-install"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Git URL 직접 설치</h3>
+
+<pre class="language-bash"><code class="language-bash"># 인덱스를 안 두고 GitLab/GitHub에서 바로 설치
+pip install git+https://code.vieworks.com/vision/vision-tool.git@v0.1.0
+
+# pyproject.toml에서도 가능
+# dependencies = [
+#   "vision-tool @ git+https://code.vieworks.com/vision/vision-tool.git@v0.1.0",
+# ]
+
+# 특정 브랜치·커밋·서브디렉터리
+pip install "git+https://.../mono-repo.git@main#subdirectory=packages/vision-tool"</code></pre>
+
+                <h3 id="local-wheel"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 로컬 wheel 배포</h3>
+
+<pre class="language-bash"><code class="language-bash"># 빌드한 wheel을 사내 공유 폴더에 두고 직접 설치
+pip install \\fileserver\packages\vision_tool-0.1.0-py3-none-any.whl
+
+# 또는 폴더를 인덱스처럼 사용
+pip install --find-links \\fileserver\packages vision-tool</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>실무 권장 구조</strong>
+                        사내 GitLab의 CI에서 태그를 푸시할 때마다 <code>python -m build</code>로 wheel을 만들고, Nexus 사내 인덱스에 자동 업로드한다. 사용자는 <code>pip install company-vision-tool</code>만 치면 된다. 공개 PyPI와 분리돼 보안 검토도 단순해진다.
+                    </div>
+                </div>
+
+                <!-- 13. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>1. 시스템 pip을 그대로 쓴다</strong>
+                        <code>sudo pip install ...</code>이나 venv 밖 글로벌 설치는 OS·다른 프로젝트와 충돌을 부른다. PEP 668 이후 최신 pip은 이를 거부한다. 무조건 venv 안에서만 설치한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>2. requirements.txt만으로는 lock이 안 된다</strong>
+                        <code>pip freeze</code>는 평면 목록이고 해시·플랫폼 정보가 없다. 진짜 재현성이 필요하면 uv·poetry·pip-tools의 lockfile을 쓴다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>3. 가상환경 없이 글로벌에 설치</strong>
+                        프로젝트 A는 numpy 1.21, B는 numpy 1.26이 필요하면 글로벌은 한쪽을 깬다. 프로젝트 = 가상환경 = lockfile이 1:1이 되도록 한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>4. 빌드 메타데이터 누락</strong>
+                        <code>setup.py</code>·<code>setup.cfg</code>만 있고 <code>pyproject.toml</code>이 없으면 최신 pip이 격리 빌드를 만들지 못해 실패하기도 한다. 새 프로젝트는 <code>pyproject.toml</code> 단일 파일로 시작한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>5. 버전을 여러 곳에 중복 기록</strong>
+                        <code>pyproject.toml</code>·<code>__init__.py</code>·Git 태그·CHANGELOG가 제각각이 된다. <code>importlib.metadata.version()</code> 한 곳에서 읽거나, hatch의 <code>dynamic = ["version"]</code>으로 단일 출처를 보장한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>6. sdist만 배포</strong>
+                        wheel을 함께 올리지 않으면 네이티브 확장은 설치자 머신에서 컴파일된다. 컴파일러·헤더가 없는 사용자는 그냥 실패한다. cibuildwheel로 플랫폼 매트릭스를 빌드해서 wheel을 함께 올린다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>7. PyPI 이름 선점</strong>
+                        한 번 올린 버전 번호는 같은 번호로 재업로드할 수 없다. 잘못 올리면 <code>0.1.1</code>로 새 버전을 올려야 한다. 진짜 PyPI 전에 TestPyPI에서 반드시 리허설한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>8. editable install 없이 개발</strong>
+                        <code>pip install -e .</code> 없이 자기 패키지를 임포트하려고 <code>sys.path</code>를 만지작거리는 코드는 자라면 반드시 부패한다. 항상 editable install로 자기 자신을 가상환경에 등록한다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li><a href="https://peps.python.org/pep-0518/" target="_blank">PEP 518</a> — <code>pyproject.toml</code> 빌드 시스템 명세</li>
+                        <li><a href="https://peps.python.org/pep-0621/" target="_blank">PEP 621</a> — <code>pyproject.toml</code> 프로젝트 메타데이터</li>
+                        <li><a href="https://peps.python.org/pep-0440/" target="_blank">PEP 440</a> — 버전 식별자 명세</li>
+                        <li><a href="https://packaging.python.org" target="_blank">Python Packaging User Guide</a> — 패키징 공식 가이드</li>
+                        <li><a href="https://docs.astral.sh/uv/" target="_blank">uv 공식 문서</a></li>
+                        <li><a href="https://python-poetry.org/docs/" target="_blank">Poetry 공식 문서</a></li>
+                        <li><a href="https://hatch.pypa.io" target="_blank">Hatch 공식 문서</a></li>
+                        <li><a href="https://pypi.org" target="_blank">PyPI</a> / <a href="https://test.pypi.org" target="_blank">TestPyPI</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-toml.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-python');
+    renderPostNav('dev-lang-python');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

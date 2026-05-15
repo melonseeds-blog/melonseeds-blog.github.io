@@ -1,0 +1,1061 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++/CLI로 비전 코어 통합 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .diagram {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; font-style: italic;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#intro" data-section="intro">통신 옵션</a>
+        <a href="#cli-recap" data-section="cli-recap">CLI 복습</a>
+        <a href="#bridge" data-section="bridge">브리지 설계</a>
+        <a href="#image-transfer" data-section="image-transfer">이미지 전달</a>
+        <a href="#callback" data-section="callback">콜백</a>
+        <a href="#threading" data-section="threading">스레딩</a>
+        <a href="#error" data-section="error">에러</a>
+        <a href="#memory" data-section="memory">메모리</a>
+        <a href="#build" data-section="build">빌드</a>
+        <a href="#display" data-section="display">영상 표시</a>
+        <a href="#flow" data-section="flow">플로우 통합</a>
+        <a href="#compare" data-section="compare">대안 비교</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#wrapup" data-section="wrapup">시리즈 마무리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">WPF / C#</span>
+                </div>
+                <h1>C++/CLI로 비전 코어 통합</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>WPF Viewer와 C++ 비전 코어를 잇는 옵션 비교 (C++/CLI, P/Invoke, gRPC)</li>
+                        <li>네이티브 코어 → CLI 브리지 → WPF의 3계층 설계</li>
+                        <li>Image 데이터를 BitmapSource·WriteableBitmap으로 zero-copy 전달</li>
+                        <li>delegate ↔ 네이티브 함수 포인터 콜백, Dispatcher로 UI 스레드 마샬링</li>
+                        <li>네이티브 ErrorCode를 .NET 예외로 변환하고 Dispose로 누수 막기</li>
+                        <li>x64·런타임 일치 빌드 구성과 데이터 플로우 에디터 통합</li>
+                        <li>12편 시리즈 마무리 — ImagingLib Viewer를 만드는 흐름 회고</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">WPF는 어떻게 C++ 코어와 통신하는가</a></li>
+                        <li><a href="#cli-recap">C++/CLI 핵심 복습</a></li>
+                        <li><a href="#bridge">브리지 계층 설계</a></li>
+                        <li><a href="#image-transfer">이미지 데이터 전달</a></li>
+                        <li><a href="#callback">콜백 — delegate ↔ 함수 포인터</a></li>
+                        <li><a href="#threading">스레딩과 Dispatcher</a></li>
+                        <li><a href="#error">에러 처리</a></li>
+                        <li><a href="#memory">메모리 관리</a></li>
+                        <li><a href="#build">빌드 구성</a></li>
+                        <li><a href="#display">WPF 영상 표시</a></li>
+                        <li><a href="#flow">데이터 플로우 에디터와 통합</a></li>
+                        <li><a href="#compare">대안 비교 — gRPC, Pipe, REST</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#wrapup">시리즈 마무리</a></li>
+                    </ol>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>기존 글과의 차이</strong>
+                        <a href="cpp-cli-binding.html">"C++/CLI 바인딩"</a> 글은 <code>ref class</code>·마샬링·Dispose 패턴 등 C++/CLI 문법 자체를 다룬다. 이 글은 그 위에서 <strong>WPF Viewer가 비전 코어를 실제로 어떻게 쓰는지</strong>에 집중한다. <code>BitmapSource</code>·<code>Dispatcher</code>·데이터 플로우 에디터와의 결합이 주제다.
+                    </div>
+                </div>
+
+                <!-- 1. 통신 옵션 -->
+                <h2 id="intro"><i class="fa-solid fa-tower-broadcast"></i> WPF는 어떻게 C++ 코어와 통신하는가</h2>
+                <p>WPF Viewer는 C#·.NET 위에서 돌고 ImagingLib 코어는 C++·OpenCV다. 두 세계 사이에 다리가 필요하다. 선택지는 크게 셋이다.</p>
+
+                <table>
+                    <tr><th>방식</th><th>장점</th><th>단점</th><th>적합한 상황</th></tr>
+                    <tr><td><strong>C++/CLI</strong></td><td>같은 프로세스, zero-copy 가능, C++ 헤더 그대로 재사용</td><td>Windows·MSVC 전용, .NET Core 3.1+에서만 가능</td><td>단일 머신·고성능·이미지 전송 빈번</td></tr>
+                    <tr><td><strong>P/Invoke</strong></td><td>플랫폼 독립적인 C ABI, 가벼움</td><td>C 인터페이스로 평탄화 필요, 객체지향 손실</td><td>C 스타일 함수 몇 개만 노출하면 충분할 때</td></tr>
+                    <tr><td><strong>gRPC / IPC</strong></td><td>언어·프로세스 독립, 원격 가능</td><td>직렬화 비용, 대용량 이미지 부담</td><td>분산·다국어·서비스화</td></tr>
+                </table>
+
+                <p>ImagingLib Viewer는 <strong>같은 PC에서 카메라 영상을 실시간 처리·표시</strong>한다. 이미지가 초당 수십 프레임 흐르므로 직렬화 오버헤드를 감당할 수 없다. C++/CLI가 자연스러운 선택이다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr1" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
+                            </marker>
+                        </defs>
+                        <!-- WPF -->
+                        <rect x="20" y="40" width="180" height="160" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+                        <text x="110" y="70" text-anchor="middle" font-family="Pretendard" font-weight="700" font-size="15" fill="#1e3a5f">WPF Viewer</text>
+                        <text x="110" y="95" text-anchor="middle" font-size="12" fill="#1e3a5f">C# / .NET</text>
+                        <text x="110" y="120" text-anchor="middle" font-size="11" fill="#1e3a5f">ViewModel</text>
+                        <text x="110" y="138" text-anchor="middle" font-size="11" fill="#1e3a5f">BitmapSource</text>
+                        <text x="110" y="156" text-anchor="middle" font-size="11" fill="#1e3a5f">Dispatcher</text>
+                        <text x="110" y="180" text-anchor="middle" font-size="10" fill="#64748b">managed</text>
+
+                        <!-- CLI Bridge -->
+                        <rect x="260" y="40" width="200" height="160" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                        <text x="360" y="70" text-anchor="middle" font-family="Pretendard" font-weight="700" font-size="15" fill="#78350f">CLI Bridge</text>
+                        <text x="360" y="95" text-anchor="middle" font-size="12" fill="#78350f">C++/CLI (.dll)</text>
+                        <text x="360" y="120" text-anchor="middle" font-size="11" fill="#78350f">ref class wrapper</text>
+                        <text x="360" y="138" text-anchor="middle" font-size="11" fill="#78350f">marshalling</text>
+                        <text x="360" y="156" text-anchor="middle" font-size="11" fill="#78350f">Dispose / pin_ptr</text>
+                        <text x="360" y="180" text-anchor="middle" font-size="10" fill="#92400e">mixed mode</text>
+
+                        <!-- Core -->
+                        <rect x="520" y="40" width="180" height="160" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                        <text x="610" y="70" text-anchor="middle" font-family="Pretendard" font-weight="700" font-size="15" fill="#14532d">ImagingLib Core</text>
+                        <text x="610" y="95" text-anchor="middle" font-size="12" fill="#14532d">Native C++</text>
+                        <text x="610" y="120" text-anchor="middle" font-size="11" fill="#14532d">Image, Filter</text>
+                        <text x="610" y="138" text-anchor="middle" font-size="11" fill="#14532d">OpenCV wrapper</text>
+                        <text x="610" y="156" text-anchor="middle" font-size="11" fill="#14532d">ErrorCode</text>
+                        <text x="610" y="180" text-anchor="middle" font-size="10" fill="#166534">unmanaged</text>
+
+                        <!-- arrows -->
+                        <line x1="200" y1="120" x2="258" y2="120" stroke="#64748b" stroke-width="2" marker-end="url(#arr1)"/>
+                        <line x1="460" y1="120" x2="518" y2="120" stroke="#64748b" stroke-width="2" marker-end="url(#arr1)"/>
+                        <line x1="258" y1="135" x2="200" y2="135" stroke="#64748b" stroke-width="2" marker-end="url(#arr1)" stroke-dasharray="4,3"/>
+                        <line x1="518" y1="135" x2="460" y2="135" stroke="#64748b" stroke-width="2" marker-end="url(#arr1)" stroke-dasharray="4,3"/>
+
+                        <text x="225" y="115" text-anchor="middle" font-size="10" fill="#64748b">호출</text>
+                        <text x="485" y="115" text-anchor="middle" font-size="10" fill="#64748b">호출</text>
+                        <text x="225" y="152" text-anchor="middle" font-size="10" fill="#64748b">결과/콜백</text>
+                        <text x="485" y="152" text-anchor="middle" font-size="10" fill="#64748b">결과/콜백</text>
+                    </svg>
+                    <div class="diagram-caption">WPF Viewer ↔ CLI Bridge ↔ Native Core — 같은 프로세스 내 3계층 구조</div>
+                </div>
+
+                <!-- 2. CLI 복습 -->
+                <h2 id="cli-recap"><i class="fa-solid fa-rotate-right"></i> C++/CLI 핵심 복습</h2>
+                <p>WPF 통합을 이해하려면 최소한 다음 개념은 잡고 가야 한다. 자세한 문법은 별도 글에서 다뤘으니 여기서는 통합에 직접 쓰는 부분만 정리한다.</p>
+
+                <table>
+                    <tr><th>기호</th><th>의미</th><th>예</th></tr>
+                    <tr><td><code>ref class</code></td><td>관리되는(.NET GC 대상) 클래스</td><td><code>public ref class ImageNet</code></td></tr>
+                    <tr><td><code>^</code></td><td>관리 객체 핸들 (포인터 아님)</td><td><code>String^ name</code></td></tr>
+                    <tr><td><code>gcnew</code></td><td>관리 힙에 객체 생성</td><td><code>gcnew ImageNet()</code></td></tr>
+                    <tr><td><code>pin_ptr&lt;T&gt;</code></td><td>GC가 못 옮기게 고정한 포인터</td><td><code>pin_ptr&lt;byte&gt; p = &amp;arr[0];</code></td></tr>
+                    <tr><td><code>!ClassName()</code></td><td>finalizer — GC가 호출</td><td>네이티브 자원 마지막 방어선</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// 같은 .cpp 파일에 네이티브와 관리 코드를 섞을 수 있다.
+#include "ImagingLib/Core/Image.h"   // 네이티브 헤더
+
+#pragma managed
+using namespace System;
+
+public ref class ImageNet
+{
+public:
+    ImageNet() { m_native = new ImagingLib::Core::Image(); }
+    ~ImageNet() { this->!ImageNet(); }      // Dispose 진입점
+    !ImageNet() { delete m_native; m_native = nullptr; }   // finalizer
+
+    int Width  { int get() { return m_native->GetWidth(); } }
+    int Height { int get() { return m_native->GetHeight(); } }
+
+internal:
+    ImagingLib::Core::Image* m_native;   // 같은 어셈블리에서만 접근
+};</code></pre>
+
+                <p>핵심은 <code>ref class</code>가 .NET 객체이면서 안에 네이티브 포인터를 들고 있다는 점이다. WPF는 C#처럼 이걸 쓰고, 내부에서는 C++ 객체가 동작한다.</p>
+
+                <!-- 3. 브리지 설계 -->
+                <h2 id="bridge"><i class="fa-solid fa-bridge"></i> 브리지 계층 설계</h2>
+                <p>3계층으로 나눈다. 각 계층의 책임을 분명히 한다.</p>
+
+                <table>
+                    <tr><th>계층</th><th>프로젝트 형식</th><th>책임</th></tr>
+                    <tr><td>Native Core</td><td>C++ static/dynamic lib</td><td>이미지 처리, OpenCV 호출. .NET을 모른다.</td></tr>
+                    <tr><td>CLI Bridge</td><td>C++/CLI DLL (<code>/clr</code>)</td><td>ref class로 래핑, 마샬링, 콜백 변환</td></tr>
+                    <tr><td>WPF Viewer</td><td>C# .NET WPF exe</td><td>UI, MVVM, BitmapSource 표시</td></tr>
+                </table>
+
+                <p>브리지는 <strong>얇게</strong> 유지한다. 비즈니스 로직을 브리지에 넣지 않는다. C++/CLI 코드는 디버깅이 까다롭고 IntelliSense도 약하기 때문이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// ImagingBridge.h — CLI 브리지가 공개하는 API
+#pragma once
+#include "ImagingLib/Core/Image.h"
+#include "ImagingLib/Core/Filter.h"
+
+#pragma managed
+using namespace System;
+using namespace System::Windows::Media::Imaging;   // BitmapSource
+
+namespace ImagingLib::Bridge
+{
+    public enum class FilterType
+    {
+        GaussianBlur,
+        Median,
+        Sobel
+    };
+
+    public ref class ImageNet
+    {
+    public:
+        ImageNet();
+        ImageNet(int width, int height, int channels);
+        ~ImageNet();
+        !ImageNet();
+
+        property int Width   { int get(); }
+        property int Height  { int get(); }
+        property int Stride  { int get(); }
+
+        // 네이티브 픽셀 버퍼를 BitmapSource로 변환
+        BitmapSource^ ToBitmapSource();
+
+    internal:
+        ImagingLib::Core::Image* GetNative() { return m_native; }
+
+    private:
+        ImagingLib::Core::Image* m_native;
+    };
+
+    public ref class Processor
+    {
+    public:
+        Processor();
+        ~Processor();
+        !Processor();
+
+        ImageNet^ Apply(ImageNet^ src, FilterType type, int kernelSize);
+
+    private:
+        ImagingLib::Core::Processor* m_native;
+    };
+}</code></pre>
+
+                <!-- 4. 이미지 데이터 전달 -->
+                <h2 id="image-transfer"><i class="fa-solid fa-image"></i> 이미지 데이터 전달</h2>
+                <p>WPF에서 이미지를 표시하려면 <code>ImageSource</code> 계열 객체가 필요하다. 보통 <code>BitmapSource</code>를 쓴다. 네이티브 픽셀 버퍼를 어떻게 거기까지 옮길지가 핵심이다.</p>
+
+                <h3 id="px-format"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 픽셀 포맷 매핑</h3>
+                <p>OpenCV와 WPF의 픽셀 순서가 다르다. 이걸 안 맞추면 색이 반전되거나 깨진다.</p>
+
+                <table>
+                    <tr><th>OpenCV (Mat)</th><th>WPF (PixelFormat)</th><th>비고</th></tr>
+                    <tr><td><code>CV_8UC1</code> (그레이)</td><td><code>PixelFormats.Gray8</code></td><td>1바이트/픽셀</td></tr>
+                    <tr><td><code>CV_8UC3</code> (BGR)</td><td><code>PixelFormats.Bgr24</code></td><td>OpenCV 기본이 BGR — 그대로 맞음</td></tr>
+                    <tr><td><code>CV_8UC4</code> (BGRA)</td><td><code>PixelFormats.Bgra32</code></td><td>알파 포함</td></tr>
+                    <tr><td><code>CV_16UC1</code> (16-bit)</td><td><code>PixelFormats.Gray16</code></td><td>산업용 카메라에서 흔함</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>RGB가 아니라 BGR이다</strong>
+                        OpenCV는 BGR이 기본인데 무심코 <code>PixelFormats.Rgb24</code>로 넘기면 R과 B가 뒤바뀐다. <code>cv::cvtColor(..., COLOR_BGR2RGB)</code>로 변환하거나, 그냥 <code>Bgr24</code>를 쓰면 된다.
+                    </div>
+                </div>
+
+                <h3 id="copy-create"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 한 번 복사로 BitmapSource 만들기</h3>
+                <p>가장 단순한 방법. <code>BitmapSource.Create</code>는 픽셀을 자체적으로 복사해 보관한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// ImageNet::ToBitmapSource — CLI 브리지에서
+BitmapSource^ ImageNet::ToBitmapSource()
+{
+    if (m_native == nullptr || m_native->IsEmpty())
+        throw gcnew InvalidOperationException("Image is empty.");
+
+    int w = m_native->GetWidth();
+    int h = m_native->GetHeight();
+    int stride = m_native->GetStride();
+    int channels = m_native->GetChannels();
+
+    System::Windows::Media::PixelFormat fmt =
+        (channels == 1) ? System::Windows::Media::PixelFormats::Gray8
+        : (channels == 3) ? System::Windows::Media::PixelFormats::Bgr24
+        : System::Windows::Media::PixelFormats::Bgra32;
+
+    // 네이티브 픽셀 버퍼 포인터
+    IntPtr buffer(m_native->GetData());
+
+    // WPF가 픽셀을 복사해 BitmapSource를 만든다.
+    return BitmapSource::Create(
+        w, h, 96.0, 96.0, fmt, nullptr,
+        buffer, stride * h, stride);
+}</code></pre>
+
+                <p>장점은 단순하다는 것이다. 단점은 매 프레임마다 새 <code>BitmapSource</code>를 만들고 픽셀을 복사한다는 것. 라이브뷰처럼 빠르게 갱신할 때는 부담이 된다.</p>
+
+                <h3 id="zero-copy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> WriteableBitmap으로 zero-copy 갱신</h3>
+                <p>한 번만 <code>WriteableBitmap</code>을 만들고 픽셀 버퍼만 갱신한다. WPF Image 컨트롤은 같은 객체를 바라보므로 새 객체 생성·바인딩 비용이 없다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// ViewModel 측 (C#)
+public class LiveViewModel : INotifyPropertyChanged
+{
+    public WriteableBitmap LiveBitmap { get; private set; }
+
+    public void Initialize(int width, int height)
+    {
+        LiveBitmap = new WriteableBitmap(
+            width, height, 96, 96, PixelFormats.Bgr24, null);
+        OnPropertyChanged(nameof(LiveBitmap));
+    }
+
+    // CLI 브리지가 호출 (UI 스레드에서 호출되어야 함)
+    public void UpdateFrame(IntPtr nativeBuffer, int stride, int height)
+    {
+        var rect = new Int32Rect(0, 0,
+            LiveBitmap.PixelWidth, LiveBitmap.PixelHeight);
+
+        LiveBitmap.WritePixels(rect, nativeBuffer, stride * height, stride);
+    }
+}</code></pre>
+
+                <p>핵심은 <code>WritePixels</code>가 <code>IntPtr</code>을 직접 받는다는 것. 네이티브 픽셀 주소를 그대로 넘기면 WPF 내부에서 한 번만 복사한다(back buffer로). 매번 새 객체를 만드는 것보다 훨씬 가볍다.</p>
+
+                <h3 id="pin-ptr"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 관리 배열을 네이티브에 넘길 때 — pin_ptr</h3>
+                <p>반대로 C#이 가진 <code>byte[]</code>를 네이티브에 입력으로 줄 수도 있다. GC가 배열을 움직이지 못하게 고정해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">void Processor::LoadFromManagedArray(array&lt;Byte&gt;^ pixels, int width, int height)
+{
+    if (pixels == nullptr) throw gcnew ArgumentNullException("pixels");
+
+    pin_ptr&lt;Byte&gt; pinned = &amp;pixels[0];   // GC가 못 옮기게 고정
+    const unsigned char* native = pinned;
+
+    m_native->LoadFrom(native, width, height);
+    // 함수 종료 시 pin이 풀린다.
+}</code></pre>
+
+                <!-- 5. 콜백 -->
+                <h2 id="callback"><i class="fa-solid fa-phone-volume"></i> 콜백 — delegate ↔ 함수 포인터</h2>
+                <p>비전 처리는 비동기로 도는 경우가 많다. 끝났을 때 결과를 WPF에 알리려면 콜백이 필요하다. C# delegate와 네이티브 함수 포인터를 잇는다.</p>
+
+                <h3 id="cb-define"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> delegate 정의와 변환</h3>
+
+<pre class="language-cpp"><code class="language-cpp">// CLI 브리지 헤더
+public delegate void ProcessCompletedHandler(ImageNet^ result);
+
+public ref class Processor
+{
+public:
+    event ProcessCompletedHandler^ ProcessCompleted;
+
+    void ApplyAsync(ImageNet^ src, FilterType type, int kernelSize);
+
+private:
+    // 네이티브 코어에 등록할 콜백 진입점
+    void OnNativeCompleted(ImagingLib::Core::Image* nativeResult);
+
+    // delegate를 GC가 회수하지 못하게 잡아 두는 핸들
+    GCHandle m_callbackHandle;
+};</code></pre>
+
+<pre class="language-cpp"><code class="language-cpp">// 네이티브 코어가 받는 C 스타일 콜백 타입
+// (코어 측 헤더에 typedef로 선언되어 있다고 가정)
+typedef void (__stdcall *NativeCallback)(void* userData, ImagingLib::Core::Image* result);
+
+void Processor::ApplyAsync(ImageNet^ src, FilterType type, int kernelSize)
+{
+    // C# delegate를 네이티브 함수 포인터로 바꿀 thunk delegate
+    auto thunk = gcnew Action&lt;IntPtr, IntPtr&gt;(this, &amp;Processor::ThunkCallback);
+    m_callbackHandle = GCHandle::Alloc(thunk);    // GC 회수 방지
+
+    IntPtr fp = Marshal::GetFunctionPointerForDelegate(thunk);
+    auto nativeCb = static_cast&lt;NativeCallback&gt;(fp.ToPointer());
+
+    m_native-&gt;ApplyAsync(
+        src-&gt;GetNative(),
+        static_cast&lt;ImagingLib::Core::FilterType&gt;(type),
+        kernelSize,
+        nativeCb,
+        nullptr);
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>delegate를 GCHandle로 잡지 않으면 크래시한다</strong>
+                        <code>GetFunctionPointerForDelegate</code>가 반환한 포인터는 GC가 해당 delegate를 살아 있다고 보지 않는다. 네이티브 코드가 나중에 호출하는 순간 이미 회수돼 액세스 위반이 난다. 반드시 <code>GCHandle::Alloc</code>으로 살려두고, 더 이상 안 쓸 때 <code>Free</code>한다.
+                    </div>
+                </div>
+
+                <!-- 6. 스레딩 -->
+                <h2 id="threading"><i class="fa-solid fa-arrows-spin"></i> 스레딩과 Dispatcher</h2>
+                <p>비전 처리는 백그라운드 스레드에서 돈다. WPF UI 객체(<code>WriteableBitmap</code> 포함)는 <strong>생성한 스레드에서만</strong> 만질 수 있다. 네이티브 콜백이 워커 스레드에서 오면, UI 작업은 <code>Dispatcher</code>로 넘긴다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// ViewModel — CLI 브리지의 이벤트를 구독
+public LiveViewModel()
+{
+    _processor = new ImagingLib.Bridge.Processor();
+    _processor.ProcessCompleted += OnProcessCompleted;
+}
+
+private void OnProcessCompleted(ImagingLib.Bridge.ImageNet result)
+{
+    // 워커 스레드일 가능성이 높다. UI 스레드로 넘긴다.
+    Application.Current.Dispatcher.Invoke(() =&gt;
+    {
+        var rect = new Int32Rect(0, 0, result.Width, result.Height);
+        LiveBitmap.WritePixels(rect, result.GetBuffer(),
+            result.Stride * result.Height, result.Stride);
+
+        StatusText = $"Processed at {DateTime.Now:HH:mm:ss.fff}";
+    });
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>UI 스레드 밖에서 WriteableBitmap을 건드리면 즉시 예외다</strong>
+                        <code>InvalidOperationException: The calling thread cannot access this object because a different thread owns it.</code>를 만난다. 무조건 <code>Dispatcher</code>로 넘기는 습관을 들인다. 짧은 작업은 <code>Invoke</code>, 결과가 필요 없으면 <code>BeginInvoke</code>가 빠르다.
+                    </div>
+                </div>
+
+                <h3 id="freeze"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Freezable로 크로스 스레드 사용</h3>
+                <p><code>BitmapSource</code>는 <code>Freezable</code>이다. <code>Freeze()</code>를 호출하면 불변이 되고, 어느 스레드에서든 읽을 수 있다. 작업 스레드에서 만든 <code>BitmapSource</code>를 UI 스레드로 넘길 때 유용하다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">// 워커 스레드
+var bmp = nativeImage.ToBitmapSource();
+bmp.Freeze();   // 이제 다른 스레드에서도 읽을 수 있다.
+
+Application.Current.Dispatcher.Invoke(() =&gt; { CurrentFrame = bmp; });</code></pre>
+
+                <!-- 7. 에러 처리 -->
+                <h2 id="error"><i class="fa-solid fa-bolt"></i> 에러 처리</h2>
+                <p>네이티브는 <code>ErrorCode</code>를, .NET은 예외를 쓴다. 브리지에서 변환한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// ImagingException — 네이티브 ErrorCode를 담는 .NET 예외
+public ref class ImagingException : Exception
+{
+public:
+    property int Code;
+    ImagingException(int code, String^ msg) : Exception(msg) { Code = code; }
+};
+
+// 변환 헬퍼
+static void ThrowIfFailed(ImagingLib::Core::ErrorCode ec)
+{
+    using EC = ImagingLib::Core::ErrorCode;
+    if (ec == EC::Success) return;
+
+    String^ msg = gcnew String(ImagingLib::Core::ErrorCodeToString(ec));
+    throw gcnew ImagingException(static_cast&lt;int&gt;(ec), msg);
+}
+
+// 사용
+ImageNet^ Processor::Apply(ImageNet^ src, FilterType type, int kernelSize)
+{
+    auto result = gcnew ImageNet();
+    auto ec = m_native-&gt;Apply(
+        src-&gt;GetNative(),
+        static_cast&lt;ImagingLib::Core::FilterType&gt;(type),
+        kernelSize,
+        result-&gt;GetNative());
+
+    ThrowIfFailed(ec);
+    return result;
+}</code></pre>
+
+                <p>C# 쪽은 평범하게 <code>try-catch</code>한다. .NET 개발자가 익숙한 모델로 자연스럽게 들어온다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">try
+{
+    var result = _processor.Apply(src, FilterType.GaussianBlur, 5);
+    CurrentImage = result.ToBitmapSource();
+}
+catch (ImagingException ex)
+{
+    StatusText = $"Error {ex.Code}: {ex.Message}";
+}</code></pre>
+
+                <!-- 8. 메모리 관리 -->
+                <h2 id="memory"><i class="fa-solid fa-recycle"></i> 메모리 관리</h2>
+                <p>핵심 원칙: <strong>ref class가 네이티브 자원을 소유하면 반드시 Dispose 가능해야 한다</strong>.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 표준 패턴 — destructor와 finalizer를 함께 둔다.
+ImageNet::ImageNet()
+{
+    m_native = new ImagingLib::Core::Image();
+}
+
+ImageNet::~ImageNet()        // IDisposable.Dispose() → 결정론적 호출
+{
+    this-&gt;!ImageNet();
+}
+
+ImageNet::!ImageNet()         // finalizer — GC가 호출 (보험)
+{
+    if (m_native != nullptr)
+    {
+        delete m_native;
+        m_native = nullptr;
+    }
+}</code></pre>
+
+                <p>C# 쪽은 <code>using</code>으로 결정론적으로 해제한다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">using (var img = new ImagingLib.Bridge.ImageNet(1920, 1080, 3))
+using (var processor = new ImagingLib.Bridge.Processor())
+{
+    var result = processor.Apply(img, FilterType.Median, 3);
+    // 스코프 끝나면 Dispose → 네이티브 메모리 즉시 해제
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Dispose를 놓치면 네이티브 누수가 슬금슬금 쌓인다</strong>
+                        finalizer는 보험이지 정답이 아니다. GC가 언제 돌지 모르고, 그동안 거대한 픽셀 버퍼가 계속 살아 있다. 1920×1080×3 = 약 6MB가 한 장이다. 라이브뷰에서 초당 60프레임이면 1초만 누수돼도 360MB다.
+                    </div>
+                </div>
+
+                <!-- 9. 빌드 구성 -->
+                <h2 id="build"><i class="fa-solid fa-screwdriver-wrench"></i> 빌드 구성</h2>
+                <p>세 프로젝트의 설정이 어긋나면 런타임에 못 만난다. 체크리스트는 다음과 같다.</p>
+
+                <table>
+                    <tr><th>항목</th><th>Native Core</th><th>CLI Bridge</th><th>WPF Viewer</th></tr>
+                    <tr><td>플랫폼</td><td>x64</td><td>x64</td><td>x64 (AnyCPU 금지)</td></tr>
+                    <tr><td>CLR</td><td>—</td><td><code>/clr</code></td><td>—</td></tr>
+                    <tr><td>런타임</td><td>MD/MDd</td><td>MD/MDd (일치)</td><td>—</td></tr>
+                    <tr><td>.NET 타깃</td><td>—</td><td>net6.0-windows 등</td><td>같은 TFM</td></tr>
+                    <tr><td>출력</td><td>.lib / .dll</td><td>.dll (mixed)</td><td>.exe</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>AnyCPU는 함정이다</strong>
+                        WPF 프로젝트의 기본값이 AnyCPU인데, CLI DLL은 보통 x64다. 32비트로 떨어진 프로세스가 x64 DLL을 로드하려다 <code>BadImageFormatException</code>으로 죽는다. 반드시 x64로 고정한다.
+                    </div>
+                </div>
+
+                <p>WPF 프로젝트의 <code>.csproj</code>는 다음처럼 둔다.</p>
+
+<pre class="language-markup"><code class="language-markup">&lt;Project Sdk="Microsoft.NET.Sdk"&gt;
+  &lt;PropertyGroup&gt;
+    &lt;OutputType&gt;WinExe&lt;/OutputType&gt;
+    &lt;TargetFramework&gt;net6.0-windows&lt;/TargetFramework&gt;
+    &lt;UseWPF&gt;true&lt;/UseWPF&gt;
+    &lt;Platforms&gt;x64&lt;/Platforms&gt;
+    &lt;PlatformTarget&gt;x64&lt;/PlatformTarget&gt;
+  &lt;/PropertyGroup&gt;
+
+  &lt;ItemGroup&gt;
+    &lt;ProjectReference Include="..\bridge\ImagingBridge.vcxproj" /&gt;
+  &lt;/ItemGroup&gt;
+&lt;/Project&gt;</code></pre>
+
+                <!-- 10. 영상 표시 -->
+                <h2 id="display"><i class="fa-solid fa-tv"></i> WPF 영상 표시</h2>
+                <p>XAML에서는 평범한 <code>Image</code> 컨트롤에 <code>WriteableBitmap</code>을 바인딩한다.</p>
+
+<pre class="language-markup"><code class="language-markup">&lt;Window x:Class="ImagingViewer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ImagingLib Viewer" Width="1280" Height="720"&gt;
+    &lt;Grid&gt;
+        &lt;Grid.RowDefinitions&gt;
+            &lt;RowDefinition Height="*" /&gt;
+            &lt;RowDefinition Height="Auto" /&gt;
+        &lt;/Grid.RowDefinitions&gt;
+
+        &lt;Image Grid.Row="0"
+               Source="{Binding LiveBitmap}"
+               Stretch="Uniform"
+               RenderOptions.BitmapScalingMode="NearestNeighbor" /&gt;
+
+        &lt;StatusBar Grid.Row="1"&gt;
+            &lt;TextBlock Text="{Binding StatusText}" /&gt;
+        &lt;/StatusBar&gt;
+    &lt;/Grid&gt;
+&lt;/Window&gt;</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>BitmapScalingMode를 NearestNeighbor로</strong>
+                        검사 영상은 픽셀 단위 확인이 필요한 경우가 많다. 기본 <code>Linear</code>는 보간으로 디테일을 흐리니, <code>NearestNeighbor</code>가 산업용 viewer에는 더 맞다.
+                    </div>
+                </div>
+
+                <h3 id="rate-limit"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 프레임 레이트 조절</h3>
+                <p>카메라가 100 FPS여도 화면이 60 Hz면 그 이상 그릴 이유가 없다. UI 갱신을 제한하면 CPU·GPU를 아낀다.</p>
+
+<pre class="language-csharp"><code class="language-csharp">private DateTime _lastUiUpdate = DateTime.MinValue;
+private static readonly TimeSpan _uiInterval = TimeSpan.FromMilliseconds(16);  // 약 60 FPS
+
+private void OnFrameReady(ImageNet frame)
+{
+    var now = DateTime.UtcNow;
+    if (now - _lastUiUpdate &lt; _uiInterval) return;   // drop
+    _lastUiUpdate = now;
+
+    Application.Current.Dispatcher.BeginInvoke(() =&gt;
+    {
+        var rect = new Int32Rect(0, 0, frame.Width, frame.Height);
+        LiveBitmap.WritePixels(rect, frame.GetBuffer(),
+            frame.Stride * frame.Height, frame.Stride);
+    });
+}</code></pre>
+
+                <!-- 11. 플로우 통합 -->
+                <h2 id="flow"><i class="fa-solid fa-diagram-project"></i> 데이터 플로우 에디터와 통합</h2>
+                <p>11편의 블록 에디터는 노드를 연결해 처리 흐름을 만든다. 그래프 모델은 C#이 들고, 실제 실행은 C++ 코어가 한다. 역할이 분리된다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arr2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#475569"/>
+                            </marker>
+                        </defs>
+                        <!-- C# side -->
+                        <rect x="20" y="20" width="320" height="160" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+                        <text x="180" y="42" text-anchor="middle" font-weight="700" font-size="13" fill="#1e3a5f">WPF — 그래프 모델 / 시각화</text>
+
+                        <rect x="40" y="60" width="90" height="34" rx="6" fill="#fff" stroke="#3b82f6"/>
+                        <text x="85" y="82" text-anchor="middle" font-size="11" fill="#1e3a5f">Source Node</text>
+                        <rect x="155" y="60" width="90" height="34" rx="6" fill="#fff" stroke="#3b82f6"/>
+                        <text x="200" y="82" text-anchor="middle" font-size="11" fill="#1e3a5f">Blur Node</text>
+                        <rect x="270" y="60" width="60" height="34" rx="6" fill="#fff" stroke="#3b82f6"/>
+                        <text x="300" y="82" text-anchor="middle" font-size="11" fill="#1e3a5f">View</text>
+
+                        <line x1="130" y1="77" x2="155" y2="77" stroke="#475569" stroke-width="1.5" marker-end="url(#arr2)"/>
+                        <line x1="245" y1="77" x2="270" y2="77" stroke="#475569" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+                        <text x="180" y="125" text-anchor="middle" font-size="11" fill="#475569">Node ViewModel</text>
+                        <text x="180" y="143" text-anchor="middle" font-size="11" fill="#475569">Connection 모델</text>
+                        <text x="180" y="161" text-anchor="middle" font-size="11" fill="#475569">파라미터 패널</text>
+
+                        <!-- Bridge arrow -->
+                        <line x1="345" y1="100" x2="395" y2="100" stroke="#475569" stroke-width="2" marker-end="url(#arr2)"/>
+                        <text x="370" y="92" text-anchor="middle" font-size="10" fill="#64748b">Build /</text>
+                        <text x="370" y="118" text-anchor="middle" font-size="10" fill="#64748b">Execute</text>
+
+                        <!-- Native side -->
+                        <rect x="400" y="20" width="300" height="160" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+                        <text x="550" y="42" text-anchor="middle" font-weight="700" font-size="13" fill="#14532d">Native Core — 실행 엔진</text>
+
+                        <text x="550" y="75" text-anchor="middle" font-size="11" fill="#14532d">IProcessBlock 체인</text>
+                        <text x="550" y="98" text-anchor="middle" font-size="11" fill="#14532d">위상 정렬 후 실행</text>
+                        <text x="550" y="121" text-anchor="middle" font-size="11" fill="#14532d">노드별 결과 → 콜백</text>
+                        <text x="550" y="144" text-anchor="middle" font-size="11" fill="#14532d">에러 시 ErrorCode 반환</text>
+                    </svg>
+                    <div class="diagram-caption">UI는 그래프를 편집·시각화, 코어는 IProcessBlock 체인을 실제로 실행</div>
+                </div>
+
+<pre class="language-csharp"><code class="language-csharp">// FlowGraphRunner — C# 그래프를 코어에 넘겨 실행
+public class FlowGraphRunner
+{
+    private readonly ImagingLib.Bridge.GraphExecutor _executor = new();
+
+    public async Task RunAsync(FlowGraphViewModel graph)
+    {
+        // 1) C# 노드를 코어 블록 명세로 변환
+        var spec = new ImagingLib.Bridge.GraphSpec();
+        foreach (var node in graph.Nodes)
+        {
+            spec.AddBlock(node.Id, node.BlockType, node.Parameters.ToDict());
+        }
+        foreach (var conn in graph.Connections)
+        {
+            spec.AddEdge(conn.FromNodeId, conn.FromPort,
+                         conn.ToNodeId,   conn.ToPort);
+        }
+
+        // 2) 코어에 위임. 결과는 노드별 이미지/메트릭
+        _executor.NodeCompleted += (nodeId, result) =&gt;
+        {
+            Application.Current.Dispatcher.BeginInvoke(() =&gt;
+            {
+                var node = graph.FindNode(nodeId);
+                node.PreviewBitmap = result.ToBitmapSource();
+            });
+        };
+
+        await Task.Run(() =&gt; _executor.Execute(spec));
+    }
+}</code></pre>
+
+                <p>UI는 노드를 끌어다 놓고 연결만 한다. 실행은 전부 네이티브에서 돈다. C++가 가진 성능과 OpenCV 자산을 그대로 쓰면서, 편집 경험은 C#·WPF의 풍성한 도구로 만든다. 이것이 C++/CLI 통합의 본래 매력이다.</p>
+
+                <!-- 12. 대안 비교 -->
+                <h2 id="compare"><i class="fa-solid fa-scale-balanced"></i> 대안 비교 — gRPC, Pipe, REST</h2>
+                <p>C++/CLI가 항상 정답은 아니다. 상황에 따라 다른 답이 더 좋을 수 있다.</p>
+
+                <table>
+                    <tr><th>방식</th><th>지연</th><th>이식성</th><th>이미지 전송</th><th>프로세스 분리</th><th>적합</th></tr>
+                    <tr><td>C++/CLI</td><td>매우 낮음 (in-proc)</td><td>Windows·MSVC만</td><td>zero-copy 가능</td><td>없음 (장점·단점)</td><td>단일 PC·고FPS</td></tr>
+                    <tr><td>P/Invoke</td><td>매우 낮음</td><td>좋음</td><td>버퍼 포인터 OK</td><td>없음</td><td>C API 몇 개</td></tr>
+                    <tr><td>Named Pipe</td><td>낮음</td><td>OS 의존</td><td>대용량 부담</td><td>있음</td><td>같은 PC 서비스 분리</td></tr>
+                    <tr><td>gRPC</td><td>중간</td><td>매우 좋음</td><td>직렬화 비용 큼</td><td>있음</td><td>다국어·원격</td></tr>
+                    <tr><td>REST</td><td>높음</td><td>최고</td><td>비효율</td><td>있음</td><td>제어용·관리 API</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>섞어 쓰는 게 현실이다</strong>
+                        고속 라이브뷰 경로는 C++/CLI, 원격 관리·로그 조회는 REST, 다른 부서가 만든 파이썬 스크립트 연동은 gRPC — 이런 조합이 흔하다. 한 가지로 다 풀려고 하면 어딘가 무리가 간다.
+                    </div>
+                </div>
+
+                <!-- 13. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="pit-dispose"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Dispose 누락 → 네이티브 메모리 누수</h3>
+                <p>이미 다뤘다. <code>using</code> 또는 명시적 <code>Dispose</code> 호출을 빼먹지 않는다. ImageNet, Processor처럼 네이티브를 들고 있는 모든 ref class에 적용된다.</p>
+
+                <h3 id="pit-delegate"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> delegate를 잡지 않아 콜백 시 크래시</h3>
+                <p><code>Marshal.GetFunctionPointerForDelegate</code>의 결과만 들고 delegate를 변수로 안 잡아두면 GC가 회수한다. 인스턴스 필드나 <code>GCHandle</code>에 보관한다.</p>
+
+                <h3 id="pit-thread"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> UI 스레드 밖에서 UI 객체 접근</h3>
+                <p><code>WriteableBitmap</code>, <code>ObservableCollection</code>, 바인딩 대상 ViewModel 속성은 모두 UI 스레드에서만 만진다. 워커에서 <code>Dispatcher.Invoke</code>로 넘긴다.</p>
+
+                <h3 id="pit-format"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 픽셀 포맷 mismatch</h3>
+                <p>OpenCV의 BGR을 <code>PixelFormats.Rgb24</code>로 넘기면 색이 뒤집힌다. Bayer 패턴이나 Mono10/Mono12 packed를 그대로 <code>Gray8</code>에 넣어도 망가진다. 카메라 포맷 → OpenCV 변환 → WPF 포맷 매핑 표를 코드에 박아둔다.</p>
+
+                <h3 id="pit-stride"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> stride를 width와 혼동</h3>
+                <p><code>BitmapSource.Create</code>와 <code>WritePixels</code>는 <strong>stride(라인당 바이트 수)</strong>를 요구한다. <code>width * channels</code>가 아니라 정렬 패딩이 포함된 값이다. OpenCV <code>Mat::step</code>을 쓰면 된다.</p>
+
+                <h3 id="pit-anycpu"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> AnyCPU와 비트수 불일치</h3>
+                <p>이미 빌드 섹션에서 언급. WPF 프로젝트를 새로 만들면 잘 잊는다. CI에서 x64를 강제 검증하면 안전하다.</p>
+
+                <!-- 14. 마무리 -->
+                <h2 id="wrapup"><i class="fa-solid fa-flag-checkered"></i> 시리즈 마무리</h2>
+                <p>12편을 거쳐 빈 C# 콘솔에서 시작해 데이터 플로우 비전 viewer까지 왔다.</p>
+
+                <table>
+                    <tr><th>편</th><th>주제</th><th>핵심</th></tr>
+                    <tr><td>1~3</td><td>C# 기본·LINQ·async</td><td>.NET 위에서 일하는 사고법</td></tr>
+                    <tr><td>4~5</td><td>WPF 입문·XAML</td><td>선언적 UI와 리소스 시스템</td></tr>
+                    <tr><td>6~7</td><td>MVVM·바인딩</td><td>ViewModel로 UI를 테스트 가능하게</td></tr>
+                    <tr><td>8~9</td><td>Command·Behavior</td><td>코드 비하인드를 비우는 방법</td></tr>
+                    <tr><td>10</td><td>그래픽·렌더</td><td>WriteableBitmap·DrawingVisual</td></tr>
+                    <tr><td>11</td><td>데이터 플로우 에디터</td><td>노드 연결 UI와 그래프 모델</td></tr>
+                    <tr><td><strong>12</strong></td><td><strong>C++/CLI 통합</strong></td><td><strong>ImagingLib 코어와 결합</strong></td></tr>
+                </table>
+
+                <p>이제 흐름이 보인다. C#·WPF는 <strong>편집과 시각화</strong>를 담당하고, C++·OpenCV는 <strong>실행 엔진</strong>을 맡는다. 두 세계는 C++/CLI 브리지로 만난다. WPF 시리즈는 여기서 닫지만 이 viewer는 다른 시리즈와 이어져 있다.</p>
+
+                <ul>
+                    <li><strong>C++ 시리즈</strong> — Image 컨테이너, IProcessBlock, OpenCV 래핑은 Native Core의 뼈대다.</li>
+                    <li><strong>OpenCV·Vision 시리즈</strong> — Blob, Template Matching, Measurement는 코어 블록의 알맹이다.</li>
+                    <li><strong>AI 시리즈</strong> — ONNX 추론 블록을 추가하면 데이터 플로우 안에 딥러닝이 들어온다.</li>
+                </ul>
+
+                <p>도구는 완성되는 게 아니라 자라난다. ImagingLib Viewer도 마찬가지다. 카메라 통합, 캘리브레이션 마법사, 측정 결과 리포트, CUDA 가속, 플러그인 블록 — 할 일이 줄지어 있다. 시리즈가 다음 단계의 기초가 되기를 바란다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-seedling"></i>
+                    <div class="callout-body">
+                        <strong>여기까지 함께 한 분께</strong>
+                        머신비전 viewer 하나를 만들겠다고 마음먹는 일은 가볍지 않다. 12편을 끝까지 따라 왔다면 이미 절반은 만든 셈이다. 남은 절반은 손에 달렸다. 작은 블록 하나라도 직접 붙여 보면 그다음 길이 더 또렷해진다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Microsoft Learn — <em>.NET programming with C++/CLI</em> (learn.microsoft.com/cpp/dotnet/dotnet-programming-with-cpp-cli-visual-cpp)</li>
+                        <li>Microsoft Learn — <em>WriteableBitmap Class</em> (learn.microsoft.com/dotnet/api/system.windows.media.imaging.writeablebitmap)</li>
+                        <li>Microsoft Learn — <em>BitmapSource.Create Method</em></li>
+                        <li>Microsoft Learn — <em>Marshal.GetFunctionPointerForDelegate</em></li>
+                        <li>Microsoft Learn — <em>Threading Model (WPF)</em> — Dispatcher와 Freezable</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-wpf');
+    renderPostNav('dev-wpf');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

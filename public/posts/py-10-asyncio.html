@@ -1,0 +1,949 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비동기 — asyncio - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 다이어그램 */
+        .diagram-wrap {
+            background: #fafafa; border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 16px 0; text-align: center;
+        }
+        .diagram-wrap svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 스펙 테이블 */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 10px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; color: var(--primary-dark); }
+        .spec-table tr:nth-child(even) td { background: #fafafa; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#concurrency" data-section="concurrency">동시성·병렬성</a>
+        <a href="#asyncio-overview" data-section="asyncio-overview">asyncio 개요</a>
+        <a href="#async-await" data-section="async-await">async/await</a>
+        <a href="#event-loop" data-section="event-loop">이벤트 루프</a>
+        <a href="#tasks" data-section="tasks">Task와 동시 실행</a>
+        <a href="#timeout-cancel" data-section="timeout-cancel">타임아웃·취소</a>
+        <a href="#queue" data-section="queue">asyncio.Queue</a>
+        <a href="#async-with-for" data-section="async-with-for">async with·for</a>
+        <a href="#when-asyncio" data-section="when-asyncio">언제 쓸까</a>
+        <a href="#compare" data-section="compare">모델 비교</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">Python 시리즈</span>
+                </div>
+                <h1>비동기 — asyncio</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>동시성·병렬성·비동기의 차이와 Python의 GIL</li>
+                        <li>asyncio의 핵심: 이벤트 루프 + 코루틴 + async/await</li>
+                        <li>Task, gather, wait_for, cancel — 동시 실행과 취소</li>
+                        <li>asyncio.Queue·async with·async for를 활용한 생산자/소비자 패턴</li>
+                        <li>스레드·멀티프로세스·asyncio 모델 비교와 선택 기준</li>
+                        <li>실수하기 쉬운 함정 — await 누락, 동기 블로킹 호출</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#concurrency">동시성·병렬성·비동기</a></li>
+                        <li><a href="#asyncio-overview">asyncio 개요</a></li>
+                        <li><a href="#async-await">async def와 await</a></li>
+                        <li><a href="#event-loop">이벤트 루프</a></li>
+                        <li><a href="#tasks">Task와 동시 실행</a></li>
+                        <li><a href="#timeout-cancel">타임아웃과 취소</a></li>
+                        <li><a href="#queue">asyncio.Queue로 생산자/소비자</a></li>
+                        <li><a href="#async-with-for">async with·async for</a></li>
+                        <li><a href="#when-asyncio">언제 asyncio를 쓸까</a></li>
+                        <li><a href="#compare">동시성 모델 비교</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 동시성·병렬성·비동기 -->
+                <h2 id="concurrency"><i class="fa-solid fa-diagram-project"></i> 동시성·병렬성·비동기</h2>
+                <p>비슷해 보이지만 서로 다른 개념이다. 한 줄로 구분하면 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <tr><th>개념</th><th>의미</th><th>비유</th></tr>
+                    <tr><td><strong>동시성 (Concurrency)</strong></td><td>여러 작업을 잘게 쪼개 번갈아 진행한다. 한 시점에 진행 중인 작업이 여러 개다.</td><td>한 명의 요리사가 여러 요리를 번갈아 만든다</td></tr>
+                    <tr><td><strong>병렬성 (Parallelism)</strong></td><td>여러 작업을 물리적으로 동시에 수행한다. 코어가 여러 개 필요하다.</td><td>여러 명의 요리사가 각자 요리를 만든다</td></tr>
+                    <tr><td><strong>비동기 (Asynchronous)</strong></td><td>호출과 결과 수신을 분리한다. 결과를 기다리는 동안 다른 일을 한다.</td><td>주문 후 진동벨을 받고 자리에서 다른 일을 한다</td></tr>
+                </table>
+
+                <h3 id="gil"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Python의 GIL과 그 한계</h3>
+                <p>CPython은 <strong>GIL (Global Interpreter Lock)</strong> 때문에 같은 프로세스 안에서 한 번에 한 스레드만 파이썬 바이트코드를 실행한다. 즉 멀티스레드를 써도 CPU 바운드 작업은 진짜 병렬로 돌지 않는다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방식</th><th>병렬 실행</th><th>GIL 영향</th><th>적합한 작업</th></tr>
+                    <tr><td>threading</td><td>아니오(번갈아)</td><td>받음 (I/O 대기 중에는 풀림)</td><td>I/O 바운드</td></tr>
+                    <tr><td>multiprocessing</td><td>예 (프로세스별 인터프리터)</td><td>없음</td><td>CPU 바운드</td></tr>
+                    <tr><td>asyncio</td><td>아니오(단일 스레드 협력적)</td><td>없음 (어차피 1스레드)</td><td>대량 I/O 바운드</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>asyncio는 "더 가벼운 동시성"이다</strong>
+                        스레드는 OS가 강제로 전환(선점형)하지만, asyncio는 코루틴이 <code>await</code> 지점에서 스스로 양보(협력형)한다. 컨텍스트 스위칭 비용이 작아 수천~수만 개의 동시 연결도 가볍게 다룬다.
+                    </div>
+                </div>
+
+                <!-- 2. asyncio 개요 -->
+                <h2 id="asyncio-overview"><i class="fa-solid fa-bolt"></i> asyncio 개요</h2>
+                <p><code>asyncio</code>는 Python 표준 라이브러리의 비동기 I/O 프레임워크다. 세 가지 축이 있다.</p>
+
+                <ul>
+                    <li><strong>이벤트 루프 (Event Loop)</strong> — 실행 가능한 코루틴을 골라 돌리는 스케줄러</li>
+                    <li><strong>코루틴 (Coroutine)</strong> — <code>async def</code>로 정의된, 중간에 멈췄다 재개할 수 있는 함수</li>
+                    <li><strong>await</strong> — 다른 코루틴이나 awaitable이 끝날 때까지 자기 자리를 양보하는 키워드</li>
+                </ul>
+
+                <div class="diagram-wrap">
+                    <svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+                            </marker>
+                        </defs>
+                        <!-- Event Loop center -->
+                        <circle cx="360" cy="160" r="70" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                        <text x="360" y="155" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="15" font-weight="700" fill="#78350f">Event Loop</text>
+                        <text x="360" y="175" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#92400e">스케줄러</text>
+
+                        <!-- Ready queue -->
+                        <rect x="40" y="40" width="180" height="80" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+                        <text x="130" y="62" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#1e3a8a">Ready Queue</text>
+                        <text x="130" y="82" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#1e3a8a">[Task A, Task B, ...]</text>
+                        <text x="130" y="102" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#475569">실행 준비된 코루틴</text>
+
+                        <!-- I/O waiting -->
+                        <rect x="500" y="40" width="180" height="80" rx="10" fill="#fce7f3" stroke="#db2777" stroke-width="1.5"/>
+                        <text x="590" y="62" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#831843">I/O Waiting</text>
+                        <text x="590" y="82" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#831843">socket, file, sleep...</text>
+                        <text x="590" y="102" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#475569">await 중인 코루틴</text>
+
+                        <!-- OS / selector -->
+                        <rect x="270" y="260" width="180" height="50" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+                        <text x="360" y="282" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="13" font-weight="700" fill="#312e81">OS Selector</text>
+                        <text x="360" y="298" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="10" fill="#475569">epoll / kqueue / IOCP</text>
+
+                        <!-- Arrows -->
+                        <path d="M 220 90 Q 280 130 295 140" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+                        <text x="245" y="125" font-family="Pretendard, sans-serif" font-size="10" fill="#475569">실행</text>
+
+                        <path d="M 425 140 Q 450 110 500 90" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+                        <text x="465" y="115" font-family="Pretendard, sans-serif" font-size="10" fill="#475569">await</text>
+
+                        <path d="M 500 100 Q 380 200 360 230" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+                        <text x="430" y="200" font-family="Pretendard, sans-serif" font-size="10" fill="#475569">대기 등록</text>
+
+                        <path d="M 320 260 Q 220 200 215 130" fill="none" stroke="#16a34a" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+                        <text x="200" y="220" font-family="Pretendard, sans-serif" font-size="10" fill="#16a34a">완료 알림 → 다시 Ready</text>
+                    </svg>
+                    <div class="diagram-caption">이벤트 루프의 동작 — Ready Queue에서 코루틴을 꺼내 돌리다, <code>await</code>를 만나면 I/O 대기열로 보내고 다음을 실행한다. OS Selector가 완료를 알리면 다시 Ready Queue로 복귀한다.</div>
+                </div>
+
+                <!-- 3. async/await -->
+                <h2 id="async-await"><i class="fa-solid fa-code"></i> async def와 await</h2>
+                <p><code>async def</code>로 정의하면 일반 함수가 아니라 <strong>코루틴 함수</strong>가 된다. 호출해도 바로 실행되지 않고 코루틴 객체를 반환한다. 실제 실행은 이벤트 루프가 한다.</p>
+
+<pre class="language-python"><code class="language-python">import asyncio
+
+async def hello():
+    print("hello")
+    await asyncio.sleep(1)   # 1초 동안 자리를 양보
+    print("world")
+
+# 그냥 호출하면 실행되지 않는다
+coro = hello()
+print(type(coro))            # &lt;class 'coroutine'&gt;
+
+# 이벤트 루프에서 실행
+asyncio.run(hello())</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+&lt;class 'coroutine'&gt;
+hello
+world</div>
+
+                <p><code>await</code>는 awaitable(코루틴·Task·Future)이 완료될 때까지 현재 코루틴을 일시 중지한다. 그동안 이벤트 루프는 다른 코루틴을 돌린다.</p>
+
+<pre class="language-python"><code class="language-python">async def fetch(name, delay):
+    print(f"[{name}] 시작")
+    await asyncio.sleep(delay)     # 다른 코루틴에 자리 양보
+    print(f"[{name}] 완료 ({delay}s)")
+    return f"{name} 결과"
+
+async def main():
+    # 순차 await — 총 3초
+    r1 = await fetch("A", 1)
+    r2 = await fetch("B", 2)
+    print(r1, r2)
+
+asyncio.run(main())</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (총 ~3초)</div>
+[A] 시작
+[A] 완료 (1s)
+[B] 시작
+[B] 완료 (2s)
+A 결과 B 결과</div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>await만으로는 동시 실행이 아니다</strong>
+                        위 예제는 A가 끝난 뒤에야 B가 시작한다. 진짜 동시에 돌리려면 뒤에서 다룰 <code>asyncio.gather</code>나 <code>create_task</code>를 써야 한다.
+                    </div>
+                </div>
+
+                <!-- 4. 이벤트 루프 -->
+                <h2 id="event-loop"><i class="fa-solid fa-rotate"></i> 이벤트 루프</h2>
+                <p>이벤트 루프는 코루틴을 실제로 돌리는 엔진이다. 보통 <code>asyncio.run()</code>이 알아서 만들고 닫아 준다.</p>
+
+<pre class="language-python"><code class="language-python">import asyncio
+
+async def main():
+    loop = asyncio.get_running_loop()   # 현재 실행 중인 루프 얻기
+    print(loop)
+    print("실행 중?", loop.is_running())
+
+asyncio.run(main())</code></pre>
+
+                <h3 id="run-vs-loop"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> asyncio.run의 역할</h3>
+                <p><code>asyncio.run(coro)</code>는 다음 세 가지를 자동으로 처리한다.</p>
+                <ol>
+                    <li>새 이벤트 루프를 만든다</li>
+                    <li><code>coro</code>를 끝까지 돌린다</li>
+                    <li>루프를 닫는다 (모든 비동기 자원 정리 포함)</li>
+                </ol>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>asyncio.run을 중첩하지 말 것</strong>
+                        이미 이벤트 루프가 도는 안에서 <code>asyncio.run()</code>을 또 부르면 <code>RuntimeError: asyncio.run() cannot be called from a running event loop</code>가 난다. Jupyter처럼 루프가 미리 도는 환경에선 <code>await</code>를 직접 쓰거나 <code>nest_asyncio</code> 같은 도구를 쓴다.
+                    </div>
+                </div>
+
+                <!-- 5. Task와 동시 실행 -->
+                <h2 id="tasks"><i class="fa-solid fa-list-check"></i> Task와 동시 실행</h2>
+                <p>코루틴을 <strong>Task</strong>로 감싸면 이벤트 루프가 즉시 스케줄에 올린다. 여러 Task를 만들고 모두 기다리는 것이 asyncio의 핵심 패턴이다.</p>
+
+                <h3 id="create-task"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> asyncio.create_task</h3>
+
+<pre class="language-python"><code class="language-python">async def fetch(name, delay):
+    await asyncio.sleep(delay)
+    return f"{name}({delay}s)"
+
+async def main():
+    # 즉시 백그라운드로 스케줄
+    t1 = asyncio.create_task(fetch("A", 1))
+    t2 = asyncio.create_task(fetch("B", 2))
+
+    # 다른 일도 하고
+    print("작업 시작 직후 — 아직 끝나지 않음")
+
+    # 필요할 때 await로 결과 회수
+    r1 = await t1
+    r2 = await t2
+    print(r1, r2)
+
+asyncio.run(main())</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (총 ~2초)</div>
+작업 시작 직후 — 아직 끝나지 않음
+A(1s) B(2s)</div>
+
+                <h3 id="gather"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> asyncio.gather — 여러 코루틴 동시에</h3>
+                <p>가장 자주 쓰는 함수. 여러 awaitable을 동시에 돌리고 결과를 순서대로 모은다.</p>
+
+<pre class="language-python"><code class="language-python">async def main():
+    results = await asyncio.gather(
+        fetch("A", 1),
+        fetch("B", 2),
+        fetch("C", 1.5),
+    )
+    print(results)   # ['A(1s)', 'B(2s)', 'C(1.5s)']  ← 입력 순서
+
+asyncio.run(main())</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (총 ~2초)</div>
+['A(1s)', 'B(2s)', 'C(1.5s)']</div>
+
+                <p><code>return_exceptions=True</code>를 주면 한 작업이 실패해도 나머지를 계속하고 예외를 결과 리스트에 담아 돌려준다.</p>
+
+<pre class="language-python"><code class="language-python">async def maybe_fail(x):
+    await asyncio.sleep(0.5)
+    if x == 0:
+        raise ValueError("zero!")
+    return 1 / x
+
+async def main():
+    results = await asyncio.gather(
+        maybe_fail(2), maybe_fail(0), maybe_fail(4),
+        return_exceptions=True,
+    )
+    for r in results:
+        print(r)
+
+asyncio.run(main())</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+0.5
+zero!
+0.25</div>
+
+                <h3 id="wait"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> asyncio.wait — 더 세밀한 제어</h3>
+                <p><code>wait</code>는 <code>gather</code>보다 저수준이다. 완료된 것·아직인 것을 분리해 돌려주며, "하나라도 끝나면 깨우기" 같은 패턴이 가능하다.</p>
+
+<pre class="language-python"><code class="language-python">async def main():
+    tasks = [asyncio.create_task(fetch(name, d))
+             for name, d in [("A", 1), ("B", 3), ("C", 2)]]
+
+    done, pending = await asyncio.wait(
+        tasks, return_when=asyncio.FIRST_COMPLETED
+    )
+    print("먼저 끝남:", [t.result() for t in done])
+    print("남은 작업:", len(pending))
+
+    # 나머지도 마저 대기
+    await asyncio.gather(*pending)
+
+asyncio.run(main())</code></pre>
+
+                <!-- 6. 타임아웃·취소 -->
+                <h2 id="timeout-cancel"><i class="fa-solid fa-stopwatch"></i> 타임아웃과 취소</h2>
+
+                <h3 id="wait-for"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> asyncio.wait_for로 타임아웃 걸기</h3>
+
+<pre class="language-python"><code class="language-python">async def slow():
+    await asyncio.sleep(5)
+    return "done"
+
+async def main():
+    try:
+        result = await asyncio.wait_for(slow(), timeout=2)
+        print(result)
+    except asyncio.TimeoutError:
+        print("타임아웃! 작업은 취소됨")
+
+asyncio.run(main())</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (2초 후)</div>
+타임아웃! 작업은 취소됨</div>
+
+                <h3 id="cancel"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Task.cancel()로 명시적 취소</h3>
+
+<pre class="language-python"><code class="language-python">async def worker():
+    try:
+        while True:
+            print("작업 중...")
+            await asyncio.sleep(1)
+    except asyncio.CancelledError:
+        print("정리 작업 수행")
+        raise            # 반드시 다시 던져야 cancel이 정상 전파됨
+
+async def main():
+    task = asyncio.create_task(worker())
+    await asyncio.sleep(3)
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        print("worker 취소 완료")
+
+asyncio.run(main())</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>CancelledError는 잡되, 반드시 다시 던지자</strong>
+                        취소 신호를 삼키면 cancel 의미가 사라진다. <code>finally</code>로 자원 정리만 하고 다시 <code>raise</code>하는 것이 표준 패턴이다.
+                    </div>
+                </div>
+
+                <!-- 7. asyncio.Queue -->
+                <h2 id="queue"><i class="fa-solid fa-arrows-down-to-line"></i> asyncio.Queue로 생산자/소비자</h2>
+                <p>스레드의 <code>queue.Queue</code>와 비슷한 인터페이스를 가진 비동기 큐다. <code>put</code>·<code>get</code>이 모두 <code>await</code>를 지원해 자연스럽게 생산자/소비자 파이프라인을 만들 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">import asyncio
+import random
+
+async def producer(queue, n):
+    for i in range(n):
+        item = f"item-{i}"
+        await asyncio.sleep(random.uniform(0.1, 0.3))
+        await queue.put(item)
+        print(f"  생산: {item}")
+    await queue.put(None)   # 종료 신호 (Sentinel)
+
+async def consumer(queue, name):
+    while True:
+        item = await queue.get()
+        if item is None:
+            await queue.put(None)   # 다른 소비자에게도 전달
+            break
+        print(f"[{name}] 소비: {item}")
+        await asyncio.sleep(random.uniform(0.2, 0.5))
+        queue.task_done()
+
+async def main():
+    queue = asyncio.Queue(maxsize=5)
+    await asyncio.gather(
+        producer(queue, 5),
+        consumer(queue, "C1"),
+        consumer(queue, "C2"),
+    )
+
+asyncio.run(main())</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>maxsize로 자연스러운 배압(Backpressure)</strong>
+                        <code>maxsize</code>를 두면 큐가 가득 찼을 때 <code>put</code>이 자동으로 대기한다. 생산자가 소비자보다 너무 빠를 때 메모리 폭증을 막는 핵심 메커니즘이다.
+                    </div>
+                </div>
+
+                <!-- 8. async with / async for -->
+                <h2 id="async-with-for"><i class="fa-solid fa-arrows-spin"></i> async with와 async for</h2>
+                <p>8편(컨텍스트 매니저)에서 봤던 <code>with</code>·<code>for</code>의 비동기 버전이다. I/O가 끼는 컨텍스트 진입·반복을 <code>await</code>로 처리한다.</p>
+
+                <h3 id="async-with"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> async with — 비동기 컨텍스트 매니저</h3>
+
+<pre class="language-python"><code class="language-python"># 예: aiohttp로 HTTP 요청
+import aiohttp
+import asyncio
+
+async def fetch_url(url):
+    async with aiohttp.ClientSession() as session:   # __aenter__ / __aexit__
+        async with session.get(url) as resp:
+            return await resp.text()
+
+async def main():
+    html = await fetch_url("https://example.com")
+    print(len(html), "bytes")
+
+asyncio.run(main())</code></pre>
+
+                <p>직접 구현할 때는 <code>__aenter__</code>·<code>__aexit__</code> 또는 <code>@asynccontextmanager</code> 데코레이터를 쓴다.</p>
+
+<pre class="language-python"><code class="language-python">from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def db_connection(url):
+    print(f"연결 시작: {url}")
+    await asyncio.sleep(0.1)        # 가상 연결
+    try:
+        yield {"url": url}
+    finally:
+        await asyncio.sleep(0.1)
+        print("연결 해제")
+
+async def main():
+    async with db_connection("postgres://...") as conn:
+        print("사용:", conn)
+
+asyncio.run(main())</code></pre>
+
+                <h3 id="async-for"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> async for — 비동기 이터레이터</h3>
+
+<pre class="language-python"><code class="language-python">async def stream(n):
+    for i in range(n):
+        await asyncio.sleep(0.5)
+        yield i                     # 비동기 제너레이터
+
+async def main():
+    async for value in stream(3):   # await가 내장된 for
+        print("받음:", value)
+
+asyncio.run(main())</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+받음: 0
+받음: 1
+받음: 2</div>
+
+                <!-- 9. 언제 asyncio를 쓸까 -->
+                <h2 id="when-asyncio"><i class="fa-solid fa-magnifying-glass"></i> 언제 asyncio를 쓸까</h2>
+
+                <p>asyncio는 <strong>대기 시간이 긴 I/O</strong>가 많을 때 빛난다. CPU를 쓰는 작업에는 도움이 되지 않는다.</p>
+
+                <table class="spec-table">
+                    <tr><th>작업 유형</th><th>예시</th><th>적합한 도구</th></tr>
+                    <tr><td>I/O 바운드 (적은 수)</td><td>파일 한두 개 읽기, 단일 HTTP</td><td>동기 코드로 충분</td></tr>
+                    <tr><td>I/O 바운드 (대량 동시)</td><td>웹 크롤러, 채팅 서버, API gateway, DB 다중 쿼리</td><td><strong>asyncio</strong></td></tr>
+                    <tr><td>I/O 바운드 + 동기 라이브러리</td><td>레거시 ORM, 동기 HTTP 라이브러리</td><td>threading 또는 <code>asyncio.to_thread</code></td></tr>
+                    <tr><td>CPU 바운드</td><td>이미지 처리, 행렬 연산, 압축</td><td><strong>multiprocessing</strong> / numpy / C 확장</td></tr>
+                </table>
+
+<pre class="language-python"><code class="language-python"># CPU 바운드는 멀티프로세스로
+from concurrent.futures import ProcessPoolExecutor
+import asyncio
+
+def heavy(n):
+    return sum(i * i for i in range(n))   # CPU만 씀
+
+async def main():
+    loop = asyncio.get_running_loop()
+    with ProcessPoolExecutor() as pool:
+        results = await asyncio.gather(*[
+            loop.run_in_executor(pool, heavy, 10_000_000)
+            for _ in range(4)
+        ])
+    print(results[0])
+
+asyncio.run(main())</code></pre>
+
+                <p>asyncio 안에서 동기 블로킹 함수를 안전하게 부르려면 <code>asyncio.to_thread</code>를 쓴다.</p>
+
+<pre class="language-python"><code class="language-python">import time
+import asyncio
+
+def sync_blocking():
+    time.sleep(2)            # 진짜로 멈춤
+    return "done"
+
+async def main():
+    # 별도 스레드에서 실행 → 이벤트 루프는 안 막힘
+    result = await asyncio.to_thread(sync_blocking)
+    print(result)
+
+asyncio.run(main())</code></pre>
+
+                <!-- 10. 비교표 -->
+                <h2 id="compare"><i class="fa-solid fa-scale-balanced"></i> 동시성 모델 비교</h2>
+
+                <table class="spec-table">
+                    <tr>
+                        <th>항목</th>
+                        <th>동기 (Sync)</th>
+                        <th>threading</th>
+                        <th>asyncio</th>
+                        <th>multiprocessing</th>
+                    </tr>
+                    <tr>
+                        <td>실행 단위</td><td>스레드 1개</td><td>OS 스레드 N개</td><td>코루틴 N개 (1스레드)</td><td>프로세스 N개</td>
+                    </tr>
+                    <tr>
+                        <td>스위칭</td><td>없음</td><td>선점형 (OS)</td><td>협력형 (await)</td><td>선점형 (OS)</td>
+                    </tr>
+                    <tr>
+                        <td>스위칭 비용</td><td>—</td><td>중간</td><td><strong>매우 작음</strong></td><td>큼</td>
+                    </tr>
+                    <tr>
+                        <td>병렬 CPU</td><td>아니오</td><td>아니오 (GIL)</td><td>아니오</td><td><strong>예</strong></td>
+                    </tr>
+                    <tr>
+                        <td>메모리 공유</td><td>—</td><td>쉬움 (락 필요)</td><td>쉬움 (락 거의 불필요)</td><td>어려움 (IPC)</td>
+                    </tr>
+                    <tr>
+                        <td>적합한 작업</td><td>스크립트·간단한 도구</td><td>중간 규모 I/O, 동기 라이브러리 호출</td><td><strong>대량 I/O</strong>·네트워크</td><td><strong>CPU 바운드</strong></td>
+                    </tr>
+                    <tr>
+                        <td>대표 함수/라이브러리</td><td>requests, open</td><td><code>threading.Thread</code>, <code>ThreadPoolExecutor</code></td><td><code>asyncio</code>, aiohttp, asyncpg</td><td><code>multiprocessing</code>, <code>ProcessPoolExecutor</code></td>
+                    </tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>혼합도 가능하다</strong>
+                        실무에서는 "asyncio가 메인 루프, CPU 작업은 ProcessPoolExecutor로 위임, 동기 라이브러리는 <code>to_thread</code>"처럼 섞어 쓰는 것이 흔하다.
+                    </div>
+                </div>
+
+                <!-- 11. 흔한 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <h3 id="pit-missing-await"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ① await 누락 — 코루틴이 그냥 버려진다</h3>
+
+<pre class="language-python"><code class="language-python">async def save(data):
+    await asyncio.sleep(0.1)
+    print("저장:", data)
+
+async def main():
+    save("hello")            # ← await가 빠짐! 코루틴 객체만 만들고 끝
+    print("끝")
+
+asyncio.run(main())</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+끝
+sys:1: RuntimeWarning: coroutine 'save' was never awaited</div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"never awaited" 경고는 곧 버그다</strong>
+                        코루틴 함수를 호출만 하면 실행되지 않는다. 반드시 <code>await</code> 또는 <code>asyncio.create_task()</code>로 감싸야 한다.
+                    </div>
+                </div>
+
+                <h3 id="pit-blocking"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ② 동기 블로킹 호출 — 이벤트 루프 정지</h3>
+
+<pre class="language-python"><code class="language-python">import time
+
+async def bad():
+    time.sleep(2)            # ← 이벤트 루프 전체가 2초간 멈춤!
+    return "done"
+
+async def good():
+    await asyncio.sleep(2)   # ← 자리를 양보, 다른 코루틴은 계속 진행
+    return "done"</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>asyncio 안에선 time.sleep·requests.get 금지</strong>
+                        파일·네트워크·DB는 비동기 라이브러리를 쓰거나 (<code>aiofiles</code>·<code>aiohttp</code>·<code>asyncpg</code>), 어쩔 수 없으면 <code>asyncio.to_thread</code>·<code>run_in_executor</code>로 별도 스레드에서 돌린다.
+                    </div>
+                </div>
+
+                <h3 id="pit-nested-run"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ③ asyncio.run 중첩</h3>
+
+<pre class="language-python"><code class="language-python">async def inner():
+    return 1
+
+async def outer():
+    # 잘못된 예
+    return asyncio.run(inner())   # RuntimeError!
+
+# 올바른 예
+async def outer_ok():
+    return await inner()</code></pre>
+
+                <h3 id="pit-too-fine"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ④ 너무 잘게 쪼개기</h3>
+                <p>코루틴 스위칭이 가볍긴 해도 0은 아니다. CPU만 쓰는 짧은 함수를 굳이 <code>async</code>로 만들면 오버헤드만 늘고 이득이 없다. <strong>실제로 I/O 대기가 있는 경계</strong>에서만 비동기로 만들자.</p>
+
+                <h3 id="pit-task-ref"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ⑤ Task 참조를 놓치기</h3>
+
+<pre class="language-python"><code class="language-python"># 위험 — Task가 가비지 컬렉트되어 도중에 사라질 수 있음
+asyncio.create_task(some_coro())
+
+# 안전 — 참조를 보관
+tasks = set()
+task = asyncio.create_task(some_coro())
+tasks.add(task)
+task.add_done_callback(tasks.discard)</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>create_task 결과는 반드시 어딘가 보관</strong>
+                        파이썬 공식 문서에도 명시된 권고다. 약한 참조만 남은 Task는 GC 대상이 되어 경고 없이 사라질 수 있다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Python 공식 문서 — <code>asyncio</code>: <a href="https://docs.python.org/3/library/asyncio.html" target="_blank">docs.python.org/3/library/asyncio.html</a></li>
+                        <li>Python 공식 문서 — Coroutines and Tasks: <a href="https://docs.python.org/3/library/asyncio-task.html" target="_blank">asyncio-task</a></li>
+                        <li>Python 공식 문서 — <code>asyncio.Queue</code>: <a href="https://docs.python.org/3/library/asyncio-queue.html" target="_blank">asyncio-queue</a></li>
+                        <li>PEP 492 — Coroutines with async and await syntax</li>
+                        <li>PEP 525 — Asynchronous Generators</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-python');
+    renderPostNav('dev-lang-python');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

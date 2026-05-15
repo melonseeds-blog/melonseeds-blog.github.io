@@ -1,0 +1,930 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제어 흐름과 함수 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC 2단 바 */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* spec-table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.88rem; }
+        .spec-table th { background: var(--primary); color: white; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 0.82rem; }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-sub); }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.85em; }
+
+        /* 다이어그램 */
+        .diagram-box {
+            background: #fafbfc; border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .diagram-caption {
+            margin-top: 10px; font-size: 0.82rem; color: var(--text-light); font-style: italic;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#indent" data-section="indent">들여쓰기</a>
+        <a href="#conditional" data-section="conditional">조건문</a>
+        <a href="#loop" data-section="loop">반복문</a>
+        <a href="#function" data-section="function">함수</a>
+        <a href="#args" data-section="args">인자</a>
+        <a href="#args-force" data-section="args-force">인자 강제</a>
+        <a href="#scope" data-section="scope">스코프</a>
+        <a href="#lambda" data-section="lambda">람다</a>
+        <a href="#first-class" data-section="first-class">일급 객체</a>
+        <a href="#unpacking" data-section="unpacking">언패킹</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">Python 시리즈</span>
+                </div>
+                <h1>제어 흐름과 함수</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 11 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>들여쓰기로 블록을 표현하는 Python 특유의 문법</li>
+                        <li>if / elif / else, 삼항 표현식, match-case (3.10+)</li>
+                        <li>for / while, range, enumerate, for-else 절</li>
+                        <li>함수 정의와 6가지 인자 종류, <code>/</code>와 <code>*</code> 구분자</li>
+                        <li>LEGB 스코프 규칙과 global / nonlocal</li>
+                        <li>람다, 일급 객체 함수, 인자 unpacking</li>
+                        <li>가변 기본 인자, 들여쓰기 혼용 등 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#indent">들여쓰기 = 블록</a></li>
+                        <li><a href="#conditional">조건문</a></li>
+                        <li><a href="#loop">반복문</a></li>
+                        <li><a href="#function">함수 정의</a></li>
+                        <li><a href="#args">인자 종류</a></li>
+                        <li><a href="#args-force">인자 종류 강제 (/ , *)</a></li>
+                        <li><a href="#scope">스코프와 LEGB</a></li>
+                        <li><a href="#lambda">람다(lambda)</a></li>
+                        <li><a href="#first-class">함수가 일급 객체</a></li>
+                        <li><a href="#unpacking">인자 unpacking</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 들여쓰기 -->
+                <h2 id="indent"><i class="fa-solid fa-indent"></i> 들여쓰기 = 블록</h2>
+                <p>대부분의 언어가 중괄호 <code>{ }</code>로 블록을 표시하지만, Python은 <strong>들여쓰기 그 자체</strong>가 블록 구조다. 같은 들여쓰기 깊이를 가진 줄이 하나의 블록이 된다.</p>
+
+<pre class="language-python"><code class="language-python">if x > 0:
+    print("양수")
+    print("계속 같은 블록")
+print("바깥")  # 들여쓰기가 풀렸으므로 if 바깥</code></pre>
+
+                <p>콜론(<code>:</code>)은 "아래에 블록이 따라온다"는 신호다. <code>if</code>, <code>for</code>, <code>while</code>, <code>def</code>, <code>class</code> 등 모든 블록 도입부에 붙는다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>탭과 스페이스를 섞지 말자</strong>
+                        Python 3에서는 탭과 스페이스를 섞으면 <code>TabError</code>가 발생한다. PEP 8 권장은 <strong>스페이스 4칸</strong>이다. 에디터의 "Show whitespace" 기능을 켜두면 안전하다.
+                    </div>
+                </div>
+
+                <!-- 2. 조건문 -->
+                <h2 id="conditional"><i class="fa-solid fa-code-branch"></i> 조건문</h2>
+
+                <h3 id="if-elif-else"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> if / elif / else</h3>
+
+<pre class="language-python"><code class="language-python">score = 85
+
+if score >= 90:
+    grade = "A"
+elif score >= 80:
+    grade = "B"
+elif score >= 70:
+    grade = "C"
+else:
+    grade = "F"
+
+print(grade)  # B</code></pre>
+
+                <p>다른 언어의 <code>else if</code>를 Python에서는 <code>elif</code>로 줄여 쓴다. <code>switch</code>가 없던 시절(3.10 이전)에는 긴 elif 사다리로 분기를 처리했다.</p>
+
+                <h3 id="truthy-falsy"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> truthy / falsy</h3>
+                <p>Python은 거의 모든 값을 <code>bool</code>로 평가할 수 있다. 다음은 모두 <strong>falsy</strong>다.</p>
+
+<pre class="language-python"><code class="language-python"># falsy 값들
+bool(False)   # False
+bool(None)    # False
+bool(0)       # False
+bool(0.0)     # False
+bool("")      # False  (빈 문자열)
+bool([])      # False  (빈 리스트)
+bool({})      # False  (빈 딕셔너리)
+bool(set())   # False  (빈 셋)
+
+# 그 외는 모두 truthy
+bool("0")     # True  (문자열 "0"은 비어있지 않음, 주의!)
+bool([0])     # True  (요소가 있음)
+bool(-1)      # True</code></pre>
+
+                <p>이 덕분에 빈 컨테이너 체크가 매우 간결하다.</p>
+
+<pre class="language-python"><code class="language-python">items = []
+
+# 비추천 - 명시적이지만 길다
+if len(items) == 0:
+    print("비어있음")
+
+# 권장 - Pythonic
+if not items:
+    print("비어있음")</code></pre>
+
+                <h3 id="ternary"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 조건 표현식(삼항)</h3>
+                <p>Python의 삼항 연산자는 다른 언어와 어순이 다르다. <code>값1 if 조건 else 값2</code> 형태다.</p>
+
+<pre class="language-python"><code class="language-python">age = 20
+status = "성인" if age >= 18 else "미성년"
+
+# C/Java: status = age >= 18 ? "성인" : "미성년"
+# Python: status = "성인"  if age >= 18 else "미성년"
+
+# 리스트 컴프리헨션과 결합
+nums = [1, -2, 3, -4]
+absolutes = [n if n >= 0 else -n for n in nums]  # [1, 2, 3, 4]</code></pre>
+
+                <h3 id="match-case"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> match-case (3.10+)</h3>
+                <p>Python 3.10에서 도입된 구조적 패턴 매칭이다. 단순한 값 비교를 넘어 <strong>패턴 구조</strong>를 매칭할 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">def http_status(code):
+    match code:
+        case 200 | 201:
+            return "성공"
+        case 404:
+            return "찾을 수 없음"
+        case 500 | 502 | 503:
+            return "서버 에러"
+        case _:                # 와일드카드 (default)
+            return "알 수 없음"
+
+# 구조 분해
+def describe(point):
+    match point:
+        case (0, 0):
+            return "원점"
+        case (x, 0):
+            return f"X축 위 x={x}"
+        case (0, y):
+            return f"Y축 위 y={y}"
+        case (x, y):
+            return f"점 ({x}, {y})"
+
+print(describe((3, 0)))  # X축 위 x=3</code></pre>
+
+                <!-- 3. 반복문 -->
+                <h2 id="loop"><i class="fa-solid fa-rotate"></i> 반복문</h2>
+
+                <h3 id="for"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> for - 이터러블 순회</h3>
+                <p>Python의 <code>for</code>는 C 스타일의 카운터 루프가 아닌 <strong>이터러블 순회</strong> 루프다.</p>
+
+<pre class="language-python"><code class="language-python">fruits = ["사과", "바나나", "체리"]
+
+for fruit in fruits:
+    print(fruit)
+
+# 문자열도 이터러블
+for ch in "Hi":
+    print(ch)        # H, i
+
+# 딕셔너리 순회
+scores = {"국어": 90, "수학": 85}
+for key in scores:           # 키만
+    print(key)
+for key, val in scores.items():   # 키-값
+    print(key, val)</code></pre>
+
+                <h3 id="range-enumerate"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> range, enumerate</h3>
+
+<pre class="language-python"><code class="language-python"># range(stop)
+for i in range(5):           # 0, 1, 2, 3, 4
+    print(i)
+
+# range(start, stop)
+for i in range(2, 6):        # 2, 3, 4, 5
+    print(i)
+
+# range(start, stop, step)
+for i in range(10, 0, -2):   # 10, 8, 6, 4, 2
+    print(i)
+
+# enumerate - 인덱스가 필요할 때
+for i, fruit in enumerate(["사과", "바나나", "체리"]):
+    print(f"{i}: {fruit}")
+
+# 시작 인덱스 지정
+for i, fruit in enumerate(["사과", "바나나"], start=1):
+    print(f"{i}번째: {fruit}")</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과 (enumerate)</div>
+0: 사과
+1: 바나나
+2: 체리</div>
+
+                <h3 id="while"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> while</h3>
+
+<pre class="language-python"><code class="language-python">n = 10
+while n > 0:
+    print(n)
+    n -= 1
+
+# 무한 루프 + break
+while True:
+    user_input = input("종료하려면 q: ")
+    if user_input == "q":
+        break</code></pre>
+
+                <h3 id="break-continue"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> break / continue / for-else</h3>
+
+<pre class="language-python"><code class="language-python">for i in range(10):
+    if i == 3:
+        continue   # 이번 반복 건너뛰기
+    if i == 7:
+        break      # 루프 종료
+    print(i)
+# 출력: 0 1 2 4 5 6
+
+# for-else - 다른 언어에 거의 없는 문법
+for item in [1, 2, 3, 4, 5]:
+    if item == 99:
+        print("찾음")
+        break
+else:
+    print("못 찾음")   # break 없이 끝까지 돌면 실행</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>for-else의 else는 "정상 종료"일 때 실행된다</strong>
+                        조건이 거짓일 때 else가 실행되는 것이 아니라, <strong>break 없이 루프를 끝까지 돌았을 때</strong> else가 실행된다. 이름이 헷갈리므로 <code>nobreak</code>로 외우면 편하다.
+                    </div>
+                </div>
+
+                <!-- 4. 함수 정의 -->
+                <h2 id="function"><i class="fa-solid fa-cube"></i> 함수 정의</h2>
+
+<pre class="language-python"><code class="language-python">def greet(name):
+    """이름을 받아 인사 문자열을 반환한다."""   # docstring
+    return f"Hello, {name}!"
+
+msg = greet("Alice")
+print(msg)            # Hello, Alice!
+print(greet.__doc__)  # 이름을 받아 인사 문자열을 반환한다.</code></pre>
+
+                <ul>
+                    <li><code>def</code>로 시작, 콜론으로 블록 도입</li>
+                    <li>첫 줄에 들어가는 문자열은 <strong>docstring</strong>이 되어 <code>help()</code>나 <code>__doc__</code>로 접근 가능</li>
+                    <li><code>return</code>이 없으면 자동으로 <code>None</code> 반환</li>
+                </ul>
+
+<pre class="language-python"><code class="language-python">def no_return():
+    print("hi")
+
+result = no_return()
+print(result)  # None
+
+# 여러 값 반환 - 사실은 tuple
+def min_max(nums):
+    return min(nums), max(nums)
+
+lo, hi = min_max([3, 1, 4, 1, 5])
+print(lo, hi)  # 1 5</code></pre>
+
+                <!-- 5. 인자 종류 -->
+                <h2 id="args"><i class="fa-solid fa-arrow-right-arrow-left"></i> 인자 종류</h2>
+                <p>Python은 인자 전달 방식이 매우 유연하다. 6가지 형태를 한 함수에 다 쓸 수도 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>종류</th><th>문법</th><th>호출 예</th><th>설명</th></tr>
+                    <tr><td>위치 인자</td><td><code>def f(a, b)</code></td><td><code>f(1, 2)</code></td><td>순서대로 전달</td></tr>
+                    <tr><td>키워드 인자</td><td><code>def f(a, b)</code></td><td><code>f(a=1, b=2)</code></td><td>이름으로 전달, 순서 무관</td></tr>
+                    <tr><td>기본값</td><td><code>def f(a, b=10)</code></td><td><code>f(1)</code></td><td>생략 시 기본값 사용</td></tr>
+                    <tr><td>가변 위치 인자</td><td><code>def f(*args)</code></td><td><code>f(1, 2, 3)</code></td><td>tuple로 받음</td></tr>
+                    <tr><td>가변 키워드 인자</td><td><code>def f(**kwargs)</code></td><td><code>f(x=1, y=2)</code></td><td>dict로 받음</td></tr>
+                </table>
+
+<pre class="language-python"><code class="language-python">def info(name, age=20, *hobbies, **extra):
+    print(f"이름: {name}")
+    print(f"나이: {age}")
+    print(f"취미: {hobbies}")
+    print(f"기타: {extra}")
+
+info("Alice", 25, "독서", "등산", city="서울", job="개발자")</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+이름: Alice
+나이: 25
+취미: ('독서', '등산')
+기타: {'city': '서울', 'job': '개발자'}</div>
+
+                <p>인자는 반드시 다음 순서로 정의해야 한다.</p>
+
+<pre class="language-python"><code class="language-python">def f(필수, 기본값=값, *args, **kwargs):
+    pass</code></pre>
+
+                <!-- 6. 인자 강제 -->
+                <h2 id="args-force"><i class="fa-solid fa-lock"></i> 인자 종류 강제 (<code>/</code> , <code>*</code>)</h2>
+                <p>특정 인자를 <strong>위치로만</strong> 또는 <strong>키워드로만</strong> 받도록 강제할 수 있다.</p>
+
+                <div class="diagram-box">
+                    <svg width="640" height="180" viewBox="0 0 640 180" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 함수 시그니처 -->
+                        <text x="40" y="50" font-family="Consolas, monospace" font-size="18" fill="#1e293b">
+                            def f(<tspan fill="#7c3aed" font-weight="700">a, b,</tspan> <tspan fill="#dc2626" font-weight="700">/</tspan>, <tspan fill="#059669" font-weight="700">c, d,</tspan> <tspan fill="#dc2626" font-weight="700">*</tspan>, <tspan fill="#2563eb" font-weight="700">e, f</tspan>):
+                        </text>
+                        <!-- 영역 표시 -->
+                        <rect x="100" y="70" width="80" height="30" fill="#ede9fe" stroke="#7c3aed" rx="6"/>
+                        <text x="140" y="90" text-anchor="middle" font-size="12" fill="#5b21b6" font-weight="600">positional-only</text>
+                        <text x="140" y="115" text-anchor="middle" font-size="11" fill="#6b7280">a, b</text>
+
+                        <rect x="220" y="70" width="100" height="30" fill="#d1fae5" stroke="#059669" rx="6"/>
+                        <text x="270" y="90" text-anchor="middle" font-size="12" fill="#065f46" font-weight="600">positional 또는</text>
+                        <text x="270" y="115" text-anchor="middle" font-size="11" fill="#6b7280">keyword (c, d)</text>
+
+                        <rect x="360" y="70" width="100" height="30" fill="#dbeafe" stroke="#2563eb" rx="6"/>
+                        <text x="410" y="90" text-anchor="middle" font-size="12" fill="#1e40af" font-weight="600">keyword-only</text>
+                        <text x="410" y="115" text-anchor="middle" font-size="11" fill="#6b7280">e, f</text>
+
+                        <!-- 구분자 강조 -->
+                        <text x="80" y="160" font-size="13" fill="#dc2626" font-weight="700">/</text>
+                        <text x="100" y="160" font-size="12" fill="#6b7280">: 왼쪽은 위치 인자로만</text>
+                        <text x="280" y="160" font-size="13" fill="#dc2626" font-weight="700">*</text>
+                        <text x="300" y="160" font-size="12" fill="#6b7280">: 오른쪽은 키워드 인자로만</text>
+                    </svg>
+                    <div class="diagram-caption">함수 인자 종류 — <code>/</code>와 <code>*</code>로 영역을 나눈다</div>
+                </div>
+
+<pre class="language-python"><code class="language-python">def func(a, b, /, c, d, *, e, f):
+    print(a, b, c, d, e, f)
+
+# OK
+func(1, 2, 3, d=4, e=5, f=6)
+func(1, 2, c=3, d=4, e=5, f=6)
+
+# Error - a는 키워드로 전달 불가
+func(a=1, b=2, c=3, d=4, e=5, f=6)
+# TypeError: func() got some positional-only arguments passed as keyword arguments
+
+# Error - e는 위치로 전달 불가
+func(1, 2, 3, 4, 5, 6)
+# TypeError: func() takes 4 positional arguments but 6 were given</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>언제 쓸까?</strong>
+                        <code>/</code>는 인자 이름을 노출하고 싶지 않을 때(API 안정성), <code>*</code>는 의미를 분명히 하기 위해 호출 측에서 이름을 적게 강제하고 싶을 때 쓴다. 예: <code>sorted(iterable, *, key=None, reverse=False)</code>.
+                    </div>
+                </div>
+
+                <!-- 7. 스코프 -->
+                <h2 id="scope"><i class="fa-solid fa-layer-group"></i> 스코프와 LEGB</h2>
+                <p>이름을 찾을 때 Python은 4단계 스코프를 순서대로 뒤진다. 이를 <strong>LEGB 규칙</strong>이라 한다.</p>
+
+                <div class="diagram-box">
+                    <svg width="540" height="280" viewBox="0 0 540 280" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Built-in -->
+                        <rect x="20" y="20" width="500" height="240" fill="#fef3c7" stroke="#d97706" stroke-width="2" rx="12"/>
+                        <text x="40" y="45" font-size="13" font-weight="700" fill="#78350f">B — Built-in (print, len, range...)</text>
+
+                        <!-- Global -->
+                        <rect x="50" y="60" width="440" height="180" fill="#dbeafe" stroke="#2563eb" stroke-width="2" rx="10"/>
+                        <text x="70" y="85" font-size="13" font-weight="700" fill="#1e40af">G — Global (모듈 전역)</text>
+
+                        <!-- Enclosing -->
+                        <rect x="80" y="100" width="380" height="120" fill="#d1fae5" stroke="#059669" stroke-width="2" rx="10"/>
+                        <text x="100" y="125" font-size="13" font-weight="700" fill="#065f46">E — Enclosing (외부 함수)</text>
+
+                        <!-- Local -->
+                        <rect x="110" y="140" width="320" height="60" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" rx="10"/>
+                        <text x="130" y="165" font-size="13" font-weight="700" fill="#5b21b6">L — Local (현재 함수)</text>
+                        <text x="130" y="185" font-size="11" fill="#6b7280">먼저 찾는 곳 ▶</text>
+
+                        <!-- 화살표 -->
+                        <text x="450" y="278" font-size="11" fill="#6b7280">L → E → G → B 순으로 검색</text>
+                    </svg>
+                    <div class="diagram-caption">LEGB — Local → Enclosing → Global → Built-in 순서로 이름 검색</div>
+                </div>
+
+<pre class="language-python"><code class="language-python">x = "global"   # G
+
+def outer():
+    x = "enclosing"   # E
+
+    def inner():
+        x = "local"   # L
+        print(x)      # local
+
+    inner()
+    print(x)          # enclosing
+
+outer()
+print(x)              # global
+print(len)            # B - built-in 함수</code></pre>
+
+                <h3 id="global-nonlocal"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> global / nonlocal</h3>
+                <p>안쪽 스코프에서 바깥 변수에 <strong>대입</strong>하려면 명시해야 한다. 단순 읽기는 LEGB로 자동 해결된다.</p>
+
+<pre class="language-python"><code class="language-python">counter = 0
+
+def increment():
+    global counter   # 모듈 전역 변수에 대입하겠다
+    counter += 1
+
+increment()
+increment()
+print(counter)  # 2
+
+def make_counter():
+    count = 0
+    def inc():
+        nonlocal count   # 바로 바깥 함수 변수에 대입하겠다
+        count += 1
+        return count
+    return inc
+
+c = make_counter()
+print(c(), c(), c())  # 1 2 3</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>대입이 있으면 그 변수는 그 스코프의 지역 변수</strong>
+                        함수 안에서 <code>counter = counter + 1</code>처럼 쓰면, 오른쪽의 <code>counter</code>도 지역 변수로 간주되어 <code>UnboundLocalError</code>가 난다. 바깥 변수를 수정하려면 <code>global</code> 또는 <code>nonlocal</code>이 필요하다.
+                    </div>
+                </div>
+
+                <!-- 8. 람다 -->
+                <h2 id="lambda"><i class="fa-solid fa-bolt"></i> 람다(lambda)</h2>
+                <p>이름 없는 한 줄짜리 함수다. 표현식 <strong>하나</strong>만 담을 수 있고, 결과가 자동으로 반환된다.</p>
+
+<pre class="language-python"><code class="language-python"># def 버전
+def square(x):
+    return x * x
+
+# lambda 버전 - 동일
+square = lambda x: x * x
+
+print(square(5))  # 25
+
+# 인자 여러 개
+add = lambda a, b: a + b
+print(add(3, 4))  # 7
+
+# 정렬 키로 자주 사용
+people = [("Alice", 30), ("Bob", 25), ("Charlie", 35)]
+people.sort(key=lambda p: p[1])   # 나이 기준
+print(people)
+# [('Bob', 25), ('Alice', 30), ('Charlie', 35)]
+
+# map / filter 와 함께
+nums = [1, 2, 3, 4, 5]
+squared = list(map(lambda n: n**2, nums))      # [1, 4, 9, 16, 25]
+evens   = list(filter(lambda n: n%2 == 0, nums))  # [2, 4]</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>람다는 짧을 때만 쓰자</strong>
+                        조금이라도 복잡하면 <code>def</code>로 풀어쓰는 것이 가독성에 좋다. PEP 8도 람다를 변수에 할당하는 것보다 <code>def</code> 사용을 권장한다.
+                    </div>
+                </div>
+
+                <!-- 9. 일급 객체 -->
+                <h2 id="first-class"><i class="fa-solid fa-star"></i> 함수가 일급 객체</h2>
+                <p>Python에서 함수는 <strong>객체</strong>다. 변수에 담고, 인자로 넘기고, 반환값으로 받을 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">def shout(text):
+    return text.upper()
+
+def whisper(text):
+    return text.lower()
+
+# 변수에 담기
+fn = shout
+print(fn("Hello"))   # HELLO
+
+# 인자로 넘기기
+def apply(func, value):
+    return func(value)
+
+print(apply(shout, "hi"))     # HI
+print(apply(whisper, "BYE"))  # bye
+
+# 반환값으로 돌려주기 - 클로저
+def make_multiplier(factor):
+    def mul(x):
+        return x * factor    # factor를 캡처
+    return mul
+
+double = make_multiplier(2)
+triple = make_multiplier(3)
+print(double(10))  # 20
+print(triple(10))  # 30</code></pre>
+
+                <!-- 10. unpacking -->
+                <h2 id="unpacking"><i class="fa-solid fa-box-open"></i> 인자 unpacking</h2>
+                <p>리스트/튜플 앞에 <code>*</code>, 딕셔너리 앞에 <code>**</code>를 붙이면 함수 호출 시 자동으로 풀어준다. 함수 정의의 <code>*args</code>, <code>**kwargs</code>의 반대 방향이다.</p>
+
+<pre class="language-python"><code class="language-python">def add(a, b, c):
+    return a + b + c
+
+# 리스트 unpacking
+nums = [1, 2, 3]
+print(add(*nums))   # 6  --- add(1, 2, 3)과 동일
+
+# 딕셔너리 unpacking
+params = {"a": 10, "b": 20, "c": 30}
+print(add(**params))  # 60  --- add(a=10, b=20, c=30)과 동일
+
+# 함께 사용
+def greet(name, greeting="Hi", punct="!"):
+    print(f"{greeting}, {name}{punct}")
+
+args = ["Alice"]
+kwargs = {"greeting": "Hello", "punct": "?"}
+greet(*args, **kwargs)   # Hello, Alice?</code></pre>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-skull"></i> 흔한 함정</h2>
+
+                <h3 id="mutable-default"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 가변 객체를 기본 인자로</h3>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>리스트/딕셔너리 기본값 함정</strong>
+                        기본 인자는 함수가 <strong>정의될 때 한 번만</strong> 평가된다. 가변 객체를 기본값으로 쓰면 호출마다 누적되는 버그가 생긴다.
+                    </div>
+                </div>
+
+<pre class="language-python"><code class="language-python"># 잘못된 예
+def append_item(item, target=[]):    # 함정!
+    target.append(item)
+    return target
+
+print(append_item(1))   # [1]
+print(append_item(2))   # [1, 2]  ← 새 리스트가 아니다!
+print(append_item(3))   # [1, 2, 3]
+
+# 올바른 패턴
+def append_item(item, target=None):
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+
+print(append_item(1))   # [1]
+print(append_item(2))   # [2]  ← 매번 새 리스트</code></pre>
+
+                <h3 id="global-abuse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> global 남용</h3>
+                <p><code>global</code>은 함수 간 결합도를 높이고 테스트를 어렵게 만든다. 가능하면 값을 인자로 받고 결과를 <code>return</code>으로 돌려주자.</p>
+
+<pre class="language-python"><code class="language-python"># 나쁜 예
+total = 0
+def add(x):
+    global total
+    total += x
+
+# 좋은 예
+def add(total, x):
+    return total + x
+
+total = add(total, 5)</code></pre>
+
+                <h3 id="tab-space"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 탭/스페이스 혼용</h3>
+
+<pre class="language-python"><code class="language-python">def f():
+    print("a")    # 스페이스 4칸
+	print("b")    # 탭 - TabError 발생</code></pre>
+
+                <p>한 파일 안에서 들여쓰기 문자를 섞으면 안 된다. 에디터의 "Convert indentation to spaces" 기능을 한 번 실행해두자.</p>
+
+                <h3 id="for-else-misuse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> for-else 오해</h3>
+
+<pre class="language-python"><code class="language-python"># 잘못된 이해: "for가 안 돌면 else"
+for x in []:    # 빈 이터러블 - 루프 본문 한 번도 실행 안 됨
+    print(x)
+else:
+    print("else 실행됨")   # 그래도 else는 실행된다 (break가 없었으니까)</code></pre>
+
+                <p>다시 한 번 — <strong>for-else의 else는 break 없이 끝났을 때</strong> 실행된다. 빈 이터러블이라도 break가 없었으므로 else가 돈다.</p>
+
+                <h3 id="summary-table"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 제어 흐름 한눈에</h3>
+
+                <table class="spec-table">
+                    <tr><th>구문</th><th>용도</th><th>특이점</th></tr>
+                    <tr><td><code>if / elif / else</code></td><td>조건 분기</td><td><code>elif</code> 키워드</td></tr>
+                    <tr><td><code>x if cond else y</code></td><td>조건 표현식</td><td>값 어순 주의</td></tr>
+                    <tr><td><code>match / case</code></td><td>패턴 매칭</td><td>3.10+, 구조 분해 가능</td></tr>
+                    <tr><td><code>for in</code></td><td>이터러블 순회</td><td>C 스타일 인덱스 루프 없음</td></tr>
+                    <tr><td><code>while</code></td><td>조건 반복</td><td>흔히 <code>True + break</code> 패턴</td></tr>
+                    <tr><td><code>break / continue</code></td><td>루프 제어</td><td>가장 가까운 루프만</td></tr>
+                    <tr><td><code>for-else</code></td><td>"break 없이 종료"</td><td>이름이 헷갈림</td></tr>
+                </table>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Python 공식 튜토리얼 — More Control Flow Tools (docs.python.org/3/tutorial/controlflow.html)</li>
+                        <li>Python 공식 튜토리얼 — Defining Functions</li>
+                        <li>PEP 8 — Style Guide for Python Code</li>
+                        <li>PEP 3104 — Access to Names in Outer Scopes (<code>nonlocal</code>)</li>
+                        <li>PEP 634 — Structural Pattern Matching</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-python');
+    renderPostNav('dev-lang-python');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

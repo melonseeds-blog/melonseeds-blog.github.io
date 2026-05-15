@@ -1,0 +1,1042 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>표준 라이브러리 핵심 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 표준 라이브러리 지도 SVG */
+        .stdlib-map {
+            background: #fff; border: 1px solid var(--border); border-radius: 12px;
+            padding: 18px; margin: 20px 0; text-align: center;
+        }
+        .stdlib-map svg { max-width: 100%; height: auto; }
+        .stdlib-map .map-caption {
+            font-size: 0.8rem; color: var(--text-muted); margin-top: 6px;
+        }
+
+        /* spec-table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.88rem; }
+        .spec-table th, .spec-table td {
+            border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top;
+        }
+        .spec-table th { background: var(--primary-50); font-weight: 700; color: var(--primary-dark); }
+        .spec-table td code { font-size: 0.85em; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#batteries" data-section="batteries">Batteries</a>
+        <a href="#os-sys" data-section="os-sys">os/sys</a>
+        <a href="#pathlib" data-section="pathlib">pathlib</a>
+        <a href="#json" data-section="json">json</a>
+        <a href="#datetime" data-section="datetime">datetime</a>
+        <a href="#logging" data-section="logging">logging</a>
+        <a href="#collections" data-section="collections">collections</a>
+        <a href="#itertools" data-section="itertools">itertools</a>
+        <a href="#functools" data-section="functools">functools</a>
+        <a href="#re" data-section="re">re</a>
+        <a href="#subprocess" data-section="subprocess">subprocess</a>
+        <a href="#data-formats" data-section="data-formats">csv/sqlite3</a>
+        <a href="#industry" data-section="industry">산업 관점</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">Python 시리즈</span>
+                </div>
+                <h1>표준 라이브러리 핵심</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>"Batteries Included" 철학과 표준 라이브러리 지도</li>
+                        <li>경로(<code>pathlib</code>) · 직렬화(<code>json</code>) · 시간(<code>datetime</code>) · 로깅(<code>logging</code>)</li>
+                        <li>고급 자료구조(<code>collections</code>) · 반복자(<code>itertools</code>) · 함수 도구(<code>functools</code>)</li>
+                        <li>정규식(<code>re</code>) · 외부 프로세스(<code>subprocess</code>) · 데이터 형식(<code>csv</code>/<code>sqlite3</code>/<code>configparser</code>)</li>
+                        <li>산업 이미지 처리 관점의 활용과 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#batteries">Batteries Included</a></li>
+                        <li><a href="#os-sys">os / sys</a></li>
+                        <li><a href="#pathlib">pathlib</a></li>
+                        <li><a href="#json">json</a></li>
+                        <li><a href="#datetime">datetime</a></li>
+                        <li><a href="#logging">logging</a></li>
+                        <li><a href="#collections">collections</a></li>
+                        <li><a href="#itertools">itertools</a></li>
+                        <li><a href="#functools">functools</a></li>
+                        <li><a href="#re">re (정규표현식)</a></li>
+                        <li><a href="#subprocess">subprocess</a></li>
+                        <li><a href="#data-formats">csv / sqlite3 / configparser</a></li>
+                        <li><a href="#industry">산업 · 이미지 관점</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. Batteries Included -->
+                <h2 id="batteries"><i class="fa-solid fa-battery-full"></i> Batteries Included</h2>
+                <p>Python의 가장 큰 장점 중 하나는 <strong>표준 라이브러리</strong>다. 설치만 하면 200개 이상의 모듈을 즉시 사용할 수 있다. 외부 패키지 없이도 파일 처리, 네트워크, 압축, 로깅, 정규식, 동시성, 데이터 직렬화까지 모두 해결된다. 이런 철학을 "Batteries Included"라 한다.</p>
+
+                <div class="stdlib-map">
+                    <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <style>
+                                .bx { fill: #fef3c7; stroke: #f59e0b; stroke-width: 1.5; }
+                                .bx2 { fill: #dbeafe; stroke: #3b82f6; stroke-width: 1.5; }
+                                .bx3 { fill: #dcfce7; stroke: #16a34a; stroke-width: 1.5; }
+                                .bx4 { fill: #fce7f3; stroke: #db2777; stroke-width: 1.5; }
+                                .bx5 { fill: #ede9fe; stroke: #7c3aed; stroke-width: 1.5; }
+                                .ttl { font: bold 13px sans-serif; fill: #1f2937; }
+                                .lbl { font: 11px sans-serif; fill: #374151; }
+                                .hdr { font: bold 14px sans-serif; fill: #111827; }
+                            </style>
+                        </defs>
+                        <text x="380" y="24" text-anchor="middle" class="hdr">Python Standard Library Map</text>
+
+                        <rect x="20" y="44" width="220" height="92" rx="8" class="bx"/>
+                        <text x="130" y="64" text-anchor="middle" class="ttl">파일 · 경로 · OS</text>
+                        <text x="130" y="84" text-anchor="middle" class="lbl">os, sys, pathlib, shutil</text>
+                        <text x="130" y="102" text-anchor="middle" class="lbl">glob, tempfile, io</text>
+                        <text x="130" y="120" text-anchor="middle" class="lbl">subprocess, platform</text>
+
+                        <rect x="260" y="44" width="220" height="92" rx="8" class="bx2"/>
+                        <text x="370" y="64" text-anchor="middle" class="ttl">데이터 · 직렬화</text>
+                        <text x="370" y="84" text-anchor="middle" class="lbl">json, csv, pickle</text>
+                        <text x="370" y="102" text-anchor="middle" class="lbl">sqlite3, configparser</text>
+                        <text x="370" y="120" text-anchor="middle" class="lbl">xml, zipfile, gzip</text>
+
+                        <rect x="500" y="44" width="240" height="92" rx="8" class="bx3"/>
+                        <text x="620" y="64" text-anchor="middle" class="ttl">시간 · 로그</text>
+                        <text x="620" y="84" text-anchor="middle" class="lbl">datetime, time, calendar</text>
+                        <text x="620" y="102" text-anchor="middle" class="lbl">logging, warnings</text>
+                        <text x="620" y="120" text-anchor="middle" class="lbl">zoneinfo (3.9+)</text>
+
+                        <rect x="20" y="152" width="220" height="92" rx="8" class="bx4"/>
+                        <text x="130" y="172" text-anchor="middle" class="ttl">자료구조 · 함수</text>
+                        <text x="130" y="192" text-anchor="middle" class="lbl">collections, heapq</text>
+                        <text x="130" y="210" text-anchor="middle" class="lbl">itertools, functools</text>
+                        <text x="130" y="228" text-anchor="middle" class="lbl">dataclasses, enum</text>
+
+                        <rect x="260" y="152" width="220" height="92" rx="8" class="bx5"/>
+                        <text x="370" y="172" text-anchor="middle" class="ttl">문자열 · 텍스트</text>
+                        <text x="370" y="192" text-anchor="middle" class="lbl">re, string, textwrap</text>
+                        <text x="370" y="210" text-anchor="middle" class="lbl">unicodedata</text>
+                        <text x="370" y="228" text-anchor="middle" class="lbl">difflib, fnmatch</text>
+
+                        <rect x="500" y="152" width="240" height="92" rx="8" class="bx"/>
+                        <text x="620" y="172" text-anchor="middle" class="ttl">네트워크 · 동시성</text>
+                        <text x="620" y="192" text-anchor="middle" class="lbl">urllib, http, socket</text>
+                        <text x="620" y="210" text-anchor="middle" class="lbl">threading, multiprocessing</text>
+                        <text x="620" y="228" text-anchor="middle" class="lbl">asyncio, concurrent.futures</text>
+
+                        <rect x="20" y="260" width="220" height="80" rx="8" class="bx2"/>
+                        <text x="130" y="280" text-anchor="middle" class="ttl">수학 · 통계</text>
+                        <text x="130" y="300" text-anchor="middle" class="lbl">math, statistics, random</text>
+                        <text x="130" y="318" text-anchor="middle" class="lbl">decimal, fractions</text>
+
+                        <rect x="260" y="260" width="220" height="80" rx="8" class="bx3"/>
+                        <text x="370" y="280" text-anchor="middle" class="ttl">테스트 · 개발</text>
+                        <text x="370" y="300" text-anchor="middle" class="lbl">unittest, doctest</text>
+                        <text x="370" y="318" text-anchor="middle" class="lbl">argparse, typing</text>
+
+                        <rect x="500" y="260" width="240" height="80" rx="8" class="bx4"/>
+                        <text x="620" y="280" text-anchor="middle" class="ttl">암호 · 인코딩</text>
+                        <text x="620" y="300" text-anchor="middle" class="lbl">hashlib, secrets, hmac</text>
+                        <text x="620" y="318" text-anchor="middle" class="lbl">base64, uuid</text>
+                    </svg>
+                    <div class="map-caption">분야별 표준 라이브러리 지도 — 이 글은 굵게 표시된 핵심 모듈 위주로 다룬다</div>
+                </div>
+
+                <h3 id="batteries-overview"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 다룰 핵심 모듈 정리</h3>
+
+                <table class="spec-table">
+                    <tr><th>분야</th><th>모듈</th><th>역할</th></tr>
+                    <tr><td>OS 인터페이스</td><td><code>os</code>, <code>sys</code></td><td>환경 변수, 인자, 종료 코드</td></tr>
+                    <tr><td>경로</td><td><code>pathlib</code></td><td>객체지향 경로 (현재 권장)</td></tr>
+                    <tr><td>직렬화</td><td><code>json</code></td><td>설정/결과 저장과 교환</td></tr>
+                    <tr><td>시간</td><td><code>datetime</code>, <code>zoneinfo</code></td><td>날짜·시간·타임존</td></tr>
+                    <tr><td>로깅</td><td><code>logging</code></td><td>구조화된 진단 출력</td></tr>
+                    <tr><td>자료구조</td><td><code>collections</code></td><td>고급 컨테이너 (Counter, deque 등)</td></tr>
+                    <tr><td>반복자</td><td><code>itertools</code></td><td>지연 평가 반복 도구</td></tr>
+                    <tr><td>함수 도구</td><td><code>functools</code></td><td>partial, reduce, lru_cache</td></tr>
+                    <tr><td>정규식</td><td><code>re</code></td><td>패턴 매칭</td></tr>
+                    <tr><td>프로세스</td><td><code>subprocess</code></td><td>외부 프로그램 실행</td></tr>
+                    <tr><td>데이터 형식</td><td><code>csv</code>, <code>sqlite3</code>, <code>configparser</code></td><td>표 데이터·DB·INI 설정</td></tr>
+                </table>
+
+                <!-- 2. os/sys -->
+                <h2 id="os-sys"><i class="fa-solid fa-server"></i> os / sys</h2>
+                <p><code>os</code>는 운영체제와의 인터페이스, <code>sys</code>는 Python 인터프리터와의 인터페이스를 담당한다.</p>
+
+<pre class="language-python"><code class="language-python">import os
+import sys
+
+# 환경 변수
+api_key = os.environ.get("API_KEY", "default-key")  # 없으면 기본값
+os.environ["LOG_LEVEL"] = "DEBUG"                   # 설정
+
+# 현재 작업 디렉터리
+cwd = os.getcwd()
+os.chdir("/tmp")
+
+# 디렉터리 생성·삭제 (가능하면 pathlib 권장)
+os.makedirs("output/2026", exist_ok=True)
+
+# 명령줄 인자
+print(sys.argv)        # ['script.py', 'arg1', 'arg2']
+print(sys.version)     # '3.12.0 (...)'
+print(sys.platform)    # 'win32', 'linux', 'darwin'
+
+# 종료 코드
+if not api_key:
+    sys.exit(1)        # 0이 아니면 실패</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>os.path는 레거시다</strong>
+                        <code>os.path.join</code>, <code>os.path.exists</code> 같은 함수들은 여전히 동작하지만, 새 코드는 가급적 <code>pathlib</code>을 사용한다. 객체지향이고 OS 간 차이를 자동 처리한다.
+                    </div>
+                </div>
+
+                <!-- 3. pathlib -->
+                <h2 id="pathlib"><i class="fa-solid fa-folder-tree"></i> pathlib</h2>
+                <p>경로를 문자열이 아닌 객체로 다룬다. Python 3.4부터 표준이 된 현대적인 방식이다.</p>
+
+<pre class="language-python"><code class="language-python">from pathlib import Path
+
+# 경로 만들기 — OS 구분자 자동 처리 (Windows의 \, Unix의 /)
+p = Path("D:/data") / "images" / "raw.bmp"
+print(p)              # D:\data\images\raw.bmp (Windows)
+
+# 경로 속성
+p.name        # 'raw.bmp'
+p.stem        # 'raw'
+p.suffix      # '.bmp'
+p.parent      # Path('D:/data/images')
+p.parts       # ('D:\\', 'data', 'images', 'raw.bmp')
+
+# 존재 여부 · 종류
+p.exists()
+p.is_file()
+p.is_dir()
+
+# 디렉터리 만들기 (중간 경로 포함)
+Path("output/2026/05").mkdir(parents=True, exist_ok=True)
+
+# 파일 읽기·쓰기 (with open 불필요)
+text = Path("config.txt").read_text(encoding="utf-8")
+Path("log.txt").write_text("hello\n", encoding="utf-8")
+
+# 디렉터리 순회
+for img in Path("dataset").rglob("*.png"):  # 재귀적으로 모든 png
+    print(img.name)
+
+# 절대·상대 경로
+p.resolve()                       # 절대 경로
+p.relative_to("D:/data")          # 'images/raw.bmp'</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong><code>/</code> 연산자가 곧 join</strong>
+                        <code>Path("a") / "b" / "c"</code>는 <code>os.path.join("a", "b", "c")</code>와 같다. 코드가 훨씬 읽기 쉽다.
+                    </div>
+                </div>
+
+                <!-- 4. json -->
+                <h2 id="json"><i class="fa-solid fa-brackets-curly"></i> json</h2>
+                <p>JSON은 사실상 표준 데이터 교환 형식이다. <code>dict</code>/<code>list</code>를 그대로 문자열로 변환할 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">import json
+from pathlib import Path
+
+# dict → 문자열
+data = {"name": "Sensor-A", "values": [1, 2, 3], "ok": True}
+s = json.dumps(data, indent=2, ensure_ascii=False)
+print(s)
+
+# 문자열 → dict
+restored = json.loads(s)
+
+# 파일 입출력
+Path("result.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
+loaded = json.loads(Path("result.json").read_text(encoding="utf-8"))
+
+# 또는 파일 객체로
+with open("result.json", "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+
+with open("result.json", "r", encoding="utf-8") as f:
+    loaded = json.load(f)</code></pre>
+
+                <h3 id="json-dataclass"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> dataclass 직렬화</h3>
+                <p><code>dataclass</code>는 그대로 <code>json.dumps</code>에 못 넘긴다. <code>asdict</code>로 dict 변환 후 직렬화한다.</p>
+
+<pre class="language-python"><code class="language-python">from dataclasses import dataclass, asdict
+import json
+
+@dataclass
+class InspectionResult:
+    image_id: str
+    defect_count: int
+    pass_fail: bool
+
+r = InspectionResult("IMG_0001", 3, False)
+
+# 방법 1: asdict로 변환
+s = json.dumps(asdict(r), indent=2)
+
+# 방법 2: 커스텀 인코더 (datetime 등 처리)
+class CustomEncoder(json.JSONEncoder):
+    def default(self, o):
+        if hasattr(o, "__dataclass_fields__"):
+            return asdict(o)
+        return super().default(o)
+
+s = json.dumps(r, cls=CustomEncoder, indent=2)</code></pre>
+
+                <!-- 5. datetime -->
+                <h2 id="datetime"><i class="fa-solid fa-clock"></i> datetime</h2>
+                <p>날짜와 시간을 다룬다. <code>date</code>, <code>time</code>, <code>datetime</code>, <code>timedelta</code> 네 가지가 중심이다.</p>
+
+<pre class="language-python"><code class="language-python">from datetime import date, time, datetime, timedelta
+
+# 현재
+now = datetime.now()        # 로컬 시각
+today = date.today()
+
+# 생성
+d = date(2026, 5, 15)
+t = time(14, 30, 0)
+dt = datetime(2026, 5, 15, 14, 30, 0)
+
+# 포맷팅
+s = now.strftime("%Y-%m-%d %H:%M:%S")
+parsed = datetime.strptime("2026-05-15 14:30:00", "%Y-%m-%d %H:%M:%S")
+
+# ISO 형식 (권장)
+s = now.isoformat()                          # '2026-05-15T14:30:00.123456'
+parsed = datetime.fromisoformat(s)
+
+# 차이 계산
+delta = dt - datetime(2026, 1, 1)
+print(delta.days, delta.total_seconds())
+
+# 더하기·빼기
+tomorrow = today + timedelta(days=1)
+hour_ago = now - timedelta(hours=1)</code></pre>
+
+                <h3 id="datetime-tz"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 타임존 — naive vs aware</h3>
+
+<pre class="language-python"><code class="language-python">from datetime import datetime, timezone
+from zoneinfo import ZoneInfo  # Python 3.9+
+
+# Naive datetime (타임존 없음) — 위험
+naive = datetime.now()
+
+# Aware datetime (타임존 있음) — 권장
+utc_now = datetime.now(timezone.utc)
+seoul = datetime.now(ZoneInfo("Asia/Seoul"))
+
+# 변환
+utc = seoul.astimezone(timezone.utc)
+print(seoul.isoformat())   # '2026-05-15T14:30:00+09:00'</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>타임존 사용 팁</strong>
+                        저장은 항상 <strong>UTC</strong>로, 표시할 때만 로컬로 변환한다. naive datetime은 비교/계산 시 버그의 원천이다. 검사 장비 로그처럼 여러 지역을 다루는 시스템에서는 반드시 aware datetime을 쓴다.
+                    </div>
+                </div>
+
+                <!-- 6. logging -->
+                <h2 id="logging"><i class="fa-solid fa-clipboard-list"></i> logging</h2>
+                <p>운영 코드에서 <code>print</code>는 안 된다. <code>logging</code>은 레벨, 포맷, 출력 위치를 따로 제어할 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">import logging
+
+# 빠른 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+log = logging.getLogger(__name__)
+log.debug("자세한 내부 상태")
+log.info("처리 시작")
+log.warning("이미지가 비어 있을 수 있다")
+log.error("파일을 열 수 없다", exc_info=True)
+log.critical("시스템이 멈춘다")</code></pre>
+
+                <div class="output-block">
+                    <div class="output-label"><i class="fa-solid fa-terminal"></i> 실행 결과</div>
+2026-05-15 14:30:01 [INFO] __main__: 처리 시작
+2026-05-15 14:30:02 [WARNING] __main__: 이미지가 비어 있을 수 있다
+2026-05-15 14:30:02 [ERROR] __main__: 파일을 열 수 없다</div>
+
+                <h3 id="logging-handlers"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 핸들러와 로거 계층</h3>
+                <p>같은 로그를 콘솔에는 INFO 이상, 파일에는 DEBUG 이상으로 동시에 보낼 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">import logging
+from logging.handlers import RotatingFileHandler
+
+log = logging.getLogger("imaging")
+log.setLevel(logging.DEBUG)
+
+# 콘솔 핸들러
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+console.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+
+# 회전 파일 핸들러 (최대 10MB × 5개)
+file = RotatingFileHandler("app.log", maxBytes=10*1024*1024, backupCount=5,
+                           encoding="utf-8")
+file.setLevel(logging.DEBUG)
+file.setFormatter(logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s"
+))
+
+log.addHandler(console)
+log.addHandler(file)
+
+# 자식 로거는 자동으로 상속받는다
+child = logging.getLogger("imaging.core")
+child.info("Core 모듈 시작")</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>logging 사용 팁</strong>
+                        모듈마다 <code>log = logging.getLogger(__name__)</code>으로 로거를 만든다. 점(.)으로 구분된 이름이 계층을 형성해 부분별 레벨 조정이 쉬워진다. 라이브러리에서는 핸들러를 추가하지 말고 호출 측이 결정하게 둔다.
+                    </div>
+                </div>
+
+                <!-- 7. collections -->
+                <h2 id="collections"><i class="fa-solid fa-boxes-stacked"></i> collections</h2>
+                <p>3편(자료구조)에서 다뤘으므로 핵심만 짧게 정리한다.</p>
+
+<pre class="language-python"><code class="language-python">from collections import defaultdict, Counter, deque, namedtuple, OrderedDict
+
+# defaultdict — 키 없을 때 기본값 자동 생성
+groups = defaultdict(list)
+for name, kind in [("a", "x"), ("b", "y"), ("c", "x")]:
+    groups[kind].append(name)
+# groups = {'x': ['a', 'c'], 'y': ['b']}
+
+# Counter — 빈도 계산
+counts = Counter(["red", "blue", "red", "green", "red"])
+counts.most_common(2)   # [('red', 3), ('blue', 1)]
+
+# deque — 양쪽 O(1) 삽입·삭제
+buf = deque(maxlen=5)   # 최근 5개만 유지 (링 버퍼)
+for i in range(10):
+    buf.append(i)
+# buf = deque([5, 6, 7, 8, 9])
+
+# namedtuple — 가벼운 레코드
+Point = namedtuple("Point", ["x", "y"])
+p = Point(3, 4)
+print(p.x, p.y)         # 3 4
+
+# OrderedDict — Python 3.7+에선 일반 dict도 순서 보장,
+# 다만 move_to_end() 같은 메서드가 필요할 때 사용</code></pre>
+
+                <!-- 8. itertools -->
+                <h2 id="itertools"><i class="fa-solid fa-infinity"></i> itertools</h2>
+                <p>반복자를 조합하는 도구다. 메모리를 거의 쓰지 않고 큰 데이터를 다룰 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">from itertools import count, chain, islice, groupby, combinations, product, repeat
+
+# count — 무한 카운터
+for i in count(start=10, step=2):
+    if i > 20: break
+    print(i)   # 10, 12, 14, 16, 18, 20
+
+# chain — 여러 반복자 연결
+list(chain([1, 2], [3, 4], [5]))   # [1, 2, 3, 4, 5]
+
+# islice — 무한·큰 반복자에서 자르기
+list(islice(count(), 5))           # [0, 1, 2, 3, 4]
+
+# groupby — 연속된 같은 키끼리 묶기 (먼저 정렬!)
+data = [("a", 1), ("a", 2), ("b", 3), ("a", 4)]
+data.sort(key=lambda x: x[0])
+for key, group in groupby(data, key=lambda x: x[0]):
+    print(key, list(group))
+# a [('a', 1), ('a', 2), ('a', 4)]
+# b [('b', 3)]
+
+# combinations — 조합
+list(combinations([1, 2, 3, 4], 2))
+# [(1,2), (1,3), (1,4), (2,3), (2,4), (3,4)]
+
+# product — 곱집합
+list(product([0, 1], repeat=3))
+# [(0,0,0), (0,0,1), ..., (1,1,1)]</code></pre>
+
+                <!-- 9. functools -->
+                <h2 id="functools"><i class="fa-solid fa-cogs"></i> functools</h2>
+                <p>함수를 다루는 도구. 데코레이터, 부분 적용, 캐싱을 제공한다.</p>
+
+<pre class="language-python"><code class="language-python">from functools import partial, reduce, lru_cache, wraps
+
+# partial — 인자 일부를 미리 고정
+def power(base, exp):
+    return base ** exp
+
+square = partial(power, exp=2)
+square(5)        # 25
+
+# reduce — 누적 계산
+nums = [1, 2, 3, 4, 5]
+total = reduce(lambda a, b: a + b, nums)   # 15
+# 같은 결과: sum(nums) — reduce는 합 이외의 누적에 유용
+
+# lru_cache — 메모이제이션
+@lru_cache(maxsize=128)
+def fib(n):
+    if n < 2: return n
+    return fib(n - 1) + fib(n - 2)
+
+fib(100)         # 즉시 계산 (캐시 덕분)
+
+# wraps — 데코레이터 작성 시 메타데이터 보존
+def timer(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        import time
+        t0 = time.perf_counter()
+        result = func(*args, **kwargs)
+        print(f"{func.__name__}: {time.perf_counter()-t0:.3f}s")
+        return result
+    return wrapper
+
+@timer
+def process_image(path):
+    pass</code></pre>
+
+                <!-- 10. re -->
+                <h2 id="re"><i class="fa-solid fa-magnifying-glass-chart"></i> re (정규표현식)</h2>
+                <p>패턴 매칭은 텍스트 처리의 필수 도구다.</p>
+
+<pre class="language-python"><code class="language-python">import re
+
+text = "이미지 파일: IMG_0001.png, IMG_0002.png, IMG_0003.bmp"
+
+# search — 첫 매치
+m = re.search(r"IMG_(\d+)", text)
+if m:
+    print(m.group(0), m.group(1))   # IMG_0001 0001
+
+# findall — 모든 매치
+files = re.findall(r"IMG_\d+\.\w+", text)
+# ['IMG_0001.png', 'IMG_0002.png', 'IMG_0003.bmp']
+
+# finditer — 매치 객체 순회
+for m in re.finditer(r"IMG_(\d+)\.(\w+)", text):
+    print(m.group(1), m.group(2))   # 0001 png ...
+
+# sub — 치환
+clean = re.sub(r"IMG_(\d+)", r"FILE-\1", text)
+
+# 컴파일 — 반복 사용 시 빠름
+pattern = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+pattern.match("2026-05-15")         # 매치
+
+# 자주 쓰는 메타문자
+# \d 숫자 \w 단어문자 \s 공백
+# + 1회 이상 * 0회 이상 ? 0 또는 1
+# ^ 시작 $ 끝 [...] 문자 클래스 (...) 그룹</code></pre>
+
+                <!-- 11. subprocess -->
+                <h2 id="subprocess"><i class="fa-solid fa-terminal"></i> subprocess</h2>
+                <p>외부 프로그램을 실행하고 입출력을 주고받는다. <code>os.system</code>은 사용하지 않는다.</p>
+
+<pre class="language-python"><code class="language-python">import subprocess
+
+# 단순 실행 — 결과 확인
+result = subprocess.run(
+    ["python", "--version"],
+    capture_output=True,
+    text=True,           # bytes 대신 str 반환
+    check=True,          # 실패 시 예외
+)
+print(result.stdout)     # 'Python 3.12.0\n'
+print(result.returncode) # 0
+
+# 리스트로 인자 전달 — 셸 인젝션 방지 (권장)
+subprocess.run(["ffmpeg", "-i", "input.mp4", "out.mp4"])
+
+# 표준 입력 전달
+result = subprocess.run(
+    ["grep", "error"],
+    input="info: ok\nerror: bad\n",
+    capture_output=True, text=True,
+)
+
+# 긴 출력 — 스트리밍 (Popen)
+proc = subprocess.Popen(
+    ["python", "long_task.py"],
+    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    text=True,
+)
+for line in proc.stdout:
+    print(">", line.rstrip())
+proc.wait()</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong><code>shell=True</code>는 위험</strong>
+                        사용자 입력을 그대로 셸에 넘기면 명령 인젝션이 발생할 수 있다. 가능하면 인자 리스트 형태로 전달한다.
+                    </div>
+                </div>
+
+                <!-- 12. csv / sqlite3 / configparser -->
+                <h2 id="data-formats"><i class="fa-solid fa-database"></i> csv / sqlite3 / configparser</h2>
+
+                <h3 id="csv"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> csv</h3>
+
+<pre class="language-python"><code class="language-python">import csv
+
+# 쓰기
+rows = [
+    {"id": "IMG_0001", "defects": 0, "pass": True},
+    {"id": "IMG_0002", "defects": 3, "pass": False},
+]
+with open("results.csv", "w", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=["id", "defects", "pass"])
+    writer.writeheader()
+    writer.writerows(rows)
+
+# 읽기
+with open("results.csv", "r", encoding="utf-8") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        print(row["id"], row["defects"])</code></pre>
+
+                <h3 id="sqlite3"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> sqlite3</h3>
+
+<pre class="language-python"><code class="language-python">import sqlite3
+
+conn = sqlite3.connect("inspection.db")
+cur = conn.cursor()
+
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS results (
+        id TEXT PRIMARY KEY,
+        defects INTEGER,
+        ok INTEGER
+    )
+""")
+
+# 파라미터화 — SQL 인젝션 방지 필수
+cur.execute(
+    "INSERT OR REPLACE INTO results VALUES (?, ?, ?)",
+    ("IMG_0001", 0, 1),
+)
+conn.commit()
+
+# 조회
+for row in cur.execute("SELECT * FROM results WHERE ok = ?", (1,)):
+    print(row)
+
+conn.close()</code></pre>
+
+                <h3 id="configparser"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> configparser</h3>
+
+<pre class="language-python"><code class="language-python">import configparser
+
+# INI 파일 읽기
+cfg = configparser.ConfigParser()
+cfg.read("app.ini", encoding="utf-8")
+
+camera_ip = cfg["Camera"]["ip"]
+exposure = cfg.getint("Camera", "exposure_us")
+use_gpu = cfg.getboolean("Processing", "use_gpu")
+
+# 쓰기
+cfg["Camera"] = {"ip": "192.168.0.10", "exposure_us": "5000"}
+with open("app.ini", "w", encoding="utf-8") as f:
+    cfg.write(f)</code></pre>
+
+                <!-- 13. 산업 관점 -->
+                <h2 id="industry"><i class="fa-solid fa-industry"></i> 산업 · 이미지 관점</h2>
+                <p>이미지 검사 시스템에서 표준 라이브러리만으로도 충분한 골격을 만들 수 있다.</p>
+
+<pre class="language-python"><code class="language-python">import json, logging
+from pathlib import Path
+from datetime import datetime, timezone
+from dataclasses import dataclass, asdict
+
+log = logging.getLogger(__name__)
+
+@dataclass
+class InspectionResult:
+    image_path: str
+    timestamp: str
+    defect_count: int
+    pass_fail: bool
+
+def inspect_image(path: Path) -> InspectionResult:
+    log.info("검사 시작: %s", path.name)
+    # ... 실제 이미지 처리 ...
+    defects = 2  # 가정
+    return InspectionResult(
+        image_path=str(path),
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        defect_count=defects,
+        pass_fail=(defects == 0),
+    )
+
+def main(input_dir: Path, output_dir: Path):
+    output_dir.mkdir(parents=True, exist_ok=True)
+    results = []
+
+    # pathlib으로 이미지 디렉터리 순회
+    for img in input_dir.rglob("*.bmp"):
+        try:
+            r = inspect_image(img)
+            results.append(asdict(r))
+        except Exception:
+            log.exception("검사 실패: %s", img)
+
+    # 결과 묶음을 json으로 저장
+    out = output_dir / f"results_{datetime.now():%Y%m%d_%H%M%S}.json"
+    out.write_text(
+        json.dumps(results, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    log.info("총 %d장 검사, 결과 저장: %s", len(results), out)
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+    main(Path("D:/data/in"), Path("D:/data/out"))</code></pre>
+
+                <p>이 짧은 스크립트만으로도 <strong>pathlib</strong>(디렉터리 순회), <strong>dataclass + json</strong>(결과 직렬화), <strong>datetime</strong>(UTC 타임스탬프), <strong>logging</strong>(진단 출력)이 모두 협력한다. 외부 라이브러리 없이도 운영 가능한 구조다.</p>
+
+                <!-- 14. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 함정</h2>
+
+                <table class="spec-table">
+                    <tr><th>함정</th><th>증상</th><th>해결</th></tr>
+                    <tr><td>print 디버깅 남용</td><td>운영 시 노이즈, 끄려면 코드 수정 필요</td><td><code>logging</code>으로 통일. 레벨로 제어</td></tr>
+                    <tr><td><code>os.path</code>와 <code>pathlib</code> 혼용</td><td>경로 타입이 들쭉날쭉, 비교 실패</td><td>한 프로젝트에선 <code>pathlib</code>으로 통일</td></tr>
+                    <tr><td>naive datetime 사용</td><td>다른 타임존과 비교 시 예외나 오차</td><td>저장은 UTC, 항상 aware datetime</td></tr>
+                    <tr><td>dataclass를 그대로 json.dumps</td><td><code>TypeError: not JSON serializable</code></td><td><code>asdict()</code> 또는 커스텀 인코더</td></tr>
+                    <tr><td><code>subprocess</code>에 <code>shell=True</code></td><td>명령 인젝션 취약점</td><td>인자 리스트로 전달</td></tr>
+                    <tr><td><code>re</code>를 매 호출마다 컴파일</td><td>대량 처리 시 느려짐</td><td><code>re.compile()</code>로 한 번만</td></tr>
+                    <tr><td><code>logging.basicConfig</code> 두 번 호출</td><td>두 번째 호출이 무시됨</td><td>앱 진입점에서 한 번만</td></tr>
+                    <tr><td><code>json</code>에 한글이 <code>\uXXXX</code>로</td><td>가독성 떨어짐</td><td><code>ensure_ascii=False</code> 지정</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>마무리</strong>
+                        표준 라이브러리는 외워서 쓰는 게 아니라, "이런 게 있다"는 지도를 머릿속에 두는 것이 중요하다. 새 라이브러리를 찾기 전에 항상 <strong>"표준에 있을까?"</strong>를 먼저 묻는 습관이 좋은 Python 코드를 만든다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Python 공식 문서 — The Python Standard Library (docs.python.org/3/library)</li>
+                        <li>Python 공식 문서 — <code>pathlib</code>, <code>logging</code>, <code>datetime</code>, <code>itertools</code>, <code>functools</code></li>
+                        <li>PEP 282 — A Logging System</li>
+                        <li>PEP 428 — The pathlib module</li>
+                        <li>Fluent Python (Luciano Ramalho) — 표준 라이브러리 활용 패턴</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-python');
+    renderPostNav('dev-lang-python');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

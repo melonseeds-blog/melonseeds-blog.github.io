@@ -1,0 +1,902 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WPF 레이아웃 — Grid·StackPanel·DockPanel - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* SVG 다이어그램 */
+        .diagram-wrap {
+            background: #fff; border: 1px solid var(--border); border-radius: 10px;
+            padding: 16px; margin: 16px 0; text-align: center;
+        }
+        .diagram-wrap svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#layout-system" data-section="layout-system">레이아웃 시스템</a>
+        <a href="#panels-overview" data-section="panels-overview">패널 개요</a>
+        <a href="#grid" data-section="grid">Grid</a>
+        <a href="#stackpanel" data-section="stackpanel">StackPanel</a>
+        <a href="#dockpanel" data-section="dockpanel">DockPanel</a>
+        <a href="#wrappanel" data-section="wrappanel">WrapPanel</a>
+        <a href="#canvas" data-section="canvas">Canvas</a>
+        <a href="#alignment" data-section="alignment">정렬·여백</a>
+        <a href="#containers" data-section="containers">컨테이너</a>
+        <a href="#nesting" data-section="nesting">중첩</a>
+        <a href="#performance" data-section="performance">성능</a>
+        <a href="#industrial" data-section="industrial">산업 비전 적용</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">WPF / C#</span>
+                </div>
+                <h1>WPF 레이아웃 — Grid·StackPanel·DockPanel</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>WPF 레이아웃 시스템 — Measure → Arrange 2단계 패스</li>
+                        <li>5종 레이아웃 패널 — Grid, StackPanel, DockPanel, WrapPanel, Canvas</li>
+                        <li>HorizontalAlignment·VerticalAlignment·Margin·Padding 정리</li>
+                        <li>Border·ScrollViewer·Viewbox 등 흔히 같이 쓰는 컨테이너</li>
+                        <li>중첩·성능·산업 비전 UI 적용·흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#layout-system">레이아웃 시스템 — Measure / Arrange</a></li>
+                        <li><a href="#panels-overview">레이아웃 패널 5종 개요</a></li>
+                        <li><a href="#grid">Grid — 행·열 분할</a></li>
+                        <li><a href="#stackpanel">StackPanel — 일렬 배치</a></li>
+                        <li><a href="#dockpanel">DockPanel — 도킹</a></li>
+                        <li><a href="#wrappanel">WrapPanel — 자동 줄바꿈</a></li>
+                        <li><a href="#canvas">Canvas — 절대 좌표</a></li>
+                        <li><a href="#alignment">Alignment·Margin·Padding</a></li>
+                        <li><a href="#containers">Border·ScrollViewer·Viewbox</a></li>
+                        <li><a href="#nesting">패널 중첩</a></li>
+                        <li><a href="#performance">성능과 가상화</a></li>
+                        <li><a href="#industrial">산업 비전 UI 적용</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 레이아웃 시스템 -->
+                <h2 id="layout-system"><i class="fa-solid fa-ruler-combined"></i> 레이아웃 시스템 — Measure / Arrange</h2>
+                <p>WPF는 모든 컨트롤을 <strong>2단계 패스</strong>로 배치한다. 부모 패널이 자식을 측정하고, 자식이 원하는 크기를 보고 실제 위치를 결정한다. 이 두 단계를 이해해야 커스텀 컨트롤이나 복잡한 레이아웃에서 막히지 않는다.</p>
+
+                <table>
+                    <tr><th>단계</th><th>호출 메서드</th><th>역할</th></tr>
+                    <tr><td><strong>Measure</strong></td><td><code>MeasureOverride(Size availableSize)</code></td><td>부모가 주는 가용 공간을 받아 자식이 원하는 <code>DesiredSize</code>를 계산</td></tr>
+                    <tr><td><strong>Arrange</strong></td><td><code>ArrangeOverride(Size finalSize)</code></td><td>부모가 실제로 할당한 영역에 자식을 위치·크기 확정</td></tr>
+                </table>
+
+                <pre class="language-csharp"><code class="language-csharp">// 커스텀 패널 예시 — Measure / Arrange 직접 구현
+public class SimpleStackPanel : Panel
+{
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        double totalHeight = 0;
+        double maxWidth = 0;
+        foreach (UIElement child in InternalChildren)
+        {
+            // 자식에게 가용 공간을 알려주고, 원하는 크기를 묻는다.
+            child.Measure(new Size(availableSize.Width, double.PositiveInfinity));
+            totalHeight += child.DesiredSize.Height;
+            maxWidth = Math.Max(maxWidth, child.DesiredSize.Width);
+        }
+        return new Size(maxWidth, totalHeight);
+    }
+
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        double y = 0;
+        foreach (UIElement child in InternalChildren)
+        {
+            child.Arrange(new Rect(0, y, finalSize.Width, child.DesiredSize.Height));
+            y += child.DesiredSize.Height;
+        }
+        return finalSize;
+    }
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>왜 2단계인가?</strong>
+                        Measure는 "자식이 얼마나 필요한지" 묻고, Arrange는 "그래서 어디에 놓을지" 정한다. 분리되어 있어서 <code>Auto</code> 크기처럼 자식의 요구에 맞춰 부모가 줄어드는 동작이 가능하다.
+                    </div>
+                </div>
+
+                <!-- 2. 패널 개요 -->
+                <h2 id="panels-overview"><i class="fa-solid fa-table-cells"></i> 레이아웃 패널 5종 개요</h2>
+                <p>WPF가 기본으로 제공하는 주요 패널은 다음 다섯이다. 각각의 용도를 먼저 비교한다.</p>
+
+                <table>
+                    <tr><th>패널</th><th>용도</th><th>대표 속성</th><th>전형적 쓰임</th></tr>
+                    <tr><td><code>Grid</code></td><td>행·열 분할 표</td><td>RowDefinitions, ColumnDefinitions</td><td>전체 화면 골격</td></tr>
+                    <tr><td><code>StackPanel</code></td><td>한 방향 일렬</td><td>Orientation</td><td>버튼 묶음, 폼 항목</td></tr>
+                    <tr><td><code>DockPanel</code></td><td>가장자리 도킹</td><td>DockPanel.Dock, LastChildFill</td><td>툴바·상태바 레이아웃</td></tr>
+                    <tr><td><code>WrapPanel</code></td><td>자동 줄바꿈</td><td>ItemWidth, ItemHeight</td><td>썸네일 갤러리</td></tr>
+                    <tr><td><code>Canvas</code></td><td>절대 좌표</td><td>Canvas.Left, Canvas.Top</td><td>다이어그램, 블록 에디터</td></tr>
+                </table>
+
+                <div class="diagram-wrap">
+                    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Grid -->
+                        <g transform="translate(10,10)">
+                            <text x="60" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a5f">Grid</text>
+                            <rect x="0" y="20" width="120" height="160" fill="#eff6ff" stroke="#2563eb"/>
+                            <line x1="60" y1="20" x2="60" y2="180" stroke="#2563eb"/>
+                            <line x1="0" y1="80" x2="120" y2="80" stroke="#2563eb"/>
+                            <line x1="0" y1="130" x2="120" y2="130" stroke="#2563eb"/>
+                        </g>
+                        <!-- StackPanel -->
+                        <g transform="translate(150,10)">
+                            <text x="60" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#065f46">StackPanel</text>
+                            <rect x="0" y="20" width="120" height="160" fill="#ecfdf5" stroke="#059669"/>
+                            <rect x="10" y="30" width="100" height="30" fill="#a7f3d0"/>
+                            <rect x="10" y="70" width="100" height="30" fill="#a7f3d0"/>
+                            <rect x="10" y="110" width="100" height="30" fill="#a7f3d0"/>
+                            <rect x="10" y="150" width="100" height="20" fill="#a7f3d0"/>
+                        </g>
+                        <!-- DockPanel -->
+                        <g transform="translate(290,10)">
+                            <text x="60" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#78350f">DockPanel</text>
+                            <rect x="0" y="20" width="120" height="160" fill="#fffbeb" stroke="#d97706"/>
+                            <rect x="0" y="20" width="120" height="25" fill="#fde68a"/>
+                            <rect x="0" y="155" width="120" height="25" fill="#fde68a"/>
+                            <rect x="0" y="45" width="25" height="110" fill="#fde68a"/>
+                            <rect x="95" y="45" width="25" height="110" fill="#fde68a"/>
+                            <text x="60" y="105" text-anchor="middle" font-size="9" fill="#78350f">Fill</text>
+                        </g>
+                        <!-- WrapPanel -->
+                        <g transform="translate(430,10)">
+                            <text x="60" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#7f1d1d">WrapPanel</text>
+                            <rect x="0" y="20" width="120" height="160" fill="#fef2f2" stroke="#dc2626"/>
+                            <rect x="5" y="28" width="35" height="35" fill="#fecaca"/>
+                            <rect x="45" y="28" width="35" height="35" fill="#fecaca"/>
+                            <rect x="85" y="28" width="35" height="35" fill="#fecaca"/>
+                            <rect x="5" y="68" width="35" height="35" fill="#fecaca"/>
+                            <rect x="45" y="68" width="35" height="35" fill="#fecaca"/>
+                            <rect x="85" y="68" width="35" height="35" fill="#fecaca"/>
+                            <rect x="5" y="108" width="35" height="35" fill="#fecaca"/>
+                        </g>
+                        <!-- Canvas -->
+                        <g transform="translate(570,10)">
+                            <text x="60" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#6d28d9">Canvas</text>
+                            <rect x="0" y="20" width="140" height="160" fill="#f5f3ff" stroke="#7c3aed"/>
+                            <circle cx="30" cy="55" r="12" fill="#ddd6fe"/>
+                            <circle cx="90" cy="100" r="18" fill="#ddd6fe"/>
+                            <circle cx="55" cy="140" r="10" fill="#ddd6fe"/>
+                            <text x="3" y="32" font-size="9" fill="#6d28d9">(0,0)</text>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">5종 패널의 배치 특성</div>
+                </div>
+
+                <!-- 3. Grid -->
+                <h2 id="grid"><i class="fa-solid fa-border-all"></i> Grid — 행·열 분할</h2>
+                <p>가장 자주 쓰는 패널이다. 행·열로 영역을 나누고 자식을 셀에 배치한다. <code>RowDefinition</code>·<code>ColumnDefinition</code>의 크기 단위 세 가지를 먼저 익혀야 한다.</p>
+
+                <table>
+                    <tr><th>크기 단위</th><th>의미</th><th>예시</th></tr>
+                    <tr><td><code>Auto</code></td><td>자식이 원하는 만큼</td><td>제목줄 높이</td></tr>
+                    <tr><td><code>*</code> (스타)</td><td>남은 공간을 비율로 분배</td><td><code>*</code>, <code>2*</code></td></tr>
+                    <tr><td>절대값</td><td>고정 픽셀(DIP)</td><td><code>200</code></td></tr>
+                </table>
+
+                <h3 id="grid-basic"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본 Grid</h3>
+
+                <pre class="language-xml"><code class="language-xml">&lt;Grid&gt;
+    &lt;Grid.RowDefinitions&gt;
+        &lt;RowDefinition Height="Auto"/&gt;   &lt;!-- 0: 제목줄, 내용에 맞춤 --&gt;
+        &lt;RowDefinition Height="*"/&gt;      &lt;!-- 1: 본문, 남는 공간 차지 --&gt;
+        &lt;RowDefinition Height="30"/&gt;     &lt;!-- 2: 상태바, 고정 30 --&gt;
+    &lt;/Grid.RowDefinitions&gt;
+    &lt;Grid.ColumnDefinitions&gt;
+        &lt;ColumnDefinition Width="200"/&gt; &lt;!-- 0: 사이드바 200 --&gt;
+        &lt;ColumnDefinition Width="*"/&gt;   &lt;!-- 1: 영상 영역 --&gt;
+    &lt;/Grid.ColumnDefinitions&gt;
+
+    &lt;TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="검사 도구"/&gt;
+    &lt;ListBox   Grid.Row="1" Grid.Column="0"/&gt;
+    &lt;Image     Grid.Row="1" Grid.Column="1" Source="frame.png"/&gt;
+    &lt;StatusBar Grid.Row="2" Grid.ColumnSpan="2"/&gt;
+&lt;/Grid&gt;</code></pre>
+
+                <div class="diagram-wrap">
+                    <svg viewBox="0 0 360 200" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="0" width="360" height="200" fill="#eff6ff" stroke="#2563eb"/>
+                        <rect x="0" y="0" width="360" height="28" fill="#bfdbfe"/>
+                        <rect x="0" y="172" width="360" height="28" fill="#bfdbfe"/>
+                        <line x1="200" y1="28" x2="200" y2="172" stroke="#2563eb"/>
+                        <text x="180" y="18" text-anchor="middle" font-size="11" fill="#1e3a5f">Row 0 (Auto), ColumnSpan=2</text>
+                        <text x="100" y="105" text-anchor="middle" font-size="11" fill="#1e3a5f">Row1/Col0</text>
+                        <text x="100" y="120" text-anchor="middle" font-size="10" fill="#1e3a5f">Width=200</text>
+                        <text x="280" y="105" text-anchor="middle" font-size="11" fill="#1e3a5f">Row1/Col1</text>
+                        <text x="280" y="120" text-anchor="middle" font-size="10" fill="#1e3a5f">Width=*</text>
+                        <text x="180" y="190" text-anchor="middle" font-size="11" fill="#1e3a5f">Row 2 (30)</text>
+                    </svg>
+                    <div class="diagram-caption">Grid.Row·Grid.Column attached property로 셀을 지정한다</div>
+                </div>
+
+                <h3 id="grid-star"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스타(*) 비율 분배</h3>
+
+                <pre class="language-xml"><code class="language-xml">&lt;!-- 1 : 2 : 1 비율로 3등분 --&gt;
+&lt;Grid.ColumnDefinitions&gt;
+    &lt;ColumnDefinition Width="*"/&gt;
+    &lt;ColumnDefinition Width="2*"/&gt;
+    &lt;ColumnDefinition Width="*"/&gt;
+&lt;/Grid.ColumnDefinitions&gt;
+
+&lt;!-- 최소·최대 폭 제한도 가능 --&gt;
+&lt;ColumnDefinition Width="*" MinWidth="100" MaxWidth="400"/&gt;</code></pre>
+
+                <h3 id="grid-span"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 셀 병합 — RowSpan / ColumnSpan</h3>
+
+                <pre class="language-xml"><code class="language-xml">&lt;Border Grid.Row="0" Grid.Column="0"
+        Grid.RowSpan="2" Grid.ColumnSpan="3"
+        Background="LightYellow"/&gt;</code></pre>
+
+                <h3 id="grid-shared"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> SharedSizeGroup — 폼 정렬 팁</h3>
+                <p>여러 Grid의 같은 열을 같은 폭으로 맞출 때 쓴다. 폼에서 라벨 폭을 통일할 때 유용하다.</p>
+
+                <pre class="language-xml"><code class="language-xml">&lt;StackPanel Grid.IsSharedSizeScope="True"&gt;
+    &lt;Grid&gt;
+        &lt;Grid.ColumnDefinitions&gt;
+            &lt;ColumnDefinition Width="Auto" SharedSizeGroup="LabelCol"/&gt;
+            &lt;ColumnDefinition Width="*"/&gt;
+        &lt;/Grid.ColumnDefinitions&gt;
+        &lt;TextBlock Text="Exposure (us):"/&gt;
+        &lt;TextBox Grid.Column="1"/&gt;
+    &lt;/Grid&gt;
+    &lt;Grid&gt;
+        &lt;Grid.ColumnDefinitions&gt;
+            &lt;ColumnDefinition Width="Auto" SharedSizeGroup="LabelCol"/&gt;
+            &lt;ColumnDefinition Width="*"/&gt;
+        &lt;/Grid.ColumnDefinitions&gt;
+        &lt;TextBlock Text="Gain:"/&gt;
+        &lt;TextBox Grid.Column="1"/&gt;
+    &lt;/Grid&gt;
+&lt;/StackPanel&gt;</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Auto vs * 혼동 주의</strong>
+                        <code>Auto</code>는 자식 크기에 맞춰 줄어들지만, <code>*</code>는 부모가 주는 공간을 모두 차지한다. <code>ScrollViewer</code> 안에서 <code>*</code> 행을 쓰면 무한 공간이 되어 스크롤이 동작하지 않는 사고가 자주 난다.
+                    </div>
+                </div>
+
+                <!-- 4. StackPanel -->
+                <h2 id="stackpanel"><i class="fa-solid fa-layer-group"></i> StackPanel — 일렬 배치</h2>
+                <p>자식을 한 방향으로 일렬 배치한다. <code>Orientation</code>이 <code>Vertical</code>(기본) 또는 <code>Horizontal</code>이다.</p>
+
+                <pre class="language-xml"><code class="language-xml">&lt;!-- 수직(기본) — 버튼이 위에서 아래로 쌓인다 --&gt;
+&lt;StackPanel Margin="8"&gt;
+    &lt;Button Content="Load Image" Margin="0,0,0,4"/&gt;
+    &lt;Button Content="Run Inspection" Margin="0,0,0,4"/&gt;
+    &lt;Button Content="Save Result"/&gt;
+&lt;/StackPanel&gt;
+
+&lt;!-- 수평 — 도구바처럼 좌에서 우로 --&gt;
+&lt;StackPanel Orientation="Horizontal"&gt;
+    &lt;Button Content="Zoom +"/&gt;
+    &lt;Button Content="Zoom -"/&gt;
+    &lt;Button Content="Fit"/&gt;
+&lt;/StackPanel&gt;</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>StackPanel은 한 축으로 무한 공간을 준다</strong>
+                        수직 StackPanel은 자식의 세로 크기에 제약을 두지 않는다. 자식의 <code>Height="*"</code>나 <code>VerticalAlignment="Stretch"</code>가 먹지 않는다. 영역을 비율로 나눠야 한다면 <code>Grid</code>를 써야 한다.
+                    </div>
+                </div>
+
+                <!-- 5. DockPanel -->
+                <h2 id="dockpanel"><i class="fa-solid fa-window-maximize"></i> DockPanel — 가장자리 도킹</h2>
+                <p>자식을 상·하·좌·우 가장자리에 차례로 붙인다. <code>DockPanel.Dock</code> attached property로 도킹 변을 지정하고, 마지막 자식은 기본적으로 남은 영역을 채운다.</p>
+
+                <pre class="language-xml"><code class="language-xml">&lt;DockPanel LastChildFill="True"&gt;
+    &lt;Menu       DockPanel.Dock="Top"/&gt;
+    &lt;ToolBar    DockPanel.Dock="Top"/&gt;
+    &lt;StatusBar  DockPanel.Dock="Bottom"/&gt;
+    &lt;TreeView   DockPanel.Dock="Left" Width="220"/&gt;
+    &lt;Border     DockPanel.Dock="Right" Width="280"/&gt;
+    &lt;!-- LastChildFill=true 이므로 마지막 자식이 가운데를 채운다 --&gt;
+    &lt;Image Source="frame.png"/&gt;
+&lt;/DockPanel&gt;</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>도킹 순서가 중요하다</strong>
+                        먼저 선언된 자식이 먼저 가장자리를 차지한다. <code>Top</code>을 먼저 선언하면 좌·우는 그 아래에만 도킹된다. 헤더가 좌측 패널 위까지 덮길 원하면 순서를 바꿔야 한다.
+                    </div>
+                </div>
+
+                <!-- 6. WrapPanel -->
+                <h2 id="wrappanel"><i class="fa-solid fa-grip"></i> WrapPanel — 자동 줄바꿈</h2>
+                <p>자식을 한 줄에 채우다가 폭이 부족하면 다음 줄로 넘긴다. 썸네일 갤러리, 태그 묶음 같은 곳에 쓴다.</p>
+
+                <pre class="language-xml"><code class="language-xml">&lt;WrapPanel Orientation="Horizontal" ItemWidth="120" ItemHeight="90"&gt;
+    &lt;Image Source="img1.png"/&gt;
+    &lt;Image Source="img2.png"/&gt;
+    &lt;Image Source="img3.png"/&gt;
+    &lt;!-- 폭이 부족하면 자동으로 다음 줄로 넘어간다 --&gt;
+&lt;/WrapPanel&gt;</code></pre>
+
+                <!-- 7. Canvas -->
+                <h2 id="canvas"><i class="fa-solid fa-vector-square"></i> Canvas — 절대 좌표</h2>
+                <p>좌상단 <code>(0, 0)</code> 기준의 절대 좌표로 자식을 배치한다. <code>Canvas.Left</code>·<code>Canvas.Top</code> attached property를 쓴다. 자유 배치가 필요한 다이어그램이나 데이터 플로우 블록 에디터에 적합하다.</p>
+
+                <pre class="language-xml"><code class="language-xml">&lt;Canvas Background="#F8F9FB"&gt;
+    &lt;Rectangle Canvas.Left="50"  Canvas.Top="40"
+               Width="120" Height="60" Fill="#BFDBFE"/&gt;
+    &lt;Rectangle Canvas.Left="240" Canvas.Top="120"
+               Width="120" Height="60" Fill="#A7F3D0"/&gt;
+    &lt;Line X1="170" Y1="70" X2="240" Y2="150"
+          Stroke="Black" StrokeThickness="2"/&gt;
+&lt;/Canvas&gt;</code></pre>
+
+                <p>코드 비하인드에서 동적으로 노드를 추가할 때도 같은 패턴이다.</p>
+
+                <pre class="language-csharp"><code class="language-csharp">// 블록 에디터에서 노드를 동적으로 추가
+var node = new BlockNodeView { DataContext = blockVm };
+Canvas.SetLeft(node, blockVm.X);
+Canvas.SetTop(node, blockVm.Y);
+canvas.Children.Add(node);</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>블록 에디터에서 본격적으로 다룬다</strong>
+                        Canvas + ItemsControl + DataTemplate 조합으로 데이터 플로우 노드를 그리는 패턴은 시리즈 11편에서 다룬다.
+                    </div>
+                </div>
+
+                <!-- 8. Alignment / Margin / Padding -->
+                <h2 id="alignment"><i class="fa-solid fa-arrows-up-down-left-right"></i> Alignment·Margin·Padding</h2>
+                <p>패널이 자식에게 영역을 할당한 뒤, 자식이 그 영역 안에서 어떻게 자리잡을지를 결정하는 속성이다.</p>
+
+                <table>
+                    <tr><th>속성</th><th>대상</th><th>값</th><th>의미</th></tr>
+                    <tr><td><code>HorizontalAlignment</code></td><td>모든 FrameworkElement</td><td>Left, Center, Right, Stretch</td><td>할당된 셀 안에서 가로 정렬</td></tr>
+                    <tr><td><code>VerticalAlignment</code></td><td>모든 FrameworkElement</td><td>Top, Center, Bottom, Stretch</td><td>할당된 셀 안에서 세로 정렬</td></tr>
+                    <tr><td><code>Margin</code></td><td>모든 FrameworkElement</td><td>Thickness (외부 여백)</td><td>자기 외곽과 부모 사이 간격</td></tr>
+                    <tr><td><code>Padding</code></td><td>Control / Border / Block</td><td>Thickness (내부 여백)</td><td>경계와 내용 사이 간격</td></tr>
+                </table>
+
+                <pre class="language-xml"><code class="language-xml">&lt;Button Content="OK"
+        HorizontalAlignment="Right"
+        VerticalAlignment="Bottom"
+        Margin="0,0,16,16"
+        Padding="20,8"/&gt;
+
+&lt;!-- Margin / Padding Thickness 표기 --&gt;
+&lt;!-- Margin="10"            : 사방 10 --&gt;
+&lt;!-- Margin="10,5"          : 좌우 10, 상하 5 --&gt;
+&lt;!-- Margin="L,T,R,B"  →    : 좌, 상, 우, 하 --&gt;
+&lt;Border Margin="10,5,10,20" Padding="12"/&gt;</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>Stretch가 기본값이다</strong>
+                        <code>HorizontalAlignment</code>·<code>VerticalAlignment</code>의 기본은 <code>Stretch</code>다. 명시하지 않으면 셀을 가득 채운다. 가운데 정렬이 필요하면 명시해야 한다.
+                    </div>
+                </div>
+
+                <!-- 9. Border / ScrollViewer / Viewbox -->
+                <h2 id="containers"><i class="fa-solid fa-square-full"></i> Border·ScrollViewer·Viewbox</h2>
+                <p>레이아웃 패널은 아니지만 거의 항상 함께 쓰는 컨테이너 3종이다.</p>
+
+                <h3 id="border"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Border — 테두리·배경·둥근 모서리</h3>
+
+                <pre class="language-xml"><code class="language-xml">&lt;Border BorderBrush="#CBD5E1" BorderThickness="1"
+        CornerRadius="8" Background="White" Padding="16"&gt;
+    &lt;TextBlock Text="검사 결과: OK"/&gt;
+&lt;/Border&gt;</code></pre>
+
+                <h3 id="scrollviewer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ScrollViewer — 스크롤</h3>
+
+                <pre class="language-xml"><code class="language-xml">&lt;ScrollViewer HorizontalScrollBarVisibility="Auto"
+              VerticalScrollBarVisibility="Auto"&gt;
+    &lt;Image Source="huge_image.png" Stretch="None"/&gt;
+&lt;/ScrollViewer&gt;</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>ScrollViewer 안에서 Grid Height="*"는 사고를 부른다</strong>
+                        ScrollViewer는 자식에게 무한 공간을 준다. 그 안의 <code>*</code> 행은 0이 되거나 무한이 되어 의도와 다르게 동작한다. 스크롤이 필요한 영역은 <code>Auto</code> 행에 넣어야 한다.
+                    </div>
+                </div>
+
+                <h3 id="viewbox"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Viewbox — 자식 전체를 등비 확대/축소</h3>
+
+                <pre class="language-xml"><code class="language-xml">&lt;!-- 자식 트리 전체를 부모 크기에 맞춰 비례 스케일 --&gt;
+&lt;Viewbox Stretch="Uniform"&gt;
+    &lt;Canvas Width="800" Height="600"&gt;
+        &lt;!-- 800x600 가상 캔버스에 그려도 윈도우 크기에 맞춰 줄어든다 --&gt;
+    &lt;/Canvas&gt;
+&lt;/Viewbox&gt;</code></pre>
+
+                <!-- 10. 중첩 -->
+                <h2 id="nesting"><i class="fa-solid fa-sitemap"></i> 패널 중첩</h2>
+                <p>패널은 중첩해서 복잡한 레이아웃을 만든다. 실무 화면은 거의 항상 <code>DockPanel</code> 안에 <code>Grid</code>, <code>Grid</code> 안에 <code>StackPanel</code>이 들어가는 식이다.</p>
+
+                <pre class="language-xml"><code class="language-xml">&lt;DockPanel&gt;
+    &lt;Menu DockPanel.Dock="Top"&gt;
+        &lt;MenuItem Header="File"/&gt;
+        &lt;MenuItem Header="View"/&gt;
+    &lt;/Menu&gt;
+    &lt;StatusBar DockPanel.Dock="Bottom"&gt;
+        &lt;TextBlock Text="Ready"/&gt;
+    &lt;/StatusBar&gt;
+
+    &lt;Grid&gt;
+        &lt;Grid.ColumnDefinitions&gt;
+            &lt;ColumnDefinition Width="240"/&gt;
+            &lt;ColumnDefinition Width="*"/&gt;
+            &lt;ColumnDefinition Width="280"/&gt;
+        &lt;/Grid.ColumnDefinitions&gt;
+
+        &lt;!-- 좌: 도구 목록 (StackPanel) --&gt;
+        &lt;StackPanel Grid.Column="0" Margin="8"&gt;
+            &lt;TextBlock Text="Tools" FontWeight="Bold"/&gt;
+            &lt;ListBox ItemsSource="{Binding Tools}"/&gt;
+        &lt;/StackPanel&gt;
+
+        &lt;!-- 중: 영상 (Border + ScrollViewer + Image) --&gt;
+        &lt;Border Grid.Column="1" BorderBrush="#CBD5E1" BorderThickness="1"&gt;
+            &lt;ScrollViewer&gt;
+                &lt;Image Source="{Binding CurrentFrame}" Stretch="None"/&gt;
+            &lt;/ScrollViewer&gt;
+        &lt;/Border&gt;
+
+        &lt;!-- 우: 파라미터 (Grid + SharedSizeGroup) --&gt;
+        &lt;StackPanel Grid.Column="2" Grid.IsSharedSizeScope="True" Margin="8"&gt;
+            &lt;TextBlock Text="Parameters" FontWeight="Bold"/&gt;
+            &lt;!-- 라벨/값 행들이 여기 들어간다 --&gt;
+        &lt;/StackPanel&gt;
+    &lt;/Grid&gt;
+&lt;/DockPanel&gt;</code></pre>
+
+                <!-- 11. 성능 -->
+                <h2 id="performance"><i class="fa-solid fa-gauge-high"></i> 성능과 가상화</h2>
+                <p>WPF의 시각 트리(Visual Tree)는 깊을수록 Measure/Arrange 비용이 커진다. 수천 개 항목을 화면에 한 번에 띄우면 프레임이 떨어진다. 해법은 두 가지다.</p>
+
+                <h3 id="perf-flatten"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1) 트리 깊이를 낮춘다</h3>
+                <p>의미 없는 중첩 패널을 줄인다. <code>Border</code> 안 <code>Grid</code> 안 <code>StackPanel</code> 안 <code>TextBlock</code>처럼 한 줄을 위해 네 단계를 쌓지 않는다.</p>
+
+                <h3 id="perf-virtualize"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2) 가상화 — VirtualizingStackPanel</h3>
+                <p><code>ItemsControl</code>·<code>ListBox</code>·<code>DataGrid</code> 등은 기본적으로 화면에 보이는 항목만 만들고 스크롤될 때 재활용한다. 단, <code>ScrollViewer</code> 안에 넣거나 <code>ItemsPanel</code>을 직접 바꾸면 가상화가 깨질 수 있다.</p>
+
+                <pre class="language-xml"><code class="language-xml">&lt;ListBox ItemsSource="{Binding LogEntries}"
+         VirtualizingPanel.IsVirtualizing="True"
+         VirtualizingPanel.VirtualizationMode="Recycling"
+         ScrollViewer.CanContentScroll="True"&gt;
+    &lt;ListBox.ItemsPanel&gt;
+        &lt;ItemsPanelTemplate&gt;
+            &lt;VirtualizingStackPanel/&gt;
+        &lt;/ItemsPanelTemplate&gt;
+    &lt;/ListBox.ItemsPanel&gt;
+&lt;/ListBox&gt;</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>가상화를 깨는 흔한 패턴</strong>
+                        <code>ItemsPanel</code>을 <code>StackPanel</code>(가상화 없는 버전)이나 <code>WrapPanel</code>로 바꾸면 모든 항목이 생성된다. <code>ScrollViewer.CanContentScroll="False"</code>(픽셀 단위 스크롤)도 가상화를 깬다.
+                    </div>
+                </div>
+
+                <!-- 12. 산업 비전 적용 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 비전 UI 적용</h2>
+                <p>검사 SW의 메인 화면은 거의 동일한 골격이다. 좌측 사이드바(도구·검사 트리), 중앙 영상, 우측 파라미터 패널, 상단 메뉴, 하단 상태바. 이 구성은 <code>DockPanel</code>로 골격을 잡고 가운데를 <code>Grid</code>로 3분할하는 것이 표준이다.</p>
+
+                <div class="diagram-wrap">
+                    <svg viewBox="0 0 480 260" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="0" width="480" height="260" fill="#f8fafc" stroke="#475569"/>
+                        <rect x="0" y="0" width="480" height="28" fill="#cbd5e1"/>
+                        <text x="240" y="18" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">Menu (DockPanel.Dock=Top)</text>
+                        <rect x="0" y="232" width="480" height="28" fill="#cbd5e1"/>
+                        <text x="240" y="250" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">StatusBar (DockPanel.Dock=Bottom)</text>
+                        <rect x="0" y="28" width="120" height="204" fill="#e0f2fe"/>
+                        <text x="60" y="135" text-anchor="middle" font-size="11" font-weight="700" fill="#075985">Tools</text>
+                        <rect x="360" y="28" width="120" height="204" fill="#fef3c7"/>
+                        <text x="420" y="135" text-anchor="middle" font-size="11" font-weight="700" fill="#92400e">Parameters</text>
+                        <rect x="120" y="28" width="240" height="204" fill="#ecfdf5"/>
+                        <text x="240" y="120" text-anchor="middle" font-size="12" font-weight="700" fill="#065f46">Image / Canvas</text>
+                        <text x="240" y="138" text-anchor="middle" font-size="10" fill="#065f46">(검사 영역 + 오버레이)</text>
+                    </svg>
+                    <div class="diagram-caption">전형적 검사 SW 화면 골격</div>
+                </div>
+
+                <pre class="language-xml"><code class="language-xml">&lt;Window x:Class="Inspector.MainWindow"
+        Title="Inspector" Width="1280" Height="800"&gt;
+    &lt;DockPanel&gt;
+        &lt;Menu DockPanel.Dock="Top"&gt;
+            &lt;MenuItem Header="File"&gt;
+                &lt;MenuItem Header="Open Recipe..."/&gt;
+                &lt;MenuItem Header="Save Recipe"/&gt;
+            &lt;/MenuItem&gt;
+            &lt;MenuItem Header="Run"/&gt;
+        &lt;/Menu&gt;
+
+        &lt;StatusBar DockPanel.Dock="Bottom"&gt;
+            &lt;TextBlock Text="{Binding StatusText}"/&gt;
+            &lt;Separator/&gt;
+            &lt;TextBlock Text="{Binding Fps, StringFormat='FPS: {0:F1}'}"/&gt;
+        &lt;/StatusBar&gt;
+
+        &lt;Grid&gt;
+            &lt;Grid.ColumnDefinitions&gt;
+                &lt;ColumnDefinition Width="240" MinWidth="180"/&gt;
+                &lt;ColumnDefinition Width="*"/&gt;
+                &lt;ColumnDefinition Width="280" MinWidth="220"/&gt;
+            &lt;/Grid.ColumnDefinitions&gt;
+
+            &lt;!-- 좌: 검사 도구 트리 --&gt;
+            &lt;Border Grid.Column="0" BorderBrush="#CBD5E1" BorderThickness="0,0,1,0"&gt;
+                &lt;TreeView ItemsSource="{Binding InspectionTools}"/&gt;
+            &lt;/Border&gt;
+
+            &lt;!-- 중: 영상 영역. Canvas 위에 ROI/오버레이 노드 --&gt;
+            &lt;Border Grid.Column="1" Background="#1E293B"&gt;
+                &lt;Grid&gt;
+                    &lt;Image Source="{Binding CurrentFrame}" Stretch="Uniform"/&gt;
+                    &lt;ItemsControl ItemsSource="{Binding Overlays}"&gt;
+                        &lt;ItemsControl.ItemsPanel&gt;
+                            &lt;ItemsPanelTemplate&gt;
+                                &lt;Canvas/&gt;
+                            &lt;/ItemsPanelTemplate&gt;
+                        &lt;/ItemsControl.ItemsPanel&gt;
+                    &lt;/ItemsControl&gt;
+                &lt;/Grid&gt;
+            &lt;/Border&gt;
+
+            &lt;!-- 우: 파라미터 --&gt;
+            &lt;Border Grid.Column="2" BorderBrush="#CBD5E1" BorderThickness="1,0,0,0"&gt;
+                &lt;ScrollViewer&gt;
+                    &lt;StackPanel Margin="8" Grid.IsSharedSizeScope="True"&gt;
+                        &lt;TextBlock Text="Camera" FontWeight="Bold" Margin="0,0,0,6"/&gt;
+                        &lt;!-- 파라미터 행들 ... --&gt;
+                    &lt;/StackPanel&gt;
+                &lt;/ScrollViewer&gt;
+            &lt;/Border&gt;
+        &lt;/Grid&gt;
+    &lt;/DockPanel&gt;
+&lt;/Window&gt;</code></pre>
+
+                <p>중앙 영상 위에 <code>Canvas</code>를 겹쳐 ROI 박스, 결과 라벨, 측정 선을 오버레이한다. 데이터 플로우 블록 에디터도 같은 구조에서 <code>Canvas</code> 위에 노드와 연결선을 얹는 형태로 확장된다.</p>
+
+                <!-- 13. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <table>
+                    <tr><th>증상</th><th>원인</th><th>해결</th></tr>
+                    <tr><td>스크롤이 안 된다</td><td>ScrollViewer 안 Grid <code>*</code> 행</td><td>스크롤 대상은 <code>Auto</code> 행</td></tr>
+                    <tr><td>StackPanel 자식 Height가 무시</td><td>StackPanel은 무한 공간</td><td><code>Grid</code>로 교체</td></tr>
+                    <tr><td>DockPanel 마지막 자식이 안 채워짐</td><td><code>LastChildFill</code> 미설정 / 마지막에 Dock 명시</td><td><code>LastChildFill="True"</code>, 마지막 자식엔 Dock 빼기</td></tr>
+                    <tr><td>Canvas 자식이 보이지 않음</td><td><code>Canvas.Left</code>/<code>Top</code> 미설정</td><td>둘 다 명시 (기본 0)</td></tr>
+                    <tr><td>리스트가 수천 개에서 끊긴다</td><td>가상화 깨짐</td><td><code>VirtualizingStackPanel</code> 유지, ItemsPanel 변경 주의</td></tr>
+                    <tr><td>요소가 겹친다</td><td>Margin 음수 사용</td><td>음수 Margin은 피하고 패널 구조 재검토</td></tr>
+                </table>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Canvas로 모든 레이아웃을 짜지 말 것</strong>
+                        Canvas는 절대 좌표라 창 크기가 바뀌면 깨진다. 자유 배치가 본질적으로 필요한 영역(블록 에디터, ROI 오버레이)에서만 쓰고, 일반 화면 골격은 Grid·DockPanel로 짜야 한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Margin 음수는 마지막 수단</strong>
+                        <code>Margin="-4,0,0,0"</code>은 임시방편으로 작동하지만 부모의 클립 영역을 벗어나 그려져 다른 패널과 충돌한다. 보통은 잘못 짜인 중첩의 신호다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Microsoft Learn — WPF Layout System (learn.microsoft.com/dotnet/desktop/wpf/advanced/layout)</li>
+                        <li>Microsoft Learn — Panels Overview / Alignment, Margins, and Padding Overview</li>
+                        <li>Microsoft Learn — Optimizing WPF Application Performance (UI Virtualization)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-wpf');
+    renderPostNav('dev-wpf');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 카테고리 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
