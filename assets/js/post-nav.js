@@ -289,6 +289,28 @@ function renderPostNav(category) {
     const idx = posts.findIndex(p => p.file === currentFile);
     if (idx === -1) return;
 
+    // ===== 시리즈 진행도 (글 상단) =====
+    if (!document.querySelector('.series-progress')) {
+        const meta = document.querySelector('.post-detail-meta');
+        if (meta) {
+            const total = posts.length;
+            const current = idx + 1;
+            const percent = Math.round((current / total) * 100);
+            const catLabel = CAT_LABELS[category] || category;
+            const listUrl = '../index.html?cat=' + category;
+            const progress = document.createElement('div');
+            progress.className = 'series-progress';
+            progress.innerHTML =
+                '<div class="sp-info">' +
+                    '<i class="fa-solid fa-layer-group"></i>' +
+                    '<a href="' + listUrl + '" class="sp-label">' + catLabel + '</a>' +
+                    '<span class="sp-count">' + current + ' / ' + total + '</span>' +
+                '</div>' +
+                '<div class="sp-bar"><div class="sp-fill" style="width:' + percent + '%"></div></div>';
+            meta.parentNode.insertBefore(progress, meta.nextSibling);
+        }
+    }
+
     const nav = document.querySelector('.post-nav-bottom');
     if (!nav) return;
 
