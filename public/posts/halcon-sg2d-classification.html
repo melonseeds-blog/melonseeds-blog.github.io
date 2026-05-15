@@ -1,0 +1,873 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HALCON Solution Guide II-D: Classification — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* SVG 다이어그램 */
+        .diagram-wrap {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .diagram-wrap svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what-is" data-section="what-is">분류란</a>
+        <a href="#workflow" data-section="workflow">워크플로우</a>
+        <a href="#classifiers" data-section="classifiers">분류기 5종</a>
+        <a href="#compare" data-section="compare">분류기 비교</a>
+        <a href="#features" data-section="features">특징 선택</a>
+        <a href="#samples" data-section="samples">학습 데이터</a>
+        <a href="#evaluation" data-section="evaluation">평가</a>
+        <a href="#dl-shift" data-section="dl-shift">딥러닝 전환</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+        <a href="#summary" data-section="summary">핵심 정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">HALCON 비전 라이브러리</span>
+                </div>
+                <h1>HALCON Solution Guide II-D: Classification</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 14 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>HALCON 분류(Classification)의 기본 개념 — 특징 추출 + 분류기 학습 + 적용</li>
+                        <li>HALCON이 제공하는 5종 분류기 — MLP / SVM / GMM / k-NN / 딥러닝 CNN</li>
+                        <li>각 분류기의 특성·장단점·적합 상황 비교</li>
+                        <li>분류 워크플로우와 학습 데이터·특징 선택 기준</li>
+                        <li>평가(confusion matrix, 정확도) 및 클래스 불균형 대응</li>
+                        <li>전통 분류기에서 딥러닝 분류기로의 전환과 흔한 함정</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what-is">분류(Classification)란</a></li>
+                        <li><a href="#workflow">분류 워크플로우</a></li>
+                        <li><a href="#classifiers">HALCON 분류기 5종</a></li>
+                        <li><a href="#compare">분류기 비교 — 어떤 것을 고를까</a></li>
+                        <li><a href="#features">특징(Feature) 선택</a></li>
+                        <li><a href="#samples">학습 데이터(Training Samples) 관리</a></li>
+                        <li><a href="#evaluation">평가 — Confusion Matrix와 클래스 불균형</a></li>
+                        <li><a href="#dl-shift">딥러닝 분류기로의 전환</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">핵심 정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 분류란 -->
+                <h2 id="what-is"><i class="fa-solid fa-tags"></i> 분류(Classification)란</h2>
+
+                <p>분류는 객체(pixel 또는 region)를 미리 정의된 여러 class 중 하나에 할당하는 작업이다. HALCON에서 객체는 보통 region이나 pixel이며, 각 객체는 color, texture, shape, size 같은 feature로 기술된다.</p>
+
+                <p>분류가 적합한 상황은 객체가 비슷하지만 정확한 규칙으로 정의하기 어려운 경우다. 모양이 고정되어 있다면 template matching이 더 빠르고 쉽지만, 객체들의 유사성을 명시적 규칙으로 표현하기 어렵다면 분류기에게 sample을 보여주고 class 경계를 학습시키는 편이 효율적이다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-bullseye"></i> HALCON 분류의 주요 응용</div>
+                    <ul>
+                        <li><strong>image segmentation</strong> — color/texture가 유사한 region으로 영상을 분할</li>
+                        <li><strong>object recognition</strong> — 여러 객체 타입 중 특정 타입을 식별</li>
+                        <li><strong>quality control</strong> — 양품/불량 판정</li>
+                        <li><strong>novelty detection</strong> — 학습된 class에 속하지 않는 이상 객체 탐지</li>
+                        <li><strong>OCR</strong> — 문자 region을 글자 class로 분류</li>
+                    </ul>
+                </div>
+
+                <h3 id="feature-space"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1.1 Feature Vector와 Feature Space</h3>
+
+                <p>각 객체에서 추출한 feature 값들을 모은 배열을 feature vector라 하고, 이 vector가 차지하는 공간을 feature space라 한다. 같은 class에 속한 객체들은 feature space에서 cluster를 형성하며, 분류기의 목표는 cluster 사이를 가르는 경계(line, plane, hypersurface)를 찾는 것이다.</p>
+
+                <p>예를 들어 오렌지와 레몬을 구분할 때 <code>area</code>와 <code>circularity</code> 두 feature만으로도 두 class는 2D feature space 위에서 충분히 분리된다. 분리 경계가 직선이면 linear classifier, 곡면이면 non-linear classifier라 한다.</p>
+
+                <!-- 2. 워크플로우 -->
+                <h2 id="workflow"><i class="fa-solid fa-diagram-project"></i> 분류 워크플로우</h2>
+
+                <p>HALCON 분류는 크게 두 그룹으로 나뉜다. <strong>MLP/SVM/GMM/k-NN</strong>은 사용자가 feature를 명시적으로 정의해야 하고, <strong>Deep Learning</strong>은 라벨링된 이미지만 주면 network가 feature를 자동으로 학습한다.</p>
+
+                <div class="diagram-wrap">
+                    <svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+                            </marker>
+                        </defs>
+                        <!-- Row 1: 전통 분류 -->
+                        <text x="20" y="30" font-size="13" font-weight="700" fill="#334155">전통 분류기 (MLP / SVM / GMM / k-NN)</text>
+                        <g transform="translate(20,50)">
+                            <rect x="0" y="0" width="120" height="50" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+                            <text x="60" y="22" font-size="12" font-weight="600" text-anchor="middle" fill="#1e3a8a">sample 수집</text>
+                            <text x="60" y="38" font-size="11" text-anchor="middle" fill="#1e3a8a">+ class 라벨</text>
+                        </g>
+                        <line x1="145" y1="75" x2="175" y2="75" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <g transform="translate(180,50)">
+                            <rect x="0" y="0" width="120" height="50" rx="8" fill="#fef3c7" stroke="#f59e0b"/>
+                            <text x="60" y="22" font-size="12" font-weight="600" text-anchor="middle" fill="#78350f">feature 추출</text>
+                            <text x="60" y="38" font-size="11" text-anchor="middle" fill="#78350f">→ feature vector</text>
+                        </g>
+                        <line x1="305" y1="75" x2="335" y2="75" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <g transform="translate(340,50)">
+                            <rect x="0" y="0" width="120" height="50" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+                            <text x="60" y="22" font-size="12" font-weight="600" text-anchor="middle" fill="#14532d">classifier 학습</text>
+                            <text x="60" y="38" font-size="11" text-anchor="middle" fill="#14532d">train_class_*</text>
+                        </g>
+                        <line x1="465" y1="75" x2="495" y2="75" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <g transform="translate(500,50)">
+                            <rect x="0" y="0" width="120" height="50" rx="8" fill="#fce7f3" stroke="#ec4899"/>
+                            <text x="60" y="22" font-size="12" font-weight="600" text-anchor="middle" fill="#831843">검증 / 튜닝</text>
+                            <text x="60" y="38" font-size="11" text-anchor="middle" fill="#831843">evaluate_*</text>
+                        </g>
+                        <line x1="625" y1="75" x2="655" y2="75" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <g transform="translate(660,50)">
+                            <rect x="0" y="0" width="90" height="50" rx="8" fill="#e0e7ff" stroke="#6366f1"/>
+                            <text x="45" y="22" font-size="12" font-weight="600" text-anchor="middle" fill="#312e81">적용</text>
+                            <text x="45" y="38" font-size="11" text-anchor="middle" fill="#312e81">classify_*</text>
+                        </g>
+                        <!-- Row 2: DL -->
+                        <text x="20" y="140" font-size="13" font-weight="700" fill="#334155">Deep Learning 분류</text>
+                        <g transform="translate(20,160)">
+                            <rect x="0" y="0" width="160" height="50" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+                            <text x="80" y="22" font-size="12" font-weight="600" text-anchor="middle" fill="#1e3a8a">labeled images</text>
+                            <text x="80" y="38" font-size="11" text-anchor="middle" fill="#1e3a8a">(feature 추출 불필요)</text>
+                        </g>
+                        <line x1="185" y1="185" x2="215" y2="185" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <g transform="translate(220,160)">
+                            <rect x="0" y="0" width="160" height="50" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+                            <text x="80" y="22" font-size="12" font-weight="600" text-anchor="middle" fill="#14532d">transfer learning</text>
+                            <text x="80" y="38" font-size="11" text-anchor="middle" fill="#14532d">pretrained CNN 재학습</text>
+                        </g>
+                        <line x1="385" y1="185" x2="415" y2="185" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <g transform="translate(420,160)">
+                            <rect x="0" y="0" width="150" height="50" rx="8" fill="#e0e7ff" stroke="#6366f1"/>
+                            <text x="75" y="22" font-size="12" font-weight="600" text-anchor="middle" fill="#312e81">inference</text>
+                            <text x="75" y="38" font-size="11" text-anchor="middle" fill="#312e81">confidence per class</text>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">전통 분류기와 딥러닝 분류기의 워크플로우 차이</div>
+                </div>
+
+                <h3 id="workflow-steps"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2.1 단계별 작업</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>단계</th>
+                            <th>전통 분류기 (MLP/SVM/GMM/k-NN)</th>
+                            <th>딥러닝 분류기</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">데이터 준비</td>
+                            <td>sample region + class 라벨</td>
+                            <td>labeled images (class별 다량)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">feature 정의</td>
+                            <td>사용자가 명시적으로 선택</td>
+                            <td>network가 자동 추출</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">학습</td>
+                            <td><code>train_class_*</code></td>
+                            <td><code>train_dl_model_batch</code> (transfer learning)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">검증</td>
+                            <td><code>evaluate_class_*</code></td>
+                            <td>validation set의 confidence 분석</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">적용</td>
+                            <td><code>classify_class_*</code></td>
+                            <td><code>apply_dl_model</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 3. 분류기 5종 -->
+                <h2 id="classifiers"><i class="fa-solid fa-microchip"></i> HALCON 분류기 5종</h2>
+
+                <h3 id="cls-mlp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.1 MLP — Multi-Layer Perceptron</h3>
+
+                <p>단일 hidden layer를 가진 신경망으로 비선형 분류 경계를 직접 만든다. Hidden unit에서는 hyperbolic tangent, 출력층에서는 softmax 활성화 함수를 사용해 class별 확률로 변환한다. HALCON의 MLP는 hidden layer가 하나뿐이라 엄밀히는 deep learning이 아니다.</p>
+
+                <ul>
+                    <li>적합: 빠른 분류 속도가 필요한 응용, 라인 적용용</li>
+                    <li>약점: training이 느리고, 전체 데이터가 한 번에 있어야 함</li>
+                    <li>novelty detection 지원 안 함</li>
+                </ul>
+
+                <h3 id="cls-svm"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.2 SVM — Support Vector Machine</h3>
+
+                <p>feature space를 kernel(예: Gaussian RBF, polynomial)로 고차원에 mapping해 linear separator를 찾는다. 두 class 간 margin을 최대화하는 hyperplane을 선택하며, hyperplane에 가장 가까운 sample이 support vector다. 다중 class는 one-vs-one 또는 one-vs-rest로 확장된다.</p>
+
+                <ul>
+                    <li>적합: 약간 더 높은 정확도가 필요한 경우</li>
+                    <li>약점: 분류 속도가 MLP보다 느리고, sample이 많아지면 메모리가 큼</li>
+                    <li><code>reduce_class_svm</code>으로 support vector 수를 줄일 수 있음</li>
+                </ul>
+
+                <h3 id="cls-gmm"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.3 GMM — Gaussian Mixture Model</h3>
+
+                <p>Bayes decision rule 기반으로 각 class의 확률 밀도를 여러 Gaussian 분포의 선형 결합으로 모델링한다. class 중심 주위에 covariance ellipsoid를 그리고, sample의 a posteriori probability가 가장 큰 class로 할당한다.</p>
+
+                <ul>
+                    <li>적합: 학습/분류 모두 빠르고, class 수가 적을 때</li>
+                    <li>novelty detection에 가장 적합 — 어느 class에도 속하지 않는 sample을 reject 가능</li>
+                    <li>약점: feature 차원이 약 15를 넘으면 신뢰성 저하 (curse of dimensionality)</li>
+                    <li>OCR에는 부적합 (HALCON이 미제공)</li>
+                </ul>
+
+                <h3 id="cls-knn"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.4 k-NN — K-Nearest Neighbors</h3>
+
+                <p>training data를 그대로 저장한 뒤, 새 sample에 대해 가장 가까운 k개의 이웃 class를 majority vote(또는 distance-weighted vote)로 결정한다. 학습은 사실상 데이터 저장에 불과해 매우 빠르다.</p>
+
+                <ul>
+                    <li>적합: feature/training set 구성을 빠르게 실험할 때, 추가 데이터를 점진적으로 넣을 때</li>
+                    <li>약점: 분류 속도가 MLP보다 느리고, training data 전부를 보관하므로 메모리 사용량이 큼</li>
+                    <li>feature 차원 제한 없음</li>
+                </ul>
+
+                <h3 id="cls-dl"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3.5 Deep Learning — CNN 기반</h3>
+
+                <p>Convolutional / Pooling / ReLU / Fully Connected layer로 구성된 CNN을 사용한다. HALCON은 처음부터 network를 만들지 못하게 하고, 대신 pretrained network에 출력층만 교체해 hidden layer를 재학습하는 transfer learning만 허용한다.</p>
+
+                <ul>
+                    <li>적합: 매우 높은 정확도가 필요하거나, feature 정의가 어려운 경우</li>
+                    <li>약점: 라벨 이미지 다량 필요, 학습 시간 길고 GPU 거의 필수</li>
+                    <li>OCR의 경우 pretrained font <code>Universal</code>만 사용 가능 (자체 학습 불가)</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Euclidean / Hyperbox</strong>
+                        단순한 분류기로 image segmentation에 한정해 제공된다. 저차원 feature에서만 안정적이며 일반 분류·OCR에서는 거의 쓰지 않는다.
+                    </div>
+                </div>
+
+                <!-- 4. 비교 -->
+                <h2 id="compare"><i class="fa-solid fa-scale-balanced"></i> 분류기 비교 — 어떤 것을 고를까</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>특성</th>
+                            <th>DL (CNN)</th>
+                            <th>MLP</th>
+                            <th>SVM</th>
+                            <th>GMM</th>
+                            <th>k-NN</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">학습 속도</td>
+                            <td>매우 느림</td>
+                            <td>느림</td>
+                            <td>보통</td>
+                            <td>빠름</td>
+                            <td>매우 빠름</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">분류 속도</td>
+                            <td>HW 의존</td>
+                            <td>빠름</td>
+                            <td>보통</td>
+                            <td>빠름</td>
+                            <td>보통</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">feature 자동 추출</td>
+                            <td>예</td>
+                            <td>아니오</td>
+                            <td>아니오</td>
+                            <td>아니오</td>
+                            <td>아니오</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">메모리</td>
+                            <td>network 크기 의존</td>
+                            <td>작음</td>
+                            <td>보통</td>
+                            <td>작음</td>
+                            <td>큼</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">고차원 feature</td>
+                            <td>적합</td>
+                            <td>적합</td>
+                            <td>적합</td>
+                            <td>부적합 (~15차원)</td>
+                            <td>적합</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">novelty detection</td>
+                            <td>아니오</td>
+                            <td>아니오</td>
+                            <td>제한적(2-class)</td>
+                            <td>예</td>
+                            <td>아니오</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">추가 학습</td>
+                            <td>fine-tuning 가능</td>
+                            <td>처음부터 재학습</td>
+                            <td>비추천</td>
+                            <td>비추천</td>
+                            <td>매우 쉬움</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>선택 가이드</strong>
+                        라인 속도가 핵심이면 MLP, 정확도 우선이면 SVM, 이상 탐지가 필요하면 GMM, 데이터 실험 단계면 k-NN, feature 정의가 어렵고 데이터가 충분하면 DL을 고려한다.
+                    </div>
+                </div>
+
+                <!-- 5. 특징 선택 -->
+                <h2 id="features"><i class="fa-solid fa-vial"></i> 특징(Feature) 선택</h2>
+
+                <p>딥러닝을 제외한 모든 HALCON 분류기는 사용자가 feature를 선택해야 한다. 어떤 feature가 좋은지에 대한 고정 규칙은 없고, 객체 특성에 따라 다르게 결정해야 한다.</p>
+
+                <h3 id="feat-types"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.1 작업별 feature</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>작업</th>
+                            <th>사용 가능한 feature</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">general classification</td>
+                            <td>region feature, color, texture, shape, size 등 자유롭게 조합</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">image segmentation</td>
+                            <td>multi-channel color/texture 이미지의 pixel 값 (자동 추출)</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">OCR</td>
+                            <td>제한된 region feature 집합 (operator가 내부적으로 계산)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="feat-tools"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5.2 HALCON이 돕는 도구</h3>
+
+                <ul>
+                    <li><code>texture_laws</code> + <code>compose6</code> — multi-channel texture 이미지 생성</li>
+                    <li><code>cooc_feature_image</code> — energy, correlation, homogeneity, contrast 등 텍스처 feature</li>
+                    <li>HDevelop의 <code>calculate_features</code> procedure — 회전 불변 등 속성을 묶어 계산</li>
+                    <li><code>select_feature_set_mlp/svm/gmm/knn</code> — 자동 feature 선택 operator</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>feature가 많을수록 좋은 것은 아니다</strong>
+                        무관한 feature를 늘리면 noise가 추가되고 GMM은 차원 저주에 빠진다. 자동 selection을 출발점으로 삼고, class 간 분리도가 높은 feature만 남기는 편이 안전하다.
+                    </div>
+                </div>
+
+                <!-- 6. 학습 데이터 -->
+                <h2 id="samples"><i class="fa-solid fa-database"></i> 학습 데이터(Training Samples) 관리</h2>
+
+                <p>분류 결과가 만족스럽지 않다면 그 원인은 보통 알고리즘이 아니라 데이터다. sample은 다음 두 가지를 모두 보여줘야 한다.</p>
+
+                <ul>
+                    <li>객체의 핵심 특징(class 사이의 차이)</li>
+                    <li>같은 class 내부에서 허용되는 변동 범위 — 조명, 노이즈, 크기, 회전, 제품 편차 등</li>
+                </ul>
+
+                <h3 id="samp-tricks"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 6.1 데이터가 부족할 때의 trick</h3>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-wand-magic-sparkles"></i> 인공 sample 증강</div>
+                    <p>몇 안 되는 sample을 복사해 약간씩 변형한다. texture라면 noise를 추가하고, 크기/회전이 영향이면 erosion·dilation 또는 작은 회전을 가해 허용 변동 방향마다 여러 변형본을 만든다.</p>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-shuffle"></i> 두 단계 분류로 분할</div>
+                    <p>class 불균형이 심하면 우선 모든 결함 class를 하나의 "불량" class로 합쳐 양품/불량 2-class 문제로 학습한다. 이후 불량으로 reject된 sample만 대상으로 결함 종류를 분류하는 두 번째 모델을 학습한다.</p>
+                </div>
+
+                <h3 id="samp-rules"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 6.2 라벨링 원칙</h3>
+
+                <ul>
+                    <li>라벨 일관성 — 같은 객체는 같은 사람이 같은 기준으로</li>
+                    <li>경계 sample 확보 — class 사이 애매한 경우도 일부 포함</li>
+                    <li>train / validation / test set 분리</li>
+                    <li>현장 조명·광학 편차를 sample에 반영</li>
+                </ul>
+
+                <!-- 7. 평가 -->
+                <h2 id="evaluation"><i class="fa-solid fa-chart-line"></i> 평가 — Confusion Matrix와 클래스 불균형</h2>
+
+                <p>HALCON은 <code>evaluate_class_mlp / gmm</code> 등으로 sample이 어느 class에 얼마의 confidence로 할당되었는지 반환한다. 이 결과를 confusion matrix로 정리하면 단순 정확도(accuracy) 너머의 정보가 보인다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr>
+                            <th>지표</th>
+                            <th>의미</th>
+                            <th>주의점</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Accuracy</td>
+                            <td>전체 sample 중 맞춘 비율</td>
+                            <td>class 불균형 시 함정 — 다수 class 정답률에 가려짐</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Precision</td>
+                            <td>"불량" 판정 중 진짜 불량의 비율</td>
+                            <td>false reject 비용이 크면 핵심 지표</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Recall</td>
+                            <td>실제 불량 중 잡아낸 비율</td>
+                            <td>유출(escape) 비용이 크면 핵심 지표</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Confusion Matrix</td>
+                            <td>class별 오인 패턴</td>
+                            <td>특정 class 쌍이 자주 헷갈리면 feature·sample 보강</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">Confidence</td>
+                            <td>분류기가 자신 있다고 판단하는 정도</td>
+                            <td>낮으면 reject 또는 재검사로 분기 가능</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>class 불균형은 평가까지 왜곡한다</strong>
+                        양품 99% 불량 1% 라인에서 모든 sample을 양품이라 답해도 accuracy 99%다. 항상 confusion matrix와 class별 precision/recall을 함께 본다.
+                    </div>
+                </div>
+
+                <!-- 8. 딥러닝 전환 -->
+                <h2 id="dl-shift"><i class="fa-solid fa-brain"></i> 딥러닝 분류기로의 전환</h2>
+
+                <p>전통 분류기로 한계가 보일 때, 또는 다음 조건에 해당하면 deep learning을 검토할 만하다.</p>
+
+                <ul>
+                    <li>사람 눈으로는 구분되지만 명시적 rule/feature로 표현하기 어려운 경우</li>
+                    <li>결함 형태가 다양해 region feature로 일반화가 어려운 경우</li>
+                    <li>texture·외관 검사처럼 high-level 추상이 필요한 경우</li>
+                </ul>
+
+                <h3 id="dl-transfer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.1 Transfer Learning이 표준 진입점</h3>
+
+                <p>HALCON은 처음부터 network를 짜는 것을 허용하지 않는다. 대신 ImageNet급 데이터로 미리 학습된 backbone에 사용자 class용 출력층을 붙여 hidden layer를 재학습한다. 이 방식은 데이터·연산·시간 요구를 크게 줄여준다.</p>
+
+                <h3 id="dl-output"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 8.2 출력 해석</h3>
+
+                <p>딥러닝 분류기는 단일 class를 반환하는 대신 class별 confidence(예: <code>apple: 0.97, lemon: 0.03</code>)를 돌려준다. 임계값을 두어 신뢰도가 낮은 sample은 재검사 또는 manual review로 보내는 것이 실무 패턴이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-link"></i>
+                    <div class="callout-body">
+                        <strong>관련 시리즈 글</strong>
+                        AI 딥러닝 비전 시리즈 #5(학습)와 #6(분류)에서 transfer learning, hyperparameter, dataset 관리, classification 평가 절차를 더 자세히 다룬다.
+                    </div>
+                </div>
+
+                <!-- 9. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-land-mine-on"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>데이터 부족</strong>
+                        sample이 적으면 어떤 분류기도 일반화하지 못한다. 특히 DL은 class당 수백~수천 장이 출발점이다. 양 부족 → 증강 또는 전통 분류기로 회귀.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>과적합(Overfitting)</strong>
+                        train set만 잘 맞추고 현장에서 무너지는 경우. 별도의 validation/test set으로 항상 검증하고, DL에서는 pooling·dropout·data augmentation으로 완화한다.
+                    </div>
+                </div>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>라벨 오류</strong>
+                        잘못 라벨된 sample 몇 개가 class 경계를 흐트러뜨린다. confusion matrix에서 특정 쌍이 반복적으로 헷갈리면 sample 라벨 자체를 의심한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>feature 선택 실패</strong>
+                        class 간 분리도가 낮은 feature 조합으로는 어떤 분류기도 좋은 결과를 내지 못한다. feature space 시각화(2D/3D)와 자동 선택 operator를 적극 활용한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>훈련 후 데이터 분포 변화(Drift)</strong>
+                        제품 lot 변경, 조명 노화, 카메라 교체로 feature 분포가 이동하면 정확도가 서서히 떨어진다. 주기적 재검증 + 추가 학습 절차를 운영 단계에 포함한다.
+                    </div>
+                </div>
+
+                <!-- 10. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 핵심 정리</h2>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>HALCON 분류 설계 핵심</strong>
+                        <ul style="margin-top:6px; padding-left:18px;">
+                            <li>분류는 "feature 정의 + sample 수집 + 학습 + 검증 + 적용"의 반복이다.</li>
+                            <li>HALCON 주요 분류기 5종(MLP/SVM/GMM/k-NN/DL) 중 라인 속도는 MLP, 정확도는 SVM, novelty는 GMM, 실험은 k-NN, feature 정의 어려움은 DL.</li>
+                            <li>알고리즘보다 feature·sample 품질이 결과의 대부분을 결정한다.</li>
+                            <li>accuracy 하나가 아니라 confusion matrix·precision·recall을 함께 봐야 한다.</li>
+                            <li>DL 분류기는 transfer learning이 표준 진입점이며, confidence 기반 reject 흐름과 결합한다.</li>
+                            <li>운영 단계 drift를 가정해 재검증·재학습 절차를 설계에 포함한다.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>MVTec — HALCON Solution Guide II-D: Classification</li>
+                        <li>MVTec — HALCON Reference Manual: Deep Learning, <code>train_dl_model_batch</code>, <code>create_class_mlp/svm/gmm/knn</code></li>
+                        <li>HDevelop 예제: <code>%HALCONEXAMPLES%\solution_guide\classification\classify_metal_parts.hdev</code></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-halcon');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+    renderPostNav('tech-halcon');
+</script>
+
+</body>
+</html>

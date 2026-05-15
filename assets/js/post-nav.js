@@ -162,6 +162,13 @@ const POST_NAV_DATA = {
         { file: 'halcon-sg1-07-inspection-classification-codes-ocr.html', title: 'Inspection / Classification / Code / OCR' },
         { file: 'halcon-sg1-08-3d-robot-calibration.html', title: '3D / Robot Vision / Calibration' },
         { file: 'halcon-sg1-09-performance-debugging-design.html', title: '성능 / 디버깅 / 실무 설계 패턴' },
+        { file: 'halcon-sg2a-image-acquisition.html', title: 'Solution Guide II-A: Image Acquisition 심화' },
+        { file: 'halcon-sg2b-matching.html', title: 'Solution Guide II-B: Matching 심화' },
+        { file: 'halcon-sg2c-2d-data-codes.html', title: 'Solution Guide II-C: 2D Data Codes' },
+        { file: 'halcon-sg2d-classification.html', title: 'Solution Guide II-D: Classification' },
+        { file: 'halcon-sg3a-1d-measuring.html', title: 'Solution Guide III-A: 1D Measuring' },
+        { file: 'halcon-sg3b-2d-measuring.html', title: 'Solution Guide III-B: 2D Measuring' },
+        { file: 'halcon-sg3c-3d-vision.html', title: 'Solution Guide III-C: 3D Vision' },
     ],
     'growth-cert-istqb': [
         { file: 'istqb-fl-plan.html', title: 'ISTQB FL 자격증 공부 계획' },

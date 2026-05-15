@@ -1,0 +1,785 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HALCON Solution Guide III-A: 1D Measuring — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* SVG 다이어그램 */
+        .diagram {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 18px; margin: 20px 0; text-align: center;
+        }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram .caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; font-style: italic;
+        }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#intro" data-section="intro">1D 측정이란</a>
+        <a href="#process" data-section="process">엣지 추출 과정</a>
+        <a href="#roi" data-section="roi">측정 ROI</a>
+        <a href="#operators" data-section="operators">측정 함수</a>
+        <a href="#params" data-section="params">핵심 파라미터</a>
+        <a href="#pairs" data-section="pairs">엣지 페어</a>
+        <a href="#world" data-section="world">World 좌표</a>
+        <a href="#align" data-section="align">정렬·재사용</a>
+        <a href="#fuzzy" data-section="fuzzy">Fuzzy 측정</a>
+        <a href="#pitfalls" data-section="pitfalls">흔한 함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">HALCON 비전 라이브러리</span>
+                </div>
+                <h1>HALCON Solution Guide III-A: 1D Measuring</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>1D 측정의 정의 — measurement ROI를 따라 만든 profile에서 엣지를 찾는 방식</li>
+                        <li>직선·원호 ROI의 구성과 lines of projection 개념</li>
+                        <li>measure_pos / measure_pairs / measure_thresh / measure_projection의 차이</li>
+                        <li>핵심 파라미터 — Sigma / Threshold / Transition / Select / Interpolation</li>
+                        <li>엣지 페어 측정과 IntraDistance / InterDistance</li>
+                        <li>pixel 좌표를 world 좌표로 변환하는 흐름</li>
+                        <li>shape matching 기반 ROI 정렬과 measure object 재사용</li>
+                        <li>Fuzzy measure object로 엣지 선택을 정교하게 제어하는 법</li>
+                        <li>경사 엣지, 부분 ROI, 노이즈 등 흔한 함정과 대응</li>
+                    </ul>
+                </div>
+
+                <p>이 글은 시리즈 I의 05편 <a href="halcon-sg1-05-measuring-edges-contours.html">Measuring / Edge / XLD Contour</a>가 측정 계통의 큰 그림을 잡았다면, 같은 주제 중 1D 측정만을 깊게 다룬 심화편이다. MVTec의 Solution Guide III-A를 기반으로 정리한다.</p>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">1D 측정이란 무엇인가</a></li>
+                        <li><a href="#process">1D 엣지 추출 과정</a></li>
+                        <li><a href="#roi">측정 ROI 설계</a></li>
+                        <li><a href="#operators">네 가지 측정 함수</a></li>
+                        <li><a href="#params">핵심 파라미터</a></li>
+                        <li><a href="#pairs">엣지 페어 측정</a></li>
+                        <li><a href="#world">World 좌표 변환</a></li>
+                        <li><a href="#align">ROI 정렬과 재사용</a></li>
+                        <li><a href="#fuzzy">Fuzzy Measure Object</a></li>
+                        <li><a href="#pitfalls">흔한 함정과 대응</a></li>
+                        <li><a href="#summary">핵심 정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 1D 측정이란 -->
+                <h2 id="intro"><i class="fa-solid fa-ruler"></i> 1D 측정이란 무엇인가</h2>
+
+                <p>HALCON의 1D Measuring은 직선 또는 원호 형태의 작은 ROI를 따라 1차원 gray value profile을 만든 뒤, 그 profile 위에서 엣지 위치를 subpixel 정밀도로 찾는 방식이다. 2D 엣지 검출처럼 contour 전체를 찾는 대신, profile line과 엣지의 교차점만 빠르게 추출한다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-bullseye"></i> 핵심 아이디어</div>
+                    <p>측정하려는 엣지가 ROI의 진행 방향에 거의 수직이라는 가정하에, ROI 폭 방향으로 픽셀을 평균해서 1D profile을 만든다. 평균을 취하기 때문에 노이즈는 줄고 엣지 신호는 살아난다.</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>언제 1D 측정을 쓰는가</strong>
+                        폭, 간격, 위치 같은 1차원 수치만 필요하고 엣지가 비교적 직선·수직 조건을 만족할 때, 1D 측정은 2D 엣지 추출보다 빠르고 안정적이다.
+                    </div>
+                </div>
+
+                <!-- 2. 1D 엣지 추출 과정 -->
+                <h2 id="process"><i class="fa-solid fa-wave-square"></i> 1D 엣지 추출 과정</h2>
+
+                <p>HALCON이 1D profile에서 엣지를 찾는 절차는 다음과 같다.</p>
+
+                <ol>
+                    <li>ROI 안에 profile line을 따라 등간격으로 lines of projection을 수직 방향으로 구성한다.</li>
+                    <li>각 line of projection에서 픽셀 gray value의 평균을 계산해 profile을 만든다.</li>
+                    <li>profile을 Gaussian 필터로 smoothing한다 (Sigma 파라미터).</li>
+                    <li>smoothed profile의 1차 미분을 계산한다.</li>
+                    <li>1차 미분의 local extrema가 엣지 후보가 되고, 그중 절댓값이 Threshold 이상인 것만 엣지로 채택된다.</li>
+                    <li>각 엣지의 profile line과의 교차점을 subpixel 위치로 반환한다.</li>
+                </ol>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 560 260" xmlns="http://www.w3.org/2000/svg">
+                        <!-- ROI rectangle -->
+                        <rect x="40" y="40" width="320" height="60" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+                        <!-- profile line -->
+                        <line x1="40" y1="70" x2="360" y2="70" stroke="#1e40af" stroke-width="2" stroke-dasharray="4 3"/>
+                        <text x="200" y="35" text-anchor="middle" font-size="11" fill="#1e40af" font-weight="600">Profile Line (측정 방향)</text>
+                        <!-- lines of projection -->
+                        <g stroke="#64748b" stroke-width="0.8">
+                            <line x1="60" y1="40" x2="60" y2="100"/>
+                            <line x1="80" y1="40" x2="80" y2="100"/>
+                            <line x1="100" y1="40" x2="100" y2="100"/>
+                            <line x1="120" y1="40" x2="120" y2="100"/>
+                            <line x1="140" y1="40" x2="140" y2="100"/>
+                            <line x1="160" y1="40" x2="160" y2="100"/>
+                            <line x1="180" y1="40" x2="180" y2="100"/>
+                            <line x1="200" y1="40" x2="200" y2="100"/>
+                            <line x1="220" y1="40" x2="220" y2="100"/>
+                            <line x1="240" y1="40" x2="240" y2="100"/>
+                            <line x1="260" y1="40" x2="260" y2="100"/>
+                            <line x1="280" y1="40" x2="280" y2="100"/>
+                            <line x1="300" y1="40" x2="300" y2="100"/>
+                            <line x1="320" y1="40" x2="320" y2="100"/>
+                            <line x1="340" y1="40" x2="340" y2="100"/>
+                        </g>
+                        <text x="370" y="75" font-size="10" fill="#64748b">Lines of projection</text>
+
+                        <!-- edge crosses -->
+                        <line x1="130" y1="35" x2="130" y2="105" stroke="#dc2626" stroke-width="2.5"/>
+                        <line x1="250" y1="35" x2="250" y2="105" stroke="#dc2626" stroke-width="2.5"/>
+                        <text x="130" y="120" text-anchor="middle" font-size="10" fill="#dc2626">edge 1</text>
+                        <text x="250" y="120" text-anchor="middle" font-size="10" fill="#dc2626">edge 2</text>
+
+                        <!-- profile graph below -->
+                        <line x1="40" y1="230" x2="360" y2="230" stroke="#94a3b8"/>
+                        <line x1="40" y1="150" x2="40" y2="230" stroke="#94a3b8"/>
+                        <text x="20" y="160" font-size="9" fill="#64748b">gray</text>
+                        <!-- profile curve -->
+                        <path d="M 40,160 L 110,160 Q 130,160 130,200 L 230,200 Q 250,200 250,160 L 360,160" fill="none" stroke="#1e40af" stroke-width="2"/>
+                        <!-- derivative spikes -->
+                        <path d="M 40,200 L 120,200 L 130,170 L 140,200 L 240,200 L 250,230 L 260,200 L 360,200" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="2 2"/>
+                        <text x="380" y="165" font-size="10" fill="#1e40af">profile</text>
+                        <text x="380" y="205" font-size="10" fill="#dc2626">derivative</text>
+                    </svg>
+                    <div class="caption">ROI에서 profile을 만들고, 1차 미분의 extrema로 엣지를 찾는 흐름</div>
+                </div>
+
+                <h3 id="interpolation"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Interpolation 모드</h3>
+
+                <p>profile line이 수평·수직이 아니면 픽셀 사이 값을 보간해야 한다. measure object를 만들 때 Interpolation 파라미터로 지정한다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr><th>모드</th><th>속도</th><th>정확도</th><th>비고</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">nearest_neighbor</td><td>가장 빠름</td><td>낮음</td><td>가까운 픽셀 값을 그대로 사용</td></tr>
+                        <tr><td class="highlight">bilinear</td><td>중간</td><td>중간</td><td>실무 기본값으로 무난</td></tr>
+                        <tr><td class="highlight">bicubic</td><td>느림</td><td>가장 높음</td><td>정밀 측정에 사용. ROI 주변 2픽셀 margin 필요</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- 3. ROI 설계 -->
+                <h2 id="roi"><i class="fa-solid fa-vector-square"></i> 측정 ROI 설계</h2>
+
+                <p>measure object는 두 가지 형태로 만든다.</p>
+
+                <h3 id="rect-roi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 직선 ROI — gen_measure_rectangle2</h3>
+
+<pre><code>gen_measure_rectangle2 (Row, Column, Phi, Length1, Length2,
+                        Width, Height, Interpolation, MeasureHandle)</code></pre>
+
+                <ul>
+                    <li><code>Row, Column</code> — ROI 중심</li>
+                    <li><code>Phi</code> — 회전 각도 (라디안)</li>
+                    <li><code>Length1</code> — profile line 방향의 반 길이</li>
+                    <li><code>Length2</code> — ROI 폭 방향의 반 길이</li>
+                    <li><code>Width, Height</code> — 적용 대상 이미지의 크기</li>
+                </ul>
+
+                <h3 id="arc-roi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 원호 ROI — gen_measure_arc</h3>
+
+<pre><code>gen_measure_arc (CenterRow, CenterCol, Radius, AngleStart,
+                 AngleExtent, AnnulusRadius, Width, Height,
+                 Interpolation, MeasureHandle)</code></pre>
+
+                <p>원형 부품의 cog 폭이나 hole 가장자리를 따라 측정할 때 쓴다. 결과 거리는 기본적으로 <strong>arc length</strong>로 반환된다. 필요하면 두 엣지 좌표로 linear distance를 별도로 계산하거나, <code>arc / radius</code>로 angular distance를 얻는다.</p>
+
+                <h3 id="roi-width"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ROI 폭 선택 가이드</h3>
+
+                <p>ROI 폭은 노이즈 감소와 엣지 방향 가정 사이의 trade-off다.</p>
+
+                <ul>
+                    <li>엣지가 profile line과 거의 수직이라면 ROI 폭을 크게 잡아 평균 효과로 노이즈를 줄인다.</li>
+                    <li>엣지가 기울어 있거나 휘어 있다면 ROI 폭을 좁혀야 한다. 그렇지 않으면 평균 과정에서 엣지가 blur 처리되어 위치 정확도가 떨어진다.</li>
+                </ul>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>경사 엣지 주의</strong>
+                        profile line의 수직 방향에서 엣지가 30도 이상 기울면, ROI 폭을 크게 줄이지 않는 한 profile 자체가 부드러워져 엣지가 사라지거나 위치 오차가 커진다.
+                    </div>
+                </div>
+
+                <!-- 4. 측정 함수 -->
+                <h2 id="operators"><i class="fa-solid fa-toolbox"></i> 네 가지 측정 함수</h2>
+
+                <p>같은 measure object handle을 가지고 목적에 따라 네 가지 측정 함수를 선택해 호출한다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr><th>함수</th><th>반환</th><th>용도</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">measure_pos</td><td>개별 엣지 위치, amplitude, 간 거리</td><td>한쪽 면 위치, 다중 엣지 사이 간격</td></tr>
+                        <tr><td class="highlight">measure_pairs</td><td>엣지 쌍의 두 위치, IntraDistance, InterDistance</td><td>두 엣지로 둘러싸인 객체 폭과 간격</td></tr>
+                        <tr><td class="highlight">measure_thresh</td><td>특정 gray value를 갖는 subpixel 위치</td><td>조명이 안정된 환경에서 임계값 기반 위치 추출</td></tr>
+                        <tr><td class="highlight">measure_projection</td><td>raw gray value profile (tuple)</td><td>사용자 정의 1D 분석. pitch 라인 등 특수 패턴</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>measure_thresh의 한계</strong>
+                        <code>measure_thresh</code>는 절대 gray value를 기준으로 위치를 잡기 때문에, 조명이 살짝 변해도 결과가 같이 흔들린다. 조명 안정성이 보장될 때만 의미가 있다.
+                    </div>
+                </div>
+
+                <!-- 5. 핵심 파라미터 -->
+                <h2 id="params"><i class="fa-solid fa-sliders"></i> 핵심 파라미터</h2>
+
+                <h3 id="sigma"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Sigma — Gaussian smoothing 강도</h3>
+
+                <p>profile을 부드럽게 만드는 정도를 결정한다.</p>
+
+                <ul>
+                    <li>작은 sigma — 엣지 위치는 민감하지만 노이즈에 흔들린다.</li>
+                    <li>큰 sigma — 노이즈가 줄지만 엣지 위치가 blur되고 인접 엣지가 합쳐질 수 있다.</li>
+                    <li>실무에서는 1.0 전후를 시작점으로 잡고 profile 모양을 보며 조정한다.</li>
+                </ul>
+
+                <h3 id="threshold"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Threshold — 미분 진폭 기준</h3>
+
+                <p>smoothed profile 1차 미분의 절댓값이 이 값 이상인 extrema만 엣지로 채택한다. 너무 낮으면 노이즈가 엣지로 잡히고, 너무 높으면 약한 엣지가 누락된다.</p>
+
+                <h3 id="transition"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Transition — 엣지 방향성</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr><th>값</th><th>의미</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">positive</td><td>dark → bright 전이만 채택</td></tr>
+                        <tr><td class="highlight">negative</td><td>bright → dark 전이만 채택</td></tr>
+                        <tr><td class="highlight">all</td><td>양방향 모두 채택. measure_pairs에서는 첫 엣지 방향으로 페어가 결정됨</td></tr>
+                        <tr><td class="highlight">*_strongest</td><td>동일 방향이 연속될 때 가장 강한 엣지 하나만 유지. shadow 등 부엣지를 제거</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>Transition 오설정의 대표 증상</strong>
+                        ROI 방향을 반대로 설정하면 negative와 positive가 통째로 뒤바뀐다. 측정값이 일관되게 한 쪽으로 어긋난다면 ROI 방향과 transition 조합부터 의심한다.
+                    </div>
+                </div>
+
+                <h3 id="select"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Select — 결과 개수 제한</h3>
+
+                <p><code>first</code>, <code>last</code>, <code>all</code>로 반환할 엣지 또는 페어를 제한한다. 검사 대상이 첫 번째 엣지뿐임이 확실하면 first로 설정해 안정성을 높인다.</p>
+
+                <!-- 6. 엣지 페어 -->
+                <h2 id="pairs"><i class="fa-solid fa-arrows-left-right"></i> 엣지 페어 측정</h2>
+
+                <p>두 엣지 사이의 폭을 측정하는 가장 흔한 경우다. pin width, hole diameter, lead gap, line width 같은 검사 항목이 모두 여기에 해당한다.</p>
+
+                <h3 id="pair-distances"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> IntraDistance vs InterDistance</h3>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 560 160" xmlns="http://www.w3.org/2000/svg">
+                        <!-- baseline -->
+                        <line x1="20" y1="80" x2="540" y2="80" stroke="#cbd5e1"/>
+                        <!-- pairs -->
+                        <rect x="60" y="60" width="60" height="40" fill="#1e293b"/>
+                        <rect x="200" y="60" width="60" height="40" fill="#1e293b"/>
+                        <rect x="340" y="60" width="60" height="40" fill="#1e293b"/>
+                        <rect x="460" y="60" width="60" height="40" fill="#1e293b"/>
+                        <!-- intra arrows -->
+                        <g stroke="#059669" stroke-width="1.5" fill="none">
+                            <line x1="60" y1="120" x2="120" y2="120" marker-end="url(#a)" marker-start="url(#a)"/>
+                            <line x1="200" y1="120" x2="260" y2="120" marker-end="url(#a)" marker-start="url(#a)"/>
+                        </g>
+                        <text x="90" y="138" text-anchor="middle" font-size="10" fill="#059669">IntraDistance</text>
+                        <text x="230" y="138" text-anchor="middle" font-size="10" fill="#059669">IntraDistance</text>
+                        <!-- inter arrow -->
+                        <line x1="120" y1="40" x2="200" y2="40" stroke="#dc2626" stroke-width="1.5" marker-end="url(#a)" marker-start="url(#a)"/>
+                        <text x="160" y="30" text-anchor="middle" font-size="10" fill="#dc2626">InterDistance</text>
+                        <defs>
+                            <marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    <div class="caption">IntraDistance는 페어 내 두 엣지 거리, InterDistance는 인접 페어 사이의 거리</div>
+                </div>
+
+                <h3 id="pair-transition"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 페어에서의 Transition</h3>
+
+                <ul>
+                    <li><code>negative</code> — 첫 엣지 negative + 둘째 엣지 positive. 즉 어두운 영역을 둘러싼 페어</li>
+                    <li><code>positive</code> — 밝은 영역을 둘러싼 페어</li>
+                    <li><code>all</code> — 첫 엣지 방향에 따라 자동 결정. 밝기가 들쭉날쭉한 객체에 유용</li>
+                </ul>
+
+                <h3 id="pair-strongest"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> _strongest 모드의 가치</h3>
+
+                <p>그림자나 반사로 같은 방향 엣지가 연달아 나타날 때, 기본 페어링은 첫 엣지(=그림자)를 선택해 페어를 잘못 만든다. <code>negative_strongest</code>처럼 접미사를 붙이면 같은 방향 연속 엣지 중 가장 강한 것만 남겨 페어가 정확해진다.</p>
+
+                <!-- 7. World 좌표 -->
+                <h2 id="world"><i class="fa-solid fa-globe"></i> World 좌표 변환</h2>
+
+                <p>1D 측정은 기본적으로 픽셀 단위 거리를 반환한다. 실제 mm나 µm 단위 치수가 필요하면 calibration이 필수다.</p>
+
+                <p>일반적인 흐름은 다음과 같다.</p>
+
+<pre><code>camera calibration으로 CamParam, WorldPose 획득
+→ measure_pos / measure_pairs로 픽셀 좌표 추출
+→ image_points_to_world_plane으로 world 좌표 변환
+→ distance_pp로 물리 단위 거리 계산</code></pre>
+
+                <p>예를 들어 caliper의 눈금 사이 거리를 mm로 얻는 코드의 핵심은 다음 한 줄이다.</p>
+
+<pre><code>image_points_to_world_plane (CamParam, WorldPose, RowLine, ColLine,
+                              'mm', X, Y)</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>calibration plane 일치</strong>
+                        WorldPose가 정의한 평면과 실제 측정 대상 평면이 일치해야 한다. 측정 대상의 Z 높이가 calibration plate와 다르면 scale 오차가 그대로 결과에 실린다. telecentric lens가 아니라면 특히 민감하다.
+                    </div>
+                </div>
+
+                <p>렌즈 왜곡이 큰 경우에는 좌표 보정이나 이미지 자체의 rectification이 추가로 필요하다. 자세한 절차는 Solution Guide III-C에서 다룬다.</p>
+
+                <!-- 8. ROI 정렬 -->
+                <h2 id="align"><i class="fa-solid fa-arrows-to-dot"></i> ROI 정렬과 재사용</h2>
+
+                <p>실제 라인에서는 부품 위치가 이미지마다 미세하게 바뀐다. measure ROI를 매번 같은 절대 좌표로 박아 두면 엉뚱한 위치를 측정한다. 그래서 shape matching 같은 정렬 단계가 거의 항상 앞단에 붙는다.</p>
+
+                <h3 id="align-flow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 정렬 흐름</h3>
+
+<pre><code>shape matching으로 part pose 획득
+→ pose에 따라 measure ROI 파라미터 transform
+→ 새 measure object 생성 또는 translate_measure 사용
+→ 측정 수행</code></pre>
+
+                <ul>
+                    <li>위치만 변하는 경우 <code>translate_measure</code>로 가볍게 옮기면 된다.</li>
+                    <li>각도까지 바뀌면 ROI 파라미터를 변환한 뒤 measure object를 새로 만든다.</li>
+                </ul>
+
+                <h3 id="reuse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> measure object 재사용</h3>
+
+                <p>measure object 생성에는 비용이 든다. 같은 ROI를 반복 측정할 때는 매 프레임 생성하지 말고 handle을 보관해 재사용한다. 이는 SG III-A가 강조하는 실무 팁이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>해제 잊지 말기</strong>
+                        재사용이 끝나면 <code>close_measure</code>로 리소스를 해제한다. handle을 누적해 두면 장시간 검사에서 메모리 누수가 생긴다.
+                    </div>
+                </div>
+
+                <!-- 9. Fuzzy -->
+                <h2 id="fuzzy"><i class="fa-solid fa-cloud"></i> Fuzzy Measure Object</h2>
+
+                <p>표준 measure object는 contrast와 transition만으로 엣지를 선택한다. ROI 안에 비슷한 강도의 엣지가 여러 개 있거나, 반사·그림자가 끼면 잘못된 엣지가 선택되기 쉽다. fuzzy measure object는 추가 feature에 대해 fuzzy membership function을 정의해 엣지 선택을 정교하게 제어한다.</p>
+
+                <h3 id="fuzzy-features"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 사용 가능한 feature</h3>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr><th>SetType</th><th>의미</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">contrast</td><td>엣지 진폭</td></tr>
+                        <tr><td class="highlight">position</td><td>profile 시작점으로부터 엣지 위치</td></tr>
+                        <tr><td class="highlight">position_pair</td><td>페어의 위치 (중심·시작·끝 등 subtype)</td></tr>
+                        <tr><td class="highlight">size</td><td>페어 폭</td></tr>
+                        <tr><td class="highlight">size_diff / size_abs_diff</td><td>기대 폭과의 편차</td></tr>
+                        <tr><td class="highlight">gray</td><td>페어 사이 영역의 gray value</td></tr>
+                    </tbody>
+                </table>
+
+                <h3 id="fuzzy-flow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 적용 흐름</h3>
+
+<pre><code>create_funct_1d_pairs (XValues, YValues, MembershipFunction)
+set_fuzzy_measure (MeasureHandle, SetType, MembershipFunction)
+fuzzy_measure_pairs (Image, MeasureHandle, Sigma, AmpThresh,
+                     FuzzyThresh, Transition, ... )</code></pre>
+
+                <p>예를 들어 switch의 pin이 약 9 픽셀 폭임을 알고 있다면 size 기반 membership function을 정의해, 반사로 생긴 가짜 엣지를 자연스럽게 배제할 수 있다. 모든 가능한 페어를 만들어 두고 membership 값으로 weighting하기 때문에, 단순 first/last 선택보다 훨씬 견고하다.</p>
+
+                <h3 id="fuzzy-norm"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Normalized membership function</h3>
+
+                <p><code>set_fuzzy_measure_norm_pair</code>는 PairSize에 대해 정규화된 membership function을 받는다. 같은 정의로 부품 크기만 바뀐 경우 PairSize 값만 갈아끼우면 되므로, 멀티 모델 검사 시 유지보수가 쉬워진다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>부분 지식만 주면 위험</strong>
+                        position만 지정하고 size를 지정하지 않으면, 작은 페어 둘이 합쳐진 큰 가짜 페어가 더 높은 membership을 받아 채택될 수 있다. 알고 있는 제약은 가능한 한 모두 fuzzy 함수로 넣는 편이 안전하다.
+                    </div>
+                </div>
+
+                <!-- 10. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정과 대응</h2>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr><th>증상</th><th>원인</th><th>대응</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">엣지 위치가 프레임마다 떨림</td><td>profile 노이즈, Sigma 부족</td><td>Sigma 상향, ROI 폭 확대, 조명 안정화</td></tr>
+                        <tr><td class="highlight">엉뚱한 엣지 선택</td><td>ROI 과대, 반사·그림자</td><td>ROI 축소, fuzzy measure, _strongest 모드</td></tr>
+                        <tr><td class="highlight">측정값이 일관되게 어긋남</td><td>Transition·ROI 방향 오설정</td><td>ROI 방향과 transition 조합 재검토</td></tr>
+                        <tr><td class="highlight">한 방향만 오차가 큼</td><td>엣지가 profile line에 수직이 아님</td><td>ROI 폭 축소, ROI 회전 정렬</td></tr>
+                        <tr><td class="highlight">치수가 mm로 안 맞음</td><td>calibration 누락, Z 높이 불일치</td><td>calibration 재수행, 측정 plane 정렬</td></tr>
+                        <tr><td class="highlight">곡선 엣지에서 위치 오류</td><td>1D 측정 가정 위반</td><td>XLD contour + fitting으로 전환</td></tr>
+                        <tr><td class="highlight">반복 측정 시 속도 저하</td><td>매번 measure object 재생성</td><td>handle 재사용, 필요한 만큼만 close</td></tr>
+                    </tbody>
+                </table>
+
+                <h3 id="partial-roi"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 부분 ROI와 multi-channel</h3>
+
+                <p>ROI 일부가 이미지 밖으로 나가도 이미지 안의 엣지와 그 사이 거리는 정상적으로 측정된다. 이미지 밖 영역의 profile 값은 0으로 채워진다. 또한 multi-channel 이미지를 넘기면 첫 번째 채널만 사용된다는 점도 기억해 둔다.</p>
+
+                <!-- 11. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 핵심 정리</h2>
+
+                <ul>
+                    <li>1D 측정은 ROI를 따라 만든 profile에서 엣지를 subpixel로 찾는다.</li>
+                    <li>엣지가 profile line에 거의 수직일 때만 가정이 성립한다.</li>
+                    <li>측정 함수는 measure_pos · measure_pairs · measure_thresh · measure_projection 네 가지로 구분된다.</li>
+                    <li>Sigma · Threshold · Transition · Select가 결과 안정성을 좌우한다.</li>
+                    <li>엣지 페어 측정에서는 ROI 방향과 transition 조합, _strongest 활용이 핵심이다.</li>
+                    <li>물리 단위 치수가 필요하면 calibration과 image_points_to_world_plane이 필수다.</li>
+                    <li>shape matching으로 ROI를 정렬하고 measure object는 재사용한다.</li>
+                    <li>반사·그림자·다중 엣지가 있는 환경에서는 fuzzy measure object로 선택을 정교화한다.</li>
+                </ul>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>다음 단계</strong>
+                        같은 시리즈의 2D Metrology와 XLD 기반 fitting으로 넘어가면, 1D 측정으로는 다루기 어려운 곡선·복합 형상까지 일관된 흐름으로 처리할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>MVTec — HALCON Solution Guide III-A: 1D Measuring</li>
+                        <li>MVTec — HALCON Solution Guide III-C (Calibration / World Coordinates)</li>
+                        <li>MVTec — HALCON Solution Guide II-B (Shape-Based Matching, ROI Alignment)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-halcon');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../index.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+    renderPostNav('tech-halcon');
+</script>
+
+</body>
+</html>
