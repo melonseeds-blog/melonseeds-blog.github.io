@@ -1,0 +1,538 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refactoring — 코드를 살아있게 유지하는 기술 (Martin Fowler) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 책/강의 정보 카드 */
+        .book-info {
+            display: flex; gap: 24px; padding: 24px;
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            margin: 20px 0;
+        }
+        .book-cover {
+            width: 140px; height: 200px; border-radius: 8px; flex-shrink: 0;
+            background: var(--border-light); display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; color: var(--text-light); overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .book-detail { flex: 1; }
+        .book-detail h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; border-bottom: none; }
+        .book-detail table { font-size: 0.88rem; }
+        .book-detail td { padding: 3px 0; }
+        .book-detail td:first-child { color: var(--text-muted); width: 60px; }
+
+        /* 별점 */
+        .rating { margin: 12px 0; display: flex; align-items: center; gap: 8px; }
+        .rating .stars { color: #f59e0b; font-size: 1.1rem; }
+        .rating .score { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+
+        /* 핵심 포인트 */
+        .key-points { margin: 20px 0; }
+        .key-point {
+            display: flex; gap: 12px; padding: 12px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .key-point:last-child { border-bottom: none; }
+        .key-point .kp-num {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--primary-light); color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+        }
+        .key-point .kp-text { font-size: 0.92rem; color: var(--text-sub); }
+
+        /* 인상적인 구절 */
+        .quote-highlight {
+            background: var(--seed-light); border-left: 4px solid var(--flesh);
+            border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 16px 0;
+            font-style: italic; color: var(--text-sub);
+        }
+        .quote-highlight .quote-source { font-style: normal; font-size: 0.82rem; color: var(--text-light); margin-top: 8px; }
+
+        /* 한줄 감상 */
+        .review-summary {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .review-summary .review-icon { font-size: 1.5rem; margin-bottom: 8px; }
+        .review-summary p { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
+
+        /* 스펙 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .book-info { flex-direction: column; align-items: center; text-align: center; }
+            .book-cover { width: 120px; height: 170px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#book-intro" data-section="book-intro">책 개요</a>
+        <a href="#core-message" data-section="core-message">핵심 메시지</a>
+        <a href="#book-structure" data-section="book-structure">책의 구조</a>
+        <a href="#impressive" data-section="impressive">인상 깊은 점</a>
+        <a href="#lessons" data-section="lessons">핵심 교훈</a>
+        <a href="#how-to-read" data-section="how-to-read">읽는 법</a>
+        <a href="#blog-link" data-section="blog-link">블로그 연결</a>
+        <a href="#one-line" data-section="one-line">한 줄 평</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">책/강의 후기</span>
+                </div>
+                <h1>Refactoring — 코드를 살아있게 유지하는 기술 (Martin Fowler)</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 9 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 책에서 얻을 수 있는 것</div>
+                    <ul>
+                        <li>"리팩토링"의 정확한 정의 — 동작을 바꾸지 않고 내부 구조만 개선하는 작업</li>
+                        <li>코드 스멜이라는 공통 언어 — 무엇이 잘못됐는지 이름 붙여 말하는 법</li>
+                        <li>이름이 붙은 리팩토링 기법 카탈로그 — 안전하게 코드를 바꾸는 절차</li>
+                        <li>테스트를 안전망으로 삼아 작은 단계로 나아가는 작업 습관</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#book-intro">책 개요</a></li>
+                        <li><a href="#core-message">핵심 메시지</a></li>
+                        <li><a href="#book-structure">책의 구조</a></li>
+                        <li><a href="#impressive">인상 깊은 점</a></li>
+                        <li><a href="#lessons">핵심 교훈 정리</a></li>
+                        <li><a href="#how-to-read">누구에게 / 어떻게 읽나</a></li>
+                        <li><a href="#blog-link">이 블로그와의 연결</a></li>
+                        <li><a href="#one-line">한 줄 평</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 책 개요 -->
+                <h2 id="book-intro"><i class="fa-solid fa-book-open"></i> 책 개요</h2>
+
+                <div class="book-info">
+                    <div class="book-cover">
+                        <i class="fa-solid fa-book"></i>
+                    </div>
+                    <div class="book-detail">
+                        <h3>Refactoring: Improving the Design of Existing Code</h3>
+                        <table>
+                            <tr><td>저자</td><td>Martin Fowler</td></tr>
+                            <tr><td>출판</td><td>Addison-Wesley</td></tr>
+                            <tr><td>판본</td><td>초판 1999 / 2판 2018</td></tr>
+                            <tr><td>읽은 날</td><td>2026-05-15</td></tr>
+                        </table>
+                        <div class="rating">
+                            <span class="stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star-half-stroke"></i></span>
+                            <span class="score">4.5 / 5.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p><em>Refactoring</em>은 Martin Fowler가 쓴, 이미 작성된 코드의 설계를 개선하는 방법을 다룬 책이다. 초판은 1999년에 나왔고, 2판은 2018년에 예제를 JavaScript로 갈아끼우며 다시 출간됐다. 20년 가까운 시차에도 책이 전하는 메시지는 거의 그대로인데, 그만큼 이 주제가 특정 언어나 시대에 묶이지 않는다는 뜻이다.</p>
+                <p>책의 핵심 질문은 단순하다. "이미 돌아가는 코드를 어떻게 더 나은 구조로 바꿀 것인가, 그것도 망가뜨리지 않으면서." Fowler는 이 작업에 <strong>리팩토링(refactoring)</strong>이라는 이름을 붙이고, 그 과정을 즉흥적인 손질이 아니라 <strong>이름과 절차가 있는 규율 잡힌 기술</strong>로 정리해 보여준다.</p>
+                <p>대상 독자는 분명하다. 신규 프로젝트보다 기존 코드베이스를 만지는 시간이 더 많은 개발자, 코드 리뷰에서 "여기 좀 이상한데"를 더 정확하게 말하고 싶은 사람, 그리고 설계를 미리 완벽하게 끝내는 것이 불가능하다는 사실을 받아들인 사람이다. 입문서는 아니지만, 객체지향 코드를 어느 정도 다뤄봤다면 충분히 읽힌다.</p>
+
+                <!-- 2. 핵심 메시지 -->
+                <h2 id="core-message"><i class="fa-solid fa-lightbulb"></i> 핵심 메시지</h2>
+
+                <p>책 전체를 한 문장으로 줄이면 이렇다. <strong>리팩토링은 외부에서 관찰되는 동작을 바꾸지 않으면서 내부 구조를 개선하는 작업이다.</strong> 이 정의에서 중요한 건 "동작을 바꾸지 않는다"는 제약이다. 기능을 추가하거나 버그를 고치는 것은 리팩토링이 아니다. 리팩토링은 오로지 구조에만 손을 댄다.</p>
+
+                <p>왜 이런 작업이 필요한가. Fowler의 진단은 코드가 가만히 둬도 썩는다는 것이다. 요구사항은 계속 바뀌고, 그때그때 가장 빠른 길로 코드를 덧붙이다 보면 구조가 점점 흐트러진다. 처음에는 이해하기 쉬웠던 코드가 어느 순간 손대기 무서운 덩어리가 된다. 리팩토링은 이 <strong>코드 부패에 맞서는 일상적인 습관</strong>이다. 큰맘 먹고 날을 잡아 하는 대청소가 아니라, 코드를 만질 때마다 조금씩 정리하는 양치질 같은 행위로 보는 것이 이 책의 관점이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>리팩토링과 성능 최적화의 차이</strong>
+                        둘 다 동작을 바꾸지 않고 코드를 손본다는 점은 같다. 하지만 목적이 다르다. 리팩토링은 사람이 읽고 고치기 쉽게 만드는 것이 목적이고, 성능 최적화는 빠르게 도는 것이 목적이다. Fowler는 이 둘을 섞지 말라고 한다.
+                    </div>
+                </div>
+
+                <p>또 하나의 메시지는 리팩토링이 설계를 미리 완벽하게 끝내야 한다는 압박에서 개발자를 풀어준다는 점이다. 어차피 나중에 안전하게 구조를 바꿀 수 있다면, 지금 당장 모든 것을 예측해 완벽한 설계를 할 필요가 없다. 설계는 한 번에 완성되는 것이 아니라 코드와 함께 자라는 것이라는 시각이 책 전반에 깔려 있다.</p>
+
+                <!-- 3. 책의 구조 -->
+                <h2 id="book-structure"><i class="fa-solid fa-sitemap"></i> 책의 구조</h2>
+
+                <h3 id="first-example"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 첫 장의 예제 — 리팩토링 시연</h3>
+                <p>책은 이론부터 늘어놓지 않는다. 1장에서 작고 지저분한 예제 프로그램을 하나 가져와, 그것을 처음부터 끝까지 리팩토링하는 과정을 그대로 보여준다. 한 번에 크게 뜯어고치는 것이 아니라, 변수 이름 하나 바꾸고 함수 하나 쪼개는 식의 작은 단계를 수십 번 반복한다. 매 단계마다 테스트를 돌려 동작이 그대로인지 확인한다. 이 한 장이 책의 나머지 전체를 압축한 셈이라, 시간이 없으면 1장만 읽어도 핵심은 잡힌다.</p>
+
+                <h3 id="smell-catalog"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 코드 스멜 카탈로그</h3>
+                <p>이어지는 장에서는 "코드 스멜(code smell)"이라는 개념을 소개한다. 스멜은 버그는 아니지만 구조에 문제가 있다는 신호다. 긴 함수, 중복된 코드, 너무 많은 매개변수, 여기저기 흩어진 변경처럼 흔히 마주치는 문제들에 각각 이름을 붙여 목록으로 정리해 두었다. 스멜마다 "이런 냄새가 나면 이런 리팩토링을 고려하라"는 식으로 다음에 볼 기법 카탈로그와 연결된다.</p>
+
+                <h3 id="refactoring-catalog"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 리팩토링 기법 카탈로그</h3>
+                <p>책의 가장 두꺼운 부분은 리팩토링 기법을 하나하나 정리한 카탈로그다. 각 기법은 이름, 어떤 상황에 쓰는지, 그리고 <strong>안전하게 적용하는 단계별 절차</strong>와 예제로 구성된다. 이름이 붙어 있다는 점이 핵심이다. "이 함수 좀 정리하자"가 아니라 "여기 함수 추출(Extract Function)을 적용하자"라고 말할 수 있게 된다. 아래는 자주 등장하는 스멜과 그에 대응하는 대표 기법을 추려본 것이다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr><th>코드 스멜</th><th>무엇이 문제인가</th><th>대표 리팩토링 기법</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="highlight">긴 함수</td><td>하는 일이 너무 많아 한눈에 안 들어옴</td><td>함수 추출 (Extract Function)</td></tr>
+                        <tr><td class="highlight">중복 코드</td><td>같은 로직이 여러 곳에 흩어짐</td><td>함수 추출 후 호출로 통합</td></tr>
+                        <tr><td class="highlight">긴 매개변수 목록</td><td>호출할 때마다 인자 순서가 헷갈림</td><td>매개변수 객체 만들기 (Introduce Parameter Object)</td></tr>
+                        <tr><td class="highlight">뒤엉킨 변경</td><td>한 이유로 한 모듈만 고치면 되는데 여러 곳을 손봐야 함</td><td>단계 쪼개기 / 함수 옮기기</td></tr>
+                        <tr><td class="highlight">기능 편애</td><td>함수가 자기 클래스보다 남의 데이터를 더 자주 씀</td><td>함수 옮기기 (Move Function)</td></tr>
+                        <tr><td class="highlight">수수께끼 이름</td><td>이름만 봐서는 역할을 알 수 없음</td><td>변수/함수 이름 바꾸기 (Rename)</td></tr>
+                    </tbody>
+                </table>
+
+                <p>실제로 책을 통독하는 사람은 드물다. 카탈로그 부분은 처음부터 끝까지 읽기보다, 필요할 때 찾아보는 사전처럼 쓰도록 만들어졌다.</p>
+
+                <!-- 4. 인상 깊은 점 -->
+                <h2 id="impressive"><i class="fa-solid fa-star-half-stroke"></i> 인상 깊은 점</h2>
+
+                <h3 id="two-hats"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 두 개의 모자</h3>
+                <p>가장 기억에 남는 비유는 "두 개의 모자(two hats)"다. 코드를 만질 때 우리는 두 가지 일을 한다. 기능을 추가하거나, 구조를 리팩토링하거나. Fowler는 이 둘을 동시에 하지 말고, 지금 어느 모자를 쓰고 있는지 항상 의식하라고 한다. 기능 추가 모자를 쓴 동안에는 기존 코드 구조에 손대지 않고, 리팩토링 모자를 쓴 동안에는 새 기능을 넣지 않는다. 모자를 자주 바꿔 쓰는 것은 괜찮지만, 두 개를 동시에 쓰지는 않는다. 이 단순한 규칙만 지켜도 변경이 훨씬 안전해진다.</p>
+
+                <h3 id="small-steps"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 작은 단계</h3>
+                <p>책을 읽으며 가장 의외였던 점은 Fowler가 권하는 단계가 생각보다 훨씬 잘다는 것이다. 함수 하나를 옮기는 데도 여러 단계로 쪼개고, 각 단계마다 코드가 여전히 동작하는 상태를 유지한다. 처음에는 답답해 보이지만, 작은 단계는 무언가 잘못됐을 때 되돌리기 쉽다는 결정적인 장점이 있다. 한 번에 크게 바꾸면 어디서 깨졌는지 찾기 어렵지만, 작은 단계는 직전 단계만 의심하면 된다.</p>
+
+                <h3 id="tests-safety-net"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 테스트가 안전망</h3>
+                <p>리팩토링의 전제는 "동작을 바꾸지 않는다"인데, 그것을 어떻게 보장하는가. 답은 테스트다. Fowler는 견고한 테스트 없이는 리팩토링을 하지 말라고 못 박는다. 테스트가 있으면 구조를 과감하게 바꿔도 동작이 깨졌는지 즉시 알 수 있다. 테스트는 리팩토링의 부속물이 아니라 <strong>전제 조건</strong>이다.</p>
+
+                <h3 id="smell-language"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 코드 스멜이라는 언어</h3>
+                <p>코드 스멜이라는 개념이 준 가장 큰 선물은 <strong>공통 언어</strong>다. 예전에는 코드 리뷰에서 "이거 좀 별로인데 뭐라 설명하기 어렵네" 하고 넘어가던 것을, 이제는 "이건 기능 편애예요" 또는 "긴 매개변수 목록이네요"라고 정확히 짚을 수 있다. 문제에 이름이 붙으면 팀이 같은 것을 보고 같은 말로 토론할 수 있다.</p>
+
+                <!-- 5. 핵심 교훈 정리 -->
+                <h2 id="lessons"><i class="fa-solid fa-key"></i> 핵심 교훈 정리</h2>
+
+                <div class="key-points">
+                    <div class="key-point">
+                        <span class="kp-num">1</span>
+                        <span class="kp-text"><strong>리팩토링은 동작을 보존한다</strong> — 기능 추가나 버그 수정과 섞지 않는다. 구조만 바꾸는 작업이라는 경계를 분명히 지킨다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">2</span>
+                        <span class="kp-text"><strong>작은 단계로 나아간다</strong> — 한 번에 크게 바꾸지 않는다. 잘게 쪼개야 잘못됐을 때 되돌리기 쉽고 어디서 깨졌는지 찾기 쉽다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">3</span>
+                        <span class="kp-text"><strong>테스트 없이는 시작하지 않는다</strong> — 테스트는 동작이 그대로임을 보증하는 안전망이다. 안전망이 없으면 리팩토링은 도박이 된다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">4</span>
+                        <span class="kp-text"><strong>문제에 이름을 붙인다</strong> — 코드 스멜과 리팩토링 기법의 이름은 팀이 코드 품질을 같은 언어로 토론하게 해주는 공통 어휘다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">5</span>
+                        <span class="kp-text"><strong>설계는 자란다</strong> — 처음부터 완벽한 설계를 할 필요는 없다. 나중에 안전하게 바꿀 수 있다면, 설계는 코드와 함께 점진적으로 개선해 나가면 된다.</span>
+                    </div>
+                </div>
+
+                <!-- 6. 누구에게 / 어떻게 읽나 -->
+                <h2 id="how-to-read"><i class="fa-solid fa-book-bookmark"></i> 누구에게 / 어떻게 읽나</h2>
+
+                <p>이 책은 통독을 권하지 않는다. 1장의 시연 예제와 코드 스멜을 다루는 앞부분, 그리고 리팩토링이 무엇이고 왜 하는지를 설명하는 도입부까지는 처음부터 차근차근 읽는 것이 좋다. 하지만 그 뒤의 기법 카탈로그는 다르다. 카탈로그는 <strong>레퍼런스</strong>다. 한 번에 다 읽으려 하면 비슷한 패턴이 반복돼 지치기 쉽다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>이렇게 읽으면 좋다</strong>
+                        앞부분(1장 + 코드 스멜)을 먼저 읽어 "스멜을 알아보는 눈"을 기른다. 그 다음부터는 책을 책상 위에 두고, 실제 코드에서 스멜이 보일 때 해당 기법을 카탈로그에서 찾아본다. 기법의 단계별 절차를 따라 한 번 적용해 보면 그 기법이 손에 익는다.
+                    </div>
+                </div>
+
+                <p>추천 대상은 명확하다. 기존 코드베이스를 유지보수하는 개발자, 레거시 코드를 물려받아 손봐야 하는 사람, 코드 리뷰의 질을 올리고 싶은 팀이다. 반대로 프로그래밍을 막 시작한 사람에게는 조금 이르다. 고칠 코드를 직접 써본 경험이 있어야 이 책의 가치가 와닿는다.</p>
+
+                <!-- 7. 이 블로그와의 연결 -->
+                <h2 id="blog-link"><i class="fa-solid fa-link"></i> 이 블로그와의 연결</h2>
+
+                <p>이 책은 블로그의 프로그래밍 이론 시리즈를 쓰는 동안 여러 번 펼쳤던 책이다. 세 개의 글이 직접적으로 이 책에 빚지고 있다.</p>
+                <ul>
+                    <li><strong>이론 #15 (리팩토링)</strong> — 시리즈에서 리팩토링을 다룬 글은 사실상 이 책의 정의와 작업 방식을 정리한 것이다. "동작을 보존하며 구조를 개선한다"는 핵심 정의, 두 개의 모자, 작은 단계 같은 개념이 모두 여기서 나왔다.</li>
+                    <li><strong>이론 #9 (안티패턴)</strong> — 안티패턴 글에서 다룬 "코드 스멜" 절은 이 책의 스멜 카탈로그를 출발점으로 삼았다. 안티패턴이 설계 수준의 함정이라면, 코드 스멜은 그보다 작은 단위의 신호라는 구분도 이 책의 시각을 따른 것이다.</li>
+                    <li><strong>이론 #16 (테스트)</strong> — 테스트를 다룬 글에서 "테스트는 리팩토링의 안전망"이라는 관점은 이 책에서 그대로 가져왔다. 테스트가 있어야 구조를 과감하게 바꿀 수 있다는 논리가 두 글을 잇는다.</li>
+                </ul>
+                <p>세 글을 묶어 보면 결국 같은 이야기다. 코드는 부패하고, 그 부패에 맞서려면 스멜을 알아보는 눈과 안전하게 바꾸는 기법, 그리고 그것을 받쳐주는 테스트가 필요하다.</p>
+
+                <!-- 8. 한 줄 평 -->
+                <h2 id="one-line"><i class="fa-solid fa-pen-nib"></i> 한 줄 평</h2>
+
+                <p>0.5점을 깎은 이유는 카탈로그 부분의 분량이 통독하기엔 부담스럽고, 일부 기법은 현대적인 IDE의 자동 리팩토링 기능으로 이미 한 번에 처리되기 때문이다. 그럼에도 이 책의 가치는 개별 기법이 아니라 그 밑에 깔린 사고방식에 있다. 코드를 한 번 쓰고 끝나는 것이 아니라 계속 살아 움직이는 것으로 보는 시각, 그것이 이 책이 20년 넘게 읽히는 이유다.</p>
+
+                <div class="review-summary">
+                    <div class="review-icon"><span class="melon-icon lg"></span></div>
+                    <p>코드를 "완성하는 것"이 아니라 "계속 살아있게 유지하는 것"으로 다시 보게 만드는 책</p>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Martin Fowler, "Refactoring: Improving the Design of Existing Code", 2nd Edition, Addison-Wesley, 2018</li>
+                        <li>Martin Fowler, "Refactoring: Improving the Design of Existing Code", 1st Edition, Addison-Wesley, 1999</li>
+                        <li>Robert C. Martin, "Clean Code: A Handbook of Agile Software Craftsmanship", Prentice Hall, 2008</li>
+                        <li>Michael Feathers, "Working Effectively with Legacy Code", Prentice Hall, 2004</li>
+                        <li>refactoring.com — 저자가 운영하는 리팩토링 기법 온라인 카탈로그</li>
+                    </ul>
+                </div>
+
+                <div class="post-nav-bottom"></div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('book');
+    renderPostNav('book');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

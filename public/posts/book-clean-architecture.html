@@ -1,0 +1,568 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean Architecture — 의존성 규칙으로 짓는 시스템 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 책/강의 정보 카드 */
+        .book-info {
+            display: flex; gap: 24px; padding: 24px;
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            margin: 20px 0;
+        }
+        .book-cover {
+            width: 140px; height: 200px; border-radius: 8px; flex-shrink: 0;
+            background: var(--border-light); display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; color: var(--text-light); overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .book-detail { flex: 1; }
+        .book-detail h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; border-bottom: none; }
+        .book-detail table { font-size: 0.88rem; }
+        .book-detail td { padding: 3px 0; }
+        .book-detail td:first-child { color: var(--text-muted); width: 60px; }
+
+        /* 별점 */
+        .rating { margin: 12px 0; display: flex; align-items: center; gap: 8px; }
+        .rating .stars { color: #f59e0b; font-size: 1.1rem; }
+        .rating .score { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+
+        /* 핵심 포인트 */
+        .key-points { margin: 20px 0; }
+        .key-point {
+            display: flex; gap: 12px; padding: 12px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .key-point:last-child { border-bottom: none; }
+        .key-point .kp-num {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--primary-light); color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+        }
+        .key-point .kp-text { font-size: 0.92rem; color: var(--text-sub); }
+
+        /* 인상적인 구절 */
+        .quote-highlight {
+            background: var(--seed-light); border-left: 4px solid var(--flesh);
+            border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 16px 0;
+            font-style: italic; color: var(--text-sub);
+        }
+        .quote-highlight .quote-source { font-style: normal; font-size: 0.82rem; color: var(--text-light); margin-top: 8px; }
+
+        /* 한줄 감상 */
+        .review-summary {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .review-summary .review-icon { font-size: 1.5rem; margin-bottom: 8px; }
+        .review-summary p { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
+
+        /* 스펙 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th, .spec-table td {
+            border: 1px solid var(--border); padding: 9px 14px; text-align: left;
+        }
+        .spec-table th {
+            background: var(--primary-50); font-weight: 700; color: var(--primary-dark);
+        }
+        .spec-table td:first-child { font-weight: 600; color: var(--text-sub); white-space: nowrap; }
+
+        /* 의존성 규칙 다이어그램 */
+        .arch-diagram {
+            display: flex; justify-content: center;
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px; margin: 20px 0;
+        }
+        .arch-diagram svg { max-width: 100%; height: auto; }
+
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .book-info { flex-direction: column; align-items: center; text-align: center; }
+            .book-cover { width: 120px; height: 170px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#book-intro" data-section="book-intro">책 개요</a>
+        <a href="#core-message" data-section="core-message">핵심 메시지</a>
+        <a href="#book-structure" data-section="book-structure">책의 구조</a>
+        <a href="#core-concepts" data-section="core-concepts">핵심 개념</a>
+        <a href="#impressive" data-section="impressive">인상 깊은 점</a>
+        <a href="#lessons" data-section="lessons">핵심 교훈</a>
+        <a href="#how-to-read" data-section="how-to-read">누구에게</a>
+        <a href="#blog-link" data-section="blog-link">블로그 연결</a>
+        <a href="#overall-review" data-section="overall-review">한 줄 평</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">책/강의 후기</span>
+                </div>
+                <h1>Clean Architecture — 의존성 규칙으로 짓는 시스템 (Robert C. Martin)</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 9 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Clean Architecture가 던지는 핵심 메시지 — 변경 비용의 최소화</li>
+                        <li>의존성 규칙(dependency rule)과 동심원 계층 구조</li>
+                        <li>SOLID에서 출발해 시스템 전체로 확장하는 일관된 논리</li>
+                        <li>실무에 가져갈 핵심 교훈과 읽는 방법</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#book-intro">책 개요</a></li>
+                        <li><a href="#core-message">핵심 메시지 — 변경 비용의 최소화</a></li>
+                        <li><a href="#book-structure">책의 구조</a></li>
+                        <li><a href="#core-concepts">핵심 개념 — 의존성 규칙과 계층</a></li>
+                        <li><a href="#impressive">인상 깊은 점</a></li>
+                        <li><a href="#lessons">핵심 교훈</a></li>
+                        <li><a href="#how-to-read">누구에게 / 어떻게 읽나</a></li>
+                        <li><a href="#blog-link">이 블로그와의 연결</a></li>
+                        <li><a href="#overall-review">한 줄 평</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 책 개요 -->
+                <h2 id="book-intro"><i class="fa-solid fa-book-open"></i> 책 개요</h2>
+
+                <div class="book-info">
+                    <div class="book-cover">
+                        <i class="fa-solid fa-sitemap"></i>
+                    </div>
+                    <div class="book-detail">
+                        <h3>Clean Architecture: A Craftsman's Guide to Software Structure and Design</h3>
+                        <table>
+                            <tr><td>저자</td><td>Robert C. Martin</td></tr>
+                            <tr><td>출판</td><td>Prentice Hall, 2017</td></tr>
+                            <tr><td>읽은 날</td><td>2026-05-15</td></tr>
+                        </table>
+                        <div class="rating">
+                            <span class="stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star-half-stroke"></i></span>
+                            <span class="score">4.5 / 5.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p><em>Clean Architecture</em>는 Robert C. Martin(일명 "Uncle Bob")이 2017년에 펴낸 책이다. 같은 저자의 <em>Clean Code</em>(2008), <em>The Clean Coder</em>(2011)를 잇는 시리즈의 세 번째 권으로, 코드 수준이 아니라 <strong>시스템 전체의 구조</strong>를 다룬다. 함수와 클래스를 깨끗하게 쓰는 법을 넘어, 모듈과 컴포넌트를 어떻게 배치하고 무엇이 무엇에 의존하게 만들 것인가를 묻는다.</p>
+                <p>대상 독자는 단순한 입문자가 아니다. 어느 정도 규모의 코드를 짜 본 적이 있고, "동작은 하는데 손대기가 무섭다"는 경험을 해 본 개발자라면 이 책의 문제의식이 바로 와닿는다. 시니어 개발자, 팀 리드, 아키텍트를 지향하는 사람에게 특히 유용하다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>시리즈상의 위치</strong>
+                        Clean Code가 "한 줄을 어떻게 쓰는가", Clean Coder가 "개발자로서 어떻게 일하는가"를 다뤘다면, Clean Architecture는 "시스템을 어떻게 배치하는가"를 다룬다. 세 권은 추상화의 층위가 다를 뿐 같은 철학을 공유한다.
+                    </div>
+                </div>
+
+                <!-- 2. 핵심 메시지 -->
+                <h2 id="core-message"><i class="fa-solid fa-bullseye"></i> 핵심 메시지 — 변경 비용의 최소화</h2>
+
+                <p>책 전체를 한 문장으로 압축하면 이렇다. <strong>"아키텍처의 목적은 시스템의 수명 동안 변경에 드는 비용을 최소화하는 것이다."</strong> 저자는 동작하는 소프트웨어와 잘 설계된 소프트웨어를 분명히 구분한다. 동작은 단기적 가치이고, 변경 용이성은 장기적 가치다. 그리고 장기적 가치가 더 크다고 단언한다.</p>
+                <p>이 목적을 달성하는 핵심 도구가 <strong>의존성 규칙(dependency rule)</strong>이다. 소스 코드의 의존성은 항상 안쪽, 즉 더 추상적이고 정책에 가까운 방향으로만 향해야 한다. 바깥쪽의 세부사항(데이터베이스, 웹 프레임워크, UI)이 바뀌어도 안쪽의 비즈니스 규칙은 영향을 받지 않는다. 이 한 가지 규칙이 책의 나머지 전부를 지탱한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>"동작하는 코드"의 함정</strong>
+                        급한 일정에 밀려 구조를 희생하면 당장은 빨라 보이지만, 머지않아 모든 변경이 느려진다. 저자는 이것을 "거짓 속도"라 부른다. 구조에 투자하는 시간이 결국 전체 속도를 높인다는 것이 이 책의 출발점이다.
+                    </div>
+                </div>
+
+                <!-- 3. 책의 구조 -->
+                <h2 id="book-structure"><i class="fa-solid fa-layer-group"></i> 책의 구조</h2>
+
+                <p>책은 작은 단위에서 큰 단위로 차근차근 쌓아 올라간다. 갑자기 "아키텍처"를 들이밀지 않고, 그 토대가 되는 개념부터 순서대로 짚는다.</p>
+
+                <table class="spec-table">
+                    <tr><th>단계</th><th>다루는 내용</th><th>핵심 질문</th></tr>
+                    <tr><td>프로그래밍 패러다임</td><td>구조적 / 객체지향 / 함수형 프로그래밍</td><td>각 패러다임이 우리에게서 무엇을 빼앗았나</td></tr>
+                    <tr><td>설계 원칙 (SOLID)</td><td>SRP, OCP, LSP, ISP, DIP</td><td>클래스와 모듈을 어떻게 배치하나</td></tr>
+                    <tr><td>컴포넌트 원칙</td><td>응집도(REP·CCP·CRP), 결합(ADP·SDP·SAP)</td><td>컴포넌트를 어떻게 묶고 연결하나</td></tr>
+                    <tr><td>아키텍처</td><td>경계, 계층, 의존성 역전, 클린 아키텍처</td><td>시스템 전체를 어떻게 배치하나</td></tr>
+                </table>
+
+                <p>흥미로운 점은 패러다임을 설명하는 방식이다. 저자는 각 패러다임이 무언가를 "더해 준" 것이 아니라 무언가를 "제약했다"고 본다. 구조적 프로그래밍은 무분별한 점프(goto)를, 객체지향은 함수 포인터의 직접 사용을, 함수형은 가변 상태를 제약했다. 제약이 곧 규율이고, 규율이 곧 아키텍처의 재료라는 시각이다.</p>
+
+                <!-- 4. 핵심 개념 -->
+                <h2 id="core-concepts"><i class="fa-solid fa-diagram-project"></i> 핵심 개념 — 의존성 규칙과 계층</h2>
+
+                <h3 id="dependency-rule"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 의존성 규칙 — 안쪽으로만</h3>
+                <p>클린 아키텍처의 그림은 네 개의 동심원이다. 가장 안쪽이 <strong>엔티티(Entities)</strong>, 그 다음이 <strong>유스케이스(Use Cases)</strong>, <strong>인터페이스 어댑터(Interface Adapters)</strong>, 그리고 가장 바깥이 <strong>프레임워크와 드라이버(Frameworks &amp; Drivers)</strong>다. 규칙은 단 하나, 소스 코드 의존성은 바깥에서 안으로만 향한다. 안쪽 원은 바깥쪽 원의 이름조차 알지 못한다.</p>
+
+                <div class="arch-diagram">
+                    <svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="클린 아키텍처 동심원 다이어그램">
+                        <circle cx="210" cy="210" r="200" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+                        <circle cx="210" cy="210" r="150" fill="#bfdbfe" stroke="#93c5fd" stroke-width="1.5"/>
+                        <circle cx="210" cy="210" r="100" fill="#a7f3d0" stroke="#6ee7b7" stroke-width="1.5"/>
+                        <circle cx="210" cy="210" r="52" fill="#fde68a" stroke="#fcd34d" stroke-width="1.5"/>
+                        <text x="210" y="208" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#78350f">Entities</text>
+                        <text x="210" y="224" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#78350f">기업 업무 규칙</text>
+                        <text x="210" y="130" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#065f46">Use Cases</text>
+                        <text x="210" y="145" text-anchor="middle" font-family="sans-serif" font-size="8.5" fill="#065f46">애플리케이션 업무 규칙</text>
+                        <text x="210" y="82" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#1e3a5f">Interface Adapters</text>
+                        <text x="210" y="96" text-anchor="middle" font-family="sans-serif" font-size="8.5" fill="#1e3a5f">컨트롤러 · 게이트웨이 · 프레젠터</text>
+                        <text x="210" y="32" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#1e3a5f">Frameworks &amp; Drivers</text>
+                        <text x="210" y="46" text-anchor="middle" font-family="sans-serif" font-size="8.5" fill="#1e3a5f">DB · 웹 · UI · 외부 도구</text>
+                        <!-- 의존성 방향 화살표 -->
+                        <line x1="380" y1="290" x2="300" y2="250" stroke="#ef4444" stroke-width="2.5"/>
+                        <polygon points="300,250 312,250 305,261" fill="#ef4444"/>
+                        <text x="372" y="312" text-anchor="middle" font-family="sans-serif" font-size="9.5" font-weight="700" fill="#ef4444">의존성은 안쪽으로만</text>
+                    </svg>
+                </div>
+
+                <p>이 규칙의 효과는 단순하다. DB를 PostgreSQL에서 다른 것으로 바꿔도, 웹 프레임워크를 교체해도, 안쪽의 비즈니스 규칙 코드는 한 줄도 고칠 필요가 없다. 변경의 파급이 바깥 원에 갇히기 때문이다. 안쪽이 바깥을 호출해야 할 때는 <strong>의존성 역전(DIP)</strong>으로 방향을 뒤집는다. 안쪽이 인터페이스를 정의하고, 바깥이 그것을 구현한다.</p>
+
+                <h3 id="layers"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 네 개의 계층</h3>
+                <table class="spec-table">
+                    <tr><th>계층</th><th>책임</th><th>변경 빈도</th></tr>
+                    <tr><td>Entities</td><td>가장 일반적이고 고수준인 기업 전체의 업무 규칙</td><td>가장 낮음</td></tr>
+                    <tr><td>Use Cases</td><td>특정 애플리케이션에 한정된 업무 규칙, 데이터 흐름 조율</td><td>낮음</td></tr>
+                    <tr><td>Interface Adapters</td><td>데이터를 유스케이스와 외부 사이에서 변환</td><td>중간</td></tr>
+                    <tr><td>Frameworks &amp; Drivers</td><td>DB, 웹 서버, UI 등 가장 구체적인 세부사항</td><td>가장 높음</td></tr>
+                </table>
+
+                <h3 id="details-later"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> "세부사항은 미루어라"</h3>
+                <p>책에서 가장 도발적인 주장이 여기 있다. <strong>데이터베이스는 세부사항이다. 웹은 세부사항이다. 프레임워크도 세부사항이다.</strong> 이것들은 아키텍처의 중심이 아니라 가장 바깥에 꽂는 플러그인일 뿐이다. 그래서 저자는 이런 결정을 가능한 한 늦추라고 말한다. DB를 먼저 고르고 그 위에 시스템을 쌓는 게 아니라, 비즈니스 규칙을 먼저 세우고 DB는 마지막에 결정하라는 것이다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>프레임워크에 결혼하지 마라</strong>
+                        저자는 프레임워크를 "도구이지 삶의 방식이 아니다"라고 표현한다. 프레임워크가 아키텍처의 중심을 차지하면, 그 프레임워크의 운명에 시스템 전체가 묶인다. 프레임워크는 쓰되 거리를 두라는 경고다.
+                    </div>
+                </div>
+
+                <!-- 5. 인상 깊은 점 -->
+                <h2 id="impressive"><i class="fa-solid fa-quote-left"></i> 인상 깊은 점</h2>
+
+                <p>가장 인상 깊었던 것은 <strong>논리의 일관성</strong>이다. 책은 SOLID라는 클래스 수준의 다섯 원칙에서 출발한다. 그런데 같은 사고방식을 그대로 컴포넌트 수준으로, 다시 시스템 수준으로 확장한다. SRP가 컴포넌트 응집도 원칙으로, DIP가 아키텍처 경계 설정으로 자연스럽게 이어진다. 작은 원칙 하나가 시스템 전체를 관통하는 모습이 설득력 있다.</p>
+
+                <div class="quote-highlight">
+                    "좋은 아키텍처는 선택지를 열어 둔다."
+                    <div class="quote-source">— Robert C. Martin, Clean Architecture (요지 정리)</div>
+                </div>
+
+                <p>이 문장이 책의 정수다. 좋은 아키텍처란 미래의 모든 변화를 미리 맞추는 것이 아니라, <strong>결정을 미룰 수 있게 해 주는 구조</strong>다. 아직 DB를 안 골랐어도, UI 형태가 안 정해졌어도 비즈니스 규칙은 개발하고 테스트할 수 있어야 한다. 아키텍처의 품질은 "얼마나 많은 결정을 얼마나 오래 미룰 수 있는가"로 측정된다는 관점이 신선했다.</p>
+
+                <!-- 6. 핵심 교훈 -->
+                <h2 id="lessons"><i class="fa-solid fa-key"></i> 핵심 교훈</h2>
+
+                <div class="key-points">
+                    <div class="key-point">
+                        <span class="kp-num">1</span>
+                        <span class="kp-text"><strong>의존성의 방향이 아키텍처다</strong> — 무엇이 무엇에 의존하는지가 시스템의 구조를 결정한다. 의존성은 항상 안정적이고 추상적인 쪽으로 향하게 한다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">2</span>
+                        <span class="kp-text"><strong>비즈니스 규칙을 세부사항에서 분리하라</strong> — DB, 프레임워크, UI는 플러그인이다. 핵심 규칙이 이것들을 모르게 만들면 변경이 한 곳에 갇힌다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">3</span>
+                        <span class="kp-text"><strong>좋은 구조는 결정을 미룰 수 있게 한다</strong> — 아키텍처의 목표는 미래 예측이 아니라, 선택지를 최대한 오래 열어 두는 것이다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">4</span>
+                        <span class="kp-text"><strong>경계(boundary)를 의식적으로 그어라</strong> — 어디에 선을 긋느냐가 변경의 파급 범위를 정한다. 경계는 인터페이스와 의존성 역전으로 지킨다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">5</span>
+                        <span class="kp-text"><strong>구조에 드는 비용은 투자다</strong> — 구조를 희생한 속도는 거짓 속도다. 변경 비용을 낮추는 설계가 결국 장기적으로 더 빠르다.</span>
+                    </div>
+                </div>
+
+                <!-- 7. 누구에게 / 어떻게 읽나 -->
+                <h2 id="how-to-read"><i class="fa-solid fa-users"></i> 누구에게 / 어떻게 읽나</h2>
+
+                <p>이 책은 SOLID 원칙을 어느 정도 알고 읽으면 훨씬 잘 들어온다. 책 자체가 SOLID를 토대로 쌓아 올라가기 때문에, 다섯 원칙에 익숙하지 않다면 중반부터 추상도가 빠르게 올라간다. SOLID가 낯설다면 Clean Code나 별도의 SOLID 자료를 먼저 한 번 훑고 오는 편을 권한다.</p>
+                <p>또 하나, 이 책은 의외로 <strong>추상적이다</strong>. 구체적인 코드 예제가 많지 않고 개념과 다이어그램 중심이다. 그래서 책만 읽으면 "맞는 말 같은데 그래서 어떻게?"라는 느낌이 남기 쉽다. 실제 프로젝트나 헥사고날 아키텍처 같은 구체적 구현 예제와 병행해서 읽으면 추상적인 원칙이 손에 잡힌다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>읽는 순서 제안</strong>
+                        1부~3부(패러다임·설계 원칙·컴포넌트 원칙)를 빠르게 통독한 뒤, 4부~5부(아키텍처·경계)를 천천히 읽는다. 그리고 자신이 다루는 실제 코드베이스의 의존성 방향을 그려 보면 책의 주장이 체감된다.
+                    </div>
+                </div>
+
+                <!-- 8. 이 블로그와의 연결 -->
+                <h2 id="blog-link"><i class="fa-solid fa-link"></i> 이 블로그와의 연결</h2>
+
+                <p>이 블로그의 "프로그래밍 이론" 시리즈는 이 책에 적지 않게 빚을 졌다. 시리즈 #2~#4에서 다룬 SOLID 원칙, 결합도와 응집도 이야기는 모두 Clean Architecture를 한 번씩 참조하며 쓴 글이다. 특히 의존성 역전과 컴포넌트 응집도 부분은 이 책의 정리를 토대로 다시 풀어 쓴 것이다.</p>
+                <p>그 글들을 쓰면서 인용했던 개념의 원전이 궁금했던 독자라면, 이 서평이 그 출처를 한자리에 모은 셈이다. 시리즈 글이 "각 원칙을 따로 본 것"이라면, 이 책은 "그 원칙들이 어떻게 하나의 시스템으로 엮이는가"를 보여 준다.</p>
+
+                <!-- 9. 한 줄 평 -->
+                <h2 id="overall-review"><i class="fa-solid fa-star"></i> 한 줄 평</h2>
+
+                <p>장점은 분명하다. 작은 원칙에서 시스템 전체까지 하나의 논리로 꿰는 일관성, 그리고 "변경 비용"이라는 명확한 기준점이다. 0.5점을 깎은 이유는 추상적이라는 점이다. 구체적인 코드와 함께 두 번, 세 번 곱씹어야 비로소 자기 것이 되는 책이다. 한 번 읽고 덮을 책은 아니다.</p>
+
+                <div class="review-summary">
+                    <div class="review-icon"><span class="melon-icon lg"></span></div>
+                    <p>"어디에 선을 그을 것인가" — 코드가 아니라 의존성의 방향을 보게 만드는 책</p>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Robert C. Martin, "Clean Architecture: A Craftsman's Guide to Software Structure and Design", Prentice Hall, 2017</li>
+                        <li>Robert C. Martin, "Clean Code: A Handbook of Agile Software Craftsmanship", Prentice Hall, 2008</li>
+                        <li>Robert C. Martin, "The Clean Coder: A Code of Conduct for Professional Programmers", Prentice Hall, 2011</li>
+                        <li>Alistair Cockburn, "Hexagonal Architecture (Ports and Adapters)" — 클린 아키텍처와 함께 읽으면 좋은 구체적 구현 패턴</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('book');
+    renderPostNav('book');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

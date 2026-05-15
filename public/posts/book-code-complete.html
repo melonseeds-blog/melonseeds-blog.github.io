@@ -1,0 +1,600 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Complete — 소프트웨어 구축의 백과사전 (Steve McConnell) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 스펙 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 책/강의 정보 카드 */
+        .book-info {
+            display: flex; gap: 24px; padding: 24px;
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            margin: 20px 0;
+        }
+        .book-cover {
+            width: 140px; height: 200px; border-radius: 8px; flex-shrink: 0;
+            background: var(--border-light); display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; color: var(--text-light); overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .book-detail { flex: 1; }
+        .book-detail h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; border-bottom: none; }
+        .book-detail table { font-size: 0.88rem; }
+        .book-detail td { padding: 3px 0; }
+        .book-detail td:first-child { color: var(--text-muted); width: 60px; }
+
+        /* 별점 */
+        .rating { margin: 12px 0; display: flex; align-items: center; gap: 8px; }
+        .rating .stars { color: #f59e0b; font-size: 1.1rem; }
+        .rating .score { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+
+        /* 핵심 포인트 */
+        .key-points { margin: 20px 0; }
+        .key-point {
+            display: flex; gap: 12px; padding: 12px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .key-point:last-child { border-bottom: none; }
+        .key-point .kp-num {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--primary-light); color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+        }
+        .key-point .kp-text { font-size: 0.92rem; color: var(--text-sub); }
+
+        /* 인상적인 구절 */
+        .quote-highlight {
+            background: var(--seed-light); border-left: 4px solid var(--flesh);
+            border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 16px 0;
+            font-style: italic; color: var(--text-sub);
+        }
+        .quote-highlight .quote-source { font-style: normal; font-size: 0.82rem; color: var(--text-light); margin-top: 8px; }
+
+        /* 한줄 감상 */
+        .review-summary {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .review-summary .review-icon { font-size: 1.5rem; margin-bottom: 8px; }
+        .review-summary p { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
+
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .book-info { flex-direction: column; align-items: center; text-align: center; }
+            .book-cover { width: 120px; height: 170px; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#book-intro" data-section="book-intro">책 개요</a>
+        <a href="#core-message" data-section="core-message">핵심 메시지</a>
+        <a href="#book-structure" data-section="book-structure">책의 구조</a>
+        <a href="#impressive" data-section="impressive">인상 깊은 점</a>
+        <a href="#lessons" data-section="lessons">핵심 교훈</a>
+        <a href="#who-how" data-section="who-how">누가 어떻게</a>
+        <a href="#vs-clean-code" data-section="vs-clean-code">Clean Code 비교</a>
+        <a href="#blog-link" data-section="blog-link">블로그 연결</a>
+        <a href="#one-line" data-section="one-line">한 줄 평</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">책/강의 후기</span>
+                </div>
+                <h1>Code Complete — 소프트웨어 구축의 백과사전 (Steve McConnell)</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 10 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Steve McConnell의 Code Complete 2판 서평과 책 개요</li>
+                        <li>"소프트웨어 구축(construction)"이라는 관점과 근거 기반 실천법</li>
+                        <li>변수·루틴·클래스부터 디버깅·통합까지 다루는 책의 범위</li>
+                        <li>핵심 교훈 정리와 Clean Code와의 비교</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#book-intro">책 개요</a></li>
+                        <li><a href="#core-message">핵심 메시지</a></li>
+                        <li><a href="#book-structure">책의 구조</a></li>
+                        <li><a href="#impressive">인상 깊은 점</a></li>
+                        <li><a href="#lessons">핵심 교훈</a></li>
+                        <li><a href="#who-how">누구에게 어떻게 읽나</a></li>
+                        <li><a href="#vs-clean-code">Clean Code와의 비교</a></li>
+                        <li><a href="#blog-link">이 블로그와의 연결</a></li>
+                        <li><a href="#one-line">한 줄 평</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 책 개요 -->
+                <h2 id="book-intro"><i class="fa-solid fa-book-open"></i> 책 개요</h2>
+
+                <div class="book-info">
+                    <div class="book-cover">
+                        <i class="fa-solid fa-book"></i>
+                    </div>
+                    <div class="book-detail">
+                        <h3>Code Complete: A Practical Handbook of Software Construction (2nd Edition)</h3>
+                        <table>
+                            <tr><td>저자</td><td>Steve McConnell</td></tr>
+                            <tr><td>출판</td><td>Microsoft Press, 2004</td></tr>
+                            <tr><td>분량</td><td>약 960쪽</td></tr>
+                            <tr><td>읽은 날</td><td>2026-05-15</td></tr>
+                        </table>
+                        <div class="rating">
+                            <span class="stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star-half-stroke"></i></span>
+                            <span class="score">4.5 / 5.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p><strong>Code Complete</strong>는 소프트웨어 개발에서 "코드를 작성하는 행위" 자체를 정면으로 다루는 책이다. 저자 Steve McConnell은 이 활동을 <strong>소프트웨어 구축(software construction)</strong>이라 부른다. 설계와 코딩, 디버깅, 단위 테스트, 통합처럼 실제로 코드가 만들어지고 다듬어지는 전 과정을 가리킨다.</p>
+                <p>2판은 2004년에 나왔다. 초판이 1993년이니 10년 만의 개정판이고, 분량은 900쪽을 훌쩍 넘는다. 두께만 보면 부담스럽지만, 처음부터 끝까지 정독하는 책이라기보다 필요한 장을 찾아 펼치는 <strong>레퍼런스 성격</strong>이 강하다.</p>
+                <p>대상 독자는 넓다. 막 코딩을 시작한 주니어부터 수년 차 개발자까지 모두 얻을 것이 있다. 특정 언어에 묶이지 않고 C, C++, Java, Visual Basic 등 여러 언어의 예제를 섞어 쓰며, 언어를 넘어서는 보편적인 실천법을 정리한다.</p>
+
+                <!-- 2. 핵심 메시지 -->
+                <h2 id="core-message"><i class="fa-solid fa-bullseye"></i> 핵심 메시지</h2>
+
+                <p>이 책의 출발점은 단순하다. <strong>코딩은 직관이나 재능으로 하는 예술이 아니라, 검증된 실천법이 존재하는 "구축" 활동</strong>이라는 것이다. 건물을 지을 때 검증된 공법이 있듯, 코드를 만들 때도 더 나은 방법과 더 나쁜 방법이 데이터로 구분된다.</p>
+                <p>McConnell은 "내 경험상 이게 좋다"는 식의 주장에 머무르지 않는다. 가능한 한 연구 결과와 통계를 인용해 <strong>왜 그 실천법이 더 나은지를 근거로 뒷받침</strong>한다. 결함 발견 비용, 코드 리뷰의 효과, 루틴 길이와 오류율의 관계 같은 것들을 데이터로 이야기한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>"construction"이라는 단어 선택</strong>
+                        McConnell이 굳이 coding이 아니라 construction이라는 단어를 쓰는 이유가 있다. 코딩은 키보드를 두드리는 일부 작업만 떠올리게 하지만, construction은 상세 설계·코딩·디버깅·단위 테스트를 하나의 연속된 활동으로 묶어 보게 만든다.
+                    </div>
+                </div>
+
+                <p>요약하면 메시지는 이렇다. 좋은 코드는 우연이 아니다. 그것을 만드는 구체적이고 반복 가능한 방법이 있으며, 그 방법은 <strong>직관이 아니라 근거 위에 서 있다</strong>.</p>
+
+                <!-- 3. 책의 구조 -->
+                <h2 id="book-structure"><i class="fa-solid fa-sitemap"></i> 책의 구조</h2>
+
+                <p>책은 소프트웨어 구축의 거의 모든 국면을 장 단위로 훑는다. 다루는 주제 범위를 정리하면 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <tr>
+                        <th>영역</th>
+                        <th>주요 내용</th>
+                    </tr>
+                    <tr>
+                        <td class="highlight">기초 다지기</td>
+                        <td>소프트웨어 구축의 정의, 은유의 힘, 사전 준비(요구·아키텍처)의 중요성</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">고품질 코드 만들기</td>
+                        <td>클래스 설계, 루틴 설계, 디펜시브 프로그래밍, 의사코드 기반 작성법</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">변수</td>
+                        <td>변수 사용 일반 원칙, 변수 이름 짓기, 기본 데이터 타입, 특이한 데이터 타입</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">문장과 제어 구조</td>
+                        <td>직선적 코드, 조건문, 반복문, 흔치 않은 제어 구조, 복잡도를 낮추는 표</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">코드 개선</td>
+                        <td>소프트웨어 품질 개관, 협업 구축(코드 리뷰·페어), 개발자 테스트, 디버깅, 리팩터링, 코드 튜닝 전략</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">시스템 차원</td>
+                        <td>프로그램 규모에 따른 구축, 통합, 구축 도구</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">소프트웨어 장인 정신</td>
+                        <td>레이아웃과 스타일, 자기 문서화 코드, 개인적 성격, 프로그래밍 도구로서의 언어</td>
+                    </tr>
+                </table>
+
+                <p>한 권 안에 변수 이름 짓기 같은 미시적인 주제부터 대규모 프로그램의 통합 전략 같은 거시적인 주제까지 들어 있다. 이 넓은 폭이 Code Complete의 정체성이다.</p>
+
+                <!-- 4. 인상 깊은 점 -->
+                <h2 id="impressive"><i class="fa-solid fa-star-half-stroke"></i> 인상 깊은 점</h2>
+
+                <h3 id="impressive-metaphor"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 은유로서의 소프트웨어 구축</h3>
+                <p>책 앞부분에서 McConnell은 소프트웨어 개발을 설명하는 여러 은유를 비교한다. 글쓰기, 농사, 진주 키우기, 그리고 건축. 그는 어느 하나가 완벽하지 않다는 점을 인정하면서도, <strong>"구축(building)"</strong>이라는 은유가 가장 유용하다고 본다. 작은 개집을 짓는 것과 고층 빌딩을 짓는 것은 준비와 절차가 완전히 다르듯, 프로젝트 규모에 따라 필요한 엄격함도 달라진다는 통찰이 여기서 나온다.</p>
+
+                <h3 id="impressive-evidence"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 데이터를 인용한 실증적 접근</h3>
+                <p>가장 인상적인 부분이다. 대부분의 코딩 책은 저자의 경험과 취향에 기댄다. Code Complete는 다르다. 어떤 실천법을 권할 때마다 <strong>그것을 뒷받침하는 연구나 측정치를 함께 제시</strong>한다. 결함을 늦게 발견할수록 수정 비용이 기하급수적으로 커진다는 점, 코드 리뷰가 테스트만큼이나 효과적으로 결함을 잡아낸다는 점 등이 그렇다. 덕분에 "왜 이렇게 해야 하는가"라는 질문에 "그렇게 배웠으니까"가 아니라 근거로 답할 수 있게 된다.</p>
+
+                <h3 id="impressive-fundamentals"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 기본기를 끝까지 파고든다</h3>
+                <p>변수 이름 하나, 루틴 하나에 책은 장 전체를 할애한다. 사소해 보이는 주제를 이렇게까지 깊게 다루는 책은 드물다. 변수의 유효 범위를 어떻게 좁힐지, 루틴이 한 가지 일만 하도록 어떻게 응집도를 높일지를 구체적인 판단 기준과 함께 설명한다. <strong>화려한 기법이 아니라 매일 쓰는 기본기</strong>를 정밀하게 다듬어 준다.</p>
+
+                <div class="quote-highlight">
+                    "소프트웨어의 으뜸가는 기술적 과제는 복잡도를 관리하는 것이다."
+                    <div class="quote-source">— Steve McConnell, Code Complete 2판의 핵심 주장을 옮긴 표현</div>
+                </div>
+
+                <!-- 5. 핵심 교훈 -->
+                <h2 id="lessons"><i class="fa-solid fa-graduation-cap"></i> 핵심 교훈</h2>
+
+                <div class="key-points">
+                    <div class="key-point">
+                        <span class="kp-num">1</span>
+                        <span class="kp-text"><strong>복잡도 관리가 핵심이다</strong> — 책 전체를 관통하는 한 문장이다. 좋은 설계, 작은 루틴, 좁은 변수 범위, 일관된 추상화 수준은 모두 사람의 머리가 한 번에 감당할 수 있는 복잡도를 줄이기 위한 수단이다. 모든 실천법은 이 목적에 봉사한다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">2</span>
+                        <span class="kp-text"><strong>디펜시브 프로그래밍</strong> — 입력은 신뢰하지 않고, 가정은 단언(assertion)으로 검증하며, 오류는 일관된 전략으로 처리한다. 운전자가 방어 운전을 하듯, 코드도 잘못된 데이터와 예상 못한 상태에 미리 대비해야 한다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">3</span>
+                        <span class="kp-text"><strong>좋은 이름의 힘</strong> — 변수와 루틴의 이름은 곧 문서다. 이름이 대상의 본질을 정확히 담으면 주석이 줄고 코드가 스스로를 설명한다. 이름 짓기에 시간을 쓰는 것은 낭비가 아니라 투자다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">4</span>
+                        <span class="kp-text"><strong>의사코드로 먼저 생각한다</strong> — 루틴을 코드로 바로 쓰지 않고 의사코드(Pseudocode Programming Process)로 논리를 먼저 다듬는다. 설계 단계에서 잡은 오류가 코딩 단계에서 잡는 오류보다 훨씬 싸다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">5</span>
+                        <span class="kp-text"><strong>품질은 여러 활동의 합으로 얻는다</strong> — 테스트 하나로 품질이 보장되지 않는다. 코드 리뷰, 개발자 테스트, 디버깅, 리팩터링이 각각 다른 결함을 잡아낸다. 여러 그물을 겹쳐야 결함이 빠져나가지 않는다.</span>
+                    </div>
+                </div>
+
+                <!-- 6. 누구에게 어떻게 읽나 -->
+                <h2 id="who-how"><i class="fa-solid fa-users"></i> 누구에게 어떻게 읽나</h2>
+
+                <p>두꺼운 책이라 읽는 전략이 필요하다. 처음부터 끝까지 완독하겠다고 마음먹으면 중간에 지치기 쉽다. <strong>레퍼런스로 책장에 두고, 지금 부딪힌 문제에 해당하는 장을 찾아 읽는 방식</strong>이 현실적이다. 루틴 설계가 고민이면 루틴 장을, 디버깅이 막히면 디버깅 장을 펼치면 된다. 각 장 끝에는 체크리스트가 있어 실무에서 바로 점검 도구로 쓸 수 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>주니어에게 특히 유익하다</strong>
+                        경력이 길면 책 내용 중 상당수를 이미 몸으로 익혔을 수 있다. 하지만 주니어에게는 산발적으로 흩어진 "좋은 습관"들이 한 권에 체계적으로 정리되어 있다는 점만으로도 가치가 크다. 변수 하나, 루틴 하나를 어떻게 다뤄야 하는지에 대한 판단 기준을 빠르게 세울 수 있다.
+                    </div>
+                </div>
+
+                <p>다만 2004년 책이라는 점은 감안해야 한다. 최신 언어 기능이나 클라우드·분산 환경 같은 주제는 다루지 않는다. 그러나 변수·루틴·복잡도·테스트 같은 <strong>핵심 주제는 시간이 지나도 거의 바래지 않는다</strong>. 도구는 바뀌어도 사람이 복잡도를 다루는 방식은 크게 변하지 않기 때문이다.</p>
+
+                <!-- 7. Clean Code와의 비교 -->
+                <h2 id="vs-clean-code"><i class="fa-solid fa-scale-balanced"></i> Clean Code와의 비교</h2>
+
+                <p>이 블로그에 <a href="clean-code-review.html">Clean Code 리뷰</a>를 따로 올린 적이 있다. 두 책은 자주 함께 거론되지만 성격이 꽤 다르다.</p>
+
+                <table class="spec-table">
+                    <tr>
+                        <th>비교 항목</th>
+                        <th>Code Complete</th>
+                        <th>Clean Code</th>
+                    </tr>
+                    <tr>
+                        <td class="highlight">분량</td>
+                        <td>약 960쪽, 백과사전형</td>
+                        <td>약 460쪽, 핵심 집중형</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">범위</td>
+                        <td>설계·코딩·디버깅·통합까지 폭넓게</td>
+                        <td>읽기 좋은 코드 작성에 좁고 깊게</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">접근 방식</td>
+                        <td>연구·데이터 인용, 실증적</td>
+                        <td>저자의 경험과 신념, 단호하고 날카로움</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">톤</td>
+                        <td>차분한 레퍼런스, 균형 잡힌 설명</td>
+                        <td>강한 주장, 명확한 원칙</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">읽는 법</td>
+                        <td>필요한 장을 골라 참고</td>
+                        <td>처음부터 끝까지 통독 가능</td>
+                    </tr>
+                    <tr>
+                        <td class="highlight">추천 상황</td>
+                        <td>구축 전반의 판단 기준을 세우고 싶을 때</td>
+                        <td>코드를 더 깨끗하게 다듬고 싶을 때</td>
+                    </tr>
+                </table>
+
+                <p>한쪽이 더 낫다고 말하기 어렵다. Code Complete는 넓고 두껍고 실증적이며, Clean Code는 좁고 날카롭다. <strong>둘을 함께 읽으면 서로의 빈자리를 메운다</strong>. Code Complete로 구축 활동의 전체 지도를 얻고, Clean Code로 코드 한 줄 한 줄을 다듬는 감각을 벼리는 식이다.</p>
+
+                <!-- 8. 이 블로그와의 연결 -->
+                <h2 id="blog-link"><i class="fa-solid fa-link"></i> 이 블로그와의 연결</h2>
+
+                <p>이 블로그의 프로그래밍 이론 시리즈는 클린 코드, 결합도와 응집도, SOLID 원칙, 디자인 패턴, 안티패턴, 복잡도 관리 같은 주제를 다뤄 왔다. 그 글들을 쓰면서 <strong>references에 Code Complete를 여러 번 참조</strong>했다.</p>
+                <p>이유는 분명하다. 결합도와 응집도를 설명할 때, 복잡도 관리가 왜 핵심인지를 짚을 때, 루틴을 작게 유지하라는 조언의 근거를 댈 때 — 그 출처를 거슬러 올라가면 자주 이 책이 나온다. 이번 서평은 그동안 참조 목록에만 이름을 올리던 책을 <strong>한 편의 글로 제대로 소개</strong>하는 자리인 셈이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>함께 읽으면 좋은 글</strong>
+                        이 블로그의 <a href="theory-04-coupling-cohesion.html">결합도와 응집도</a>, <a href="theory-10-complexity.html">복잡도 관리</a>, <a href="clean-code-review.html">Clean Code 리뷰</a> 글이 Code Complete의 주제와 직접 맞닿아 있다.
+                    </div>
+                </div>
+
+                <!-- 9. 한 줄 평 -->
+                <h2 id="one-line"><i class="fa-solid fa-pen-nib"></i> 한 줄 평</h2>
+
+                <p>Code Complete는 한 번에 읽고 덮는 책이 아니다. 개발자의 책상에 두고, 코드를 만들다 길을 잃을 때마다 펼쳐 보는 <strong>구축의 백과사전</strong>이다. 0.5점을 깎은 이유는 분량이 주는 부담과 2004년이라는 시점의 한계 때문이지만, 핵심 주제의 가치는 그것을 충분히 상쇄한다.</p>
+
+                <div class="review-summary">
+                    <div class="review-icon"><span class="melon-icon lg"></span></div>
+                    <p>"좋은 코드는 우연이 아니다"를 900쪽의 근거로 증명해내는, 책장에 꽂아두고 평생 들춰 보는 레퍼런스</p>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Steve McConnell, "Code Complete: A Practical Handbook of Software Construction", 2nd Edition, Microsoft Press, 2004</li>
+                        <li>Robert C. Martin, "Clean Code: A Handbook of Agile Software Craftsmanship", Prentice Hall, 2008</li>
+                        <li>Steve McConnell, "Software Estimation: Demystifying the Black Art", Microsoft Press, 2006</li>
+                        <li>Code Complete 공식 소개 — <a href="https://stevemcconnell.com/books/" target="_blank">stevemcconnell.com/books</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('book');
+    renderPostNav('book');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

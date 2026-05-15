@@ -1,0 +1,589 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ Coding Standards — 101가지 C++ 모범 사례 (Sutter &amp; Alexandrescu) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 책/강의 정보 카드 */
+        .book-info {
+            display: flex; gap: 24px; padding: 24px;
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            margin: 20px 0;
+        }
+        .book-cover {
+            width: 140px; height: 200px; border-radius: 8px; flex-shrink: 0;
+            background: var(--border-light); display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; color: var(--text-light); overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .book-detail { flex: 1; }
+        .book-detail h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; border-bottom: none; }
+        .book-detail table { font-size: 0.88rem; }
+        .book-detail td { padding: 3px 0; }
+        .book-detail td:first-child { color: var(--text-muted); width: 60px; }
+
+        /* 별점 */
+        .rating { margin: 12px 0; display: flex; align-items: center; gap: 8px; }
+        .rating .stars { color: #f59e0b; font-size: 1.1rem; }
+        .rating .score { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+
+        /* 핵심 포인트 */
+        .key-points { margin: 20px 0; }
+        .key-point {
+            display: flex; gap: 12px; padding: 12px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .key-point:last-child { border-bottom: none; }
+        .key-point .kp-num {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--primary-light); color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+        }
+        .key-point .kp-text { font-size: 0.92rem; color: var(--text-sub); }
+
+        /* 인상적인 구절 */
+        .quote-highlight {
+            background: var(--seed-light); border-left: 4px solid var(--flesh);
+            border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 16px 0;
+            font-style: italic; color: var(--text-sub);
+        }
+        .quote-highlight .quote-source { font-style: normal; font-size: 0.82rem; color: var(--text-light); margin-top: 8px; }
+
+        /* 한줄 감상 */
+        .review-summary {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .review-summary .review-icon { font-size: 1.5rem; margin-bottom: 8px; }
+        .review-summary p { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
+
+        /* 스펙 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.88rem;
+        }
+        .spec-table th, .spec-table td {
+            border: 1px solid var(--border); padding: 9px 12px; text-align: left;
+        }
+        .spec-table th {
+            background: var(--primary-50); font-weight: 700; color: var(--text);
+        }
+        .spec-table td { color: var(--text-sub); }
+        .spec-table tr:nth-child(even) td { background: var(--bg); }
+
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .book-info { flex-direction: column; align-items: center; text-align: center; }
+            .book-cover { width: 120px; height: 170px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#book-intro" data-section="book-intro">책 개요</a>
+        <a href="#core-message" data-section="core-message">핵심 메시지</a>
+        <a href="#book-structure" data-section="book-structure">책의 구조</a>
+        <a href="#key-rules" data-section="key-rules">핵심 규칙</a>
+        <a href="#impressive" data-section="impressive">인상 깊은 점</a>
+        <a href="#lessons" data-section="lessons">핵심 교훈</a>
+        <a href="#who-how" data-section="who-how">누구에게</a>
+        <a href="#context" data-section="context">시대 맥락</a>
+        <a href="#blog-link" data-section="blog-link">블로그 연결</a>
+        <a href="#one-line" data-section="one-line">한 줄 평</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">책/강의 후기</span>
+                </div>
+                <h1>C++ Coding Standards — 101가지 C++ 모범 사례 (Sutter &amp; Alexandrescu)</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 9 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>C++ 두 거장이 정리한 101개 규칙의 얇은 명저 서평</li>
+                        <li>"코딩 표준"이 스타일이 아니라 검증된 설계 원칙인 이유</li>
+                        <li>대표 규칙 몇 가지와 책의 9개 영역 구성</li>
+                        <li>C++03 기준이라는 시대 한계와 여전히 유효한 원칙</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#book-intro">책 개요</a></li>
+                        <li><a href="#core-message">핵심 메시지 — 코딩 표준이란 무엇인가</a></li>
+                        <li><a href="#book-structure">책의 구조 — 9개 영역</a></li>
+                        <li><a href="#key-rules">핵심 규칙 몇 가지</a></li>
+                        <li><a href="#impressive">인상 깊은 점</a></li>
+                        <li><a href="#lessons">핵심 교훈</a></li>
+                        <li><a href="#who-how">누구에게 / 어떻게 읽나</a></li>
+                        <li><a href="#context">시대 맥락 — C++03 기준</a></li>
+                        <li><a href="#blog-link">이 블로그와의 연결</a></li>
+                        <li><a href="#one-line">한 줄 평</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 책 개요 -->
+                <h2 id="book-intro"><i class="fa-solid fa-book-open"></i> 책 개요</h2>
+
+                <div class="book-info">
+                    <div class="book-cover">
+                        <i class="fa-solid fa-book"></i>
+                    </div>
+                    <div class="book-detail">
+                        <h3>C++ Coding Standards: 101 Rules, Guidelines, and Best Practices</h3>
+                        <table>
+                            <tr><td>저자</td><td>Herb Sutter, Andrei Alexandrescu</td></tr>
+                            <tr><td>출판</td><td>Addison-Wesley, 2004</td></tr>
+                            <tr><td>분량</td><td>약 220쪽, 101개 규칙</td></tr>
+                            <tr><td>읽은 날</td><td>2026-05-15</td></tr>
+                        </table>
+                        <div class="rating">
+                            <span class="stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star-half-stroke"></i></span>
+                            <span class="score">4.5 / 5.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p>이 책은 C++ 커뮤니티의 두 거장이 함께 쓴 얇은 명저다. Herb Sutter는 C++ 표준 위원회를 오래 이끈 인물이고, <em>Exceptional C++</em> 시리즈로 유명하다. Andrei Alexandrescu는 <em>Modern C++ Design</em>으로 템플릿 메타프로그래밍의 지평을 연 사람이다. 두 사람이 의기투합해 "C++로 일하는 사람이라면 이견 없이 받아들일 만한 규칙"만 골라 101개로 압축했다.</p>
+                <p>두께는 얇지만 밀도는 높다. 각 규칙은 한두 페이지짜리 짧은 절로 구성되며, 제목 자체가 곧 규칙이다. 대상 독자는 문법은 이미 익혔지만 "어떻게 써야 잘 쓰는 것인가"를 고민하는 <strong>C++ 중급자 이상</strong>이다. 입문자가 처음 보는 책은 아니지만, 어느 정도 코드를 짜본 사람에게는 자신의 습관을 점검하는 체크리스트가 된다.</p>
+
+                <!-- 2. 핵심 메시지 -->
+                <h2 id="core-message"><i class="fa-solid fa-bullseye"></i> 핵심 메시지 — 코딩 표준이란 무엇인가</h2>
+
+                <p>책의 서문이 던지는 메시지가 분명하다. "코딩 표준"이라는 말을 들으면 흔히 들여쓰기, 중괄호 위치, 변수 이름 규칙 같은 사소한 스타일 합의를 떠올린다. 저자들은 그런 것에는 별로 관심이 없다고 못 박는다. 들여쓰기를 탭으로 하든 스페이스로 하든 팀이 일관되면 그만이고, 그건 표준의 본질이 아니라는 것이다.</p>
+                <p>이 책이 말하는 코딩 표준은 <strong>검증된 설계·구현 원칙</strong>이다. 수많은 프로젝트에서 실수를 반복하며 얻어진 교훈, 컴파일러와 언어의 함정을 피하는 방법, 유지보수 비용을 낮추는 구조 같은 것들이다. 그래서 각 규칙은 단순한 명령이 아니라 항상 "왜"를 함께 설명한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>규칙의 서술 구조</strong>
+                        모든 규칙은 일관된 틀로 쓰여 있다. 한 문장 요약(Summary), 그렇게 해야 하는 근거(Discussion), 그리고 예외가 인정되는 상황(Exceptions)과 참고 항목이다. 덕분에 규칙을 교조적으로 외우는 게 아니라 판단의 맥락까지 함께 익히게 된다.
+                    </div>
+                </div>
+
+                <p>저자들의 표현을 빌리면, 좋은 코딩 표준은 "생각하지 않아도 되는 결정을 미리 내려두는 것"이다. 매번 고민할 필요가 없는 부분을 표준으로 굳혀두면, 개발자는 정작 중요한 설계 판단에 에너지를 쓸 수 있다.</p>
+
+                <!-- 3. 책의 구조 -->
+                <h2 id="book-structure"><i class="fa-solid fa-sitemap"></i> 책의 구조 — 9개 영역</h2>
+
+                <p>101개 규칙은 주제별로 묶여 9개 영역에 흩어져 있다. 앞쪽은 팀과 프로젝트 차원의 이야기, 뒤로 갈수록 구체적인 코드 수준의 이야기로 좁혀진다.</p>
+
+                <table class="spec-table">
+                    <tr><th>영역</th><th>다루는 내용</th></tr>
+                    <tr><td>조직·정책</td><td>경고 수준, 빌드 청결, 버전 관리 등 프로젝트 차원의 약속</td></tr>
+                    <tr><td>설계 스타일</td><td>한 가지에 집중하기, 클래스보다 알고리즘, 결합도 관리</td></tr>
+                    <tr><td>코딩 스타일</td><td>이름 짓기, 가독성, 매크로 회피, 초기화 습관</td></tr>
+                    <tr><td>함수·연산자</td><td>값/참조 전달 선택, 연산자 오버로딩의 절제</td></tr>
+                    <tr><td>클래스 설계·상속</td><td>복사·이동의 일관성, 가상 함수, public 상속의 의미</td></tr>
+                    <tr><td>네임스페이스·모듈</td><td>네임스페이스 활용, 헤더 의존성, 컴파일 방화벽</td></tr>
+                    <tr><td>템플릿·제네릭</td><td>제네릭 프로그래밍의 원칙, 의존성 최소화</td></tr>
+                    <tr><td>에러 처리·예외</td><td>예외 안전성, 자원 관리, 오류 보고 방식</td></tr>
+                    <tr><td>STL 사용</td><td>컨테이너·알고리즘 활용, 직접 만들기 전에 표준부터</td></tr>
+                </table>
+
+                <p>흥미로운 점은 순서다. 가장 먼저 나오는 규칙이 "높은 경고 수준에서 깨끗하게, 그리고 경고 없이 컴파일하라"다. 화려한 설계 패턴이 아니라, 빌드 환경을 정직하게 세팅하는 것부터 시작한다. 표준의 출발점이 개인의 영리함이 아니라 팀의 규율이라는 저자들의 관점이 드러나는 배치다.</p>
+
+                <!-- 4. 핵심 규칙 -->
+                <h2 id="key-rules"><i class="fa-solid fa-list-check"></i> 핵심 규칙 몇 가지</h2>
+
+                <p>101개를 다 옮길 수는 없으니, 지금도 매일 코드에 영향을 주는 대표적인 규칙 몇 개만 자기 말로 정리한다.</p>
+
+                <div class="key-points">
+                    <div class="key-point">
+                        <span class="kp-num">1</span>
+                        <span class="kp-text"><strong>높은 경고 수준에서 깨끗하게 컴파일하라</strong> — 경고는 무시하라고 있는 게 아니다. 경고 하나하나가 잠재적 버그의 신호다. 경고 수준을 최대로 올리고, 남은 경고가 0이 될 때까지 코드를 고치는 것이 모든 규칙의 전제다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">2</span>
+                        <span class="kp-text"><strong>한 가지만 잘하는 작은 함수·클래스를 만들어라</strong> — 하나의 함수, 하나의 클래스는 명확하게 정의된 한 가지 책임만 져야 한다. 책임이 늘어나면 테스트도 재사용도 어려워진다. 응집도를 높이고 결합도를 낮추라는 고전적 원칙의 C++ 버전이다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">3</span>
+                        <span class="kp-text"><strong>복사와 이동을 올바르고 일관되게 다뤄라</strong> — 복사 생성자, 복사 대입, 소멸자는 함께 움직인다. 하나를 직접 정의해야 한다면 나머지도 점검해야 한다. 이른바 Rule of Three(현대 C++에서는 이동까지 포함한 Rule of Five) 사고방식으로, 자원을 쥔 클래스에서 특히 중요하다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">4</span>
+                        <span class="kp-text"><strong>예외 안전성을 코드에 설계해 넣어라</strong> — 예외가 던져졌을 때 자원이 새지 않고 객체가 망가지지 않아야 한다. 책은 기본(basic)·강한(strong)·무던짐(nothrow) 보장이라는 세 단계를 제시하고, 함수마다 어떤 수준을 약속하는지 명확히 하라고 말한다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">5</span>
+                        <span class="kp-text"><strong>RAII로 자원을 관리하라</strong> — 메모리, 파일, 락 같은 자원의 수명을 객체의 수명에 묶어라. 생성자에서 얻고 소멸자에서 놓으면, 예외가 어디서 터지든 정리는 자동으로 이뤄진다. 예외 안전성을 가장 적은 비용으로 달성하는 길이다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">6</span>
+                        <span class="kp-text"><strong>원시 포인터보다 스마트 포인터를 써라</strong> — 소유권이 불분명한 원시 포인터는 누수와 이중 해제의 온상이다. 소유를 표현하는 자리에는 스마트 포인터를, 단순 참조에는 참조나 비소유 포인터를 써서 의도를 타입으로 드러내라.</span>
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>규칙들은 서로 연결되어 있다</strong>
+                        RAII가 예외 안전성을 떠받치고, 스마트 포인터가 RAII의 구체적 도구이며, 작은 클래스 원칙이 그 모두를 테스트 가능하게 만든다. 101개가 따로 노는 목록이 아니라 하나의 사고방식을 여러 각도에서 비추는 구조다.
+                    </div>
+                </div>
+
+                <h3 id="rule-table"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 대표 규칙 요약</h3>
+                <p>위 규칙들을 "요점 / 근거 / 주의"의 틀로 한 번 더 압축하면 다음과 같다. 책이 모든 규칙을 이 구조로 풀어낸다는 점을 보여주는 표다.</p>
+
+                <table class="spec-table">
+                    <tr><th>규칙</th><th>왜 (근거)</th><th>주의·예외</th></tr>
+                    <tr><td>경고 없이 컴파일</td><td>경고는 버그의 조기 신호</td><td>외부 헤더발 경고는 격리</td></tr>
+                    <tr><td>작은 함수·클래스</td><td>테스트·재사용·이해 용이</td><td>인위적 쪼개기는 역효과</td></tr>
+                    <tr><td>복사·이동 일관성</td><td>자원 클래스의 정합성 보장</td><td>값 타입은 기본값으로 충분</td></tr>
+                    <tr><td>예외 안전성 설계</td><td>중단 시에도 상태 보존</td><td>보장 수준을 함수마다 명시</td></tr>
+                    <tr><td>RAII 자원 관리</td><td>해제 누락·누수 원천 차단</td><td>순환 소유는 별도 설계 필요</td></tr>
+                    <tr><td>스마트 포인터 우선</td><td>소유권을 타입으로 표현</td><td>비소유 참조는 포인터/참조</td></tr>
+                </table>
+
+                <!-- 5. 인상 깊은 점 -->
+                <h2 id="impressive"><i class="fa-solid fa-star-half-stroke"></i> 인상 깊은 점</h2>
+
+                <p>가장 인상적인 것은 <strong>밀도</strong>다. 220쪽 안에 101개 규칙이 들어가니 규칙 하나가 한두 페이지에 불과하다. 그런데도 답답하지 않다. 군더더기 없이 "이렇게 하라 — 왜냐하면 — 단 이런 경우는 예외"로 떨어지기 때문이다. 출퇴근길에 규칙 몇 개씩 끊어 읽기에 좋고, 통독하는 데도 부담이 없다.</p>
+
+                <div class="quote-highlight">
+                    "코딩 표준은 모두가 같은 방식으로 작성하라는 강요가 아니다. 이미 답이 정해진 문제에 매번 에너지를 쓰지 않게 해주는 합의다."
+                    <div class="quote-source">— C++ Coding Standards 서문의 취지를 옮긴 표현</div>
+                </div>
+
+                <p>또 하나는 <strong>겸손함</strong>이다. 두 저자 모두 자기 색깔이 강한 사람들인데, 이 책에서는 의견이 갈릴 만한 주제를 의식적으로 뺐다. 101개는 "거의 모두가 동의할 것"만 추린 결과다. 그래서 책이 권위적이지 않고, 팀 표준 문서의 출발점으로 그대로 쓸 수 있다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>얇다고 쉬운 책은 아니다</strong>
+                        분량이 짧을 뿐, 각 규칙의 근거는 C++의 깊은 동작 원리에 닿아 있다. 예외 안전성이나 템플릿 의존성 규칙은 배경 지식이 없으면 한 페이지를 여러 번 곱씹어야 한다. 빠르게 넘길 수 있는 책이 아니라 빠르게 찾아볼 수 있는 책이다.
+                    </div>
+                </div>
+
+                <!-- 6. 핵심 교훈 -->
+                <h2 id="lessons"><i class="fa-solid fa-graduation-cap"></i> 핵심 교훈</h2>
+
+                <div class="key-points">
+                    <div class="key-point">
+                        <span class="kp-num">1</span>
+                        <span class="kp-text"><strong>표준은 스타일이 아니라 원칙이다</strong> — 중괄호 위치 논쟁에 시간을 쓰지 말고, 검증된 설계 원칙을 합의하는 데 에너지를 써야 한다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">2</span>
+                        <span class="kp-text"><strong>"왜"를 모르는 규칙은 위험하다</strong> — 근거를 이해해야 예외 상황을 판단할 수 있다. 규칙을 외우는 게 아니라 맥락을 익히는 것이 목표다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">3</span>
+                        <span class="kp-text"><strong>자원 관리는 타입과 수명으로 푼다</strong> — RAII와 스마트 포인터는 선택지가 아니라 기본값이다. 수동 해제를 코드에서 지우는 것이 안전성의 출발점이다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">4</span>
+                        <span class="kp-text"><strong>작게 나누면 거의 모든 것이 쉬워진다</strong> — 작은 함수와 작은 클래스는 테스트, 재사용, 디버깅, 예외 안전성을 한꺼번에 개선한다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">5</span>
+                        <span class="kp-text"><strong>표준이 있으면 사고가 자유로워진다</strong> — 정해둘 수 있는 것을 정해두면, 정작 어려운 설계 결정에 집중할 여유가 생긴다.</span>
+                    </div>
+                </div>
+
+                <!-- 7. 누구에게 / 어떻게 -->
+                <h2 id="who-how"><i class="fa-solid fa-users"></i> 누구에게 / 어떻게 읽나</h2>
+
+                <p>이 책은 <strong>C++ 중급자</strong>에게 가장 잘 맞는다. 문법은 익혔고 어느 정도 코드를 짜봤지만 "이게 좋은 방식인가"를 자주 의심하게 되는 단계라면, 자신의 습관을 비춰볼 거울이 된다. 입문자에게는 근거 설명이 다소 빠를 수 있고, 고수에게는 새로운 내용이 적을 수 있다. 다만 고수에게도 <strong>팀 코딩 컨벤션을 만들 때의 참고서</strong>로서 가치가 크다.</p>
+                <p>읽는 방법은 두 가지다. 첫째, 짧으니 한 번 통독해서 전체 지형을 파악한다. 둘째, 이후에는 책장에 꽂아두고 코드 리뷰나 설계 결정 때 해당 규칙을 펼쳐 근거를 확인하는 레퍼런스로 쓴다. 처음부터 끝까지 외울 책이 아니라, 곁에 두고 계속 찾는 책이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>팀 컨벤션 문서의 뼈대로 쓰기</strong>
+                        프로젝트 코딩 컨벤션을 새로 만든다면, 이 책의 9개 영역을 목차 삼아 우리 팀 버전을 채워나가는 방식이 효율적이다. 합의된 원칙은 이미 검증돼 있으니, 팀은 프로젝트 고유의 결정만 추가하면 된다.
+                    </div>
+                </div>
+
+                <!-- 8. 시대 맥락 -->
+                <h2 id="context"><i class="fa-solid fa-clock-rotate-left"></i> 시대 맥락 — C++03 기준</h2>
+
+                <p>주의할 점이 하나 있다. 이 책은 2004년 출간이라 <strong>C++03 기준</strong>이다. 이동 의미론, <code>auto</code>, 람다, <code>std::unique_ptr</code> 같은 C++11 이후의 도구가 없던 시절의 책이다. 그래서 스마트 포인터를 다루는 규칙은 당시의 <code>auto_ptr</code>을 전제로 하고, "복사를 올바르게"는 이동을 포함하지 않은 Rule of Three에 머문다.</p>
+                <p>그렇다고 책이 낡았다는 뜻은 아니다. <strong>원칙은 그대로 유효하다.</strong> "자원을 타입과 수명으로 관리하라", "예외 안전성을 설계하라", "작게 나눠라" 같은 본질은 언어 버전과 무관하다. 다만 그 원칙을 구현하는 <em>도구</em>가 바뀌었을 뿐이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>모던 C++로 보강하며 읽기</strong>
+                        구체적 기법은 Scott Meyers의 <em>Effective Modern C++</em>나 C++ Core Guidelines로 갱신해 읽는 것이 좋다. <em>C++ Coding Standards</em>로 "무엇을 왜"를 잡고, 모던 자료로 "지금은 어떻게"를 채우는 조합이 잘 맞는다.
+                    </div>
+                </div>
+
+                <!-- 9. 블로그와의 연결 -->
+                <h2 id="blog-link"><i class="fa-solid fa-link"></i> 이 블로그와의 연결</h2>
+
+                <p>이 책을 따로 서평으로 정리하는 이유가 있다. 그동안 이 블로그의 C++ 시리즈와 프로그래밍 이론 시리즈를 쓰면서, 글 끝의 references에 이 책을 여러 번 올렸기 때문이다. RAII를 다룬 글, 인터페이스 패턴에서 NVI(Non-Virtual Interface)를 설명한 글, 콜백의 lifetime 관리를 다룬 글 등에서 근거 출처로 이 책을 인용했다.</p>
+                <p>여러 글이 같은 책을 가리키고 있으니, 그 책 자체를 한 번 정리해 두면 시리즈 글들의 배경이 한곳에 모인다. 앞으로 C++ 글에서 "Sutter &amp; Alexandrescu의 규칙"을 언급할 때, 이 서평으로 링크를 걸어 맥락을 이어줄 수 있다.</p>
+
+                <!-- 10. 한 줄 평 -->
+                <h2 id="one-line"><i class="fa-solid fa-pen-nib"></i> 한 줄 평</h2>
+
+                <p>C++ 코딩 표준을 처음 만드는 팀이든, 자기 습관을 점검하려는 개인이든, 가장 적은 페이지로 가장 검증된 합의를 손에 쥘 수 있는 책이다. 도구는 낡았어도 원칙은 늙지 않았다.</p>
+
+                <div class="review-summary">
+                    <div class="review-icon"><span class="melon-icon lg"></span></div>
+                    <p>얇아서 통독하고, 두고두고 펼쳐보는 C++ 원칙의 체크리스트</p>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Herb Sutter, Andrei Alexandrescu, "C++ Coding Standards: 101 Rules, Guidelines, and Best Practices", Addison-Wesley, 2004</li>
+                        <li>Scott Meyers, "Effective Modern C++", O'Reilly, 2014</li>
+                        <li>Herb Sutter, "Exceptional C++", Addison-Wesley, 2000</li>
+                        <li>Andrei Alexandrescu, "Modern C++ Design", Addison-Wesley, 2001</li>
+                        <li>C++ Core Guidelines — <a href="https://isocpp.github.io/CppCoreGuidelines/" target="_blank">isocpp.github.io/CppCoreGuidelines</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('book');
+    renderPostNav('book');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

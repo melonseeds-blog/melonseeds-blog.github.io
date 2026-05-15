@@ -1,0 +1,540 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ Concurrency in Action — C++ 동시성의 결정판 (Anthony Williams) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 책/강의 정보 카드 */
+        .book-info {
+            display: flex; gap: 24px; padding: 24px;
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            margin: 20px 0;
+        }
+        .book-cover {
+            width: 140px; height: 200px; border-radius: 8px; flex-shrink: 0;
+            background: var(--border-light); display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; color: var(--text-light); overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .book-detail { flex: 1; }
+        .book-detail h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; border-bottom: none; }
+        .book-detail table { font-size: 0.88rem; }
+        .book-detail td { padding: 3px 0; }
+        .book-detail td:first-child { color: var(--text-muted); width: 60px; }
+
+        /* 별점 */
+        .rating { margin: 12px 0; display: flex; align-items: center; gap: 8px; }
+        .rating .stars { color: #f59e0b; font-size: 1.1rem; }
+        .rating .score { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+
+        /* 핵심 포인트 */
+        .key-points { margin: 20px 0; }
+        .key-point {
+            display: flex; gap: 12px; padding: 12px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .key-point:last-child { border-bottom: none; }
+        .key-point .kp-num {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--primary-light); color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+        }
+        .key-point .kp-text { font-size: 0.92rem; color: var(--text-sub); }
+
+        /* 인상적인 구절 */
+        .quote-highlight {
+            background: var(--seed-light); border-left: 4px solid var(--flesh);
+            border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 16px 0;
+            font-style: italic; color: var(--text-sub);
+        }
+        .quote-highlight .quote-source { font-style: normal; font-size: 0.82rem; color: var(--text-light); margin-top: 8px; }
+
+        /* 한줄 감상 */
+        .review-summary {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-radius: 12px;
+            padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .review-summary .review-icon { font-size: 1.5rem; margin-bottom: 8px; }
+        .review-summary p { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
+
+        /* 스펙 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.88rem;
+        }
+        .spec-table th, .spec-table td {
+            border: 1px solid var(--border); padding: 9px 12px; text-align: left;
+        }
+        .spec-table th {
+            background: var(--primary-50); color: var(--primary-dark); font-weight: 700;
+        }
+        .spec-table td:first-child { font-weight: 600; color: var(--text-sub); white-space: nowrap; }
+        .spec-table tr:nth-child(even) td { background: var(--bg); }
+
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .book-info { flex-direction: column; align-items: center; text-align: center; }
+            .book-cover { width: 120px; height: 170px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#book-intro" data-section="book-intro">책 개요</a>
+        <a href="#core-message" data-section="core-message">핵심 메시지</a>
+        <a href="#book-structure" data-section="book-structure">책의 구조</a>
+        <a href="#key-topics" data-section="key-topics">핵심 주제</a>
+        <a href="#impressive" data-section="impressive">인상 깊은 점</a>
+        <a href="#lessons" data-section="lessons">핵심 교훈</a>
+        <a href="#how-to-read" data-section="how-to-read">누구에게 / 어떻게</a>
+        <a href="#blog-link" data-section="blog-link">블로그 연결</a>
+        <a href="#one-line" data-section="one-line">한 줄 평</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">책/강의 후기</span>
+                </div>
+                <h1>C++ Concurrency in Action — C++ 동시성의 결정판 (Anthony Williams)</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 10 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>C++ 표준 스레드 라이브러리 기여자가 직접 쓴 동시성 참고서 서평</li>
+                        <li>std::thread 기초부터 메모리 모델, lock-free 자료구조까지 책의 구성</li>
+                        <li>스레드 관리, 락과 데드락, condition_variable, atomic, memory_order 같은 핵심 주제</li>
+                        <li>어떤 독자에게 맞는 책이고 어떻게 읽으면 좋은지에 대한 정리</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#book-intro">책 개요</a></li>
+                        <li><a href="#core-message">핵심 메시지</a></li>
+                        <li><a href="#book-structure">책의 구조</a></li>
+                        <li><a href="#key-topics">핵심 주제</a></li>
+                        <li><a href="#impressive">인상 깊은 점</a></li>
+                        <li><a href="#lessons">핵심 교훈</a></li>
+                        <li><a href="#how-to-read">누구에게 / 어떻게 읽나</a></li>
+                        <li><a href="#blog-link">이 블로그와의 연결</a></li>
+                        <li><a href="#one-line">한 줄 평</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 책 개요 -->
+                <h2 id="book-intro"><i class="fa-solid fa-book-open"></i> 책 개요</h2>
+
+                <div class="book-info">
+                    <div class="book-cover">
+                        <i class="fa-solid fa-book"></i>
+                    </div>
+                    <div class="book-detail">
+                        <h3>C++ Concurrency in Action (2nd Edition)</h3>
+                        <table>
+                            <tr><td>저자</td><td>Anthony Williams</td></tr>
+                            <tr><td>출판</td><td>Manning Publications</td></tr>
+                            <tr><td>판</td><td>2판, 2019</td></tr>
+                            <tr><td>대상</td><td>C++11/14/17</td></tr>
+                        </table>
+                        <div class="rating">
+                            <span class="stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></span>
+                            <span class="score">5.0 / 5.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p>저자 Anthony Williams는 단순한 책 저자가 아니다. C++ 표준 위원회에서 활동하며 <strong>C++ 표준 스레드 라이브러리(<code>&lt;thread&gt;</code>, <code>&lt;mutex&gt;</code>, <code>&lt;atomic&gt;</code> 등)의 설계와 구현에 직접 기여한 인물</strong>이다. 즉 이 책은 라이브러리를 "사용해 본 사람"이 아니라 "만든 사람"이 쓴 책이다.</p>
+                <p>초판은 C++11 기준으로 나왔고, 이 서평이 다루는 2판은 2019년에 출간되어 C++14와 C++17에서 추가된 내용까지 반영했다. <code>std::shared_mutex</code>, 병렬 STL 알고리즘, <code>std::scoped_lock</code> 같은 최신 기능도 포함한다.</p>
+                <p>대상 독자는 C++로 멀티스레드 코드를 작성해야 하는 중급 이상의 개발자다. C++ 문법 자체는 어느 정도 안다고 전제하며, 동시성 경험은 없어도 괜찮다. 다만 책의 후반부는 난도가 상당히 높아 입문자가 처음부터 끝까지 읽기는 버겁다.</p>
+
+                <!-- 2. 핵심 메시지 -->
+                <h2 id="core-message"><i class="fa-solid fa-bullseye"></i> 핵심 메시지</h2>
+
+                <p>이 책의 핵심 메시지는 명확하다. <strong>C++ 표준이 제공하는 동시성 도구를 처음부터 끝까지, 그것도 메모리 모델 수준까지 깊이 다루는 사실상의 표준 참고서</strong>가 되겠다는 것이다.</p>
+                <p>동시성을 다루는 자료는 많지만 대부분 두 갈래로 갈린다. 운영체제 교과서처럼 이론에 치우치거나, 특정 플랫폼 API(pthread, Win32) 사용법에 머무른다. 이 책은 그 사이를 메운다. <strong>C++ 표준 라이브러리라는 이식 가능한 도구</strong>를 기준으로 삼되, 그 도구가 왜 그렇게 설계되었는지를 메모리 모델이라는 바닥까지 내려가서 설명한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>"참고서"라는 표현의 의미</strong>
+                        이 책은 소설처럼 한 번에 읽고 덮는 책이 아니다. <code>std::condition_variable</code>의 정확한 동작이 헷갈릴 때, <code>memory_order_acquire</code>가 무엇을 보장하는지 다시 확인해야 할 때 펼쳐 보는 책이다. 실제로 곁에 두고 반복해서 참조하게 된다.
+                    </div>
+                </div>
+
+                <!-- 3. 책의 구조 -->
+                <h2 id="book-structure"><i class="fa-solid fa-sitemap"></i> 책의 구조</h2>
+
+                <p>책은 난도가 낮은 주제에서 높은 주제로 일관되게 상승하는 구조를 가진다. 앞 장을 건너뛰면 뒤 장을 이해하기 어렵게 설계되어 있다. 주요 흐름을 요약하면 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <tr><th>단계</th><th>다루는 내용</th><th>난도</th></tr>
+                    <tr><td>스레드 기초</td><td><code>std::thread</code> 생성·join·detach, 인자 전달, 소유권 이전</td><td>입문</td></tr>
+                    <tr><td>뮤텍스·동기화</td><td><code>std::mutex</code>, <code>lock_guard</code>, <code>unique_lock</code>, 데드락 회피</td><td>입문~중급</td></tr>
+                    <tr><td>동시성 자료구조</td><td>스레드 안전한 스택·큐·해시맵 설계, 락 단위 쪼개기</td><td>중급</td></tr>
+                    <tr><td>메모리 모델·atomic</td><td>C++ 메모리 모델, <code>std::atomic</code>, <code>memory_order</code>의 6가지 옵션</td><td>고급</td></tr>
+                    <tr><td>lock-free</td><td>락 없는 스택·큐 구현, ABA 문제, 메모리 회수</td><td>최상급</td></tr>
+                    <tr><td>고급 패턴</td><td>스레드 풀, 작업 훔치기(work stealing), 병렬 알고리즘 설계</td><td>고급</td></tr>
+                    <tr><td>디버깅·테스트</td><td>경쟁 조건과 데드락 탐지, 동시성 코드 테스트 전략</td><td>중급~고급</td></tr>
+                </table>
+
+                <p>특히 좋은 점은 중간에 "동시성 자료구조 설계" 장을 둔 것이다. 단순히 뮤텍스 문법을 익힌 다음 곧바로 메모리 모델로 넘어가지 않고, <strong>실제로 락을 가지고 자료구조를 만들어 보면서 락 설계의 어려움을 체감하게 한 뒤</strong> lock-free로 넘어간다. 이 순서 덕분에 후반부의 동기가 분명해진다.</p>
+
+                <!-- 4. 핵심 주제 -->
+                <h2 id="key-topics"><i class="fa-solid fa-layer-group"></i> 핵심 주제</h2>
+
+                <h3 id="topic-thread"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스레드 관리</h3>
+                <p><code>std::thread</code>의 생애주기를 다룬다. join과 detach의 차이, 예외가 발생해도 안전하게 join을 보장하는 RAII 래퍼 패턴, 스레드 소유권을 <code>std::move</code>로 이전하는 방법까지 정리한다. 동시성을 처음 접하는 사람도 이 장은 무리 없이 따라갈 수 있다.</p>
+
+                <h3 id="topic-lock"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 락과 데드락 회피</h3>
+                <p>여러 뮤텍스를 동시에 잠가야 할 때 발생하는 데드락을 어떻게 피하는지 설명한다. <code>std::lock</code>으로 여러 락을 한 번에 잠그기, 항상 같은 순서로 락을 거는 규칙, <code>std::scoped_lock</code>(C++17)을 활용한 간결한 코드 등이 나온다. "락을 거는 순서를 일관되게 유지하라"는 단순한 원칙이 왜 그렇게 중요한지를 예제로 납득시킨다.</p>
+
+                <h3 id="topic-cv"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> condition_variable과 future</h3>
+                <p>스레드 간에 "기다리고 알리는" 동기화를 다룬다. <code>std::condition_variable</code>의 wait에 왜 술어(predicate)를 함께 넘겨야 하는지(가짜 깨어남, spurious wakeup), 그리고 <code>std::future</code>와 <code>std::promise</code>, <code>std::async</code>로 일회성 결과를 주고받는 방법을 설명한다. 콜백 대신 future를 쓰면 비동기 코드가 훨씬 읽기 쉬워진다는 점을 강조한다.</p>
+
+                <h3 id="topic-memory"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> C++ 메모리 모델 (memory_order)</h3>
+                <p>이 책에서 가장 어렵고 가장 가치 있는 부분이다. 컴파일러와 CPU가 명령어 순서를 재배치할 수 있다는 사실에서 출발해, <code>std::atomic</code> 연산에 붙이는 <code>memory_order</code> 태그가 정확히 무엇을 보장하는지를 설명한다. <code>memory_order_seq_cst</code>(순차 일관성), <code>acquire/release</code> 쌍, <code>relaxed</code>의 차이를 happens-before 관계로 풀어낸다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>메모리 모델 장은 천천히 읽어야 한다</strong>
+                        이 장은 한 번 읽고 이해되지 않는 것이 정상이다. 저자도 "어렵다"고 명시한다. 당장 lock-free 코드를 쓸 일이 없다면 <code>memory_order_seq_cst</code> 기본값만 알아도 충분하다는 안내가 있어, 부담을 덜어 준다.
+                    </div>
+                </div>
+
+                <h3 id="topic-lockfree"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> lock-free 자료구조</h3>
+                <p>락을 전혀 쓰지 않고 atomic 연산만으로 스택과 큐를 구현한다. compare-and-swap 루프, ABA 문제, 그리고 "다른 스레드가 아직 보고 있을지 모르는 노드를 언제 안전하게 해제할 것인가"라는 메모리 회수 문제를 다룬다. 난도가 최상급이지만, lock-free가 만능이 아니며 대부분의 경우 잘 설계된 락이 더 낫다는 균형 잡힌 시각도 함께 제시한다.</p>
+
+                <h3 id="topic-pool"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스레드 풀 설계</h3>
+                <p>스레드를 작업마다 새로 만드는 대신 미리 만들어 두고 재사용하는 스레드 풀을 단계적으로 구현한다. 단순한 작업 큐 하나짜리 풀에서 시작해, 락 경합을 줄이기 위한 스레드별 로컬 큐, 그리고 한가한 스레드가 다른 스레드의 일을 가져오는 작업 훔치기까지 발전시킨다.</p>
+
+                <!-- 5. 인상 깊은 점 -->
+                <h2 id="impressive"><i class="fa-solid fa-star-half-stroke"></i> 인상 깊은 점</h2>
+
+                <p>가장 인상 깊은 점은 <strong>저자가 표준 위원회 멤버이기 때문에 표준의 "의도"를 정확히 설명한다</strong>는 것이다. 보통의 기술서는 "이 함수는 이렇게 동작한다"에서 멈추지만, 이 책은 "표준이 왜 이렇게 정의했는지", "이 제약이 없으면 어떤 구현이 불가능해지는지"까지 짚는다. 표준 문서를 읽어도 알기 어려운 배경을 옆에서 풀어 주는 느낌이다.</p>
+
+                <p>두 번째는 <strong>어려운 주제를 끝까지 파고든다</strong>는 점이다. 많은 책이 메모리 모델이나 lock-free를 "이런 게 있다" 수준에서 멈춘다. 이 책은 도망가지 않는다. memory_order의 여섯 가지 옵션을 하나하나, lock-free 자료구조의 메모리 회수 문제를 끝까지 다룬다. 읽기는 힘들지만, 이 주제를 이 정도 깊이로 다루는 자료가 드물다.</p>
+
+                <div class="quote-highlight">
+                    동시성 버그는 재현이 어렵고, 한 번 놓치면 운영 환경에서 간헐적으로 터진다. 그래서 "운으로 통과한 코드"와 "올바른 코드"를 구분하는 것이 무엇보다 중요하다.
+                    <div class="quote-source">— 책의 디버깅·테스트 장 논지를 옮긴이가 요약</div>
+                </div>
+
+                <p>위 문장은 책의 원문 인용이 아니라 마지막 장의 논지를 자기 말로 정리한 것이다. 동시성 코드는 테스트를 통과해도 그것이 "맞아서"인지 "운이 좋아서"인지 알기 어렵다는 경고가 책 전체에 깔려 있다.</p>
+
+                <!-- 6. 핵심 교훈 -->
+                <h2 id="lessons"><i class="fa-solid fa-graduation-cap"></i> 핵심 교훈</h2>
+
+                <div class="key-points">
+                    <div class="key-point">
+                        <span class="kp-num">1</span>
+                        <span class="kp-text"><strong>공유 데이터가 문제의 근원이다</strong> — 동시성 버그의 대부분은 여러 스레드가 같은 데이터를 만지는 데서 온다. 공유를 줄이고, 꼭 공유해야 하면 불변(immutable)으로 만들거나 명확한 동기화로 감싸라.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">2</span>
+                        <span class="kp-text"><strong>락은 RAII로 관리하라</strong> — 직접 lock/unlock을 호출하지 말고 <code>lock_guard</code>, <code>unique_lock</code>, <code>scoped_lock</code>에 맡겨라. 예외가 발생해도 락이 안전하게 풀린다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">3</span>
+                        <span class="kp-text"><strong>먼저 올바르게, 그다음에 빠르게</strong> — lock-free와 relaxed 메모리 순서는 강력하지만 위험하다. 우선 순차 일관성과 일반 락으로 정확하게 만들고, 측정으로 병목이 확인된 곳만 최적화하라.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">4</span>
+                        <span class="kp-text"><strong>메모리 모델을 알아야 atomic을 쓴다</strong> — <code>std::atomic</code>은 변수에 붙이는 마법 키워드가 아니다. happens-before 관계를 이해하지 못한 채 쓰면 데이터 경쟁을 숨길 뿐이다.</span>
+                    </div>
+                    <div class="key-point">
+                        <span class="kp-num">5</span>
+                        <span class="kp-text"><strong>동시성 코드는 설계로 단순하게 만들어라</strong> — 똑똑한 락 트릭보다 공유를 없애는 구조 설계가 낫다. 메시지 전달, 작업 분할, future 기반 파이프라인이 복잡한 락보다 안전하다.</span>
+                    </div>
+                </div>
+
+                <!-- 7. 누구에게 / 어떻게 읽나 -->
+                <h2 id="how-to-read"><i class="fa-solid fa-user-check"></i> 누구에게 / 어떻게 읽나</h2>
+
+                <p>이 책은 <strong>C++로 멀티스레드 코드를 실제로 작성해야 하는 사람</strong>에게 가장 잘 맞는다. 카메라·이미지 처리, 게임 엔진, 서버, 고성능 연산처럼 스레드를 다루는 분야라면 곁에 둘 가치가 있다. 반대로 동시성을 직접 다룰 일이 거의 없다면 우선순위는 낮다.</p>
+
+                <p>두껍고 어렵기 때문에 <strong>처음부터 끝까지 정독할 책은 아니다</strong>. 다음 순서를 권한다.</p>
+                <ul>
+                    <li><strong>입문자</strong> — 스레드 기초와 뮤텍스·동기화 장까지만 먼저 읽는다. 이 부분은 동시성 경험이 없어도 따라갈 수 있고, 실무에서 가장 자주 쓰는 내용이다.</li>
+                    <li><strong>중급자</strong> — 동시성 자료구조 설계와 condition_variable·future 장을 더한다. 스레드 안전한 컨테이너를 직접 설계해 보는 경험이 핵심이다.</li>
+                    <li><strong>고급·필요할 때</strong> — 메모리 모델, atomic, lock-free 장은 실제로 그 기능이 필요해진 시점에 펼친다. 미리 읽어도 와닿지 않고, 필요할 때 읽으면 비로소 이해된다.</li>
+                </ul>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>참고서로 쓰는 책</strong>
+                        한 번에 다 읽으려 하지 말자. 필요한 장을 그때그때 찾아 읽고, 같은 장을 여러 번 다시 보는 것이 이 책의 올바른 사용법이다. 색인과 목차가 잘 되어 있어 참조용으로 쓰기 좋다.
+                    </div>
+                </div>
+
+                <!-- 8. 이 블로그와의 연결 -->
+                <h2 id="blog-link"><i class="fa-solid fa-link"></i> 이 블로그와의 연결</h2>
+
+                <p>이 블로그의 C++ 시리즈에서 동시성 관련 글을 쓸 때 이 책을 꾸준히 참조했다. 스레드 기초, <code>std::async</code>, 스레드 풀, atomic, false sharing 같은 주제를 정리하면서 개념의 정확한 정의와 표준의 보장 범위를 확인하는 1차 출처로 삼았다.</p>
+                <p>특히 메모리 모델과 false sharing처럼 "대충 알면 위험한" 주제는 이 책의 설명을 기준으로 검증했다. 블로그 글이 입문자 눈높이의 요약이라면, 이 책은 그 요약의 근거가 되는 깊이 있는 원본에 해당한다. C++ 시리즈를 읽다가 더 깊이 들어가고 싶은 부분이 있다면 이 책의 해당 장을 함께 보면 좋다.</p>
+
+                <!-- 9. 한 줄 평 -->
+                <h2 id="one-line"><i class="fa-solid fa-pen-nib"></i> 한 줄 평</h2>
+
+                <div class="review-summary">
+                    <div class="review-icon"><span class="melon-icon lg"></span></div>
+                    <p>C++ 동시성을 진지하게 다뤄야 한다면, 라이브러리를 만든 사람이 직접 쓴 이 책 한 권으로 충분하다</p>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Anthony Williams, "C++ Concurrency in Action: Practical Multithreading", 2nd Edition, Manning Publications, 2019</li>
+                        <li>ISO/IEC 14882:2017 — C++17 표준 (스레드 지원 라이브러리, atomic 연산)</li>
+                        <li>cppreference.com — <a href="https://en.cppreference.com/w/cpp/thread" target="_blank">Thread support library</a>, <a href="https://en.cppreference.com/w/cpp/atomic/memory_order" target="_blank">std::memory_order</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('book');
+    renderPostNav('book');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
