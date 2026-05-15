@@ -1,0 +1,751 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOLID 원칙 (하) — ISP·DIP - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .diagram {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px; margin: 20px 0;
+            text-align: center;
+        }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted);
+            margin-top: 12px;
+        }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#intro" data-section="intro">도입</a>
+        <a href="#isp" data-section="isp">ISP</a>
+        <a href="#dip" data-section="dip">DIP</a>
+        <a href="#di" data-section="di">의존성 주입</a>
+        <a href="#isp-dip" data-section="isp-dip">ISP+DIP</a>
+        <a href="#solid-all" data-section="solid-all">SOLID 정리</a>
+        <a href="#industrial" data-section="industrial">산업 SW</a>
+        <a href="#misconceptions" data-section="misconceptions">흔한 오해</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">프로그래밍 이론</span>
+                </div>
+                <h1>SOLID 원칙 (하) — ISP·DIP</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>ISP — 인터페이스 분리 원칙: 뚱뚱한 인터페이스를 역할별로 쪼갠다</li>
+                        <li>DIP — 의존성 역전 원칙: 고수준과 저수준이 모두 추상화에 의존한다</li>
+                        <li>의존성 주입(DI): DIP를 실현하는 기법, 생성자/세터/인터페이스 주입</li>
+                        <li>SOLID 5원칙 전체 정리와 산업 SW 적용</li>
+                        <li>DIP와 DI를 혼동하는 등 흔한 오해</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">SOLID의 나머지 두 글자</a></li>
+                        <li><a href="#isp">ISP — 인터페이스 분리 원칙</a></li>
+                        <li><a href="#dip">DIP — 의존성 역전 원칙</a></li>
+                        <li><a href="#di">의존성 주입(Dependency Injection)</a></li>
+                        <li><a href="#isp-dip">ISP와 DIP의 연결</a></li>
+                        <li><a href="#solid-all">SOLID 5원칙 전체 정리</a></li>
+                        <li><a href="#industrial">산업 SW 관점</a></li>
+                        <li><a href="#misconceptions">흔한 오해</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 도입 -->
+                <h2 id="intro"><i class="fa-solid fa-flag-checkered"></i> SOLID의 나머지 두 글자</h2>
+                <p>앞 글에서 SRP·OCP·LSP를 다뤘다. 단일 책임으로 변경 이유를 하나로 묶고(SRP), 확장에는 열고 변경에는 닫으며(OCP), 자식이 부모를 안전하게 대체하도록(LSP) 만드는 원칙들이었다. 이번 글은 마지막 두 글자 <strong>ISP</strong>와 <strong>DIP</strong>를 다룬다.</p>
+                <p>이 두 원칙은 모두 <strong>의존성</strong>을 다룬다. ISP는 "무엇에 의존하는가"의 크기를 줄이고, DIP는 "어느 방향으로 의존하는가"를 뒤집는다. 둘은 따로 노는 규칙이 아니라 함께 맞물려 동작한다. 작게 쪼갠 인터페이스(ISP)에 의존(DIP)할 때 설계가 가장 유연해진다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>SOLID는 목적이 아니라 수단이다</strong>
+                        다섯 원칙 모두 "변경에 강한 코드"라는 하나의 목표를 향한다. 원칙을 외우는 것보다, 각 원칙이 어떤 변경을 쉽게 만드는지 이해하는 것이 중요하다.
+                    </div>
+                </div>
+
+                <!-- 2. ISP -->
+                <h2 id="isp"><i class="fa-solid fa-scissors"></i> ISP — 인터페이스 분리 원칙</h2>
+                <p><strong>Interface Segregation Principle.</strong> 클라이언트는 자신이 사용하지 않는 메서드에 의존하면 안 된다. 하나의 거대한 인터페이스보다, 역할별로 잘게 나뉜 여러 개의 작은 인터페이스가 낫다.</p>
+
+                <h3 id="isp-fat"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 뚱뚱한 인터페이스의 문제</h3>
+                <p>이미징 라이브러리의 처리 블록을 예로 든다. "블록이라면 당연히 이 정도는 해야지" 하는 마음으로 메서드를 한 인터페이스에 다 몰아넣으면 <strong>fat interface</strong>가 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 위반 — 모든 책임을 한 인터페이스에 몰아넣음
+class IImageBlock
+{
+public:
+    virtual ~IImageBlock() = default;
+    virtual ErrorCode Process(const Image&amp; in, Image&amp; out) = 0;
+    virtual ErrorCode StartLiveView() = 0;     // 카메라 블록만 필요
+    virtual ErrorCode StopLiveView() = 0;      // 카메라 블록만 필요
+    virtual ErrorCode SaveToFile(const std::string&amp; path) = 0;  // 저장 블록만 필요
+    virtual nlohmann::json Serialize() const = 0;
+};
+
+// GaussianBlur는 라이브뷰도, 파일 저장도 하지 않는데
+// 인터페이스가 강제하니 빈 메서드로 채울 수밖에 없다.
+class GaussianBlur : public IImageBlock
+{
+public:
+    ErrorCode Process(const Image&amp; in, Image&amp; out) override;
+    ErrorCode StartLiveView() override { return ErrorCode::NotSupported; } // 의미 없음
+    ErrorCode StopLiveView()  override { return ErrorCode::NotSupported; } // 의미 없음
+    ErrorCode SaveToFile(const std::string&amp;) override { return ErrorCode::NotSupported; } // 의미 없음
+    nlohmann::json Serialize() const override;
+};</code></pre>
+
+                <p>문제는 빈 메서드만이 아니다. <code>IImageBlock</code>에 카메라 관련 메서드가 추가되면, 카메라와 무관한 <code>GaussianBlur</code>까지 다시 컴파일된다. 클라이언트가 쓰지도 않는 메서드 때문에 결합이 생기는 것이다.</p>
+
+                <h3 id="isp-fix"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 역할별로 작게 분리</h3>
+                <p>인터페이스를 "이 역할을 쓰는 클라이언트는 누구인가" 기준으로 쪼갠다. 각 구현체는 자신이 실제로 수행하는 역할만 골라서 구현한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 개선 — 역할별로 작은 인터페이스로 분리
+class IProcessBlock
+{
+public:
+    virtual ~IProcessBlock() = default;
+    virtual ErrorCode Process(const Image&amp; in, Image&amp; out) = 0;
+};
+
+class ILiveSource
+{
+public:
+    virtual ~ILiveSource() = default;
+    virtual ErrorCode StartLiveView() = 0;
+    virtual ErrorCode StopLiveView() = 0;
+};
+
+class ISerializable
+{
+public:
+    virtual ~ISerializable() = default;
+    virtual nlohmann::json Serialize() const = 0;
+};
+
+// 블러는 처리와 직렬화만 한다. 라이브뷰 메서드에 의존하지 않는다.
+class GaussianBlur : public IProcessBlock, public ISerializable
+{
+public:
+    ErrorCode Process(const Image&amp; in, Image&amp; out) override;
+    nlohmann::json Serialize() const override;
+};
+
+// 카메라 블록만 라이브 소스 역할을 더 가진다.
+class CameraBlock : public IProcessBlock, public ILiveSource, public ISerializable
+{
+public:
+    ErrorCode Process(const Image&amp; in, Image&amp; out) override;
+    ErrorCode StartLiveView() override;
+    ErrorCode StopLiveView() override;
+    nlohmann::json Serialize() const override;
+};</code></pre>
+
+                <p>이제 라이브뷰만 다루는 코드는 <code>ILiveSource*</code>만 받으면 된다. <code>GaussianBlur</code>는 라이브뷰 인터페이스를 아예 모르므로, 거기에 메서드가 추가돼도 영향이 없다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>분리 기준은 "구현체"가 아니라 "클라이언트"다</strong>
+                        인터페이스를 나눌 때는 누가 그 메서드를 호출하는지를 본다. 같은 클라이언트가 항상 함께 쓰는 메서드는 한 인터페이스로 묶고, 서로 다른 클라이언트가 쓰는 메서드는 떼어낸다.
+                    </div>
+                </div>
+
+                <!-- 3. DIP -->
+                <h2 id="dip"><i class="fa-solid fa-arrows-turn-to-dots"></i> DIP — 의존성 역전 원칙</h2>
+                <p><strong>Dependency Inversion Principle.</strong> 두 가지를 말한다. 첫째, 고수준 모듈은 저수준 모듈에 의존하면 안 된다. 둘 다 추상화에 의존해야 한다. 둘째, 추상화는 세부사항에 의존하면 안 된다. 세부사항이 추상화에 의존해야 한다.</p>
+
+                <h3 id="dip-violation"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 구체 클래스에 직접 의존하면</h3>
+                <p>검사 파이프라인(고수준)이 특정 카메라 구현(저수준)을 직접 안다고 하자.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 위반 — 고수준 모듈이 저수준 구체 클래스를 직접 안다
+#include "VieworksCamera.h"   // 구체 클래스에 #include 의존
+
+class InspectionPipeline
+{
+public:
+    ErrorCode Run()
+    {
+        VieworksCamera cam;          // 구체 타입에 직접 의존
+        Image frame;
+        cam.Grab(frame);
+        return Inspect(frame);
+    }
+private:
+    ErrorCode Inspect(const Image&amp; frame);
+};</code></pre>
+
+                <p>이 코드는 <code>VieworksCamera</code> 없이는 컴파일조차 안 된다. 다른 카메라로 바꾸려면 <code>InspectionPipeline</code>을 고쳐야 하고, 테스트에서 가짜 카메라를 끼울 수도 없다. 고수준 정책이 저수준 세부사항에 묶여 있다.</p>
+
+                <h3 id="dip-fix"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 추상화에 의존하도록 뒤집기</h3>
+                <p><code>ICamera</code> 인터페이스를 두고, 고수준과 저수준이 모두 그것에 의존하게 한다. 의존성의 화살표가 저수준 구현 쪽이 아니라 추상화 쪽을 향하도록 "역전"시키는 것이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 개선 — 고수준과 저수준이 모두 ICamera 추상화에 의존
+class ICamera
+{
+public:
+    virtual ~ICamera() = default;
+    virtual ErrorCode Grab(Image&amp; outFrame) = 0;
+};
+
+// 저수준 — 추상화를 구현한다 (세부사항이 추상화에 의존)
+class VieworksCamera : public ICamera
+{
+public:
+    ErrorCode Grab(Image&amp; outFrame) override;
+};
+
+// 고수준 — 추상화에만 의존한다. 구체 카메라를 모른다.
+class InspectionPipeline
+{
+public:
+    explicit InspectionPipeline(ICamera&amp; camera) : m_camera(camera) {}
+
+    ErrorCode Run()
+    {
+        Image frame;
+        const auto rc = m_camera.Grab(frame);   // 인터페이스로 호출
+        if (rc != ErrorCode::Ok) return rc;
+        return Inspect(frame);
+    }
+private:
+    ErrorCode Inspect(const Image&amp; frame);
+    ICamera&amp; m_camera;                            // 추상화에 의존
+};</code></pre>
+
+                <p>"역전"이라는 이름이 붙은 이유는 다이어그램으로 보면 분명해진다. 원래는 고수준이 저수준을 향해 의존하지만, 추상화를 사이에 두면 <strong>저수준의 의존 방향이 위로 뒤집힌다.</strong></p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 왼쪽: 위반 -->
+                        <text x="130" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#dc2626">위반 — 직접 의존</text>
+                        <rect x="60" y="44" width="140" height="46" rx="8" fill="#fef2f2" stroke="#fecaca"/>
+                        <text x="130" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="#7f1d1d">고수준</text>
+                        <text x="130" y="80" text-anchor="middle" font-size="10" fill="#9b3b3b">InspectionPipeline</text>
+                        <rect x="60" y="190" width="140" height="46" rx="8" fill="#fef2f2" stroke="#fecaca"/>
+                        <text x="130" y="210" text-anchor="middle" font-size="12" font-weight="700" fill="#7f1d1d">저수준</text>
+                        <text x="130" y="226" text-anchor="middle" font-size="10" fill="#9b3b3b">VieworksCamera</text>
+                        <line x1="130" y1="90" x2="130" y2="186" stroke="#dc2626" stroke-width="2"/>
+                        <polygon points="130,190 125,180 135,180" fill="#dc2626"/>
+                        <text x="146" y="142" font-size="10" fill="#dc2626">의존</text>
+
+                        <!-- 구분선 -->
+                        <line x1="280" y1="36" x2="280" y2="248" stroke="#e5e7eb" stroke-width="1"/>
+
+                        <!-- 오른쪽: 개선 -->
+                        <text x="420" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#059669">개선 — 의존성 역전</text>
+                        <rect x="350" y="44" width="140" height="46" rx="8" fill="#ecfdf5" stroke="#a7f3d0"/>
+                        <text x="420" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="#065f46">고수준</text>
+                        <text x="420" y="80" text-anchor="middle" font-size="10" fill="#1f7a5e">InspectionPipeline</text>
+                        <rect x="350" y="117" width="140" height="46" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
+                        <text x="420" y="137" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a5f">추상화</text>
+                        <text x="420" y="153" text-anchor="middle" font-size="10" fill="#2563eb">ICamera</text>
+                        <rect x="350" y="190" width="140" height="46" rx="8" fill="#ecfdf5" stroke="#a7f3d0"/>
+                        <text x="420" y="210" text-anchor="middle" font-size="12" font-weight="700" fill="#065f46">저수준</text>
+                        <text x="420" y="226" text-anchor="middle" font-size="10" fill="#1f7a5e">VieworksCamera</text>
+                        <!-- 고수준 -> 추상화 -->
+                        <line x1="420" y1="90" x2="420" y2="113" stroke="#2563eb" stroke-width="2"/>
+                        <polygon points="420,117 415,107 425,107" fill="#2563eb"/>
+                        <!-- 저수준 -> 추상화 (위로 역전) -->
+                        <line x1="420" y1="190" x2="420" y2="167" stroke="#2563eb" stroke-width="2"/>
+                        <polygon points="420,163 415,173 425,173" fill="#2563eb"/>
+                        <text x="436" y="106" font-size="10" fill="#2563eb">의존</text>
+                        <text x="436" y="184" font-size="10" fill="#2563eb">의존(역전)</text>
+                    </svg>
+                    <div class="diagram-caption">고수준 → 추상화 ← 저수준. 저수준 모듈의 의존 화살표가 위로 뒤집힌다.</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>"역전"의 진짜 의미</strong>
+                        제어 흐름은 여전히 고수준 → 저수준으로 흐른다. 뒤집히는 것은 <strong>소스 코드의 의존 방향</strong>이다. 인터페이스를 누가 소유하느냐도 핵심인데, <code>ICamera</code>는 고수준 모듈 쪽에 두는 것이 정석이다. 그래야 저수준이 고수준의 요구에 맞춰 따라온다.
+                    </div>
+                </div>
+
+                <!-- 4. DI -->
+                <h2 id="di"><i class="fa-solid fa-syringe"></i> 의존성 주입(Dependency Injection)</h2>
+                <p>DIP는 "추상화에 의존하라"는 <strong>원칙</strong>이다. 그렇다면 그 추상화의 실제 구현체는 누가, 언제 넣어주는가? 객체가 자기 의존성을 스스로 <code>new</code> 하지 않고, <strong>외부에서 받아오게</strong> 만드는 기법이 의존성 주입(DI)이다.</p>
+
+                <h3 id="di-ctor"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 생성자 주입</h3>
+                <p>가장 권장되는 방식. 객체가 생성되는 시점에 필요한 의존성을 모두 받는다. 생성만 되면 항상 유효한 상태가 보장된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class InspectionPipeline
+{
+public:
+    // 생성자에서 의존성을 받는다. 이후 항상 유효하다.
+    explicit InspectionPipeline(ICamera&amp; camera)
+        : m_camera(camera) {}
+private:
+    ICamera&amp; m_camera;
+};
+
+VieworksCamera realCamera;
+InspectionPipeline pipeline(realCamera);   // 외부에서 주입</code></pre>
+
+                <h3 id="di-setter"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 세터 주입</h3>
+                <p>생성 후 세터로 의존성을 넣거나 교체한다. 선택적 의존성이거나 런타임에 바꿔야 할 때 쓴다. 단점은 세터 호출 전까지 객체가 불완전하다는 것이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class InspectionPipeline
+{
+public:
+    void SetCamera(ICamera&amp; camera) { m_camera = &amp;camera; }
+private:
+    ICamera* m_camera = nullptr;   // 세터 호출 전에는 비어 있음
+};</code></pre>
+
+                <h3 id="di-iface"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 인터페이스 주입</h3>
+                <p>주입받는 메서드 자체를 인터페이스로 규정한다. "이 객체는 카메라를 받을 수 있다"는 능력을 인터페이스로 표현하는 방식이다. C++에서는 잘 쓰지 않고, 보통 생성자 주입으로 충분하다.</p>
+
+                <table class="spec-table">
+                    <tr><th>주입 방식</th><th>주입 시점</th><th>장점</th><th>단점 / 적합한 곳</th></tr>
+                    <tr><td>생성자 주입</td><td>객체 생성 시</td><td>생성 후 항상 유효, 불변 가능</td><td>의존성 많으면 생성자 비대 / 필수 의존성</td></tr>
+                    <tr><td>세터 주입</td><td>생성 후 임의 시점</td><td>런타임 교체, 선택적 의존성</td><td>주입 전 불완전 상태 / 옵션 의존성</td></tr>
+                    <tr><td>인터페이스 주입</td><td>주입용 메서드 호출 시</td><td>주입 능력을 명시적으로 표현</td><td>보일러플레이트 많음 / C++에선 드묾</td></tr>
+                </table>
+
+                <h3 id="di-container"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> DI 컨테이너</h3>
+                <p>의존성이 많아지면 "무엇을 무엇에 주입할지"를 손으로 엮는 코드가 길어진다. <strong>DI 컨테이너</strong>는 이 조립을 자동화하는 도구다. 어떤 인터페이스에 어떤 구현을 쓸지 등록해두면, 컨테이너가 객체 그래프를 알아서 만들어준다. C#의 <code>Microsoft.Extensions.DependencyInjection</code>이 대표적이다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>DIP와 DI는 다르다</strong>
+                        DIP는 "추상화에 의존하라"는 <strong>설계 원칙</strong>이고, DI는 그 의존성을 외부에서 넣어주는 <strong>구현 기법</strong>이다. DI 컨테이너는 DI를 편하게 해주는 <strong>도구</strong>일 뿐이다. 컨테이너 없이 생성자 인자만으로도 DI는 완벽히 성립하고, DIP도 지킬 수 있다. 셋을 같은 말로 쓰면 안 된다.
+                    </div>
+                </div>
+
+                <!-- 5. ISP + DIP -->
+                <h2 id="isp-dip"><i class="fa-solid fa-link"></i> ISP와 DIP의 연결</h2>
+                <p>두 원칙은 한 쌍으로 움직인다. <strong>ISP로 인터페이스를 작게 정의하고, DIP로 그 작은 인터페이스에 의존한다.</strong></p>
+                <p>만약 인터페이스가 뚱뚱하면(ISP 위반), 그 인터페이스에 의존하는 고수준 모듈은 자기가 쓰지도 않는 메서드까지 끌고 들어온다. DIP를 지켜 추상화에 의존했더라도, 그 추상화 자체가 비대하면 의존성을 줄인 효과가 반감된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// ISP — 검사에 필요한 최소 역할만 인터페이스로 정의
+class IFrameSource
+{
+public:
+    virtual ~IFrameSource() = default;
+    virtual ErrorCode Grab(Image&amp; outFrame) = 0;   // 딱 이것만 필요
+};
+
+// DIP — 고수준 모듈은 그 작은 인터페이스에만 의존
+class InspectionPipeline
+{
+public:
+    explicit InspectionPipeline(IFrameSource&amp; source)
+        : m_source(source) {}
+private:
+    IFrameSource&amp; m_source;   // 작은 추상화에 의존
+};
+
+// 카메라든 파일 리더든 IFrameSource만 구현하면 주입할 수 있다.
+class VieworksCamera : public ICamera, public IFrameSource { /* ... */ };
+class ImageFileReader : public IFrameSource { /* ... */ };</code></pre>
+
+                <p><code>InspectionPipeline</code>은 카메라의 라이브뷰·노출 설정 같은 메서드를 전혀 모른다. 오직 <code>Grab</code> 한 줄짜리 인터페이스에만 의존한다. 작게 쪼갠 덕분에(ISP) 의존이 가벼워지고, 추상화에 의존한 덕분에(DIP) 구현체를 자유롭게 갈아끼울 수 있다.</p>
+
+                <!-- 6. SOLID 전체 정리 -->
+                <h2 id="solid-all"><i class="fa-solid fa-table-cells"></i> SOLID 5원칙 전체 정리</h2>
+                <p>두 글에 걸쳐 다룬 다섯 원칙을 한 표로 모은다.</p>
+
+                <table class="spec-table">
+                    <tr><th>약자</th><th>원칙</th><th>한 줄 요약</th><th>주로 막는 문제</th></tr>
+                    <tr><td><strong>SRP</strong></td><td>단일 책임 원칙</td><td>클래스의 변경 이유는 하나여야 한다</td><td>한 변경이 여러 곳을 건드림</td></tr>
+                    <tr><td><strong>OCP</strong></td><td>개방-폐쇄 원칙</td><td>확장에는 열고 변경에는 닫는다</td><td>기능 추가 때마다 기존 코드 수정</td></tr>
+                    <tr><td><strong>LSP</strong></td><td>리스코프 치환 원칙</td><td>자식은 부모를 안전하게 대체해야 한다</td><td>상속이 다형성을 깨뜨림</td></tr>
+                    <tr><td><strong>ISP</strong></td><td>인터페이스 분리 원칙</td><td>안 쓰는 메서드에 의존하지 않게 한다</td><td>뚱뚱한 인터페이스가 불필요한 결합 유발</td></tr>
+                    <tr><td><strong>DIP</strong></td><td>의존성 역전 원칙</td><td>고수준·저수준 모두 추상화에 의존한다</td><td>고수준 정책이 저수준 세부사항에 묶임</td></tr>
+                </table>
+
+                <p>다섯 원칙은 따로 쓰는 도구가 아니라 함께 작동한다. SRP로 책임을 나누면 자연스럽게 작은 인터페이스(ISP)가 나온다. 그 인터페이스에 의존(DIP)하면 새 구현을 끼우는 확장(OCP)이 가능해진다. 그 구현이 부모를 제대로 대체(LSP)해야 확장이 안전하다. 결국 SOLID 전체가 만드는 것은 <strong>"한 곳을 고쳐도 다른 곳이 무너지지 않는 설계"</strong> 하나다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>원칙은 트리거가 있을 때 적용한다</strong>
+                        처음부터 다섯 원칙을 모두 적용하려 들면 과설계가 된다. 같은 코드를 두 번째 고치게 됐을 때, 그 변경을 어렵게 만든 원인을 SOLID로 짚어 리팩토링하는 것이 현실적이다.
+                    </div>
+                </div>
+
+                <!-- 7. 산업 SW 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 SW 관점</h2>
+                <p>머신비전 라이브러리에서 ISP·DIP가 어떻게 쓰이는지 본다.</p>
+
+                <h3 id="ind-camera"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 카메라 SDK 추상화 (DIP)</h3>
+                <p>코어 라이브러리는 특정 카메라 SDK를 직접 알면 안 된다. <code>ICamera</code> 인터페이스를 두고, 코어는 거기에만 의존한다. Vieworks·GigE·CoaXPress 카메라는 각각 <code>ICamera</code>를 구현하는 저수준 어댑터가 된다. 새 카메라를 지원할 때 코어 코드는 한 줄도 바뀌지 않는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 코어는 ICamera만 안다. 어떤 SDK가 뒤에 있는지 모른다.
+class CameraGrabBlock : public IProcessBlock
+{
+public:
+    explicit CameraGrabBlock(std::shared_ptr&lt;ICamera&gt; camera)
+        : m_camera(std::move(camera)) {}
+
+    ErrorCode Process(const Image&amp;, Image&amp; out) override
+    {
+        return m_camera-&gt;Grab(out);
+    }
+private:
+    std::shared_ptr&lt;ICamera&gt; m_camera;
+};</code></pre>
+
+                <h3 id="ind-isp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 검사 블록 인터페이스 분리 (ISP)</h3>
+                <p>모든 처리 블록이 직렬화·파라미터 튜닝·미리보기를 다 해야 하는 것은 아니다. 역할별로 <code>IProcessBlock</code>, <code>IConfigurable</code>, <code>IPreviewable</code>, <code>ISerializable</code>로 쪼개면, 블록 에디터의 파라미터 패널은 <code>IConfigurable</code>만, 그래프 저장 코드는 <code>ISerializable</code>만 다루면 된다. 각 클라이언트가 자기 역할에만 의존한다.</p>
+
+                <h3 id="ind-mock"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 테스트 시 mock 주입</h3>
+                <p>DIP의 가장 실용적인 이득은 테스트다. <code>ICamera</code>를 구현하는 <code>MockCamera</code>를 만들어, 미리 준비한 이미지를 <code>Grab</code>이 반환하게 한다. 실제 카메라 하드웨어 없이 검사 파이프라인 전체를 단위 테스트할 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 테스트용 가짜 카메라 — 정해진 프레임을 그대로 돌려준다
+class MockCamera : public ICamera
+{
+public:
+    explicit MockCamera(Image fixture) : m_fixture(std::move(fixture)) {}
+
+    ErrorCode Grab(Image&amp; outFrame) override
+    {
+        outFrame = m_fixture;
+        return ErrorCode::Ok;
+    }
+private:
+    Image m_fixture;
+};
+
+// GoogleTest — 하드웨어 없이 파이프라인 검증
+TEST(InspectionPipelineTest, DetectsDefectOnFixture)
+{
+    MockCamera cam(LoadTestImage("defect_sample.png"));
+    InspectionPipeline pipeline(cam);
+
+    EXPECT_EQ(pipeline.Run(), ErrorCode::DefectFound);
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>추상화가 곧 테스트 가능성이다</strong>
+                        구체 클래스에 직접 의존한 코드는 그 클래스를 떼어낼 수 없어 테스트가 어렵다. DIP를 지킨 코드는 같은 인터페이스에 mock을 끼우는 것만으로 격리 테스트가 된다. "테스트하기 어렵다"는 신호는 대개 DIP 위반의 신호다.
+                    </div>
+                </div>
+
+                <!-- 8. 흔한 오해 -->
+                <h2 id="misconceptions"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 오해</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"DIP = DI 프레임워크 쓰기"라는 오해</strong>
+                        DIP는 의존 방향에 관한 원칙이다. DI 컨테이너를 도입했다고 DIP가 지켜지는 것도 아니고, 컨테이너 없이 생성자 인자만 써도 DIP는 완벽히 성립한다. 프레임워크는 수단이지 원칙 그 자체가 아니다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>인터페이스를 무조건 잘게 쪼개기</strong>
+                        ISP는 "최대한 작게"가 아니라 "클라이언트 기준으로 적절하게"다. 항상 함께 쓰이는 메서드를 메서드 하나당 인터페이스 하나로 쪼개면, 구현체가 인터페이스 십여 개를 상속하는 기형이 된다. 응집된 역할 단위로 묶는 것이 핵심이다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>추상화를 위한 추상화</strong>
+                        구현체가 영원히 하나뿐일 게 분명한데도 "혹시 모르니" 인터페이스를 만드는 것은 비용만 늘린다. 간접 호출 한 단계, 파일 한 개, 읽을 때 점프 한 번이 공짜가 아니다. 추상화는 실제로 교체·확장·테스트 가능성이라는 이득이 보일 때 도입한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>인터페이스만 만들면 DIP가 끝났다는 착각</strong>
+                        <code>ICamera</code>를 만들어놓고도 고수준 모듈 안에서 <code>new VieworksCamera()</code>를 호출하면 의존은 그대로 남는다. 추상화를 정의하는 것과, 구체 타입을 생성 책임에서 떼어내 외부 주입으로 옮기는 것은 별개의 작업이다. 둘 다 해야 DIP가 완성된다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Robert C. Martin — "Agile Software Development, Principles, Patterns, and Practices" (ISP·DIP 원전)</li>
+                        <li>Robert C. Martin — "Clean Architecture" (2017), 의존성 규칙 장</li>
+                        <li>Martin Fowler — "Inversion of Control Containers and the Dependency Injection pattern" (martinfowler.com)</li>
+                        <li>Mark Seemann — "Dependency Injection Principles, Practices, and Patterns"</li>
+                        <li>cppreference.com — abstract class, virtual functions</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-theory');
+    renderPostNav('dev-theory');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>

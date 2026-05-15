@@ -1,0 +1,827 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOLID 원칙 (상) — SRP·OCP·LSP - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 실행 결과 */
+        .output-block {
+            background: #0f172a; color: #94a3b8; border-radius: 10px;
+            padding: 16px 20px; margin: -8px 0 16px; font-size: 0.85rem;
+            font-family: 'Consolas', 'D2Coding', monospace; line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+        .output-block .output-label {
+            color: #64748b; font-size: 0.75rem; font-weight: 600;
+            margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 다이어그램 */
+        .diagram-box {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;
+        }
+        .diagram-box svg { max-width: 100%; height: auto; }
+        .diagram-caption {
+            font-size: 0.82rem; color: var(--text-muted); margin-top: 12px;
+        }
+
+        /* spec 테이블 */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.88rem; }
+        .spec-table th, .spec-table td {
+            border: 1px solid var(--border); padding: 9px 12px; text-align: left; vertical-align: top;
+        }
+        .spec-table th { background: var(--primary-50); font-weight: 700; color: var(--primary-dark); }
+        .spec-table td code { font-size: 0.85em; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#solid-intro" data-section="solid-intro">SOLID란</a>
+        <a href="#srp" data-section="srp">SRP</a>
+        <a href="#ocp" data-section="ocp">OCP</a>
+        <a href="#lsp" data-section="lsp">LSP</a>
+        <a href="#connection" data-section="connection">세 원칙의 연결</a>
+        <a href="#industrial" data-section="industrial">산업 SW 관점</a>
+        <a href="#misconception" data-section="misconception">흔한 오해</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">프로그래밍 이론</span>
+                </div>
+                <h1>SOLID 원칙 (상) — SRP·OCP·LSP</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-15</span>
+                    <span><i class="fa-regular fa-clock"></i> 13 min read</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>SOLID 5원칙의 개요와 등장 배경</li>
+                        <li>SRP — 클래스가 가져야 할 책임은 하나라는 원칙</li>
+                        <li>OCP — 수정 없이 확장하기 위한 추상화·다형성</li>
+                        <li>LSP — 자식이 부모를 안전하게 대체하기 위한 계약</li>
+                        <li>세 원칙의 연결, 산업용 영상 SW 적용, 흔한 오해</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#solid-intro">SOLID란?</a></li>
+                        <li><a href="#srp">SRP — 단일 책임 원칙</a></li>
+                        <li><a href="#ocp">OCP — 개방-폐쇄 원칙</a></li>
+                        <li><a href="#lsp">LSP — 리스코프 치환 원칙</a></li>
+                        <li><a href="#connection">세 원칙은 어떻게 연결되는가</a></li>
+                        <li><a href="#industrial">산업 SW 관점에서 보기</a></li>
+                        <li><a href="#misconception">흔한 오해</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. SOLID란 -->
+                <h2 id="solid-intro"><i class="fa-solid fa-cubes"></i> SOLID란?</h2>
+                <p><strong>SOLID</strong>는 로버트 마틴(Robert C. Martin, 통칭 "Uncle Bob")이 2000년대 초에 정리한 객체지향 설계의 5가지 원칙이다. 다섯 원칙의 앞 글자를 모은 약어이며, 유연하고 유지보수가 쉬운 코드를 만들기 위한 지침이다.</p>
+                <p>SOLID는 새로운 문법이나 도구가 아니라 <strong>설계 판단의 기준</strong>이다. 코드가 점점 고치기 어려워질 때, 어디를 어떻게 나눠야 할지 알려주는 나침반 역할을 한다. 객체지향 4대 특성(캡슐화·상속·다형성·추상화)이 "도구"라면, SOLID는 그 도구를 "언제 어떻게 쓰는가"에 대한 원칙이다.</p>
+
+                <table class="spec-table">
+                    <tr><th>약자</th><th>원칙</th><th>핵심 한 줄</th></tr>
+                    <tr><td><strong>S</strong></td><td>SRP — 단일 책임 원칙</td><td>클래스는 변경 이유가 하나여야 한다</td></tr>
+                    <tr><td><strong>O</strong></td><td>OCP — 개방-폐쇄 원칙</td><td>확장에는 열려 있고 수정에는 닫혀 있어야 한다</td></tr>
+                    <tr><td><strong>L</strong></td><td>LSP — 리스코프 치환 원칙</td><td>자식은 부모를 대체할 수 있어야 한다</td></tr>
+                    <tr><td><strong>I</strong></td><td>ISP — 인터페이스 분리 원칙</td><td>쓰지 않는 인터페이스에 의존하지 않아야 한다</td></tr>
+                    <tr><td><strong>D</strong></td><td>DIP — 의존 역전 원칙</td><td>구체가 아니라 추상에 의존해야 한다</td></tr>
+                </table>
+
+                <p>이 글은 앞 3개(SRP·OCP·LSP)를 다룬다. 나머지 두 개(ISP·DIP)는 다음 글에서 이어간다. 5원칙은 서로 독립적이지 않고 맞물려 있으므로, 앞 3개를 먼저 탄탄히 이해해 두면 뒤 2개가 자연스럽게 따라온다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>SOLID는 "지켜야 하는 법"이 아니다</strong>
+                        SOLID는 트레이드오프를 가진 가이드다. 모든 코드에 100% 적용하면 오히려 과한 추상화로 복잡해진다. "이 코드가 자주 바뀌는가, 바뀐다면 어디가 바뀌는가"를 먼저 묻고, 그 답에 따라 원칙을 적용하는 것이 핵심이다.
+                    </div>
+                </div>
+
+                <!-- 2. SRP -->
+                <h2 id="srp"><i class="fa-solid fa-bullseye"></i> SRP — 단일 책임 원칙</h2>
+                <p><strong>Single Responsibility Principle.</strong> 하나의 클래스는 하나의 책임만 가져야 한다. 마틴은 이를 더 정밀하게 "클래스를 변경할 이유는 하나뿐이어야 한다"라고 표현한다.</p>
+
+                <h3 id="srp-responsibility"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> "책임"이란 무엇인가</h3>
+                <p>여기서 "책임"은 메서드 하나, 기능 하나가 아니다. <strong>변경을 요구하는 주체(actor)</strong>로 보는 것이 정확하다. 어떤 클래스를 수정하라고 요구하는 사람이나 부서가 둘 이상이라면, 그 클래스는 책임이 둘 이상인 것이다.</p>
+                <p>예를 들어 영상 검사 결과를 담는 클래스가 (1) 검사 로직 담당자의 요구로도 바뀌고, (2) 보고서 양식 담당자의 요구로도 바뀌고, (3) DB 스키마 담당자의 요구로도 바뀐다면 책임이 셋이다. 한쪽 요구로 코드를 고치다가 다른 쪽 기능을 깨뜨릴 위험이 항상 따라다닌다.</p>
+
+                <h3 id="srp-bad"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 위반 예시 — 책임이 뭉친 클래스</h3>
+                <p>아래 <code>InspectionReport</code>는 검사 데이터 보관, 통계 계산, 파일 저장, 로그 출력을 모두 떠안고 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 책임이 4개 뭉친 클래스 — 변경 이유가 너무 많다
+class InspectionReport
+{
+public:
+    void AddResult(const Defect&amp; defect) { m_defects.push_back(defect); }
+
+    // 책임 1: 통계 계산
+    double CalculatePassRate() const
+    {
+        // ... 합격률 계산 로직
+    }
+
+    // 책임 2: 파일 포맷 직렬화
+    void SaveAsCsv(const std::string&amp; path) const
+    {
+        // ... CSV 포맷으로 변환 + 파일 쓰기
+    }
+
+    // 책임 3: 화면 출력 포맷
+    void PrintToConsole() const
+    {
+        // ... 콘솔 표 형태로 출력
+    }
+
+    // 책임 4: 로그 전송
+    void SendToLogServer() const
+    {
+        // ... 네트워크로 로그 서버에 전송
+    }
+
+private:
+    std::vector&lt;Defect&gt; m_defects;
+};</code></pre>
+
+                <p>CSV 포맷이 바뀌어도, 로그 서버 주소가 바뀌어도, 합격률 정의가 바뀌어도 전부 이 한 파일을 건드려야 한다. 테스트도 어렵다. 통계 로직만 검증하고 싶은데 파일 시스템과 네트워크가 딸려 온다.</p>
+
+                <h3 id="srp-good"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 개선 예시 — 책임 단위로 분리</h3>
+                <p>데이터, 통계, 직렬화, 전송을 각각 별도 클래스로 나눈다. 각 클래스는 변경 이유가 하나씩이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 책임 1: 검사 데이터 보관만 담당
+class InspectionResult
+{
+public:
+    void AddDefect(const Defect&amp; defect) { m_defects.push_back(defect); }
+    const std::vector&lt;Defect&gt;&amp; GetDefects() const { return m_defects; }
+
+private:
+    std::vector&lt;Defect&gt; m_defects;
+};
+
+// 책임 2: 통계 계산만 담당
+class InspectionStatistics
+{
+public:
+    // Compute the pass rate from an inspection result.
+    double ComputePassRate(const InspectionResult&amp; result) const
+    {
+        // ... 합격률 계산 로직
+    }
+};
+
+// 책임 3: CSV 직렬화만 담당
+class CsvReportWriter
+{
+public:
+    // Write the inspection result to a CSV file.
+    ErrorCode Write(const InspectionResult&amp; result, const std::string&amp; path) const
+    {
+        // ... CSV 변환 + 파일 쓰기
+        return ErrorCode::Ok;
+    }
+};
+
+// 책임 4: 로그 전송만 담당
+class LogServerClient
+{
+public:
+    // Send the inspection result to the remote log server.
+    ErrorCode Send(const InspectionResult&amp; result) const
+    {
+        // ... 네트워크 전송
+        return ErrorCode::Ok;
+    }
+};</code></pre>
+
+                <p>이제 CSV 포맷이 바뀌면 <code>CsvReportWriter</code>만, 로그 서버가 바뀌면 <code>LogServerClient</code>만 손대면 된다. <code>InspectionStatistics</code>는 파일 시스템 없이 단독으로 테스트할 수 있다. 클래스 수는 늘었지만 각각이 작고 이해하기 쉬워졌다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"책임"을 "함수 하나"로 오해하지 않는다</strong>
+                        SRP를 "메서드는 한 가지 일만"으로 받아들이면 클래스를 잘게 쪼개다 못해 메서드 하나짜리 클래스를 양산하게 된다. SRP의 단위는 함수가 아니라 <strong>변경을 요구하는 주체</strong>다. 같은 주체가 함께 바꾸는 코드는 한곳에 모여 있는 편이 오히려 응집도가 높다.
+                    </div>
+                </div>
+
+                <!-- 3. OCP -->
+                <h2 id="ocp"><i class="fa-solid fa-door-open"></i> OCP — 개방-폐쇄 원칙</h2>
+                <p><strong>Open-Closed Principle.</strong> 소프트웨어 요소는 확장에는 열려 있어야 하고(open for extension), 수정에는 닫혀 있어야 한다(closed for modification). 새 기능을 추가할 때 기존에 동작하던 코드를 고치지 않고, 새 코드를 더하는 방식으로 끝내는 것이 목표다.</p>
+                <p>"기존 코드를 고치지 않는다"가 중요한 이유는 단순하다. 이미 검증된 코드를 건드리면 회귀 버그(regression)가 생길 위험이 있다. 새 코드만 추가하면 기존 동작은 그대로 보존된다. OCP는 <strong>추상화와 다형성</strong>으로 달성한다.</p>
+
+                <h3 id="ocp-bad"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 위반 예시 — 늘어나는 분기문</h3>
+                <p>필터 종류가 추가될 때마다 <code>switch</code> 문에 <code>case</code>를 덧붙이는 구조다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">enum class FilterType { GaussianBlur, Median, Sobel };
+
+// 필터가 추가될 때마다 이 함수를 수정해야 한다 — OCP 위반
+class ImageProcessor
+{
+public:
+    ErrorCode ApplyFilter(Image&amp; image, FilterType type)
+    {
+        switch (type)
+        {
+        case FilterType::GaussianBlur:
+            // ... 가우시안 블러 처리
+            break;
+        case FilterType::Median:
+            // ... 미디언 필터 처리
+            break;
+        case FilterType::Sobel:
+            // ... 소벨 엣지 처리
+            break;
+        // 새 필터 추가 시 여기에 case 추가 → 기존 코드 수정
+        }
+        return ErrorCode::Ok;
+    }
+};</code></pre>
+
+                <p>새 필터 하나를 추가하려면 검증이 끝난 <code>ApplyFilter</code>를 다시 열어야 한다. 분기가 늘어날수록 함수는 비대해지고, 한 필터를 고치다 다른 필터의 <code>case</code>를 건드릴 위험도 생긴다.</p>
+
+                <h3 id="ocp-good"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 개선 예시 — 추상화로 확장 지점 만들기</h3>
+                <p>필터를 인터페이스로 추상화하면, 새 필터는 인터페이스를 구현하는 <strong>새 클래스 추가</strong>만으로 끝난다. <code>ImageProcessor</code>는 다시 열 필요가 없다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 확장 지점이 되는 추상 인터페이스
+class IFilter
+{
+public:
+    virtual ~IFilter() = default;
+    // Apply the filter to the given image in place.
+    virtual ErrorCode Apply(Image&amp; image) = 0;
+};
+
+// 기존 필터 구현
+class GaussianBlurFilter : public IFilter
+{
+public:
+    ErrorCode Apply(Image&amp; image) override
+    {
+        // ... 가우시안 블러 처리
+        return ErrorCode::Ok;
+    }
+};
+
+class MedianFilter : public IFilter
+{
+public:
+    ErrorCode Apply(Image&amp; image) override
+    {
+        // ... 미디언 필터 처리
+        return ErrorCode::Ok;
+    }
+};
+
+// ImageProcessor는 구체 필터를 모른다 — 수정에 닫혀 있다
+class ImageProcessor
+{
+public:
+    ErrorCode ApplyFilter(Image&amp; image, IFilter&amp; filter)
+    {
+        return filter.Apply(image);
+    }
+};
+
+// === 새 필터 추가: 기존 코드를 전혀 건드리지 않는다 ===
+class SharpenFilter : public IFilter
+{
+public:
+    ErrorCode Apply(Image&amp; image) override
+    {
+        // ... 샤프닝 처리
+        return ErrorCode::Ok;
+    }
+};</code></pre>
+
+                <p><code>SharpenFilter</code>를 추가했지만 <code>IFilter</code>, <code>ImageProcessor</code>, 기존 필터 클래스는 한 줄도 바뀌지 않았다. 확장에는 열려 있고(새 클래스 추가 가능), 수정에는 닫혀 있다(기존 클래스 불변). 이 구조가 곧 전략 패턴(Strategy Pattern)이다.</p>
+
+                <div class="diagram-box">
+                    <svg viewBox="0 0 640 290" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- ImageProcessor -->
+                        <rect x="245" y="20" width="150" height="46" rx="8" fill="#e8f5e9" stroke="#66bb6a" stroke-width="1.5"/>
+                        <text x="320" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#2e7d32">ImageProcessor</text>
+                        <text x="320" y="56" text-anchor="middle" font-size="10" fill="#558b2f">수정에 닫혀 있음</text>
+
+                        <!-- 의존 화살표 -->
+                        <line x1="320" y1="66" x2="320" y2="100" stroke="#90a4ae" stroke-width="1.5" marker-end="url(#arrowOpen)"/>
+                        <text x="332" y="86" font-size="10" fill="#607d8b">uses</text>
+
+                        <!-- IFilter 인터페이스 -->
+                        <rect x="240" y="100" width="160" height="46" rx="8" fill="#fff3e0" stroke="#ffa726" stroke-width="1.5"/>
+                        <text x="320" y="120" text-anchor="middle" font-size="13" font-weight="700" fill="#e65100">«interface» IFilter</text>
+                        <text x="320" y="136" text-anchor="middle" font-size="10" fill="#ef6c00">+ Apply(Image&amp;)</text>
+
+                        <!-- 구현 화살표들 -->
+                        <line x1="120" y1="220" x2="290" y2="148" stroke="#90a4ae" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowHollow)"/>
+                        <line x1="320" y1="220" x2="320" y2="148" stroke="#90a4ae" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowHollow)"/>
+                        <line x1="520" y1="220" x2="350" y2="148" stroke="#90a4ae" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowHollow)"/>
+
+                        <!-- 구현 클래스들 -->
+                        <rect x="40" y="222" width="160" height="42" rx="8" fill="#e3f2fd" stroke="#42a5f5" stroke-width="1.5"/>
+                        <text x="120" y="240" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1565c0">GaussianBlurFilter</text>
+                        <text x="120" y="255" text-anchor="middle" font-size="9.5" fill="#1976d2">기존 코드</text>
+
+                        <rect x="240" y="222" width="160" height="42" rx="8" fill="#e3f2fd" stroke="#42a5f5" stroke-width="1.5"/>
+                        <text x="320" y="240" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1565c0">MedianFilter</text>
+                        <text x="320" y="255" text-anchor="middle" font-size="9.5" fill="#1976d2">기존 코드</text>
+
+                        <rect x="440" y="222" width="160" height="42" rx="8" fill="#fce4ec" stroke="#ec407a" stroke-width="1.5"/>
+                        <text x="520" y="240" text-anchor="middle" font-size="11.5" font-weight="700" fill="#ad1457">SharpenFilter</text>
+                        <text x="520" y="255" text-anchor="middle" font-size="9.5" fill="#c2185b">새로 추가 (확장)</text>
+
+                        <defs>
+                            <marker id="arrowOpen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L8,3 L0,6" fill="none" stroke="#90a4ae" stroke-width="1.5"/>
+                            </marker>
+                            <marker id="arrowHollow" markerWidth="12" markerHeight="12" refX="9" refY="4" orient="auto">
+                                <path d="M0,0 L9,4 L0,8 Z" fill="white" stroke="#90a4ae" stroke-width="1.5"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    <div class="diagram-caption">OCP 확장 구조 — 새 필터는 <code>IFilter</code>를 구현하는 클래스를 더할 뿐, 위쪽 클래스들은 그대로다.</div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>"변할 부분"을 미리 찾아 추상화한다</strong>
+                        OCP의 핵심은 "어디가 자주 바뀔지" 예측하는 것이다. 필터 종류처럼 계속 늘어날 게 뻔한 지점은 인터페이스로 뽑아 둔다. 반대로 거의 안 바뀌는 부분까지 추상화하면 비용만 든다.
+                    </div>
+                </div>
+
+                <!-- 4. LSP -->
+                <h2 id="lsp"><i class="fa-solid fa-arrows-turn-to-dots"></i> LSP — 리스코프 치환 원칙</h2>
+                <p><strong>Liskov Substitution Principle.</strong> 바버라 리스코프(Barbara Liskov)의 이름을 딴 원칙으로, 자식 타입은 부모 타입을 대체할 수 있어야 한다는 내용이다. 부모 타입을 사용하는 코드에 자식 객체를 넣어도 프로그램의 동작이 깨지면 안 된다.</p>
+                <p>상속 관계가 문법적으로 성립한다고 해서 LSP를 만족하는 것은 아니다. 컴파일이 되더라도, 자식이 부모가 약속한 동작을 어기면 LSP 위반이다.</p>
+
+                <h3 id="lsp-bad"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 위반 예시 — 정사각형-직사각형 문제</h3>
+                <p>"정사각형은 직사각형의 일종"이라는 수학적 직관 때문에 <code>Square</code>를 <code>Rectangle</code>의 자식으로 만드는 고전적 함정이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">class Rectangle
+{
+public:
+    virtual ~Rectangle() = default;
+    virtual void SetWidth(int w)  { m_width = w; }
+    virtual void SetHeight(int h) { m_height = h; }
+    int GetArea() const { return m_width * m_height; }
+
+protected:
+    int m_width = 0;
+    int m_height = 0;
+};
+
+// "정사각형은 직사각형이다" — 문법은 되지만 LSP를 깬다
+class Square : public Rectangle
+{
+public:
+    void SetWidth(int w) override  { m_width = w; m_height = w; }
+    void SetHeight(int h) override { m_width = h; m_height = h; }
+};
+
+// Rectangle을 기대하고 쓰는 코드
+void ResizeAndCheck(Rectangle&amp; rect)
+{
+    rect.SetWidth(5);
+    rect.SetHeight(4);
+    // Rectangle이라면 면적은 반드시 20이어야 한다
+    assert(rect.GetArea() == 20);  // Square를 넣으면 16 → 실패
+}</code></pre>
+
+                <p><code>ResizeAndCheck</code>는 "너비와 높이를 따로 설정할 수 있다"는 <code>Rectangle</code>의 약속에 의존한다. 그런데 <code>Square</code>를 넣으면 <code>SetHeight</code>가 너비까지 바꿔 버려 면적이 16이 된다. 부모를 쓰던 코드가 자식 때문에 깨졌으니 LSP 위반이다.</p>
+
+                <div class="diagram-box">
+                    <svg viewBox="0 0 620 250" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+                        <!-- 클라이언트 코드 -->
+                        <rect x="20" y="100" width="150" height="50" rx="8" fill="#eceff1" stroke="#90a4ae" stroke-width="1.5"/>
+                        <text x="95" y="122" text-anchor="middle" font-size="12" font-weight="700" fill="#455a64">ResizeAndCheck</text>
+                        <text x="95" y="138" text-anchor="middle" font-size="9.5" fill="#607d8b">Rectangle 기대</text>
+
+                        <line x1="170" y1="125" x2="225" y2="125" stroke="#90a4ae" stroke-width="1.5" marker-end="url(#arrowOpen2)"/>
+
+                        <!-- Rectangle 정상 경로 -->
+                        <rect x="230" y="40" width="160" height="64" rx="8" fill="#e8f5e9" stroke="#66bb6a" stroke-width="1.5"/>
+                        <text x="310" y="60" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2e7d32">Rectangle</text>
+                        <text x="310" y="76" text-anchor="middle" font-size="9.5" fill="#558b2f">W=5, H=4</text>
+                        <text x="310" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2e7d32">Area = 20 ✓</text>
+
+                        <!-- Square 위반 경로 -->
+                        <rect x="230" y="146" width="160" height="64" rx="8" fill="#fef2f2" stroke="#ef5350" stroke-width="1.5"/>
+                        <text x="310" y="166" text-anchor="middle" font-size="12.5" font-weight="700" fill="#c62828">Square (자식)</text>
+                        <text x="310" y="182" text-anchor="middle" font-size="9.5" fill="#d32f2f">SetHeight가 W도 변경</text>
+                        <text x="310" y="198" text-anchor="middle" font-size="10.5" font-weight="700" fill="#c62828">Area = 16 ✗</text>
+
+                        <!-- 결과 -->
+                        <line x1="390" y1="72" x2="450" y2="100" stroke="#66bb6a" stroke-width="1.5" marker-end="url(#arrowOpen2)"/>
+                        <line x1="390" y1="178" x2="450" y2="135" stroke="#ef5350" stroke-width="1.5" marker-end="url(#arrowOpen2)"/>
+                        <rect x="455" y="100" width="145" height="46" rx="8" fill="#fffbeb" stroke="#ffa726" stroke-width="1.5"/>
+                        <text x="527" y="120" text-anchor="middle" font-size="11.5" font-weight="700" fill="#e65100">assert 통과 여부</text>
+                        <text x="527" y="136" text-anchor="middle" font-size="9.5" fill="#ef6c00">자식이 계약을 깬다</text>
+
+                        <defs>
+                            <marker id="arrowOpen2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <path d="M0,0 L8,3 L0,6" fill="none" stroke="#90a4ae" stroke-width="1.5"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    <div class="diagram-caption">LSP 위반 — 부모(<code>Rectangle</code>)를 기대하는 코드에 자식(<code>Square</code>)을 넣으면 면적 계약이 깨진다.</div>
+                </div>
+
+                <h3 id="lsp-rules"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 사전조건 강화·사후조건 약화 금지</h3>
+                <p>LSP를 어기지 않으려면 자식은 부모와의 "계약(contract)"을 지켜야 한다. 두 가지 규칙으로 요약된다.</p>
+                <ul>
+                    <li><strong>사전조건을 강화하지 않는다</strong> — 부모가 받아 주던 입력을 자식이 거부하면 안 된다. 부모가 0 이상의 너비를 받았다면 자식도 받아야 한다.</li>
+                    <li><strong>사후조건을 약화하지 않는다</strong> — 부모가 보장하던 결과를 자식이 보장하지 못하면 안 된다. <code>Square</code>는 "너비와 높이를 독립적으로 설정 후 면적은 W×H"라는 사후조건을 약화시켰다.</li>
+                </ul>
+
+                <h3 id="lsp-good"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 개선 예시 — 잘못된 상속을 끊는다</h3>
+                <p>해법은 <code>Square</code>를 <code>Rectangle</code>의 자식으로 두지 않는 것이다. 둘 다 "도형"이라는 공통 추상에서 갈라지게 하고, 가변 크기 행동을 강요하지 않는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 공통 추상 — "면적을 구할 수 있다"만 약속한다
+class IShape
+{
+public:
+    virtual ~IShape() = default;
+    // Return the area of this shape.
+    virtual int GetArea() const = 0;
+};
+
+// 직사각형 — 너비와 높이가 독립적이다
+class Rectangle : public IShape
+{
+public:
+    Rectangle(int width, int height)
+        : m_width(width), m_height(height) {}
+
+    void SetWidth(int w)  { m_width = w; }
+    void SetHeight(int h) { m_height = h; }
+    int GetArea() const override { return m_width * m_height; }
+
+private:
+    int m_width;
+    int m_height;
+};
+
+// 정사각형 — 변이 하나뿐이다. Rectangle을 상속하지 않는다
+class Square : public IShape
+{
+public:
+    explicit Square(int side) : m_side(side) {}
+
+    void SetSide(int side) { m_side = side; }
+    int GetArea() const override { return m_side * m_side; }
+
+private:
+    int m_side;
+};</code></pre>
+
+                <p>이제 <code>Rectangle</code>의 "너비·높이 독립 설정" 계약을 <code>Square</code>가 상속하지 않으므로 깨질 일이 없다. <code>IShape</code>를 쓰는 코드는 <code>GetArea()</code>만 호출하므로, 어느 도형을 넣어도 안전하게 동작한다. "is-a 관계가 성립하는가"를 묻기 전에 "<strong>자식이 부모의 모든 계약을 지킬 수 있는가</strong>"를 먼저 물어야 한다.</p>
+
+                <!-- 5. 세 원칙의 연결 -->
+                <h2 id="connection"><i class="fa-solid fa-link"></i> 세 원칙은 어떻게 연결되는가</h2>
+                <p>SRP·OCP·LSP는 따로 노는 규칙이 아니라 하나의 흐름으로 이어진다.</p>
+                <ul>
+                    <li><strong>SRP로 책임을 나눈다</strong> — 먼저 클래스를 변경 이유 단위로 쪼개면, 무엇이 자주 바뀌는 부분인지 드러난다.</li>
+                    <li><strong>OCP로 확장 지점을 만든다</strong> — 자주 바뀌는 책임을 인터페이스로 추상화하면, 그 부분이 확장 가능한 지점이 된다.</li>
+                    <li><strong>LSP로 다형성을 안전하게 만든다</strong> — OCP가 만든 인터페이스 뒤의 구현체들이 계약을 지켜야, 다형성으로 갈아끼우는 동작이 깨지지 않는다.</li>
+                </ul>
+                <p>즉 SRP가 "어디를 나눌지"를 알려주고, OCP가 "나눈 곳에 확장 구멍을 어떻게 뚫을지"를 알려주고, LSP가 "그 구멍에 끼우는 부품들이 지켜야 할 규격"을 알려준다. OCP 없이 LSP만 지키면 확장이 어렵고, LSP 없이 OCP만 추구하면 다형성이 언제든 깨질 수 있다. 세 원칙은 함께 쓰일 때 의미가 산다.</p>
+
+                <!-- 6. 산업 SW 관점 -->
+                <h2 id="industrial"><i class="fa-solid fa-industry"></i> 산업 SW 관점에서 보기</h2>
+                <p>산업용 영상 처리 SDK에서 SOLID는 추상적인 이론이 아니라 실제 구조 결정이다.</p>
+
+                <h3 id="ind-ocp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> OCP — IProcessBlock과 필터 확장</h3>
+                <p>데이터 플로우 기반 블록 에디터에서 모든 처리 블록은 <code>IProcessBlock</code> 인터페이스를 구현한다. 새 필터나 검사 알고리즘을 추가할 때, 코어 라이브러리의 실행 엔진은 한 줄도 고치지 않는다. 인터페이스를 구현하는 새 블록 클래스를 더하면 끝이다. 이것이 플러그인 구조가 가능한 이유이며, 정확히 OCP의 적용이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 코어가 정의한 확장 지점 — 블록 에디터의 모든 블록이 구현한다
+class IProcessBlock
+{
+public:
+    virtual ~IProcessBlock() = default;
+    // Process the input image and produce the output.
+    virtual ErrorCode Process(const Image&amp; input, Image&amp; output) = 0;
+};
+
+// 측정 솔루션이 추가하는 블록 — 코어 수정 없이 확장된다
+class EdgeDistanceBlock : public IProcessBlock
+{
+public:
+    ErrorCode Process(const Image&amp; input, Image&amp; output) override
+    {
+        // ... 엣지 기반 거리 측정
+        return ErrorCode::Ok;
+    }
+};</code></pre>
+
+                <h3 id="ind-srp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> SRP — 검사 블록의 책임 분리</h3>
+                <p>검사 블록 하나가 영상 전처리, 특징 추출, 판정, 결과 시각화를 전부 떠안으면 SRP 위반이다. 판정 기준이 바뀔 때마다 전처리 코드까지 위험에 노출된다. 전처리·추출·판정을 각각의 클래스로 분리하면, 판정 임계값이 바뀌어도 판정 클래스만 손대면 된다. 각 단계를 GoogleTest로 독립 검증하기도 쉬워진다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>LSP는 블록 교체의 안전망이다</strong>
+                        블록 에디터에서 사용자가 한 필터 블록을 다른 필터 블록으로 갈아끼울 수 있는 이유는, 모든 블록이 <code>IProcessBlock</code>의 계약(같은 입출력 규약, null 이미지 처리 규칙 등)을 지키기 때문이다. 어떤 블록이 이 계약을 어기면 플로우 전체가 예측 불가능해진다.
+                    </div>
+                </div>
+
+                <!-- 7. 흔한 오해 -->
+                <h2 id="misconception"><i class="fa-solid fa-triangle-exclamation"></i> 흔한 오해</h2>
+
+                <h3 id="mis-srp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> "SRP = 함수 하나만"이라는 오해</h3>
+                <p>앞서 다뤘듯 SRP의 "책임"은 함수 단위가 아니다. 메서드 하나짜리 클래스를 잔뜩 만드는 것은 SRP를 지키는 게 아니라 응집도를 깨는 것이다. 같은 이유로 함께 바뀌는 코드는 한곳에 있는 편이 낫다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>OCP를 위한 과한 추상화</strong>
+                        "언젠가 확장될지 모르니까" 모든 클래스에 인터페이스를 붙이는 것은 OCP가 아니라 과잉 설계(over-engineering)다. 추상화 계층마다 코드를 읽고 따라가는 비용이 생긴다. 확장 가능성이 실제로 보이는 지점에만 추상화를 둔다. 한 번도 두 번째 구현체가 생기지 않을 인터페이스는 비용만 남긴다.
+                    </div>
+                </div>
+
+                <h3 id="mis-lsp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> LSP를 "단순 상속 문제"로만 보는 오해</h3>
+                <p>LSP 위반은 <code>extends</code>/<code>: public</code> 키워드만의 문제가 아니다. 인터페이스 구현(<code>implements</code>)에서도, 심지어 덕 타이핑에서도 발생한다. 핵심은 "어떤 타입을 기대하는 코드에 그 하위 타입을 넣었을 때 약속이 지켜지는가"다. 상속 문법 여부가 아니라 <strong>계약 준수 여부</strong>가 판단 기준이다. <code>NotImplementedException</code>을 던지는 오버라이드, 부모보다 좁은 입력만 받는 오버라이드는 모두 LSP 위반 신호다.</p>
+
+                <table class="spec-table">
+                    <tr><th>원칙</th><th>위반 신호</th><th>개선 방향</th></tr>
+                    <tr><td>SRP</td><td>한 클래스를 서로 다른 이유로 자꾸 수정한다 / 클래스 이름에 "And", "Manager"가 들어간다</td><td>변경을 요구하는 주체별로 클래스를 분리한다</td></tr>
+                    <tr><td>OCP</td><td>기능 추가 때마다 <code>switch</code>/<code>if-else</code> 분기가 늘어난다 / 검증된 코드를 자꾸 다시 연다</td><td>변하는 부분을 인터페이스로 추상화하고 구현을 추가한다</td></tr>
+                    <tr><td>LSP</td><td>오버라이드에서 예외를 던지거나 빈 구현을 둔다 / 타입 검사(<code>dynamic_cast</code>) 후 분기한다</td><td>잘못된 상속을 끊고, 공통 추상은 지킬 수 있는 계약만 담는다</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>다음 글 예고</strong>
+                        SOLID의 나머지 두 원칙 ISP(인터페이스 분리)와 DIP(의존 역전)는 "SOLID 원칙 (하)"에서 이어진다. ISP·DIP는 이 글에서 다룬 OCP의 추상화를 "어떻게 잘게 나누고, 어느 방향으로 의존시킬지"로 확장하는 원칙이다.
+                    </div>
+                </div>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Robert C. Martin, <em>Agile Software Development: Principles, Patterns, and Practices</em> (2002) — SOLID 원칙이 체계적으로 정리된 원전</li>
+                        <li>Robert C. Martin, <em>Clean Architecture</em> (2017) — SOLID 5원칙 챕터</li>
+                        <li>Robert C. Martin, "The Principles of OOD" — butuncleblog.com (objectmentor.com 아카이브)</li>
+                        <li>Barbara Liskov, "Data Abstraction and Hierarchy" (1987) — 리스코프 치환 원칙의 이론적 기원</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-theory');
+    renderPostNav('dev-theory');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
