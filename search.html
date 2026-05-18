@@ -1,0 +1,273 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>검색 - Melon Seeds</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .search-hero {
+            padding: 48px 24px 24px;
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border-bottom: 1px solid var(--border);
+        }
+        .search-hero-inner { max-width: 900px; margin: 0 auto; }
+        .search-hero h1 {
+            font-family: 'Pretendard', sans-serif; font-size: 1.6rem; font-weight: 800;
+            margin: 0 0 12px; color: var(--primary-dark);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .search-hero h1 i { color: var(--melon); }
+        .search-form {
+            display: flex; gap: 8px; margin-top: 8px;
+        }
+        .search-form input {
+            flex: 1; padding: 12px 18px; font-size: 1rem;
+            border: 1px solid var(--border); border-radius: 10px;
+            background: white; outline: none;
+            font-family: inherit;
+        }
+        .search-form input:focus { border-color: var(--melon); }
+        .search-form button {
+            padding: 0 22px; font-size: 0.95rem; font-weight: 600;
+            border: none; border-radius: 10px; cursor: pointer;
+            background: var(--primary); color: white;
+            font-family: inherit;
+        }
+        .search-form button:hover { background: var(--primary-dark); }
+        .search-status {
+            max-width: 900px; margin: 18px auto 0; padding: 0 24px;
+            color: var(--text-muted); font-size: 0.88rem;
+        }
+        .search-status .keyword { color: var(--primary); font-weight: 700; }
+        .search-status .count { font-weight: 700; }
+
+        .results { max-width: 900px; margin: 24px auto 64px; padding: 0 24px; }
+        .result-card {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 18px 22px; margin-bottom: 14px;
+            transition: all 0.15s;
+        }
+        .result-card:hover { border-color: var(--melon); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .result-card .rc-head {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+        }
+        .result-card .rc-cat {
+            font-size: 0.74rem; font-weight: 600;
+            padding: 2px 10px; border-radius: 10px;
+            background: var(--primary-light); color: var(--primary-dark);
+        }
+        .result-card .rc-date { font-size: 0.78rem; color: var(--text-muted); margin-left: auto; }
+        .result-card h3 {
+            font-family: 'Pretendard', sans-serif; font-size: 1.05rem; font-weight: 700;
+            margin: 0 0 6px;
+        }
+        .result-card h3 a {
+            color: var(--text); text-decoration: none;
+        }
+        .result-card h3 a:hover { color: var(--primary); }
+        .result-card .rc-excerpt { font-size: 0.9rem; color: var(--text-sub); margin: 0 0 8px; line-height: 1.55; }
+        .result-card .rc-snippet {
+            font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;
+            background: var(--bg); padding: 8px 12px; border-radius: 6px;
+            border-left: 3px solid var(--melon);
+        }
+        .result-card mark {
+            background: #fff4b3; color: var(--text); padding: 0 2px; border-radius: 3px;
+            font-weight: 600;
+        }
+
+        .empty-result {
+            text-align: center; padding: 64px 24px;
+            color: var(--text-muted);
+        }
+        .empty-result i { font-size: 2.5rem; color: var(--border); margin-bottom: 16px; }
+        .empty-result p { margin: 8px 0; }
+
+        .loading {
+            text-align: center; padding: 48px 24px; color: var(--text-muted);
+        }
+        .loading i { font-size: 1.6rem; color: var(--melon); }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="about.html" class="nav-link"><i class="fa-solid fa-circle-info"></i> 소개</a>
+            <div class="nav-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" placeholder="검색..." id="nav-search-input">
+            </div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content" style="padding:0;">
+
+        <section class="search-hero">
+            <div class="search-hero-inner">
+                <h1><i class="fa-solid fa-magnifying-glass"></i> 검색</h1>
+                <form class="search-form" onsubmit="event.preventDefault(); runSearch(document.getElementById('hero-search-input').value);">
+                    <input type="text" id="hero-search-input" placeholder="제목·요약·본문에서 검색...">
+                    <button type="submit">검색</button>
+                </form>
+            </div>
+        </section>
+
+        <div class="search-status" id="search-status"></div>
+        <div class="results" id="results">
+            <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> 인덱스 로딩 중...</div>
+        </div>
+
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/sidebar.js"></script>
+<script>
+    renderSidebar('');
+
+    let SEARCH_INDEX = null;
+
+    async function loadIndex() {
+        if (SEARCH_INDEX) return SEARCH_INDEX;
+        const res = await fetch('search-index.json');
+        SEARCH_INDEX = await res.json();
+        return SEARCH_INDEX;
+    }
+
+    function escapeHtml(s) {
+        return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+    function highlight(text, tokens) {
+        if (!tokens.length) return escapeHtml(text);
+        const escaped = escapeHtml(text);
+        const pattern = new RegExp('(' + tokens.map(escapeRegExp).join('|') + ')', 'gi');
+        return escaped.replace(pattern, '<mark>$1</mark>');
+    }
+
+    function makeSnippet(text, tokens, len = 160) {
+        if (!text) return '';
+        // 첫 토큰의 위치 찾아서 그 주변 추출
+        const lower = text.toLowerCase();
+        let pos = -1;
+        for (const t of tokens) {
+            const i = lower.indexOf(t.toLowerCase());
+            if (i !== -1 && (pos === -1 || i < pos)) pos = i;
+        }
+        if (pos === -1) return text.slice(0, len) + (text.length > len ? '…' : '');
+        const start = Math.max(0, pos - 50);
+        const end = Math.min(text.length, pos + len);
+        let snippet = text.slice(start, end);
+        if (start > 0) snippet = '… ' + snippet;
+        if (end < text.length) snippet = snippet + ' …';
+        return snippet;
+    }
+
+    function scoreEntry(entry, tokens) {
+        const title = entry.title.toLowerCase();
+        const excerpt = (entry.excerpt || '').toLowerCase();
+        const text = (entry.text || '').toLowerCase();
+        let score = 0;
+        let allMatch = true;
+        for (const t of tokens) {
+            const tl = t.toLowerCase();
+            const inTitle = title.includes(tl);
+            const inExcerpt = excerpt.includes(tl);
+            const inText = text.includes(tl);
+            if (!inTitle && !inExcerpt && !inText) { allMatch = false; break; }
+            if (inTitle) score += 10;
+            if (inExcerpt) score += 4;
+            if (inText) score += 1;
+        }
+        return allMatch ? score : 0;
+    }
+
+    async function runSearch(query) {
+        const q = (query || '').trim();
+        const url = new URL(window.location.href);
+        if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
+        window.history.replaceState({}, '', url);
+        document.getElementById('hero-search-input').value = q;
+        document.getElementById('nav-search-input').value = q;
+        const statusEl = document.getElementById('search-status');
+        const resultsEl = document.getElementById('results');
+        if (!q) {
+            statusEl.innerHTML = '';
+            resultsEl.innerHTML = '<div class="empty-result"><i class="fa-solid fa-magnifying-glass"></i><p>검색어를 입력하세요.</p><p style="font-size:0.85rem;">제목·요약·본문에서 검색됩니다.</p></div>';
+            return;
+        }
+        resultsEl.innerHTML = '<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> 검색 중...</div>';
+        const index = await loadIndex();
+        const tokens = q.split(/\s+/).filter(Boolean);
+        const scored = index
+            .map(e => ({ e, s: scoreEntry(e, tokens) }))
+            .filter(r => r.s > 0)
+            .sort((a, b) => b.s - a.s);
+
+        statusEl.innerHTML = '"<span class="keyword">' + escapeHtml(q) + '</span>" 검색 결과 <span class="count">' + scored.length + '</span>건';
+
+        if (scored.length === 0) {
+            resultsEl.innerHTML = '<div class="empty-result"><i class="fa-solid fa-face-frown"></i><p>일치하는 글이 없습니다.</p><p style="font-size:0.85rem;">다른 검색어를 시도해 보세요.</p></div>';
+            return;
+        }
+
+        const limit = Math.min(scored.length, 100);
+        const html = scored.slice(0, limit).map(({ e }) => {
+            const snippet = makeSnippet(e.text, tokens);
+            return '<div class="result-card">' +
+                '<div class="rc-head">' +
+                    (e.categoryLabel ? '<span class="rc-cat">' + escapeHtml(e.categoryLabel) + '</span>' : '') +
+                    (e.date ? '<span class="rc-date"><i class="fa-regular fa-calendar"></i> ' + escapeHtml(e.date) + '</span>' : '') +
+                '</div>' +
+                '<h3><a href="public/posts/' + encodeURIComponent(e.file) + '">' + highlight(e.title, tokens) + '</a></h3>' +
+                (e.excerpt ? '<p class="rc-excerpt">' + highlight(e.excerpt, tokens) + '</p>' : '') +
+                (snippet ? '<div class="rc-snippet">' + highlight(snippet, tokens) + '</div>' : '') +
+            '</div>';
+        }).join('');
+        resultsEl.innerHTML = html + (scored.length > limit
+            ? '<p style="text-align:center;color:var(--text-muted);font-size:0.85rem;">상위 ' + limit + '건만 표시. 검색어를 좁혀 보세요.</p>'
+            : '');
+    }
+
+    // nav 검색창
+    document.getElementById('nav-search-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') runSearch(e.target.value);
+    });
+
+    // 초기 실행 — q 파라미터로
+    const params = new URLSearchParams(window.location.search);
+    const initialQ = params.get('q') || '';
+    runSearch(initialQ);
+</script>
+
+</body>
+</html>
