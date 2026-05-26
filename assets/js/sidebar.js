@@ -40,6 +40,7 @@ function renderSidebar(currentCat) {
               { id: 'growth-cert', label: '자격증',
                 subs: [
                     { id: 'growth-cert-istqb', label: 'ISTQB FL' },
+                    { id: 'growth-cert-ctai', label: 'ISTQB CT-AI' },
                 ]
               },
           ]
