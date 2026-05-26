@@ -213,6 +213,12 @@
             color: #7f1d1d !important;
         }
 
+    
+        /* === Quiz answer visibility (defensive) === */
+        .exam-question .q-answer.show,
+        .quiz-interactive .q-answer.show, .quiz-interactive .quiz-answer.show, .quiz-interactive .quiz-a.show,
+        .question-card .quiz-answer.show, .question-card .answer-section.show { display: block !important; }
+
     </style>
 </head>
 <body>
@@ -865,6 +871,47 @@
             }
         });
     })();
+
+    /* === Universal quiz interactivity v2 === */
+    (function initQuizInteractivity() {
+        const WRAPPER_SEL = '.exam-question, .quiz-interactive, .question-card';
+        const ANS_SEL = '.q-answer, .quiz-answer, .quiz-a, .answer-section';
+
+        document.querySelectorAll(WRAPPER_SEL).forEach(function(card) {
+            const opts = card.querySelectorAll('.q-options li[data-val]');
+            opts.forEach(function(li) {
+                li.addEventListener('click', function() {
+                    const answer = (card.dataset.answer || '').toLowerCase();
+                    const multi = answer.length > 1;
+                    if (multi) {
+                        li.classList.toggle('selected');
+                    } else {
+                        opts.forEach(function(s) { s.classList.remove('selected'); });
+                        li.classList.add('selected');
+                    }
+                    opts.forEach(function(s) { s.classList.remove('correct'); s.classList.remove('incorrect'); });
+                    const ans = card.querySelector(ANS_SEL);
+                    if (ans) ans.classList.remove('show');
+                });
+            });
+        });
+
+        window.checkQuizAnswer = function(btn) {
+            const card = btn.closest(WRAPPER_SEL.split(', ').join(','));
+            if (!card) return;
+            const answer = (card.dataset.answer || '').toLowerCase();
+            const opts = card.querySelectorAll('.q-options li[data-val]');
+            opts.forEach(function(li) {
+                li.classList.remove('correct'); li.classList.remove('incorrect');
+                const v = (li.dataset.val || '').toLowerCase();
+                if (answer.indexOf(v) !== -1) li.classList.add('correct');
+                else if (li.classList.contains('selected')) li.classList.add('incorrect');
+            });
+            const ans = card.querySelector(ANS_SEL);
+            if (ans) ans.classList.add('show');
+        };
+    })();
+
 </script>
 </body>
 </html>
