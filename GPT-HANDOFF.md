@@ -343,11 +343,14 @@ ORDERED_CATS에 등록된 카테고리는 date 대신 order로 정렬됨.
 - [ ] `assets/js/post-nav.js` POST_NAV_DATA에 등록
 - [ ] `public/index.html` 카드 추가 (data-cat, data-date, data-order)
 - [ ] **`index.html` (루트/홈) 카드 추가** ⚠️ **가장 자주 까먹는 단계 — 실수 10 참조**
+- [ ] **시리즈성 글이거나 새 시리즈 첫 글이면 `series.html`도 업데이트** ⚠️ **실수 12 참조**
+- [ ] 연습문제/시험문제가 있으면 **인터랙티브 퀴즈 패턴** 사용 (실수 13 참조)
 - [ ] `python deploy.py`로 배포
 - [ ] 배포 후 카테고리 페이지에서 새 글이 보이는지 확인
 - [ ] **배포 후 루트 `index.html` "최근 게시물"에 새 글이 상단에 뜨는지 확인**
+- [ ] **새 시리즈면 `series.html`에 카드가 노출되는지 확인**
 
-> ⚠️ **카드는 반드시 두 곳에 넣는다.** `public/index.html`(카테고리별 목록)과 루트 `index.html`(홈의 "최근 게시물"). 두 파일은 **카드 형식이 다르다** — 실수 10 참조.
+> ⚠️ **카드는 반드시 세 곳에 넣는다.** `public/index.html`(카테고리별 목록), 루트 `index.html`(홈의 "최근 게시물"), 그리고 시리즈 첫 등장이면 `series.html`(시리즈 모음 페이지). 세 파일 **모두 카드 형식이 다르다** — 실수 10, 12 참조.
 
 ### 8-2. 새 카테고리 추가 시 ⚠️ 누락 1건만 있어도 카테고리 페이지가 깨진다
 
@@ -567,6 +570,124 @@ ORDERED_CATS에 등록된 카테고리(`growth-cert-istqb`, `growth-lang-toeic` 
 - 루트 `index.html`의 통계 숫자는 **건드릴 필요 없다** — JS가 카드 수를 세서 자동 갱신한다.
 - 새로 통계 항목을 추가할 거면 `data-count`에 숫자를 박지 말고 JS에서 동적으로 세도록 할 것.
 - "개수"류 표시는 어디서든 하드코딩 금지 — 항상 실제 DOM/데이터를 세서 표시.
+
+---
+
+### 실수 12: 새 시리즈 만들었는데 `series.html`(시리즈 모음 페이지)을 업데이트 안 함
+
+**증상**: 새 시리즈 18편을 만들고 카테고리/카드/배포까지 다 했는데, `https://melonseeds-blog.github.io/series.html`(시리즈 모음 페이지)에는 새 시리즈가 안 보임. 사용자가 시리즈 페이지에서 클릭할 진입로가 없어진다.
+
+**실제로 일어난 일** (ISTQB CT-AI 18편 게시 후):
+- `sidebar.js`, `post-nav.js`, `public/index.html`, 루트 `index.html`까지 모두 업데이트 했으나
+- `series.html`에 카드를 추가하지 않아 새 시리즈가 시리즈 모음 페이지에서 누락됨
+- 사용자가 "시리즈 페이지에 없네"라고 지적
+
+**규칙**:
+- **새 시리즈를 만들면 `series.html`에도 반드시 카드 추가.**
+- 카드 위치: 도메인에 맞는 `.series-grid` 안 (개발 공부 / 기술 공부 / 자기계발 / 책)
+- 카드 형식:
+  ```html
+  <a href="public/index.html?cat=새카테고리id" class="series-card">
+      <div class="series-card-head">
+          <div class="series-card-icon [dev|tech|growth|book]"><i class="fa-solid fa-아이콘"></i></div>
+          <div class="series-card-title">시리즈 이름</div>
+          <span class="series-card-count">N편</span>
+      </div>
+      <div class="series-card-desc">시리즈 한 줄 소개 (거시적·간결하게)</div>
+      <div class="series-card-meta">
+          <span><i class="fa-solid fa-book-open"></i> 키워드 · 키워드 · 키워드</span>
+          <span class="series-cta">시리즈 보기 <i class="fa-solid fa-arrow-right"></i></span>
+      </div>
+  </a>
+  ```
+
+**시리즈 소개글 작성 가이드** (사용자 명시 요구):
+- 책·기술·도구 이름을 **나열하지 말 것**. 모든 내용을 담으려는 욕심을 버린다.
+- **거시적·범주적 표현**을 쓴다. 독자가 한눈에 "이 시리즈가 어떤 흐름인가"를 파악할 수 있어야 한다.
+- **❌ 나쁨**: "C++(Effective Modern C++·Concurrency·Coding Standards), 비전(Szeliski·Learning OpenCV), AI(Deep Learning·Hands-On ML), 설계·품질(Clean Code·Refactoring·GoF·Clean Architecture·Pragmatic Programmer·Code Complete·TDD)."
+- **✅ 좋음**: "C++ · 컴퓨터 비전 · AI · 설계/품질 분야 명저 14권의 핵심 요약과 실무 적용 메모."
+- **❌ 나쁨**: "STL 기초부터 모던 C++(스마트 포인터·이동 의미론·constexpr), 동시성(스레드·async·atomic), 산업 적용(이미지 버퍼·플러그인·CMake)까지 단·중·장기 흐름."
+- **✅ 좋음**: "STL부터 모던 C++·동시성·산업 적용까지 단·중·장기 흐름으로 정리한 C++ 학습 노트."
+- meta 영역도 마찬가지: 키워드 3~4개 `·`로 구분, "기초 → 응용" 같은 흐름 표현 권장.
+
+---
+
+### 실수 13: 챕터 글 연습문제가 클릭 안 됨 — 비-인터랙티브 패턴 (label / details / quiz-toggle만 있고 채점 없음)
+
+**증상**: 글에 객관식 문제와 "정답 확인" 버튼은 있지만, **보기를 클릭해도 아무 반응 없음**. 정답 확인을 눌러도 단순히 해설만 토글될 뿐 사용자가 고른 답이 맞았는지 색상으로 표시되지 않는다.
+
+**실제로 일어난 일**: 챕터 글(CT-AI 9편, FL 6편)을 만들 때 Agent마다 다른 패턴을 썼다:
+- 패턴 A — `<div class="exam-question">` + `<div class="q-options"><label>` (클릭 핸들러 없음)
+- 패턴 B — `<div class="quiz-card">` + `<ol class="quiz-options"><li>` (정적 텍스트)
+- 패턴 C — `<div class="quiz-box">` + `<ol type="a"><li>` + 정답이 항상 표시
+- 패턴 D — `<details class="answer-box">` + 토글만 (sample-d·mock)
+
+모두 "정답 확인 후 옳음/틀림 표시" 동작이 없어 학습 효과가 떨어졌다.
+
+**규칙 — 객관식 문제는 반드시 인터랙티브 패턴 사용**:
+
+```html
+<div class="question-card quiz-interactive" data-answer="c">
+    <div class="q-text">문제 본문</div>
+    <ul class="q-options">
+        <li data-val="a">a) 보기 1</li>
+        <li data-val="b">b) 보기 2</li>
+        <li data-val="c">c) 보기 3</li>
+        <li data-val="d">d) 보기 4</li>
+    </ul>
+    <button class="quiz-check-btn" onclick="checkQuizAnswer(this)">정답 확인</button>
+    <div class="quiz-answer">
+        <p><strong>정답: c)</strong></p>
+        <p>해설...</p>
+    </div>
+</div>
+```
+
+- **`data-answer`**: 정답 한 글자. 복수 정답이면 `data-answer="ac"`처럼 알파벳 정렬·소문자로 이어붙이기. JS가 자동으로 단일/복수 모드 분기.
+- **`data-val`**: 각 보기의 식별자.
+- 클릭 동작: 단일 정답이면 한 보기만 선택, 복수면 토글로 여러 개 선택.
+- "정답 확인" 클릭 시: 정답은 초록, 선택한 오답은 빨강으로 표시 + `<div class="quiz-answer">`가 펼쳐짐.
+
+**색상 표준 (사용자 명시 요구)**:
+- **선택(selected)** = 파랑 `#2563eb`
+- **정답(correct)** = 초록 `#16a34a`
+- **오답(incorrect)** = 빨강 `#dc2626`
+- CSS 적용 방법: 각 글 `<style>` 안에 "Quiz color standard" 주석 블록을 두고 `!important`로 강제.
+- 적용 범위: 챕터 글 + 샘플문제 + 모의고사 — **모든 객관식 콘텐츠** 일관 적용.
+
+**JS 함수 (모든 인터랙티브 글에 인라인 포함)**:
+```js
+document.querySelectorAll('.question-card .q-options li, .quiz-interactive .q-options li').forEach(li => {
+    li.addEventListener('click', function() {
+        const card = this.closest('.question-card, .quiz-interactive');
+        const answer = (card.dataset.answer || '').toLowerCase();
+        const multi = answer.length > 1;
+        if (multi) {
+            this.classList.toggle('selected');
+        } else {
+            this.parentElement.querySelectorAll('li').forEach(s => s.classList.remove('selected'));
+            this.classList.add('selected');
+        }
+        this.parentElement.querySelectorAll('li').forEach(s => { s.classList.remove('correct'); s.classList.remove('incorrect'); });
+    });
+});
+
+window.checkQuizAnswer = function(btn) {
+    const card = btn.closest('.question-card, .quiz-interactive');
+    const answer = (card.dataset.answer || '').toLowerCase();
+    const opts = card.querySelectorAll('.q-options li');
+    opts.forEach(li => {
+        li.classList.remove('correct'); li.classList.remove('incorrect');
+        const v = (li.dataset.val || '').toLowerCase();
+        if (answer.includes(v)) li.classList.add('correct');
+        else if (li.classList.contains('selected')) li.classList.add('incorrect');
+    });
+    const ans = card.querySelector('.quiz-answer, .answer-section');
+    if (ans) ans.classList.add('show');
+};
+```
+
+이미 작성된 글을 변환할 때는 정답 텍스트(`정답: c)` 패턴)에서 정답 글자를 추출해 `data-answer`로 옮기고, 보기를 `<li data-val>`로 바꾸는 일회용 스크립트로 처리한다.
 
 ---
 
