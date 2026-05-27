@@ -691,6 +691,69 @@ window.checkQuizAnswer = function(btn) {
 
 ---
 
+### 실수 14: 변환 스크립트의 idempotency 체크 함정 — 함수 호출 텍스트와 함수 정의를 혼동
+
+**증상**: 모든 챕터 글(15편)에 "정답 확인" 버튼은 있는데 클릭해도 아무 일도 안 일어남. 보기 클릭도 반응 없음. 정작 함수 정의가 한 번도 주입되지 않은 상태.
+
+**실제로 일어난 일** (CT-AI/FL 챕터 글 인터랙티브화):
+- 변환 스크립트가 중복 주입을 막으려고 이런 체크를 함:
+  ```python
+  if 'checkQuizAnswer' not in html:
+      html += universal_js_with_function_definition
+  ```
+- 그런데 변환 1단계에서 이미 버튼을 `<button onclick="checkQuizAnswer(this)">`로 바꿔놓아서 HTML 안에 `checkQuizAnswer` 문자열이 등장함
+- → `in` 체크가 true가 되어 **함수 정의 주입을 영구 스킵**
+- 결과: 모든 챕터 파일에 클릭 핸들러도, `window.checkQuizAnswer` 정의도 없는 채로 배포됨
+
+**규칙**:
+- **idempotency 마커는 함수 호출(onclick)이 아니라, 주입할 코드 안에만 등장하는 고유 주석/문자열**로 잡는다. 예: `/* === Universal quiz interactivity v2 === */` 같은 마커 주석.
+- 변환 스크립트 작성 시:
+  ```python
+  MARKER = '/* === Universal quiz interactivity v2 === */'
+  if MARKER not in html:  # 함수명이 아니라 주석으로 체크
+      html = inject_js(html, MARKER + js_body)
+  ```
+- 변환 후 자동 검증: `grep -c "window.checkQuizAnswer\s*=\s*function" 파일`로 함수 **정의**가 실제로 들어갔는지 확인. 0이면 실패.
+
+---
+
+### 실수 15: 변환 후 검증을 "함수 호출" 기준으로만 하고 "실제 클릭 동작"을 안 봤음
+
+**증상**: 변환 스크립트가 "N blocks converted"라고 OK 보고하고 배포까지 했는데, 사용자가 페이지 열어보고 "클릭이 안 된다"고 지적해서야 발견.
+
+**실제로 일어난 일**:
+- 검증 로직: `if 'checkQuizAnswer' in html: print('OK')` — onclick 텍스트가 있으니 통과
+- 함수 정의는 빠져 있고, 클릭 핸들러도 등록 안 됐는데 OK로 표시됨
+- 마찬가지로 sample/mock 글의 경우: `showAnswer` 함수는 있지만 **해설 토글만 하고 채점은 안 함** — 검증이 "함수 존재" 까지만 보고 "기능 동작" 은 안 봐서 놓침
+
+**규칙**:
+- 인터랙티브 콘텐츠 검증은 **세 단계** 다 확인:
+  1. **마크업**: `data-answer`, `<li data-val>` 모두 있는가
+  2. **함수 정의**: `window.checkQuizAnswer = function` 또는 `function showAnswer` 본체가 실제로 파일에 있는가 (`grep -c "function\s*\(\s*btn\s*\)\s*{"` 같은 패턴)
+  3. **기능 동작**: 함수 본문이 "선택된 li를 정답과 비교하고 correct/incorrect 클래스를 부여하는 로직"을 포함하는가
+- 챕터/샘플/모의 글 인터랙티브 변환 후에는 **반드시 브라우저에서 실제로 클릭 테스트**. 정답 확인 → 초록/빨강 색상이 뜨는지 눈으로 확인. 자동 grep만 믿지 말 것.
+- 한 번에 여러 파일 패치할 때는 패치 후 자동 검증 함수에 다음을 넣을 것:
+  ```python
+  # 함수 정의 존재 여부 (정확히 "= function" 또는 "function name(")
+  fn_count = len(re.findall(r'window\.\w+\s*=\s*function|function\s+\w+\s*\(', html))
+  # 클릭 이벤트 등록 여부
+  listener = 'addEventListener(\'click\'' in html or "addEventListener(\"click\"" in html
+  # 채점 로직 키워드 (correct/incorrect 클래스 부여)
+  scoring = "classList.add('correct')" in html or 'classList.add("correct")' in html
+  assert fn_count and listener and scoring, f'{path}: 인터랙티브 깨짐'
+  ```
+
+---
+
+### 실수 16 (운영 절차): 사용자가 "정상 작동하냐?"고 물으면 grep으로만 답하지 말고 실제 동작 확인
+
+**규칙**: 사용자가 "이거 작동해?", "다 됐어?" 같은 검증 질문을 했을 때:
+- 단순히 "함수 존재함, OK" 같이 grep 결과만으로 단언하지 말 것.
+- 함수 본문/시그니처를 한 번 읽거나, 동작 가능 여부를 정적으로라도 추론해 보고 답할 것.
+- 필요하면 사용자에게 직접 한 페이지를 열어보라고 요청하는 게 낫다 — 추측해서 "OK"라고 했다가 틀리면 신뢰가 깨진다.
+
+---
+
 ## 10. PDF 기반 문제/시험 콘텐츠 변환 시 주의사항
 
 - 정답/해설은 **정답 PDF에서 직접 추출**해 번호별로 다시 매핑한다.
