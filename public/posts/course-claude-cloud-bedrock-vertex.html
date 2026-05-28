@@ -1,0 +1,490 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude with Amazon Bedrock &amp; Google Vertex AI 비교 정리 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { padding: 10px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table tr td:first-child { background: var(--seed-light); font-weight: 600; width: 22%; }
+        .code-block { background: #1e293b; color: #e2e8f0; border-radius: 8px; padding: 16px 20px; margin: 14px 0; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; line-height: 1.6; overflow-x: auto; }
+        .code-block .kw { color: #93c5fd; }
+        .code-block .str { color: #fde68a; }
+        .code-block .com { color: #94a3b8; font-style: italic; }
+        .quote-box { border-left: 3px solid var(--melon); background: var(--primary-50); padding: 10px 16px; margin: 12px 0; font-size: 0.88rem; color: var(--text-sub); border-radius: 0 6px 6px 0; }
+        .quote-box .q-en { font-style: italic; color: var(--text-muted); display: block; margin-top: 4px; font-size: 0.82rem; }
+        .platform-card { border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 16px 0; }
+        .platform-card.aws { background: linear-gradient(135deg, #fff7ed, #ffedd5); border-color: #fdba74; }
+        .platform-card.gcp { background: linear-gradient(135deg, #eff6ff, #dbeafe); border-color: #93c5fd; }
+        .platform-card h4 { margin: 0 0 8px; font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+        .platform-card.aws h4 { color: #9a3412; }
+        .platform-card.gcp h4 { color: #1e3a8a; }
+        .decision-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+        @media (max-width: 700px) { .decision-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why-cloud" data-section="why-cloud">왜 클라우드 배포</a>
+        <a href="#course-structure" data-section="course-structure">강의 구조 비교</a>
+        <a href="#bedrock" data-section="bedrock">Amazon Bedrock</a>
+        <a href="#vertex" data-section="vertex">Google Vertex AI</a>
+        <a href="#sdk-diff" data-section="sdk-diff">SDK 코드 차이</a>
+        <a href="#feature-matrix" data-section="feature-matrix">기능 매트릭스</a>
+        <a href="#decision" data-section="decision">선택 가이드</a>
+        <a href="#takeaway" data-section="takeaway">실무 적용</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">강의 정리</span>
+                </div>
+                <h1>Claude with Amazon Bedrock &amp; Google Vertex AI 비교 정리</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-05-26</span>
+                    <span><i class="fa-regular fa-clock"></i> 18 min read</span>
+                    <span><i class="fa-solid fa-graduation-cap"></i> Anthropic 공식 강의 정리</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>본 글은 학습 노트입니다</strong>
+                        Anthropic 공식 강의 두 편(Bedrock·Vertex AI)을 학습하면서 자기 말로 다시 정리한 노트다. 강의 원문/영상/슬라이드를 대체하지 않으며, 정확하고 완전한 정보는 공식 페이지를 참고하면 된다. Original courses &copy; Anthropic.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Anthropic 공식 강의 "Claude with Amazon Bedrock"과 "Claude with Google Cloud's Vertex AI"의 구조</li>
+                        <li>두 클라우드 플랫폼이 Claude를 제공하는 방식의 공통점과 차이점</li>
+                        <li>SDK 호출 코드, 인증, 모델 ID, 리전 운영의 실제 차이</li>
+                        <li>Anthropic Direct API와 비교했을 때의 장단점</li>
+                        <li>엔터프라이즈 환경에서 어느 쪽을 고를지 결정하는 가이드</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-cloud">왜 Claude를 클라우드로 배포하는가</a></li>
+                        <li><a href="#course-structure">두 강의의 구조 비교</a></li>
+                        <li><a href="#bedrock">Amazon Bedrock의 Claude</a></li>
+                        <li><a href="#vertex">Google Vertex AI의 Claude</a></li>
+                        <li><a href="#sdk-diff">SDK 코드 차이 — 같은 일을 다르게 부르기</a></li>
+                        <li><a href="#feature-matrix">기능 매트릭스</a></li>
+                        <li><a href="#decision">선택 가이드</a></li>
+                        <li><a href="#takeaway">실무 적용 포인트</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why-cloud"><i class="fa-solid fa-cloud"></i> 왜 Claude를 클라우드로 배포하는가</h2>
+                <p>두 강의 모두 첫 모듈에서 같은 질문에 답한다. "Anthropic Direct API가 있는데 왜 Bedrock/Vertex AI를 쓰나?" 답은 거의 동일하다.</p>
+                <ul>
+                    <li><strong>이미 AWS/GCP를 쓰고 있다면 동일 청구·동일 권한 체계로 통합</strong></li>
+                    <li><strong>데이터 거주(Data Residency)</strong> 요건 충족 — 지정 리전에서만 데이터 처리</li>
+                    <li><strong>VPC/Private 네트워크 안에서만 호출</strong> 가능</li>
+                    <li><strong>엔터프라이즈 컴플라이언스</strong>(HIPAA, GDPR, FedRAMP 등)를 클라우드 인증으로 흡수</li>
+                    <li><strong>IAM/감사 로그</strong>가 기존 클라우드 도구(CloudTrail, Cloud Audit Logs)와 일원화됨</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>핵심 메시지</strong>
+                        강의 결론은 일관된다 &mdash; Claude 모델 자체와 사용법(시스템 프롬프트, Tool Use, 캐싱, RAG)은 어느 플랫폼에서나 동일하다. 다른 건 <strong>인증·청구·네트워크 경계뿐</strong>이다.
+                    </div>
+                </div>
+
+                <h2 id="course-structure"><i class="fa-solid fa-list-check"></i> 두 강의의 구조 비교</h2>
+                <p>두 강의는 분량(약 85차시, 8시간, 10개 퀴즈)과 모듈 구성이 거의 동일하다. 메인 강의 <a href="course-claude-api-building.html">Building with the Claude API</a>와도 90% 이상 겹친다.</p>
+
+                <table class="compare-table">
+                    <tr><th style="width:6%">#</th><th>모듈</th><th>Bedrock 강의</th><th>Vertex AI 강의</th></tr>
+                    <tr><td>1</td><td>Introduction</td><td>O</td><td>O</td></tr>
+                    <tr><td>2</td><td>Working with the API</td><td>O (boto3 호출 강조)</td><td>O (<strong>Vertex AI Setup 차시 추가</strong>)</td></tr>
+                    <tr><td>3</td><td>Prompt Evaluations</td><td>O (동일)</td><td>O (동일)</td></tr>
+                    <tr><td>4</td><td>Prompt Engineering</td><td>O (동일)</td><td>O (동일)</td></tr>
+                    <tr><td>5</td><td>Tool Use</td><td>O (동일)</td><td>O (동일)</td></tr>
+                    <tr><td>6</td><td>RAG</td><td>O (동일)</td><td>O (동일)</td></tr>
+                    <tr><td>7</td><td>Features of Claude</td><td>O (동일)</td><td>O (동일)</td></tr>
+                    <tr><td>8</td><td>MCP</td><td>O (동일)</td><td>O (동일)</td></tr>
+                    <tr><td>9</td><td>Agents</td><td>O (동일)</td><td>O (동일)</td></tr>
+                    <tr><td>10</td><td>Final Assessment / Wrap Up</td><td>O</td><td>O</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>강의 90%가 동일</strong>
+                        솔직히 두 강의는 첫 모듈(인증·요청 부분)을 빼면 거의 같다. 한 강의를 본 뒤 다른 쪽은 1·2모듈만 추가로 봐도 충분하다는 게 강의 진행 후의 솔직한 평이다.
+                    </div>
+                </div>
+
+                <h2 id="bedrock"><i class="fa-brands fa-aws"></i> Amazon Bedrock의 Claude</h2>
+
+                <div class="platform-card aws">
+                    <h4><i class="fa-brands fa-aws"></i> Amazon Bedrock 한 줄 요약</h4>
+                    <p style="margin:0">AWS의 <strong>관리형 파운데이션 모델 서비스</strong>. Claude, Titan, Llama 등 여러 모델을 통일된 API(boto3)로 호출하고, IAM/리전/VPC 통합을 그대로 활용한다.</p>
+                </div>
+
+                <h3 id="bedrock-setup"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 시작 절차</h3>
+                <ol>
+                    <li>AWS 콘솔 &rarr; Bedrock &rarr; <strong>Model access</strong>에서 사용할 Claude 모델 활성화 요청</li>
+                    <li>IAM 사용자/역할에 <code>bedrock:InvokeModel</code>, <code>bedrock:InvokeModelWithResponseStream</code> 권한 부여</li>
+                    <li>리전 선택 — Claude 모델이 제공되는 리전이 한정적(us-east-1, us-west-2 등 위주)</li>
+                    <li><code>boto3</code> 또는 <code>anthropic[bedrock]</code> 패키지 설치</li>
+                </ol>
+
+                <h3 id="bedrock-call"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 두 가지 호출 방법</h3>
+                <p>Bedrock에서 Claude를 부르는 SDK는 두 가지가 있다.</p>
+
+                <div class="code-block">
+<span class="com"># 방법 A: boto3로 직접 호출</span>
+<span class="kw">import</span> boto3, json
+client = boto3.client(<span class="str">"bedrock-runtime"</span>, region_name=<span class="str">"us-east-1"</span>)
+resp = client.invoke_model(
+    modelId=<span class="str">"anthropic.claude-opus-4-5-20251101-v1:0"</span>,
+    body=json.dumps({
+        <span class="str">"anthropic_version"</span>: <span class="str">"bedrock-2023-05-31"</span>,
+        <span class="str">"max_tokens"</span>: <span class="str">1024</span>,
+        <span class="str">"messages"</span>: [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"Hello"</span>}],
+    }),
+)
+                </div>
+
+                <div class="code-block">
+<span class="com"># 방법 B: anthropic SDK + Bedrock 백엔드 (강의 권장)</span>
+<span class="kw">from</span> anthropic <span class="kw">import</span> AnthropicBedrock
+client = AnthropicBedrock(aws_region=<span class="str">"us-east-1"</span>)
+resp = client.messages.create(
+    model=<span class="str">"anthropic.claude-opus-4-5-20251101-v1:0"</span>,
+    max_tokens=<span class="str">1024</span>,
+    messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"Hello"</span>}],
+)
+                </div>
+
+                <p>강의는 <strong>방법 B를 강력히 권장</strong>한다. Anthropic Direct API에서 쓰던 코드를 거의 그대로 옮길 수 있고, Tool Use·Streaming·캐싱 같은 기능을 동일한 인터페이스로 쓴다.</p>
+
+                <h3 id="bedrock-id"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Bedrock 특유 개념</h3>
+                <ul>
+                    <li><strong>Model ID</strong>는 <code>anthropic.claude-{name}-{date}-v1:0</code> 형식이다. 날짜가 포함된 명시적 버전.</li>
+                    <li><strong>Inference Profile</strong> &mdash; 크로스 리전 추론을 묶어주는 ID. 한 리전에서 capacity가 부족하면 자동 분산.</li>
+                    <li><strong>Provisioned Throughput</strong> &mdash; 고정 처리량 예약. 비싸지만 SLA가 확실.</li>
+                    <li><strong>Guardrails</strong> &mdash; AWS가 제공하는 콘텐츠 필터. Bedrock 레벨에서 입출력 검사.</li>
+                </ul>
+
+                <h2 id="vertex"><i class="fa-brands fa-google"></i> Google Vertex AI의 Claude</h2>
+
+                <div class="platform-card gcp">
+                    <h4><i class="fa-brands fa-google"></i> Google Vertex AI 한 줄 요약</h4>
+                    <p style="margin:0">GCP의 <strong>통합 ML 플랫폼</strong>. Model Garden을 통해 Anthropic Claude를 GCP 프로젝트 안의 1급 모델로 호출하고, IAM/리전/VPC Service Controls 통합을 그대로 활용한다.</p>
+                </div>
+
+                <h3 id="vertex-setup"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 시작 절차</h3>
+                <ol>
+                    <li>GCP 콘솔 &rarr; Vertex AI &rarr; <strong>Model Garden</strong>에서 사용할 Claude 모델 카드 &rarr; "Enable"</li>
+                    <li>서비스 계정에 <code>roles/aiplatform.user</code> 권한 부여</li>
+                    <li>리전 선택 — Claude 제공 리전(예: us-east5, europe-west1) 한정</li>
+                    <li><code>gcloud auth application-default login</code> 또는 서비스 계정 키로 인증</li>
+                    <li><code>anthropic[vertex]</code> 패키지 설치</li>
+                </ol>
+
+                <h3 id="vertex-call"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 호출 방법</h3>
+                <div class="code-block">
+<span class="kw">from</span> anthropic <span class="kw">import</span> AnthropicVertex
+
+client = AnthropicVertex(region=<span class="str">"us-east5"</span>, project_id=<span class="str">"my-gcp-project"</span>)
+resp = client.messages.create(
+    model=<span class="str">"claude-opus-4-5@20251101"</span>,
+    max_tokens=<span class="str">1024</span>,
+    messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"Hello"</span>}],
+)
+                </div>
+
+                <h3 id="vertex-concept"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Vertex AI 특유 개념</h3>
+                <ul>
+                    <li><strong>Model ID</strong>는 <code>claude-{name}@{date}</code> 형식. Bedrock과 다른 표기.</li>
+                    <li><strong>Application Default Credentials(ADC)</strong> &mdash; 명시적 키 없이 환경의 자격증명을 자동 사용.</li>
+                    <li><strong>Model Garden</strong> &mdash; 1·3자 모델을 한 곳에 모아 발견·활성화·평가하는 GCP 마켓.</li>
+                    <li><strong>VPC Service Controls</strong> &mdash; 프로젝트 외부로 데이터가 나가지 못하도록 경계 설정.</li>
+                    <li><strong>Quota</strong>는 프로젝트+리전 단위. 사전 증액 신청 필요한 경우 많음.</li>
+                </ul>
+
+                <h2 id="sdk-diff"><i class="fa-solid fa-code"></i> SDK 코드 차이 — 같은 일을 다르게 부르기</h2>
+                <p>가장 자주 헷갈리는 부분이라 한 표에 모은다.</p>
+
+                <table class="compare-table">
+                    <tr><th>항목</th><th>Anthropic Direct</th><th>Amazon Bedrock</th><th>Google Vertex AI</th></tr>
+                    <tr><td>인증</td><td>API Key (env)</td><td>AWS 자격증명 + IAM</td><td>GCP ADC / 서비스 계정</td></tr>
+                    <tr><td>SDK 클래스</td><td><code>Anthropic()</code></td><td><code>AnthropicBedrock()</code></td><td><code>AnthropicVertex()</code></td></tr>
+                    <tr><td>모델 ID</td><td><code>claude-opus-4-5</code></td><td><code>anthropic.claude-opus-4-5-20251101-v1:0</code></td><td><code>claude-opus-4-5@20251101</code></td></tr>
+                    <tr><td>리전 지정</td><td>없음(글로벌)</td><td><code>aws_region</code></td><td><code>region</code> + <code>project_id</code></td></tr>
+                    <tr><td>모델 활성화</td><td>자동</td><td>콘솔에서 Model access 요청</td><td>Model Garden에서 Enable</td></tr>
+                    <tr><td>청구</td><td>Anthropic 청구</td><td>AWS 청구서</td><td>GCP 청구서</td></tr>
+                    <tr><td>감사 로그</td><td>Console</td><td>CloudTrail</td><td>Cloud Audit Logs</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>SDK 호환성이 핵심 장점</strong>
+                        Anthropic SDK는 세 백엔드 모두에서 <code>client.messages.create(...)</code> 호출 인터페이스가 동일하다. 백엔드 전환이 클래스 한 줄 교체로 끝나기 때문에, Direct API로 프로토타입하고 운영은 Bedrock/Vertex로 옮기는 패턴이 자연스럽다.
+                    </div>
+                </div>
+
+                <h2 id="feature-matrix"><i class="fa-solid fa-table-cells"></i> 기능 매트릭스</h2>
+                <p>강의에서 다룬 Claude 핵심 기능이 각 플랫폼에서 어떻게 지원되는지 정리한다. 시점에 따라 변하니, 정확한 최신 상태는 공식 문서 확인이 필요하다.</p>
+
+                <table class="compare-table">
+                    <tr><th>기능</th><th>Anthropic Direct</th><th>Bedrock</th><th>Vertex AI</th></tr>
+                    <tr><td>기본 메시지 API</td><td>O</td><td>O</td><td>O</td></tr>
+                    <tr><td>Streaming</td><td>O</td><td>O</td><td>O</td></tr>
+                    <tr><td>Tool Use</td><td>O</td><td>O</td><td>O</td></tr>
+                    <tr><td>Vision (이미지/PDF)</td><td>O</td><td>O</td><td>O</td></tr>
+                    <tr><td>Extended Thinking</td><td>O</td><td>O</td><td>O</td></tr>
+                    <tr><td>Prompt Caching</td><td>O</td><td>O</td><td>O</td></tr>
+                    <tr><td>Citations</td><td>O</td><td>O (일부)</td><td>O (일부)</td></tr>
+                    <tr><td>Files API</td><td>O</td><td>제한적</td><td>제한적</td></tr>
+                    <tr><td>Web Search Tool</td><td>O</td><td>제한적</td><td>제한적</td></tr>
+                    <tr><td>Code Execution Tool</td><td>O</td><td>제한적</td><td>제한적</td></tr>
+                    <tr><td>최신 모델 출시 속도</td><td>가장 빠름</td><td>며칠~몇 주 지연</td><td>며칠~몇 주 지연</td></tr>
+                </table>
+
+                <div class="quote-box">
+                    "신기능은 Direct API에 먼저, 그 다음 Bedrock/Vertex에 도착한다."
+                    <span class="q-en">New features land on the Direct API first, then on Bedrock and Vertex.</span>
+                </div>
+
+                <h2 id="decision"><i class="fa-solid fa-route"></i> 선택 가이드</h2>
+
+                <div class="decision-grid">
+                    <div class="platform-card aws">
+                        <h4><i class="fa-brands fa-aws"></i> Bedrock을 고르는 경우</h4>
+                        <ul style="margin:8px 0 0; padding-left:18px;">
+                            <li>이미 AWS 위에 인프라가 있다</li>
+                            <li>IAM 정책으로 권한을 통제하고 싶다</li>
+                            <li>S3·Lambda·Step Functions와 자연스럽게 연결</li>
+                            <li>Guardrails로 입출력 필터를 강제하고 싶다</li>
+                            <li>크로스 리전 분산(Inference Profile)이 필요하다</li>
+                        </ul>
+                    </div>
+                    <div class="platform-card gcp">
+                        <h4><i class="fa-brands fa-google"></i> Vertex AI를 고르는 경우</h4>
+                        <ul style="margin:8px 0 0; padding-left:18px;">
+                            <li>이미 GCP 위에 인프라가 있다</li>
+                            <li>BigQuery 데이터와 직접 연동</li>
+                            <li>VPC Service Controls로 강한 경계가 필요</li>
+                            <li>Model Garden에서 다른 모델과 함께 비교/평가</li>
+                            <li>GKE·Cloud Run 기반 서비스에 통합</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>그럼 Anthropic Direct는 언제?</strong>
+                        <ul style="margin:6px 0 0; padding-left:18px;">
+                            <li>최신 기능을 가장 빨리 써보고 싶을 때</li>
+                            <li>특정 클라우드에 묶이고 싶지 않을 때</li>
+                            <li>프로토타입·연구·소규모 SaaS</li>
+                            <li>Claude Code, Claude Desktop의 기본 백엔드로 쓸 때</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2 id="takeaway"><i class="fa-solid fa-bullseye"></i> 실무 적용 포인트</h2>
+
+                <h3 id="apply-1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1. SDK 추상화로 백엔드 갈아끼우기 가능하게 두기</h3>
+                <p>코드에서 클라이언트 생성을 한 곳에 모아두면, 환경변수 한 줄로 Direct &harr; Bedrock &harr; Vertex 전환이 가능하다. 프로토타입은 Direct, 운영은 사내 정책에 맞는 클라우드로 옮기는 흐름이 자연스럽다.</p>
+                <div class="code-block">
+<span class="kw">def</span> make_client():
+    backend = os.environ.get(<span class="str">"CLAUDE_BACKEND"</span>, <span class="str">"direct"</span>)
+    <span class="kw">if</span> backend == <span class="str">"bedrock"</span>:
+        <span class="kw">return</span> AnthropicBedrock(aws_region=os.environ[<span class="str">"AWS_REGION"</span>])
+    <span class="kw">if</span> backend == <span class="str">"vertex"</span>:
+        <span class="kw">return</span> AnthropicVertex(region=..., project_id=...)
+    <span class="kw">return</span> Anthropic()  <span class="com"># direct</span>
+                </div>
+
+                <h3 id="apply-2"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2. 모델 ID는 환경변수/설정 파일로</h3>
+                <p>모델 ID 형식이 세 군데 다 다르기 때문에, 코드에 하드코딩하면 백엔드 전환이 어려워진다. 항상 설정으로 빼두는 게 안전하다.</p>
+
+                <h3 id="apply-3"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3. 리전과 데이터 거주 요건 확인</h3>
+                <p>제품이 한국 고객을 대상으로 한다면 데이터가 어느 리전을 거치는지가 컴플라이언스 이슈가 된다. Bedrock/Vertex 모두 Claude 제공 리전이 한정적이라, 도입 전에 리전 매트릭스를 확인해야 한다.</p>
+
+                <h3 id="apply-4"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4. 신기능 의존성 점검</h3>
+                <p>Citations, Files API, Code Execution 같은 비교적 새 기능은 클라우드 백엔드에서 늦거나 일부만 지원될 수 있다. 운영을 Bedrock/Vertex로 옮기기 전에 사용 중인 기능이 그쪽에서 동작하는지 미리 확인해야 한다.</p>
+
+                <h3 id="apply-5"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 5. 평가(eval) 데이터셋은 백엔드 독립으로</h3>
+                <p>메인 강의에서 다룬 <a href="course-claude-api-building.html#evaluations">프롬프트 평가 워크플로우</a>는 백엔드와 무관하다. eval 코드를 잘 만들어두면 백엔드를 옮길 때 회귀 검증을 그대로 돌릴 수 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>한 줄 결론</strong>
+                        Bedrock과 Vertex AI는 <strong>Claude의 또 다른 출입구</strong>다. 모델·SDK·기능은 거의 같고, 차이는 인증/청구/네트워크 경계뿐이다. 본격적인 학습은 <a href="course-claude-api-building.html">메인 강의 정리</a>에서, 운영 환경 선택은 이 글에서 참고하면 된다.
+                    </div>
+                </div>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>출처1: Anthropic 공식 강의 "Claude with Amazon Bedrock" &mdash; <a href="https://claude.com/courses/claude-with-amazon-bedrock" target="_blank" rel="noopener">claude.com/courses/claude-with-amazon-bedrock</a> (85 lectures · 8h · 10 quizzes)</li>
+                        <li>출처2: Anthropic 공식 강의 "Claude with Google Cloud's Vertex AI" &mdash; <a href="https://claude.com/courses/claude-with-google-clouds-vertex-ai" target="_blank" rel="noopener">claude.com/courses/claude-with-google-clouds-vertex-ai</a> (85 lectures · 8h · 10 quizzes)</li>
+                        <li>관련 글: <a href="course-claude-api-building.html">Building with the Claude API 강의 정리</a> &mdash; 본격적인 Claude API 학습</li>
+                        <li>열람일: 2026-05-26</li>
+                        <li>저작권: &copy; Anthropic. 본 글은 학습 노트로 자기 말 정리이며, 원문/영상을 대체하지 않는다.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('course-claude');
+    renderPostNav('course-claude');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

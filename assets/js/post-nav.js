@@ -271,6 +271,18 @@ const POST_NAV_DATA = {
         { file: 'toeic-grammar-adv-5.html', title: '900+ 문법 5. 고난도 — 비교·도치·대명사·한정사' },
         { file: 'toeic-grammar-adv-6.html', title: '900+ 문법 6. Part 6 문맥 문법' },
     ],
+    'course-claude': [
+        { file: 'course-claude-code-101.html', title: 'Claude Code 101 — 공식 입문 강의 정리' },
+        { file: 'course-claude-code-extensions.html', title: 'Subagents & Agent Skills — 확장 강의 정리' },
+        { file: 'course-claude-code-in-action.html', title: 'Claude Code in Action — 실전 워크플로 정리' },
+        { file: 'course-claude-ai-fluency-foundations.html', title: 'AI Fluency: Framework & Foundations 학습 노트' },
+        { file: 'course-claude-ai-capabilities-limitations.html', title: 'AI Capabilities and Limitations 학습 노트' },
+        { file: 'course-claude-ai-fluency-audiences.html', title: 'AI Fluency 대상별 강의 모음 (SMB·Nonprofits·Educators·Students·Teaching)' },
+        { file: 'course-claude-api-building.html', title: 'Building with the Claude API 강의 정리' },
+        { file: 'course-claude-cloud-bedrock-vertex.html', title: 'Claude with Amazon Bedrock & Google Vertex AI 비교 정리' },
+        { file: 'course-claude-mcp-intro.html', title: 'Anthropic 강의 — MCP 입문' },
+        { file: 'course-claude-mcp-advanced.html', title: 'Anthropic 강의 — MCP 심화' },
+    ],
     'tool': [
         { file: 'git-basics.html', title: 'Git 기본 명령어 가이드' },
         { file: 'claude-code-practical.html', title: 'Claude Code 실전 활용 가이드' },
@@ -299,7 +311,9 @@ const CAT_LABELS = {
     'growth-cert-istqb': 'ISTQB FL',
     'growth-cert-ctai': 'ISTQB CT-AI',
     'growth-lang': '어학',
-    'growth-lang-toeic': 'TOEIC'
+    'growth-lang-toeic': 'TOEIC',
+    'course': '강의 정리',
+    'course-claude': 'Claude 공식 강의'
 };
 
 function renderPostNav(category) {

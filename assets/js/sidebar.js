@@ -46,6 +46,11 @@ function renderSidebar(currentCat) {
           ]
         },
         { id: 'book',   icon: 'fa-solid fa-book-open',        label: '책/강의 후기',   color: 'book',   desc: '읽은 책, 세미나' },
+        { id: 'course', icon: 'fa-solid fa-graduation-cap',   label: '강의 정리',      color: 'tool',   desc: 'Anthropic 공식 강의 등',
+          subs: [
+              { id: 'course-claude', label: 'Claude 공식 강의' },
+          ]
+        },
     ];
 
     const privateCats = [
