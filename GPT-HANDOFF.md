@@ -92,7 +92,7 @@ GitHub Pages/
                 <h1>글 제목</h1>
                 <div class="post-detail-meta">
                     <span><i class="fa-regular fa-calendar"></i> 2026-04-08</span>
-                    <span><i class="fa-regular fa-clock"></i> 15 min read</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 15분 분량</span>
                 </div>
             </div>
 
@@ -182,7 +182,7 @@ GitHub Pages/
         <p class="excerpt">한줄 요약.</p>
         <div class="post-card-footer">
             <span><i class="fa-regular fa-calendar"></i> 2026-04-08</span>
-            <span><i class="fa-regular fa-clock"></i> 15 min</span>
+            <span><i class="fa-regular fa-clock"></i> 15분</span>
         </div>
     </div>
 </div>
@@ -744,6 +744,17 @@ window.checkQuizAnswer = function(btn) {
   scoring = "classList.add('correct')" in html or 'classList.add("correct")' in html
   assert fn_count and listener and scoring, f'{path}: 인터랙티브 깨짐'
   ```
+
+---
+
+### 실수 18: 읽는 시간 표기를 영어 "N min read"로 노출
+
+**증상**: 한국어 블로그에서 글 카드와 본문 메타 영역에 영어 표기 "N min read"가 그대로 노출돼 방문객이 "내가 N분 전에 읽었다고?" 식으로 의미를 오해.
+
+**규칙**:
+- 본문 메타 영역: `약 N분 분량` 사용 (예: `약 15분 분량`)
+- 카드 영역: `N분` 사용 (공간이 작아 짧게)
+- 영어 "min read", "min" 표기 금지
 
 ---
 
