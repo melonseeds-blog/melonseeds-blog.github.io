@@ -362,7 +362,9 @@ ORDERED_CATS에 등록된 카테고리는 date 대신 order로 정렬됨.
 - [ ] 학습 순서 시리즈면 `ORDERED_CATS` 배열에도 추가
 - [ ] 카드 작성 시 `data-cat="부모 자식"` 형태 (예: `data-cat="tech tech-halcon"`)
 - [ ] 학습 순서 시리즈면 카드에 `data-order="N"` 부여
+- [ ] **새 최상위 카테고리면 루트 `index.html`의 `orbitData` 배열에 객체 추가** (실수 17 참조)
 - [ ] 배포 후 `?cat=새id`에서 페이지 타이틀이 카테고리명으로 바뀌었는지, 다른 글이 섞이지 않는지 확인
+- [ ] **배포 후 홈(/index.html)에서 카테고리 아이콘이 궤도에 추가되고 Categories 숫자가 새 수로 바뀌는지 확인**
 
 ---
 
@@ -742,6 +744,26 @@ window.checkQuizAnswer = function(btn) {
   scoring = "classList.add('correct')" in html or 'classList.add("correct")' in html
   assert fn_count and listener and scoring, f'{path}: 인터랙티브 깨짐'
   ```
+
+---
+
+### 실수 17: 새 카테고리 추가 시 루트 `index.html`의 궤도 아이콘 배열(`orbitData`) 갱신 누락
+
+**증상**: 새 카테고리(`course`)를 sidebar.js/post-nav.js/CAT_NAMES/CAT_ICONS 5곳에 등록했고 카드도 추가했는데, 홈(`/index.html`) 히어로의 궤도 아이콘에는 새 카테고리가 안 보이고 "Categories" 통계 숫자도 옛값(7) 그대로.
+
+**실제로 일어난 일** (course 카테고리 추가 후):
+- 5곳 카테고리 셋업은 완료
+- 그러나 루트 `index.html` 안의 자체 `orbitData = [...]` 배열에 `course`를 추가 안 함 (그 배열은 sidebar.js의 publicCats와 별도로 존재했음)
+- `<div data-count="7">Categories</div>` 가 하드코딩 (실수 11과 같은 함정)
+- `setHeroStats` 함수는 'Posts'만 동적 갱신하고 'Categories'는 처리 안 함
+
+**해결(이미 적용됨)**: `orbitData`를 **단일 source of truth**로 만들고, `setHeroStats`가 `orbitData.length`를 그대로 사용. 새 카테고리 추가 시 이 한 배열에만 추가하면 hero stat 숫자와 궤도 아이콘 양쪽이 자동 갱신.
+
+**규칙**:
+- 루트 `index.html`의 `orbitData` 배열은 홈 히어로의 카테고리 표시 SoT(Single Source of Truth)다.
+- 새 최상위 카테고리를 만들면 **6곳** 수정: sidebar.js / post-nav.js의 POST_NAV_DATA·CAT_LABELS / public/index.html의 CAT_NAMES·CAT_ICONS / **루트 `index.html`의 `orbitData`**.
+- `setHeroStats` 함수는 'Posts'·'Categories' 둘 다 자동 갱신하도록 작성돼 있으니, 하드코딩 절대 금지.
+- 새 카테고리 셋업 시 8-2 체크리스트에 다음 한 줄을 추가하라: "루트 `index.html`의 `orbitData`에 새 카테고리 객체 추가".
 
 ---
 
