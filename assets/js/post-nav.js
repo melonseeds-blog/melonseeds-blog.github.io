@@ -283,6 +283,9 @@ const POST_NAV_DATA = {
         { file: 'course-claude-mcp-intro.html', title: 'Anthropic 강의 — MCP 입문' },
         { file: 'course-claude-mcp-advanced.html', title: 'Anthropic 강의 — MCP 심화' },
     ],
+    'read': [
+        { file: 'read-recommended-sites.html', title: '개발자가 북마크해둘 추천 사이트 모음' },
+    ],
     'tool': [
         { file: 'git-basics.html', title: 'Git 기본 명령어 가이드' },
         { file: 'claude-code-practical.html', title: 'Claude Code 실전 활용 가이드' },
@@ -313,7 +316,8 @@ const CAT_LABELS = {
     'growth-lang': '어학',
     'growth-lang-toeic': 'TOEIC',
     'course': '강의 정리',
-    'course-claude': 'Claude 공식 강의'
+    'course-claude': 'Claude 공식 강의',
+    'read': '읽을거리'
 };
 
 function renderPostNav(category) {

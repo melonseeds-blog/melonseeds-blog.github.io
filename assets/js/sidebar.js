@@ -51,6 +51,7 @@ function renderSidebar(currentCat) {
               { id: 'course-claude', label: 'Claude 공식 강의' },
           ]
         },
+        { id: 'read',   icon: 'fa-solid fa-bookmark',         label: '읽을거리',       color: 'book',   desc: '추천 사이트·아티클 모음' },
     ];
 
     const privateCats = [
