@@ -29,7 +29,11 @@ function renderSidebar(currentCat) {
         },
         { id: 'trend',  icon: 'fa-solid fa-satellite-dish',    label: '기술 트렌드',    color: 'trend',  desc: '기술 뉴스, 새로운 기술' },
         { id: 'tool',   icon: 'fa-solid fa-screwdriver-wrench', label: '도구/환경 설정', color: 'tool',   desc: 'Git, IDE, Claude' },
-        { id: 'debug',  icon: 'fa-solid fa-bug',              label: '트러블슈팅',     color: 'debug',  desc: '문제 해결 기록' },
+        { id: 'debug',  icon: 'fa-solid fa-bug',              label: '트러블슈팅',     color: 'debug',  desc: '문제 해결 기록',
+          subs: [
+              { id: 'debug-windbg', label: 'Windows 크래시 덤프 분석' },
+          ]
+        },
         { id: 'growth', icon: 'fa-solid fa-seedling',         label: '자기계발',       color: 'growth', desc: '영어, 자격증',
           subs: [
               { id: 'growth-lang', label: '어학',

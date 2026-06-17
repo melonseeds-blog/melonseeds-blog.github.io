@@ -2,6 +2,8 @@
 const POST_NAV_DATA = {
     'debug': [
         { file: 'github-pages-404.html', title: 'GitHub Pages 배포 시 404 에러 해결' },
+    ],
+    'debug-windbg': [
         { file: 'windbg-01-dump-types.html', title: 'Windows 크래시 덤프 — 종류와 생성 설정' },
         { file: 'windbg-02-setup.html', title: 'WinDbg 입문 — 분석 환경 세팅과 심볼' },
         { file: 'windbg-03-crash-analysis.html', title: '크래시 원인 분석 실전 — 콜스택과 !analyze' },
@@ -326,7 +328,9 @@ const CAT_LABELS = {
     'growth-lang-toeic': 'TOEIC',
     'course': '강의 정리',
     'course-claude': 'Claude 공식 강의',
-    'read': '읽을거리'
+    'read': '읽을거리',
+    'debug': '트러블슈팅',
+    'debug-windbg': 'Windows 크래시 덤프 분석'
 };
 
 function renderPostNav(category) {
