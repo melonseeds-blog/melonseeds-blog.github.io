@@ -1,0 +1,471 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>데드락·행(Hang) 분석 — 멀티스레드 추적 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warning { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warning i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .references li a { color: var(--primary); text-decoration: none; }
+        .references li a:hover { text-decoration: underline; }
+        .debug-section { border-radius: 12px; padding: 20px 24px; margin: 16px 0; }
+        .debug-section.problem { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; }
+        .debug-section.cause { background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #d97706; }
+        .debug-section.solution { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #059669; }
+        .debug-section .debug-label { font-size: 0.82rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .debug-section.problem .debug-label { color: #dc2626; }
+        .debug-section.cause .debug-label { color: #d97706; }
+        .debug-section.solution .debug-label { color: #059669; }
+        .debug-section p { margin-bottom: 8px; }
+        .debug-section p:last-child { margin-bottom: 0; }
+        .error-msg { background: #1e1e1e; color: #f87171; border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.6; border-left: 3px solid #dc2626; }
+        .result-box { background: linear-gradient(135deg, #ecfdf5, #f0fdf4); border: 2px solid #a7f3d0; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center; }
+        .result-box .result-icon { font-size: 2rem; color: #059669; margin-bottom: 8px; }
+        .result-box h3 { font-size: 1.1rem; color: #065f46; margin-bottom: 4px; }
+        .result-box p { font-size: 0.9rem; color: #047857; margin: 0; }
+        .cmd-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .cmd-table th, .cmd-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .cmd-table th { background: var(--primary-50); font-weight: 700; }
+        .cmd-table td code { white-space: nowrap; }
+        .lock-diagram { background: #1e1e1e; color: #d4d4d4; border-radius: 10px; padding: 20px 24px; margin: 16px 0; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.8; border: 1px solid #333; }
+        .lock-diagram .tA { color: #7dd3fc; }
+        .lock-diagram .tB { color: #fca5a5; }
+        .lock-diagram .lk { color: #fcd34d; }
+        @media (max-width: 900px) { .floating-toc-inner { padding: 0 16px; } }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#hang-vs-crash" data-section="hang-vs-crash">행 vs 크래시</a><a href="#capture-hang" data-section="capture-hang">행 덤프 수집</a><a href="#all-threads" data-section="all-threads">전체 스레드 스택</a><a href="#deadlock" data-section="deadlock">데드락 분석</a><a href="#locks-cmd" data-section="locks-cmd">!locks·!critsec</a><a href="#cpu-hang" data-section="cpu-hang">CPU 폭주 vs 대기</a><a href="#mv-case" data-section="mv-case">머신비전 사례</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">트러블슈팅</span>
+                </div>
+                <h1>데드락·행(Hang) 분석 — 멀티스레드 추적</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-16</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 9분 분량</span>
+                    <span><i class="fa-solid fa-bug"></i> 트러블슈팅</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>행(hang)과 크래시의 차이 — 죽지 않으니 멈춘 순간에 직접 덤프를 떠야 한다</li>
+                        <li>작업 관리자와 <code>procdump -ma</code>로 행 상태 덤프 수집</li>
+                        <li><code>~*k</code> / <code>~*kb</code>로 모든 스레드 콜스택을 한 번에 읽기</li>
+                        <li>데드락 사이클 찾기 — <code>!locks</code> / <code>!critsec</code>로 락 소유자 추적</li>
+                        <li><code>!runaway</code>로 CPU 폭주 행과 대기 행 구분 · 머신비전 파이프라인 사례</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#hang-vs-crash">행과 크래시의 차이</a></li>
+                        <li><a href="#capture-hang">행 상태 덤프 수집</a></li>
+                        <li><a href="#all-threads">전체 스레드 콜스택</a></li>
+                        <li><a href="#deadlock">데드락 분석</a></li>
+                        <li><a href="#locks-cmd">!locks와 !critsec</a></li>
+                        <li><a href="#cpu-hang">CPU 폭주 vs 대기 행</a></li>
+                        <li><a href="#mv-case">머신비전 실전 시나리오</a></li>
+                    </ol>
+                </div>
+
+                <p><a href="windbg-04-heap-corruption.html">4편</a>까지는 프로세스가 <strong>죽는</strong> 상황을 다뤘다. 크래시는 적어도 친절하다. 예외가 나고, WER이 덤프를 떠주고, 콜스택이 단서를 남긴다(<a href="windbg-01-dump-types.html">1편</a>). 그런데 현장에서 "프로그램이 죽지는 않는데 멈췄어요"라는 신고가 들어오면 이야기가 완전히 달라진다. 이번 편은 <strong>행(hang)</strong>, 그중에서도 멀티스레드 비전 파이프라인의 데드락을 추적한다.</p>
+
+                <h2 id="hang-vs-crash"><i class="fa-solid fa-arrows-split-up-and-left"></i> 행과 크래시의 차이</h2>
+                <p>크래시는 예외로 프로세스가 종료된다. 종료 순간 운영체제와 WER이 개입해 덤프를 자동으로 남긴다. 반면 <strong>행은 프로세스가 살아 있다.</strong> UI는 "응답 없음" 상태로 멈추고, 처리 스레드는 진행을 멈췄지만 프로세스 자체는 종료되지 않는다. 예외가 발생하지 않으니 <strong>자동 덤프도 없다.</strong></p>
+
+                <p>여기서 행 분석의 첫 번째 원칙이 나온다. <strong>멈춘 바로 그 순간에, 사람이 직접 덤프를 떠야 한다.</strong> 크래시처럼 사후에 떨어진 파일을 받는 게 아니라, 현장에서 멈춘 상태를 포착해야 한다.</p>
+
+                <p>행은 크게 두 부류로 나뉘고, 분석 접근이 서로 다르다.</p>
+                <ul>
+                    <li><strong>대기 행(blocking hang)</strong> — 스레드들이 무언가를 무한정 기다리며 잠들어 있다. CPU 사용률은 0%에 가깝다. 데드락이 대표적이다.</li>
+                    <li><strong>폭주 행(spinning hang)</strong> — 한 스레드가 CPU를 100% 태우며 무한 루프나 busy-wait를 돈다. 멈춘 것처럼 보이지만 사실 미친 듯이 돌고 있다.</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>먼저 CPU 사용률부터 본다</strong>
+                        행 신고를 받으면 작업 관리자에서 해당 프로세스의 CPU 사용률을 먼저 확인한다. 0%에 가까우면 대기 행(데드락 의심), 한 코어를 꽉 채우고 있으면 폭주 행이다. 이 한 가지만으로 분석 방향이 절반으로 좁혀진다.
+                    </div>
+                </div>
+
+                <h2 id="capture-hang"><i class="fa-solid fa-camera"></i> 행 상태 덤프 수집</h2>
+                <p>멈춘 순간을 포착하는 방법은 두 가지다. 둘 다 full memory 덤프(<code>-ma</code> 상당)를 떠야 스레드와 락 상태가 온전히 담긴다.</p>
+
+                <h3 id="cap-taskmgr"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 작업 관리자</h3>
+                <p>가장 간단한 방법이다. <strong>작업 관리자 &gt; 세부 정보</strong> 탭에서 대상 프로세스를 우클릭하고 <strong>"덤프 파일 만들기"</strong>를 누르면 <code>%temp%</code>에 full dump가 떨어진다. 별도 도구 설치가 필요 없어 고객 PC에서 바로 쓸 수 있다. 다만 한 번에 한 장만 뜨고, 시점을 정밀하게 고르기 어렵다.</p>
+
+                <h3 id="cap-procdump"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> procdump</h3>
+                <p>Sysinternals의 <code>procdump</code>는 행 분석에 훨씬 유연하다. 특히 <strong>시차를 둔 연속 덤프</strong>를 뜰 수 있어, "정말 멈춘 것인지" 아니면 "아주 느리게 진행 중인지"를 구분할 수 있다.</p>
+
+                <pre><code>:: 즉시 full memory 덤프 1장
+procdump -ma MyVision.exe
+
+:: 10초 간격으로 3장 (연속 캡처 → 스택 비교용)
+procdump -ma -n 3 -s 10 MyVision.exe
+
+:: 윈도우가 "응답 없음(hung)" 상태가 되면 자동 덤프
+procdump -ma -h MyVision.exe
+
+:: PID로 지정도 가능
+procdump -ma 1234</code></pre>
+
+                <p><code>-ma</code>는 full memory, <code>-n</code>은 덤프 장수, <code>-s</code>는 간격(초), <code>-h</code>는 hung window 감지다. 행 분석에서 <strong>여러 시점의 덤프를 비교</strong>하는 것이 결정적이다. 두 덤프에서 같은 스레드들이 똑같은 위치에 멈춰 있으면 진짜 블로킹이거나 데드락이고, 콜스택이 조금씩 달라지면 멈춘 게 아니라 느리게 진행 중인 것이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>최소 두 장, 가능하면 시차를 두고</strong>
+                        행은 단일 덤프로 판단하면 오진하기 쉽다. "멈춤"과 "느림"은 한 장으로는 구별되지 않는다. <code>procdump -ma -n 3 -s 10</code>으로 10초 간격 3장을 떠서 스택이 고정인지 변하는지 확인하는 습관을 들인다.
+                    </div>
+                </div>
+
+                <h2 id="all-threads"><i class="fa-solid fa-list-ol"></i> 전체 스레드 콜스택</h2>
+                <p>크래시 분석은 "죽은 스레드 하나"의 콜스택을 본다. 행 분석은 정반대다. <strong>모든 스레드</strong>가 각자 어디서 멈췄는지를 펼쳐 놓고, 서로의 관계를 읽어야 한다. WinDbg의 스레드 명령을 먼저 정리한다.</p>
+
+                <table class="cmd-table">
+                    <tr><th>명령</th><th>의미</th></tr>
+                    <tr><td><code>~</code></td><td>스레드 목록(인덱스, TID, 상태)</td></tr>
+                    <tr><td><code>~&lt;n&gt;s</code></td><td>n번 스레드로 컨텍스트 전환</td></tr>
+                    <tr><td><code>~~[TID]s</code></td><td>TID(16진)로 스레드 전환</td></tr>
+                    <tr><td><code>k</code> / <code>kb</code></td><td>현재 스레드 콜스택 (<code>kb</code>는 앞 인자 표시)</td></tr>
+                    <tr><td><code>~*k</code></td><td><strong>모든 스레드</strong>의 콜스택</td></tr>
+                    <tr><td><code>~*kb</code></td><td>모든 스레드 콜스택 + 인자</td></tr>
+                </table>
+
+                <p>행 분석의 출발점은 거의 항상 <code>~*kb</code>다. 전체 스레드를 한 화면에 펼쳐 놓고, 같은 함수에서 멈춰 있는 스레드 무리를 스캔한다. 특히 여러 스레드가 동시에 <code>WaitForSingleObject</code>나 <code>RtlEnterCriticalSection</code>에 걸려 있으면, 같은 락을 두고 경합 중일 가능성이 높다.</p>
+
+                <pre><code>0:000&gt; ~*kb
+
+.  0  Id: 1a2c.0b10   ChildEBP RetAddr  Args
+       ntdll!NtWaitForSingleObject+0x14
+       KERNELBASE!WaitForSingleObjectEx+0x8e
+       MyVision!FrameQueue::pop+0x52        // process 스레드
+       MyVision!ProcessThread::run+0xc1
+
+   5  Id: 1a2c.0c44   ChildEBP RetAddr  Args
+       ntdll!NtWaitForSingleObject+0x14
+       ntdll!RtlpWaitOnCriticalSection+0x110
+       ntdll!RtlEnterCriticalSection+0x142
+       MyVision!FrameQueue::push+0x3a       // grab 스레드, 같은 큐 락 대기
+       MyVision!GrabThread::run+0x88</code></pre>
+
+                <p>위에서 5번 스레드는 <code>RtlEnterCriticalSection</code>에서 멈춰 있다. 크리티컬 섹션을 잡으려다 누군가에게 막혔다는 뜻이다. 0번은 <code>WaitForSingleObjectEx</code>에서 대기 중이다. 이 둘이 서로 얽혀 있는지가 다음 질문이다.</p>
+
+                <h2 id="deadlock"><i class="fa-solid fa-link"></i> 데드락 분석</h2>
+                <p>데드락은 두(이상의) 스레드가 서로가 가진 자원을 기다리며 영원히 멈추는 상태다. 가장 단순한 형태는 이렇다.</p>
+
+                <div class="lock-diagram">
+<span class="tA">스레드 A</span>: <span class="lk">락1</span> 보유  →  <span class="lk">락2</span> 를 기다림 ⏳<br>
+<span class="tB">스레드 B</span>: <span class="lk">락2</span> 보유  →  <span class="lk">락1</span> 을 기다림 ⏳<br>
+<br>
+A는 B가 <span class="lk">락2</span>를 놓길 기다리고, B는 A가 <span class="lk">락1</span>을 놓길 기다린다.<br>
+둘 다 영원히 양보하지 않는다 → <strong>데드락 (사이클)</strong>
+                </div>
+
+                <h3 id="dl-signals"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 콜스택에서 찾을 신호</h3>
+                <p>대기 스레드의 콜스택에는 무엇을 기다리는지가 드러난다. 네이티브 코드에서 자주 보는 패턴은 다음과 같다.</p>
+                <ul>
+                    <li><code>ntdll!NtWaitForSingleObject</code> + <code>KERNELBASE!WaitForSingleObjectEx</code> — 이벤트·뮤텍스·세마포어 같은 커널 객체 대기.</li>
+                    <li><code>ntdll!RtlpWaitOnCriticalSection</code> + <code>ntdll!RtlEnterCriticalSection</code> — <code>CRITICAL_SECTION</code> 대기. 네이티브 데드락에서 가장 흔한 신호다.</li>
+                    <li><code>ntdll!ZwWaitForAlertByThreadId</code> 계열 — SRWLOCK이나 <code>std::mutex</code> 내부 구현에서 보일 수 있다.</li>
+                </ul>
+
+                <h3 id="dl-procedure"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 추적 절차</h3>
+                <p>데드락 확정은 "사이클"을 찾는 일이다. 순서대로 좁혀 들어간다.</p>
+                <ol>
+                    <li><code>~*kb</code>로 대기 중인 스레드들을 추린다(<code>RtlEnterCriticalSection</code>, <code>WaitForSingleObject</code> 등에 걸린 스레드).</li>
+                    <li>각 스레드가 <strong>무슨 락을 기다리는지</strong> 확인한다.</li>
+                    <li>그 락의 <strong>소유자가 누구인지</strong> 추적한다(<code>!locks</code> / <code>!critsec</code>, 다음 절).</li>
+                    <li>소유자가 또 다른 락을 기다리고, 그 락의 소유자가 다시 첫 스레드라면 <strong>사이클이 닫힌다 = 데드락 확정.</strong></li>
+                </ol>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>단순 대기는 데드락이 아니다</strong>
+                        빈 큐에서 condition variable로 잠들어 있는 process 스레드는 그 자체로는 정상이다. 깨워줄 grab 스레드가 살아 있다면 곧 진행한다. 데드락은 반드시 <strong>사이클</strong>이 있어야 한다. "기다리는 스레드"를 봤다고 곧장 데드락이라 결론짓지 말고, 그 대기가 닫힌 고리의 일부인지 확인한다.
+                    </div>
+                </div>
+
+                <h2 id="locks-cmd"><i class="fa-solid fa-lock"></i> !locks와 !critsec</h2>
+                <p>락 소유자를 손으로 추적하는 대신, WinDbg 확장이 한 번에 보여준다.</p>
+
+                <h3 id="lk-locks"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> !locks</h3>
+                <p><code>!locks</code>는 프로세스의 모든 <code>CRITICAL_SECTION</code>을 훑어 상태와 소유 스레드를 나열한다. 경합 중인(대기자가 있는) 락을 빠르게 식별할 수 있다.</p>
+
+                <pre><code>0:000&gt; !locks
+
+CritSec MyVision!g_queueLock+0 at 00007ff6`0a3c1240
+LockCount          1
+RecursionCount     1
+OwningThread       0c44          // 이 락은 grab 스레드(TID 0c44)가 보유
+EntryCount         0
+ContentionCount    1
+
+CritSec MyVision!g_poolLock+0 at 00007ff6`0a3c12a0
+LockCount          1
+RecursionCount     1
+OwningThread       0b10          // 이 락은 process 스레드(TID 0b10)가 보유
+ContentionCount    1</code></pre>
+
+                <p><code>OwningThread</code>가 핵심이다. 위에서 큐 락은 grab 스레드(0c44)가, 풀 락은 process 스레드(0b10)가 쥐고 있다. 그런데 앞서 <code>~*kb</code>에서 grab 스레드는 큐 락이 아니라 <strong>다른 락</strong>을 기다리고 있었다. 두 스레드가 서로의 락을 기다린다면 사이클이다.</p>
+
+                <h3 id="lk-critsec"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> !critsec</h3>
+                <p>특정 크리티컬 섹션 하나를 자세히 보려면 <code>!critsec &lt;address&gt;</code>를 쓴다. <code>LockCount</code>, <code>OwningThread</code>, <code>LockSemaphore</code> 등 상세 상태가 나온다. 소유자 TID를 얻으면 <code>~~[TID]s</code>로 그 스레드로 전환해 지금 무엇을 하는지(또 다른 락을 기다리는지) 확인한다.</p>
+
+                <pre><code>0:000&gt; !critsec 00007ff6`0a3c1240
+CritSec MyVision!g_queueLock+0 at 00007ff60a3c1240
+LockCount          1
+OwningThread       0c44
+
+0:000&gt; ~~[0c44]s        // 소유 스레드로 전환
+0:005&gt; k               // 소유자가 지금 뭘 하는지 → 또 다른 락 대기면 데드락</code></pre>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>!locks는 CRITICAL_SECTION만 본다</strong>
+                        <code>!locks</code>는 <code>CRITICAL_SECTION</code>을 대상으로 한다. SRWLOCK이나 <code>std::mutex</code>는 Windows에서 내부적으로 다른 동기화 기본형으로 구현될 수 있어 <code>!locks</code> 목록에 나오지 않을 수 있다. 그럴 때는 락 목록에 의존하지 말고, 각 스레드의 <strong>콜스택</strong>을 직접 읽어 무엇을 기다리는지 판단해야 한다.
+                    </div>
+                </div>
+
+                <h2 id="cpu-hang"><i class="fa-solid fa-gauge-high"></i> CPU 폭주 vs 대기 행</h2>
+                <p>대기 행이 아니라 폭주 행이면 락 추적은 헛수고다. 아무도 락을 기다리지 않고, 한 스레드가 그냥 미친 듯이 돌고 있기 때문이다. 둘을 가르는 명령이 <code>!runaway</code>다.</p>
+
+                <p><code>!runaway</code>는 스레드별 누적 CPU 시간을 보여준다. 한 스레드의 사용자 모드 시간이 압도적으로 크면 그 스레드가 폭주 용의자다.</p>
+
+                <pre><code>0:000&gt; !runaway
+
+ User Mode Time
+  Thread       Time
+   5:0c44      0 days 0:01:58.421     // 거의 2분간 CPU 독식 → 폭주 용의자
+   0:0b10      0 days 0:00:00.015
+   3:0d20      0 days 0:00:00.000</code></pre>
+
+                <p><code>!runaway</code>는 기본적으로 사용자 모드 시간을 보여주고, <code>!runaway 7</code>처럼 비트마스크를 주면 사용자 시간(1) · 커널 시간(2) · 경과 시간(4)을 함께 본다. 폭주 스레드를 찾으면 <code>~&lt;n&gt;s; k</code>로 전환해 어느 루프에서 도는지 확인한다. 여기서도 <strong>두 덤프 비교</strong>가 유효하다. 같은 스레드가 두 덤프 모두에서 같은 구간을 돌고 있으면 무한 루프로 확정할 수 있다.</p>
+
+                <table class="cmd-table">
+                    <tr><th>구분</th><th>대기 행</th><th>폭주 행</th></tr>
+                    <tr><td>CPU 사용률</td><td>0%에 가까움</td><td>한 코어 100%</td></tr>
+                    <tr><td>콜스택</td><td><code>NtWaitFor*</code>에 잠듦</td><td>같은 루프 구간 반복</td></tr>
+                    <tr><td>핵심 명령</td><td><code>!locks</code>, <code>~*kb</code></td><td><code>!runaway</code></td></tr>
+                    <tr><td>대표 원인</td><td>데드락, 영원한 블로킹</td><td>무한 루프, busy-wait</td></tr>
+                </table>
+
+                <h2 id="mv-case"><i class="fa-solid fa-industry"></i> 머신비전 실전 시나리오</h2>
+                <p>4편과 같은 grab↔process 파이프라인을 다시 가져온다. 이번엔 수명 문제가 아니라 <strong>락 순서</strong> 문제다.</p>
+
+                <h3 id="mv-deadlock"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 시나리오 1 — 큐·풀 락 순서 역전</h3>
+                <div class="debug-section problem">
+                    <div class="debug-label"><i class="fa-solid fa-circle-xmark"></i> 증상</div>
+                    <p>장시간 검사 중 가끔 화면이 멈추고 검사가 중단된다. 프로세스는 살아 있지만 CPU는 거의 0%. 재시작 전까지 회복되지 않는다.</p>
+                </div>
+                <div class="debug-section cause">
+                    <div class="debug-label"><i class="fa-solid fa-magnifying-glass"></i> 원인</div>
+                    <p>grab 스레드는 <code>풀 락 → 큐 락</code> 순서로 잡고, process 스레드는 <code>큐 락 → 풀 락</code> 순서로 잡는다. 평소엔 우연히 어긋나지 않다가, 특정 타이밍에 grab이 풀 락을, process가 큐 락을 동시에 쥐면 서로 상대의 락을 기다리며 사이클이 닫힌다.</p>
+                </div>
+                <div class="debug-section solution">
+                    <div class="debug-label"><i class="fa-solid fa-circle-check"></i> 추적</div>
+                    <p><code>procdump -ma -n 2 -s 15</code>로 두 장을 떴다. 두 덤프 모두 grab·process 스레드가 <code>RtlEnterCriticalSection</code>에서 동일하게 멈춰 있었다(진짜 데드락 확정). <code>!locks</code>로 보니 큐 락은 process가, 풀 락은 grab이 보유 중이었고, <code>~*kb</code>에서 grab은 큐 락을, process는 풀 락을 기다리고 있었다. 사이클이 닫힌다. 근본 해결은 <strong>두 스레드의 락 획득 순서를 통일</strong>(lock ordering)하는 것이다.</p>
+                </div>
+
+                <div class="lock-diagram">
+<span class="tA">grab</span>   : <span class="lk">풀 락</span> 보유 → <span class="lk">큐 락</span> 대기 (RtlEnterCriticalSection)<br>
+<span class="tB">process</span>: <span class="lk">큐 락</span> 보유 → <span class="lk">풀 락</span> 대기 (RtlEnterCriticalSection)<br>
+↳ <code>!locks</code> 소유자 + <code>~*kb</code> 대기 대상이 교차 → 데드락
+                </div>
+
+                <h3 id="mv-spin"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 시나리오 2 — busy-wait 폭주</h3>
+                <div class="debug-section problem">
+                    <div class="debug-label"><i class="fa-solid fa-circle-xmark"></i> 증상</div>
+                    <p>검사가 멈춘 것처럼 보이는데, 작업 관리자에서 한 코어가 100%로 고정. 팬 소음이 커진다.</p>
+                </div>
+                <div class="debug-section cause">
+                    <div class="debug-label"><i class="fa-solid fa-magnifying-glass"></i> 원인</div>
+                    <p>process 스레드가 condition variable 대기 없이 <code>while (queue.empty()) { }</code>로 빈 큐를 계속 폴링한다. 큐가 한동안 비면 그 스레드가 CPU를 통째로 태운다.</p>
+                </div>
+                <div class="debug-section solution">
+                    <div class="debug-label"><i class="fa-solid fa-circle-check"></i> 추적</div>
+                    <p><code>!runaway</code>로 process 스레드의 사용자 시간이 압도적으로 큼을 확인했다. <code>~&lt;n&gt;s; k</code>로 전환하니 빈 큐 폴링 루프에서 돌고 있었다. 대기 행이 아니라 폭주 행이므로 락 추적은 불필요했다. 해결은 busy-wait를 condition variable 기반 대기로 바꾸는 것이다.</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>예방은 락 순서와 RAII 락에서 시작한다</strong>
+                        데드락의 큰 줄기는 "여러 락을 항상 같은 순서로 잡기"와 "락 범위를 최소화하기"로 막힌다. <code>std::scoped_lock</code>으로 여러 뮤텍스를 한 번에 잡으면 순서 역전 자체를 없앨 수 있다. <a href="windbg-04-heap-corruption.html">4편</a>의 use-after-free와 마찬가지로, 멀티스레드 버그는 분석보다 설계에서 막는 비용이 훨씬 싸다.
+                    </div>
+                </div>
+
+                <div class="result-box">
+                    <div class="result-icon"><i class="fa-solid fa-circle-check"></i></div>
+                    <h3>이번 편 요약</h3>
+                    <p>행은 멈춘 순간 직접 덤프를 뜬다. <code>~*kb</code>로 전체 스레드를 펼치고, <code>!locks</code>로 락 소유 사이클을 찾으면 데드락이, <code>!runaway</code>로 CPU 독식 스레드를 찾으면 폭주가 드러난다.</p>
+                </div>
+
+                <p>마지막 <a href="windbg-06-support-workflow.html">6편</a>에서는 지금까지의 기법을 실제 기술지원 업무로 묶는다. 고객사 덤프를 무엇과 함께 받을지, 어떤 빌드의 심볼을 어떻게 보관할지, 재현되지 않는 버그에 어떻게 그물을 칠지 — 장애 접수부터 회신까지의 워크플로를 체크리스트로 정리한다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료 · 시리즈</div>
+                    <ul>
+                        <li><a href="windbg-01-dump-types.html">1편 — Windows 크래시 덤프: 종류와 생성 설정</a></li>
+                        <li><a href="windbg-02-setup.html">2편 — WinDbg 입문: 분석 환경 세팅과 심볼</a></li>
+                        <li><a href="windbg-03-crash-analysis.html">3편 — 크래시 원인 분석 실전: 콜스택과 !analyze</a></li>
+                        <li><a href="windbg-04-heap-corruption.html">4편 — 힙·메모리 손상 디버깅: PageHeap과 !heap</a></li>
+                        <li><a href="windbg-06-support-workflow.html">6편 — 실무 기술지원 워크플로: 고객사 덤프 대응</a></li>
+                        <li><a href="https://learn.microsoft.com/en-us/sysinternals/downloads/procdump" target="_blank" rel="noopener">Microsoft Learn — ProcDump (Sysinternals)</a></li>
+                        <li><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/-locks" target="_blank" rel="noopener">Microsoft Learn — !locks 확장 명령</a></li>
+                        <li><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/-runaway" target="_blank" rel="noopener">Microsoft Learn — !runaway 확장 명령</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('debug');
+    renderPostNav('debug');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

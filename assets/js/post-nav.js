@@ -1,5 +1,14 @@
 ﻿/* 같은 카테고리 이전/다음 글 네비게이션 */
 const POST_NAV_DATA = {
+    'debug': [
+        { file: 'github-pages-404.html', title: 'GitHub Pages 배포 시 404 에러 해결' },
+        { file: 'windbg-01-dump-types.html', title: 'Windows 크래시 덤프 — 종류와 생성 설정' },
+        { file: 'windbg-02-setup.html', title: 'WinDbg 입문 — 분석 환경 세팅과 심볼' },
+        { file: 'windbg-03-crash-analysis.html', title: '크래시 원인 분석 실전 — 콜스택과 !analyze' },
+        { file: 'windbg-04-heap-corruption.html', title: '힙·메모리 손상 디버깅 — PageHeap과 !heap' },
+        { file: 'windbg-05-deadlock-hang.html', title: '데드락·행(Hang) 분석 — 멀티스레드 추적' },
+        { file: 'windbg-06-support-workflow.html', title: '실무 기술지원 워크플로 — 고객사 덤프 대응' },
+    ],
     'tech-sensor': [
         { file: 'ccd-vs-cmos.html', title: 'CCD vs CMOS 이미지 센서 비교' },
         { file: 'sensor-parameters.html', title: '이미지 센서 핵심 파라미터' },

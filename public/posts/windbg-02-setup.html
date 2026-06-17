@@ -1,0 +1,440 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WinDbg 입문 — 분석 환경 세팅과 심볼 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warning { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warning i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .references li a { color: var(--primary); text-decoration: none; }
+        .references li a:hover { text-decoration: underline; }
+        .cmd-caption { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; margin: 18px 0 -8px; display: flex; align-items: center; gap: 6px; font-family: 'Pretendard', sans-serif; }
+        .cmd-caption i { color: var(--melon); }
+        .step-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 16px 0; }
+        .step-box .step-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; color: var(--primary-dark); }
+        .step-box .step-title i { color: var(--melon); }
+        @media (max-width: 900px) { .floating-toc-inner { padding: 0 16px; } }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#windbg-variants" data-section="windbg-variants">WinDbg 종류</a><a href="#install" data-section="install">설치</a><a href="#symbols" data-section="symbols">심볼이란</a><a href="#symbol-path" data-section="symbol-path">심볼 경로</a><a href="#my-pdb" data-section="my-pdb">내 pdb 관리</a><a href="#open-dump" data-section="open-dump">덤프 열기</a><a href="#first-look" data-section="first-look">첫 점검</a><a href="#symbol-mismatch" data-section="symbol-mismatch">심볼 불일치</a><a href="#cheatsheet" data-section="cheatsheet">치트시트</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">트러블슈팅</span>
+                </div>
+                <h1>WinDbg 입문 — 분석 환경 세팅과 심볼</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-16</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 9분 분량</span>
+                    <span><i class="fa-solid fa-bug"></i> 트러블슈팅</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>WinDbg와 WinDbg(Preview) — 무엇을 설치해야 하나</li>
+                        <li>Windows SDK 또는 Microsoft Store로 설치하는 두 경로</li>
+                        <li>심볼(.pdb)이 무엇이고, 왜 콜스택의 정확도를 좌우하는가</li>
+                        <li>Microsoft 공개 심볼 서버와 <code>_NT_SYMBOL_PATH</code> 설정</li>
+                        <li>릴리스 빌드의 pdb를 만들고 버전별로 보관하는 실무 규칙</li>
+                        <li>덤프를 열고 첫 명령 <code>!analyze -v</code>를 실행하기까지</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#windbg-variants">WinDbg vs WinDbg(Preview)</a></li>
+                        <li><a href="#install">설치 방법</a></li>
+                        <li><a href="#symbols">심볼이란 무엇인가</a></li>
+                        <li><a href="#symbol-path">심볼 경로 설정</a></li>
+                        <li><a href="#my-pdb">내 프로그램 심볼 관리</a></li>
+                        <li><a href="#open-dump">덤프 열기와 첫 명령</a></li>
+                        <li><a href="#first-look">덤프를 열면 먼저 보는 것</a></li>
+                        <li><a href="#symbol-mismatch">심볼이 안 맞을 때</a></li>
+                        <li><a href="#cheatsheet">자주 쓰는 명령 치트시트</a></li>
+                    </ol>
+                </div>
+
+                <p><a href="windbg-01-dump-types.html">1편</a>에서 고객사로부터 덤프를 받아오는 방법까지 정리했다. 이제 그 <code>.dmp</code> 파일을 열어 볼 차례다. 도구는 <strong>WinDbg</strong>다. 그런데 막상 설치하려고 하면 "WinDbg"와 "WinDbg Preview" 두 이름이 나와 헷갈리고, 정작 덤프를 열면 콜스택이 의미 없는 주소 나열로만 보인다. 그 두 함정을 먼저 정리하고 넘어간다.</p>
+                <p>이 글의 절반은 도구 설치이고, 나머지 절반은 <strong>심볼(symbol)</strong>이다. 심볼 설정을 제대로 하지 않으면 WinDbg는 켜져도 아무것도 알려주지 않는다. 분석의 성패가 여기서 갈린다.</p>
+
+                <h2 id="windbg-variants"><i class="fa-solid fa-code-branch"></i> WinDbg vs WinDbg(Preview)</h2>
+                <p>WinDbg는 두 갈래로 존재해 왔다. 이름이 비슷해 혼란스럽지만 정리하면 간단하다.</p>
+
+                <h3 id="classic-windbg"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 클래식 WinDbg</h3>
+                <p>오래된 회색 UI의 <code>windbg.exe</code>다. Windows SDK 안의 <strong>"Debugging Tools for Windows"</strong> 컴포넌트로 배포된다. 같은 패키지에 콘솔 디버거인 <code>cdb.exe</code>, 커널 디버거 <code>kd.exe</code>도 함께 들어 있다. 기능은 완전하지만 UI가 투박하다.</p>
+
+                <h3 id="windbg-preview"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> WinDbg(과거의 WinDbg Preview)</h3>
+                <p>리본 UI에 시계열 디버깅(TTD) 같은 현대적 기능을 더한 새 버전이다. Microsoft Store에서 MSIX 패키지로 배포되며, 처음에는 <strong>"WinDbg Preview"</strong>라는 이름이었다. 지금은 Preview 딱지를 떼고 사실상 기본 WinDbg로 자리 잡는 추세라, 최근 문서나 메뉴에서는 그냥 "WinDbg"로 부른다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>지금 새로 시작한다면</strong>
+                        특별한 이유가 없다면 <strong>Microsoft Store의 WinDbg(구 Preview)</strong>를 권장한다. UI가 직관적이고 업데이트가 자동이다. 다만 어느 쪽을 쓰든 <strong>디버거 명령어(<code>k</code>, <code>!analyze</code>, <code>lm</code> 등)는 완전히 동일</strong>하다. 이 시리즈의 명령은 두 버전에서 그대로 통한다. 보안 정책상 Store를 못 쓰는 폐쇄망 환경이라면 SDK 버전을 설치한다.
+                    </div>
+                </div>
+
+                <h2 id="install"><i class="fa-solid fa-download"></i> 설치 방법</h2>
+
+                <h3 id="install-store"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 경로 A — Microsoft Store (간편)</h3>
+                <div class="step-box">
+                    <div class="step-title"><i class="fa-solid fa-store"></i> Store 설치</div>
+                    <ol>
+                        <li>Microsoft Store를 열고 "WinDbg"를 검색한다.</li>
+                        <li>Microsoft 게시자의 WinDbg를 설치한다.</li>
+                        <li>시작 메뉴에서 바로 실행된다. 별도 환경 설정이 거의 필요 없다.</li>
+                    </ol>
+                </div>
+
+                <h3 id="install-sdk"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 경로 B — Windows SDK (폐쇄망·오프라인)</h3>
+                <div class="step-box">
+                    <div class="step-title"><i class="fa-solid fa-box"></i> SDK 설치</div>
+                    <ol>
+                        <li>Windows SDK 설치 관리자를 실행한다.</li>
+                        <li>구성 요소 선택 화면에서 <strong>"Debugging Tools for Windows"</strong> 하나만 체크해도 된다(다른 항목은 해제 가능).</li>
+                        <li>설치 후 <code>windbg.exe</code>는 보통 <code>C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\</code>에 들어간다.</li>
+                    </ol>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>비트(아키텍처)를 맞춘다</strong>
+                        SDK 버전에는 <code>x64</code>와 <code>x86</code> 디버거가 따로 들어 있다. 분석 대상 프로세스가 64비트면 x64 디버거를, 32비트면 x86 디버거를 쓰는 것이 가장 깔끔하다. Store 버전은 덤프의 비트를 자동 인식하므로 이 고민이 줄어든다.
+                    </div>
+                </div>
+
+                <h2 id="symbols"><i class="fa-solid fa-key"></i> 심볼이란 무엇인가</h2>
+                <p>WinDbg를 설치하고 덤프를 열었는데 콜스택이 이렇게 나온다면, 심볼이 없는 것이다.</p>
+<pre><code>0:000&gt; k
+ # Child-SP          RetAddr               Call Site
+00 000000ab`12dff8a0 00007 ff8`9c2e1234     0x00007ff89c2e5678
+01 000000ab`12dff8e0 00007ff8`9c2e0abc     0x00007ff89c2e1234
+02 000000ab`12dff920 00007ff8`9c2dffff     0x00007ff89c2e0abc</code></pre>
+                <p>주소만 잔뜩 나오고 함수 이름이 하나도 없다. 이래서는 어디서 죽었는지 알 수 없다. 여기서 <strong>심볼(symbol)</strong>이 필요하다.</p>
+                <p>심볼은 <strong>메모리 주소를 사람이 읽을 수 있는 함수 이름·소스 줄번호로 매핑</strong>하는 정보다. C++ 컴파일러는 빌드 시 이 매핑을 <strong><code>.pdb</code>(Program Database)</strong> 파일에 따로 저장한다. 디버거가 이 pdb를 찾으면 위의 주소 나열이 다음처럼 의미 있는 콜스택으로 바뀐다.</p>
+<pre><code>0:000&gt; k
+ # Call Site
+00 VisionCore!ImageBuffer::At+0x2a
+01 VisionCore!GaussianFilter::Apply+0x1f4
+02 VisionCore!ProcessBlock::Execute+0x88
+03 HostApp!Pipeline::Run+0x143</code></pre>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>심볼이 분석의 90%다</strong>
+                        심볼이 없거나 버전이 안 맞으면, WinDbg는 잘못된 함수 이름을 가져다 붙이거나 주소만 보여 준다. 그 상태로 추측하면 엉뚱한 결론에 도달한다. 분석을 시작하기 전, <strong>심볼이 제대로 로드됐는지부터 확인</strong>하는 습관이 필요하다. 심볼은 운영체제(Windows)용과 우리 제품용, 두 종류 모두 맞춰야 한다.
+                    </div>
+                </div>
+
+                <h2 id="symbol-path"><i class="fa-solid fa-route"></i> 심볼 경로 설정</h2>
+                <p>심볼은 두 출처에서 가져온다. <strong>Windows 시스템 모듈</strong>(ntdll, kernel32 등)의 심볼은 Microsoft 공개 심볼 서버에서, <strong>우리 제품 모듈</strong>의 심볼은 우리가 보관한 pdb에서 가져온다.</p>
+
+                <h3 id="ms-symbol-server"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Microsoft 공개 심볼 서버</h3>
+                <p>Microsoft는 OS 모듈의 심볼을 공개 서버로 제공한다. 심볼 경로는 다음 형식으로 지정한다.</p>
+<pre><code>srv*C:\symbols*https://msdl.microsoft.com/download/symbols</code></pre>
+                <p>이 문자열의 의미를 분해하면 이렇다.</p>
+                <ul>
+                    <li><code>srv*</code> — 심볼 서버를 사용한다는 표시다.</li>
+                    <li><code>C:\symbols</code> — 내려받은 심볼을 캐싱할 로컬 폴더다. 한 번 받으면 다음부터는 여기서 바로 읽는다.</li>
+                    <li><code>https://msdl.microsoft.com/download/symbols</code> — Microsoft 공개 심볼 서버 주소다.</li>
+                </ul>
+                <p>즉 "서버에서 받아서 <code>C:\symbols</code>에 캐싱하라"는 뜻이다. 로컬 캐시 폴더 덕분에 같은 모듈을 매번 다시 받지 않는다.</p>
+
+                <h3 id="nt-symbol-path"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> _NT_SYMBOL_PATH 환경변수</h3>
+                <p>매번 심볼 경로를 입력하기 번거로우면, <code>_NT_SYMBOL_PATH</code> 환경변수에 한 번 등록해 둔다. WinDbg는 시작할 때 이 변수를 자동으로 읽어 심볼 경로로 삼는다.</p>
+
+                <div class="cmd-caption"><i class="fa-solid fa-terminal"></i> 시스템 환경변수로 등록 (한 번만)</div>
+<pre><code>:: setx 로 사용자 환경변수에 영구 등록 — 새 창부터 적용됨
+setx _NT_SYMBOL_PATH "srv*C:\symbols*https://msdl.microsoft.com/download/symbols"
+
+:: 우리 제품 pdb 폴더를 함께 넣고 싶다면 세미콜론으로 연결
+setx _NT_SYMBOL_PATH "srv*C:\symbols*https://msdl.microsoft.com/download/symbols;C:\ProductSymbols"</code></pre>
+
+                <h3 id="sympath-commands"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> .sympath / .reload 명령</h3>
+                <p>WinDbg 안에서 심볼 경로를 직접 다룰 때 쓰는 명령이다. 분석 중 가장 자주 입력하게 된다.</p>
+<pre><code>:: 현재 설정된 심볼 경로 확인
+.sympath
+
+:: 심볼 경로를 새로 지정
+.sympath srv*C:\symbols*https://msdl.microsoft.com/download/symbols
+
+:: 기존 경로에 우리 제품 pdb 폴더를 추가
+.sympath+ C:\ProductSymbols
+
+:: 심볼을 다시 로드 (경로를 바꾼 뒤 반드시 실행)
+.reload
+
+:: 모든 모듈의 심볼을 즉시 강제로 다시 로드
+.reload /f</code></pre>
+                <p><code>.reload</code>는 기본적으로 "필요할 때 로드(deferred)" 방식이라, 심볼 상태가 이상하면 <code>.reload /f</code>로 즉시 강제 로드해 확인한다. <code>/f</code>는 force의 약자다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>심볼 로딩 과정을 보고 싶다면</strong>
+                        <code>!sym noisy</code>를 먼저 입력하고 <code>.reload /f 모듈명</code>을 실행하면, WinDbg가 어느 경로에서 어떤 pdb를 찾으려 시도하는지 한 줄씩 출력한다. "왜 우리 모듈 심볼이 안 잡히지?"를 추적할 때 가장 확실한 방법이다. 다시 끄려면 <code>!sym quiet</code>를 입력한다.
+                    </div>
+                </div>
+
+                <h2 id="my-pdb"><i class="fa-solid fa-cubes"></i> 내 프로그램 심볼 관리</h2>
+                <p>Windows 시스템 심볼은 Microsoft 서버에서 알아서 받아온다. 문제는 <strong>우리 제품</strong>의 심볼이다. 이건 우리가 직접 만들고 보관해야 한다. 여기서 실수하면, 정작 가장 중요한 우리 모듈의 콜스택이 주소로만 남는다.</p>
+
+                <h3 id="release-pdb"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 릴리스 빌드도 pdb를 만든다</h3>
+                <p>흔한 오해가 "릴리스 빌드는 pdb가 없다"는 것이다. 사실 <strong>릴리스 빌드도 pdb를 생성할 수 있고, 반드시 생성해야 한다.</strong> 최적화는 그대로 두고 디버그 정보만 함께 출력하면 된다. Visual Studio의 C++ 프로젝트 기준 설정은 다음과 같다.</p>
+                <ul>
+                    <li><strong>컴파일러</strong> — C/C++ &gt; 일반 &gt; 디버그 정보 형식을 <code>/Zi</code>(프로그램 데이터베이스)로 설정한다.</li>
+                    <li><strong>링커</strong> — 링커 &gt; 디버깅 &gt; 디버그 정보 생성을 <code>/DEBUG</code>(또는 <code>/DEBUG:FULL</code>)로 설정한다.</li>
+                    <li>최적화(<code>/O2</code> 등)는 릴리스 그대로 둔다. pdb 생성과 최적화는 양립한다.</li>
+                </ul>
+                <p>이렇게 하면 최적화된 릴리스 바이너리(<code>.dll</code>/<code>.exe</code>)와 짝이 맞는 <code>.pdb</code>가 함께 나온다. 단, 최적화로 인해 일부 함수가 인라인되거나 변수가 레지스터로 사라져, 디버그 빌드만큼 모든 지역 변수가 보이지는 않는다는 점은 감안한다.</p>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>바이너리와 pdb는 한 쌍이다</strong>
+                        pdb는 빌드할 때마다 고유한 서명(GUID + age)을 갖고, 정확히 그 빌드의 바이너리하고만 매칭된다. 소스를 한 줄만 고쳐 다시 빌드해도 새 pdb는 옛 바이너리와 맞지 않는다. 그래서 <strong>릴리스 산출물을 낼 때 바이너리와 pdb를 같은 묶음으로 보관</strong>해야 한다. pdb를 버리면, 나중에 그 버전의 덤프를 받아도 심볼을 맞출 길이 사라진다.
+                    </div>
+                </div>
+
+                <h3 id="pdb-archive"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 버전별로 pdb를 보관한다</h3>
+                <p>고객사마다 설치된 제품 버전이 다르다. 그래서 받은 덤프의 모듈 버전에 맞는 pdb를 꺼내 쓸 수 있어야 한다. 두 가지 방식이 있다.</p>
+                <ul>
+                    <li><strong>버전별 폴더 보관</strong> — 릴리스마다 <code>\\fileserver\symbols\Product\1.4.2\</code>처럼 버전 폴더에 바이너리와 pdb를 함께 보관한다. 소규모 팀에 충분하다.</li>
+                    <li><strong>심볼 서버 구축</strong> — <code>symstore.exe</code>로 사내 심볼 서버에 적재하면, WinDbg가 모듈 서명으로 정확한 pdb를 자동으로 찾아온다. 버전이 많아지면 이쪽이 훨씬 편하다. 심볼 경로에 <code>srv*C:\symbols*\\symsrv\product</code>처럼 사내 서버를 추가하면 된다.</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>1편의 "버전을 함께 받으라"가 여기서 빛난다</strong>
+                        덤프를 받을 때 제품 버전을 같이 물어 둔 이유가 이것이다. 버전을 알면 보관해 둔 pdb 중 정확히 맞는 것을 꺼내 심볼 경로에 넣을 수 있다. 버전 기록 없이 덤프만 있으면, 어떤 pdb를 맞춰야 할지부터 추적해야 해서 시간이 두 배로 든다.
+                    </div>
+                </div>
+
+                <h2 id="open-dump"><i class="fa-solid fa-folder-open"></i> 덤프 열기와 첫 명령</h2>
+                <p>이제 준비가 끝났다. 받아온 <code>.dmp</code>를 연다.</p>
+
+                <h3 id="open-ways"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 덤프 파일 열기</h3>
+                <ul>
+                    <li><strong>GUI</strong> — WinDbg에서 File &gt; Open Dump File을 선택하고 <code>.dmp</code>를 연다.</li>
+                    <li><strong>명령줄</strong> — <code>-z</code> 옵션으로 바로 연다.</li>
+                </ul>
+<pre><code>:: 덤프 파일을 지정해 WinDbg 실행
+windbg -z C:\CrashDumps\MyVisionApp.dmp
+
+:: 심볼 경로(-y)와 함께 한 번에 지정
+windbg -y "srv*C:\symbols*https://msdl.microsoft.com/download/symbols;C:\ProductSymbols" -z C:\CrashDumps\MyVisionApp.dmp</code></pre>
+
+                <h3 id="first-command"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 첫 명령 — !analyze -v</h3>
+                <p>덤프가 열리면, 가장 먼저 돌려 보는 명령은 거의 정해져 있다.</p>
+<pre><code>0:000&gt; !analyze -v</code></pre>
+                <p><code>!analyze -v</code>는 WinDbg의 자동 분석 엔진이다. 예외 코드, 크래시가 발생한 명령 위치(FAULTING_IP), 콜스택, 의심 모듈을 한 번에 요약해 준다. <code>-v</code>는 verbose(자세히)다. 이 한 줄이 1차 진단의 출발점이며, 출력을 읽는 법은 <a href="windbg-03-crash-analysis.html">3편</a>에서 본격적으로 다룬다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>분석 전 의례 — 심볼 상태 확인</strong>
+                        <code>!analyze -v</code>를 돌리기 전에 <code>lm</code>(loaded modules)으로 우리 모듈의 심볼이 잡혔는지 먼저 본다. 모듈 옆에 <code>(private pdb symbols)</code>나 파일 경로가 보이면 정상이고, <code>(no symbols)</code> 또는 <code>(deferred)</code>로만 남아 있으면 심볼 경로부터 손봐야 한다.
+                    </div>
+                </div>
+
+                <h2 id="symbol-mismatch"><i class="fa-solid fa-circle-exclamation"></i> 심볼이 안 맞을 때</h2>
+                <p>실무에서 가장 자주 부딪히는 벽이다. 심볼이 없거나 버전이 어긋나면 콜스택이 거짓말을 한다. 증상과 대처를 정리한다.</p>
+
+                <h3 id="mismatch-symptoms"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 증상</h3>
+                <ul>
+                    <li>콜스택에 함수 이름 대신 주소(<code>0x00007ff8...</code>)만 나온다.</li>
+                    <li>출력에 <code>*** WARNING: Unable to verify checksum</code> 또는 <code>*** ERROR: Module load completed but symbols could not be loaded</code>가 보인다.</li>
+                    <li>함수 이름은 나오는데 <strong>줄번호가 엉뚱</strong>하거나, 호출 관계가 코드와 맞지 않는다(버전 불일치의 전형적 증상).</li>
+                </ul>
+
+                <h3 id="mismatch-fix"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 대처</h3>
+<pre><code>:: 1) 심볼 로딩 과정을 자세히 출력하도록 켠다
+0:000&gt; !sym noisy
+
+:: 2) 문제 모듈만 강제로 다시 로드해 본다
+0:000&gt; .reload /f VisionCore.dll
+
+:: 3) 그 모듈의 상세 정보로 pdb 매칭 상태를 확인한다
+0:000&gt; lmvm VisionCore</code></pre>
+                <p><code>lmvm VisionCore</code> 출력에서 모듈의 타임스탬프·버전과, 디버거가 찾고 있는 pdb의 서명을 비교할 수 있다. 여기서 버전이 어긋나 있으면, 보관해 둔 pdb 중 <strong>그 빌드의 것</strong>을 찾아 심볼 경로에 넣고 다시 <code>.reload /f</code> 한다.</p>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>심볼이 안 맞은 콜스택을 믿지 마라</strong>
+                        가장 위험한 상황은 "그럴듯해 보이지만 틀린" 콜스택이다. 버전이 어긋난 pdb를 억지로 물리면, 존재하지도 않는 함수 호출 경로가 만들어져 완전히 잘못된 결론으로 이어진다. 콜스택을 해석하기 전에 <strong>우리 모듈 심볼이 정확히 그 버전으로 매칭됐는지</strong>부터 확정하는 것이 철칙이다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-flag-checkered"></i>
+                    <div class="callout-body">
+                        <strong>2편 정리</strong>
+                        WinDbg는 Store 버전이든 SDK 버전이든 명령어가 같다. 심볼 경로는 <code>srv*C:\symbols*https://msdl.microsoft.com/download/symbols</code>로 OS 심볼을 받고, 우리 제품은 <strong>릴리스 pdb를 버전별로 보관</strong>해 맞춘다. 덤프를 열면 <code>!analyze -v</code> 전에 <code>lm</code>으로 심볼 상태부터 확인한다. 환경이 갖춰졌으니, 이제 콜스택을 읽고 원인을 짚는 단계로 간다.
+                    </div>
+                </div>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료 &amp; 시리즈</div>
+                    <ul>
+                        <li><a href="windbg-01-dump-types.html">1편 — Windows 크래시 덤프: 종류와 생성 설정</a> : 분석할 덤프를 받아오는 단계</li>
+                        <li><a href="windbg-03-crash-analysis.html">다음 글 — 크래시 원인 분석 실전: 콜스택과 !analyze</a> : !analyze -v 출력 해석</li>
+                        <li><a href="cpp-cmake-vcpkg.html">CMake + vcpkg manifest 실전</a> : 릴리스 빌드에서 pdb 생성 옵션을 거는 빌드 설정 맥락</li>
+                        <li><a href="cpp-image-buffer-design.html">C++ 이미지 버퍼 클래스 설계</a> : 심볼이 맞아야 들여다볼 수 있는 우리 모듈 코드</li>
+                        <li><a href="https://learn.microsoft.com/windows-hardware/drivers/debugger/symbol-path" target="_blank" rel="noopener">Microsoft Learn — Symbol path for Windows debuggers</a> : 심볼 경로 형식 공식 문서</li>
+                        <li><a href="https://learn.microsoft.com/windows-hardware/drivers/debugger/microsoft-public-symbols" target="_blank" rel="noopener">Microsoft Learn — Microsoft public symbol server</a> : 공개 심볼 서버 안내</li>
+                        <li><a href="https://learn.microsoft.com/windows-hardware/drivers/debugger/debugger-download-tools" target="_blank" rel="noopener">Microsoft Learn — Download WinDbg</a> : Store/SDK 설치 경로</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('debug');
+    renderPostNav('debug');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

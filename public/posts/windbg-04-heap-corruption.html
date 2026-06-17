@@ -1,0 +1,496 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>힙·메모리 손상 디버깅 — PageHeap과 !heap - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warning { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warning i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .references li a { color: var(--primary); text-decoration: none; }
+        .references li a:hover { text-decoration: underline; }
+        .debug-section { border-radius: 12px; padding: 20px 24px; margin: 16px 0; }
+        .debug-section.problem { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; }
+        .debug-section.cause { background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #d97706; }
+        .debug-section.solution { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #059669; }
+        .debug-section .debug-label { font-size: 0.82rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .debug-section.problem .debug-label { color: #dc2626; }
+        .debug-section.cause .debug-label { color: #d97706; }
+        .debug-section.solution .debug-label { color: #059669; }
+        .debug-section p { margin-bottom: 8px; }
+        .debug-section p:last-child { margin-bottom: 0; }
+        .error-msg { background: #1e1e1e; color: #f87171; border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.6; border-left: 3px solid #dc2626; }
+        .result-box { background: linear-gradient(135deg, #ecfdf5, #f0fdf4); border: 2px solid #a7f3d0; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center; }
+        .result-box .result-icon { font-size: 2rem; color: #059669; margin-bottom: 8px; }
+        .result-box h3 { font-size: 1.1rem; color: #065f46; margin-bottom: 4px; }
+        .result-box p { font-size: 0.9rem; color: #047857; margin: 0; }
+        .cmd-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .cmd-table th, .cmd-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .cmd-table th { background: var(--primary-50); font-weight: 700; }
+        .cmd-table td code { white-space: nowrap; }
+        @media (max-width: 900px) { .floating-toc-inner { padding: 0 16px; } }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why-hard" data-section="why-hard">왜 어려운가</a><a href="#symptoms" data-section="symptoms">손상의 증상</a><a href="#pageheap" data-section="pageheap">gflags·PageHeap</a><a href="#appverifier" data-section="appverifier">App Verifier</a><a href="#heap-cmd" data-section="heap-cmd">!heap 추적</a><a href="#corruption-types" data-section="corruption-types">손상 유형</a><a href="#mv-case" data-section="mv-case">머신비전 사례</a><a href="#caution" data-section="caution">운영 주의</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">트러블슈팅</span>
+                </div>
+                <h1>힙·메모리 손상 디버깅 — PageHeap과 !heap</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-16</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 9분 분량</span>
+                    <span><i class="fa-solid fa-bug"></i> 트러블슈팅</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>힙 손상이 유독 분석하기 어려운 이유 — 크래시 지점과 원인 지점이 다르다</li>
+                        <li><code>!analyze</code>가 <code>Rtlp*</code> 같은 힙 내부 함수를 가리킬 때 읽는 법</li>
+                        <li><code>gflags</code> + Full PageHeap으로 손상을 발생 즉시 터뜨리기</li>
+                        <li>Application Verifier와 WinDbg <code>!heap -p -a</code>로 범인 추적</li>
+                        <li>버퍼 오버런·use-after-free·double free 구분과 머신비전 실전 시나리오</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-hard">왜 힙 손상은 어려운가</a></li>
+                        <li><a href="#symptoms">손상의 증상 읽기</a></li>
+                        <li><a href="#pageheap">gflags와 Full PageHeap</a></li>
+                        <li><a href="#appverifier">Application Verifier</a></li>
+                        <li><a href="#heap-cmd">!heap로 범인 추적</a></li>
+                        <li><a href="#corruption-types">손상 유형 구분</a></li>
+                        <li><a href="#mv-case">머신비전 실전 시나리오</a></li>
+                        <li><a href="#caution">PageHeap 운영 주의</a></li>
+                    </ol>
+                </div>
+
+                <p>이 시리즈는 <a href="windbg-01-dump-types.html">덤프 종류와 생성 설정</a>, <a href="windbg-02-setup.html">분석 환경과 심볼</a>, <a href="windbg-03-crash-analysis.html">콜스택과 <code>!analyze</code></a>까지 다뤘다. 3편까지의 방법으로 풀리는 크래시는 사실 운이 좋은 편이다. 콜스택이 범인을 그대로 가리키기 때문이다. 그런데 현장에서 가장 골치 아픈 부류는 따로 있다. <strong>힙 손상(heap corruption)</strong>이다. 이번 편은 콜스택을 믿을 수 없는 상황을 다룬다.</p>
+
+                <h2 id="why-hard"><i class="fa-solid fa-circle-question"></i> 왜 힙 손상은 어려운가</h2>
+                <p>일반적인 크래시는 "잘못한 코드"가 곧바로 죽는다. 널 포인터를 역참조하면 그 줄에서 즉시 access violation이 난다. 콜스택 맨 위가 범인이다. 힙 손상은 다르다. <strong>메모리를 망가뜨린 코드</strong>와 <strong>그 망가진 메모리 때문에 죽는 코드</strong>가 시간적으로도 공간적으로도 떨어져 있다.</p>
+
+                <p>힙 할당자는 각 블록 앞뒤에 크기·상태 같은 메타데이터(헤더)를 함께 저장한다. 어떤 코드가 자기 버퍼의 경계를 1바이트 넘겨 쓰면, 바로 옆 블록의 헤더가 조용히 망가진다. 이 시점에는 아무 일도 일어나지 않는다. 한참 뒤 그 옆 블록을 <code>free</code>하거나 할당자가 인접 블록을 병합하려고 헤더를 읽는 순간, 그제야 할당자 내부에서 크래시가 난다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>핵심 비유</strong>
+                        힙 손상은 "범행 현장"과 "시체가 발견된 장소"가 다른 사건이다. 콜스택은 시체가 발견된 장소(할당자 내부)만 알려준다. 우리가 찾아야 하는 건 범행 현장(경계를 넘겨 쓴 그 코드)이다. 그래서 수동적으로 덤프만 보는 게 아니라, 능동적으로 "범행 즉시 현장을 덮치는" 도구가 필요하다.
+                    </div>
+                </div>
+
+                <p>여기에 두 가지 악조건이 더해진다. 첫째, 재현이 불규칙하다. 손상이 드러나느냐는 힙 레이아웃과 할당·해제 타이밍에 달려 있어서, 같은 입력이라도 어떤 날은 터지고 어떤 날은 멀쩡하다. 둘째, 콜스택이 거짓말을 한다. 망가진 헤더를 따라 할당자가 잘못된 주소를 역참조하면, 콜스택 자체가 엉뚱한 곳을 가리키거나 깨진 채로 나온다. 3편의 <code>!analyze -v</code>를 그대로 믿으면 안 되는 상황이다.</p>
+
+                <h2 id="symptoms"><i class="fa-solid fa-magnifying-glass"></i> 손상의 증상 읽기</h2>
+                <p>덤프를 열었을 때 "이건 힙 손상이다"라고 의심할 신호들이 있다. 이 패턴을 빨리 알아채는 것이 분석 시간을 크게 줄인다.</p>
+
+                <h3 id="sym-signals"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 의심해야 할 신호</h3>
+                <ul>
+                    <li><strong>예외 코드 <code>0xC0000374</code></strong> — <code>STATUS_HEAP_CORRUPTION</code>. 힙 무결성 검사가 손상을 잡았다는 가장 명확한 신호다.</li>
+                    <li><strong>콜스택 최상단이 할당자 내부 함수</strong> — <code>ntdll!RtlpAllocateHeap</code>, <code>ntdll!RtlFreeHeap</code>, <code>ntdll!RtlpCoalesceFreeBlocks</code>, <code>ntdll!RtlpLogHeapFailure</code> 등 <code>Rtlp</code>로 시작하는 이름들이 보인다.</li>
+                    <li><strong>엉뚱한 곳에서의 access violation</strong> — 내 코드와 무관해 보이는 위치에서, 그것도 매번 다른 위치에서 죽는다.</li>
+                    <li><strong>재현 불규칙</strong> — 빌드를 바꾸거나 로그 한 줄을 추가하면 증상이 사라지거나 옮겨 다닌다(힙 레이아웃이 바뀌기 때문).</li>
+                </ul>
+
+                <p>아래는 손상이 드러난 덤프에서 <code>!analyze -v</code>를 돌렸을 때 흔히 보는 형태다.</p>
+
+                <pre><code>0:000&gt; !analyze -v
+*******************************************************************************
+EXCEPTION_CODE: (NTSTATUS) 0xc0000374 - A heap has been corrupted.
+
+FAULTING_IP:
+ntdll!RtlpLogHeapFailure+45
+
+STACK_TEXT:
+ntdll!RtlpLogHeapFailure
+ntdll!RtlpAnalyzeHeapFailure
+ntdll!RtlpFreeHeapInternal
+ntdll!RtlFreeHeap
+MyVision!ImageBuffer::~ImageBuffer        // 여기서 죽었지만, 범인은 여기가 아니다
+MyVision!Pipeline::releaseFrame
+...</code></pre>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>콜스택을 액면 그대로 믿지 마라</strong>
+                        위 스택에서 <code>ImageBuffer</code> 소멸자가 보인다고 해서 그 소멸자가 범인인 건 아니다. 이 소멸자는 단지 "이미 누군가 망가뜨려 둔 블록"을 <code>free</code>하다가 손상을 발견했을 뿐이다. 진짜 범인은 그 블록과 인접한 메모리를 넘겨 쓴, 전혀 다른 코드다. 이 단계에서 콜스택만 보고 결론 내리면 시간을 통째로 날린다.
+                    </div>
+                </div>
+
+                <p>이 신호들이 보이면 방향을 바꿔야 한다. 정적인 덤프 분석으로는 범인을 잡을 수 없으니, <strong>손상이 일어나는 바로 그 순간을 크래시로 바꿔주는</strong> 도구를 켜고 재현을 시도한다. 그 도구가 PageHeap이다.</p>
+
+                <h2 id="pageheap"><i class="fa-solid fa-shield-halved"></i> gflags와 Full PageHeap</h2>
+                <p>PageHeap은 힙 할당 방식을 검증용으로 바꾸는 운영체제 기능이다. <strong>Full PageHeap</strong>을 켜면 모든 할당이 다음과 같이 배치된다.</p>
+
+                <ul>
+                    <li>각 할당을 자체 페이지(들)에 배치하고, 할당이 끝나는 지점 <strong>바로 뒤에 접근 금지(<code>PAGE_NOACCESS</code>) 가드 페이지</strong>를 둔다.</li>
+                    <li>할당의 끝을 페이지 경계에 딱 맞춘다. 그래서 버퍼 끝을 1바이트라도 넘겨 쓰면 곧장 가드 페이지를 건드리고, <strong>그 즉시</strong> access violation이 난다.</li>
+                    <li>해제된 블록의 페이지를 곧바로 재사용하지 않고 <code>PAGE_NOACCESS</code>로 막아둔다. 그래서 use-after-free도 접근 즉시 터진다.</li>
+                </ul>
+
+                <p>핵심은 "나중에 옆 블록을 free할 때"가 아니라 "경계를 넘겨 쓰는 그 순간" 크래시가 난다는 점이다. 범행 현장에서 바로 잡힌다. 콜스택 맨 위가 진짜 범인이 된다.</p>
+
+                <h3 id="ph-gflags"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> gflags 명령</h3>
+                <p><code>gflags.exe</code>는 Debugging Tools for Windows(Windows SDK에 포함, 2편 참고)에 들어 있다. 특정 실행 파일에 대해 PageHeap을 켜고 끄는 방법은 다음과 같다.</p>
+
+                <pre><code>:: Full PageHeap 활성화 (가장 강력, 메모리 많이 씀)
+gflags /p /enable MyVision.exe /full
+
+:: Normal PageHeap 활성화 (가벼움, 즉시성은 낮음)
+gflags /p /enable MyVision.exe
+
+:: 현재 PageHeap 설정 확인
+gflags /p
+
+:: 해제 (분석이 끝나면 반드시)
+gflags /p /disable MyVision.exe</code></pre>
+
+                <p>설정은 레지스트리의 <em>Image File Execution Options</em>에 기록되므로, 명령을 실행한 뒤 <strong>대상 프로세스를 새로 띄워야</strong> 적용된다. 이미 떠 있는 프로세스에는 소급 적용되지 않는다.</p>
+
+                <h3 id="ph-normal-full"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Normal vs Full PageHeap</h3>
+                <table class="cmd-table">
+                    <tr><th>구분</th><th>Full PageHeap</th><th>Normal PageHeap</th></tr>
+                    <tr><td>검출 시점</td><td>오버런하는 순간 즉시 크래시</td><td>해제 시점에 채움 패턴(fill pattern) 훼손 검사</td></tr>
+                    <tr><td>메모리 비용</td><td>매우 큼(할당마다 페이지 단위)</td><td>작음</td></tr>
+                    <tr><td>정확도</td><td>범인 코드를 직접 포착</td><td>"언젠가 망가졌다"까지만</td></tr>
+                    <tr><td>용도</td><td>재현 가능한 버그를 정밀 추적</td><td>메모리 여유 없을 때 1차 스크리닝</td></tr>
+                </table>
+
+                <p>오버런이 "버퍼 앞쪽"으로 일어나는 언더런(underrun)이 의심되면 가드 페이지를 할당 앞에 두는 옵션(<code>/full</code>에 <code>/backwards</code> 병행)도 있다. 다만 기본 동작은 뒤쪽 오버런 검출이라는 점을 기억한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>큰 이미지 버퍼를 쓰는 앱이라면 범위를 좁혀라</strong>
+                        Full PageHeap은 할당마다 최소 한 페이지를 더 쓰기 때문에, 수십 MB짜리 프레임 버퍼를 초당 수십 장 다루는 비전 애플리케이션에서는 메모리가 금방 바닥난다. <code>gflags /p /enable MyVision.exe /full /size 16 64</code>처럼 특정 크기 범위만 PageHeap 대상으로 지정하면 부담을 줄이면서 의심 구간만 집중 검사할 수 있다.
+                    </div>
+                </div>
+
+                <h2 id="appverifier"><i class="fa-solid fa-clipboard-check"></i> Application Verifier</h2>
+                <p>Application Verifier(<code>appverif.exe</code>)는 PageHeap을 포함한 런타임 검증 도구 모음이다. gflags가 PageHeap 한 가지를 켜는 단일 스위치라면, Application Verifier는 힙 검증에 더해 핸들 오용, 락 사용 오류, 위험한 API 호출까지 한꺼번에 감시한다.</p>
+
+                <p>GUI에서 대상 exe를 추가하고 <strong>Basics &gt; Heaps</strong>를 체크하면 내부적으로 Full PageHeap에 준하는 힙 검증이 켜진다. 명령줄로도 설정할 수 있다.</p>
+
+                <pre><code>:: Heaps 검사만 켜기
+appverif -enable Heaps -for MyVision.exe
+
+:: 여러 검사 켜기 (힙 + 핸들 + 락)
+appverif -enable Heaps Handles Locks -for MyVision.exe
+
+:: 전부 해제
+appverif -disable * -for MyVision.exe</code></pre>
+
+                <p>Application Verifier가 위반을 잡으면, 프로세스를 디버거에 물려 두었을 때 멈추면서 어떤 규칙을 어겼는지 알려준다. 덤프로 남았다면 콜스택에 <code>verifier!</code>로 시작하는 프레임이나 verifier stop 코드가 보인다. gflags PageHeap과 Application Verifier 중 하나만 켜면 된다. 힙만 빠르게 보려면 gflags, 핸들·락까지 종합적으로 보려면 Application Verifier를 택한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>락 검증은 5편과 이어진다</strong>
+                        Application Verifier의 Locks 검사는 크리티컬 섹션을 초기화 없이 쓰거나 잘못된 순서로 잡는 패턴을 잡아준다. 멀티스레드 비전 파이프라인의 데드락을 사전에 거르는 데 유용하다. 락과 데드락 분석은 <a href="windbg-05-deadlock-hang.html">5편</a>에서 본격적으로 다룬다.
+                    </div>
+                </div>
+
+                <h2 id="heap-cmd"><i class="fa-solid fa-terminal"></i> !heap로 범인 추적</h2>
+                <p>PageHeap을 켠 채로 재현에 성공하면, 손상이 일어나는 순간 크래시가 나면서 덤프가 떨어진다. 이제 WinDbg의 <code>!heap</code> 확장으로 그 메모리가 어떤 블록이었고 누가 할당했는지 역추적한다.</p>
+
+                <h3 id="heap-basics"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 자주 쓰는 !heap 명령</h3>
+                <table class="cmd-table">
+                    <tr><th>명령</th><th>용도</th></tr>
+                    <tr><td><code>!heap -s</code></td><td>모든 힙의 요약 정보</td></tr>
+                    <tr><td><code>!heap -p -a &lt;address&gt;</code></td><td>그 주소가 속한 힙 블록 + 할당 당시 스택 트레이스</td></tr>
+                    <tr><td><code>!heap -p -h &lt;heap&gt;</code></td><td>특정 PageHeap 힙의 블록 목록</td></tr>
+                    <tr><td><code>!address &lt;address&gt;</code></td><td>그 주소의 메모리 영역 속성(상태·보호)</td></tr>
+                </table>
+
+                <p>분석의 출발점은 "어느 주소에서 죽었는가"다. <code>!analyze -v</code>나 <code>.exr -1</code>로 fault address를 확보한 다음, 그 주소를 <code>!heap -p -a</code>에 넣는다.</p>
+
+                <h3 id="heap-read"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> !heap -p -a 출력 읽기</h3>
+                <p>PageHeap이 켜져 있으면 각 블록에 <strong>할당 당시의 콜스택</strong>이 함께 저장된다. 그래서 <code>!heap -p -a</code>가 "이 메모리를 누가 할당했나"를 그대로 보여준다. use-after-free에서 특히 강력하다. 이미 해제된 블록의 원래 주인을 찾을 수 있기 때문이다.</p>
+
+                <pre><code>0:000&gt; !heap -p -a 0x0a3f0040
+    address 0a3f0040 found in
+    _DPH_HEAP_ROOT @ 4fd1000
+    in free-ed allocation (  DPH_HEAP_BLOCK:   VirtAddr   VirtSize)
+                                    a3e0f9c:    a3f0000      2000
+    7ff... ntdll!RtlDebugFreeHeap
+    7ff... ntdll!RtlpFreeHeap
+    ...
+    Stack trace of the allocation:
+       MyVision!ImageBuffer::allocate+0x3a
+       MyVision!FrameGrabber::onFrame+0x118
+       MyVision!GrabThread::run+0x too</code></pre>
+
+                <p>여기서 읽어야 할 것은 두 가지다. 첫째, <code>in free-ed allocation</code>은 이 주소가 <strong>이미 해제된 블록</strong>임을 뜻한다. 해제된 메모리에 접근했으니 use-after-free다. 둘째, <code>Stack trace of the allocation</code>은 그 블록을 처음 할당한 코드다. 여기서는 <code>FrameGrabber::onFrame</code>이 만든 이미지 버퍼였음을 알 수 있다. 누가 너무 일찍 해제했는지, 누가 해제 뒤에 건드렸는지를 좁혀 들어가면 된다.</p>
+
+                <p>반대로 오버런이면 출력이 다르다. fault address가 <code>busy allocation</code>의 끝 직후(가드 페이지)로 잡히고, 크래시 콜스택 맨 위가 경계를 넘겨 쓴 바로 그 코드가 된다. 이 경우엔 할당 스택이 아니라 <strong>크래시 콜스택</strong>이 범인이다.</p>
+
+                <h2 id="corruption-types"><i class="fa-solid fa-list-check"></i> 손상 유형 구분</h2>
+                <p>힙 손상은 크게 세 가지다. PageHeap 환경에서 각각이 어떻게 드러나는지 알면 진단이 빨라진다.</p>
+
+                <table class="cmd-table">
+                    <tr><th>유형</th><th>정의</th><th>PageHeap에서의 증상</th></tr>
+                    <tr><td>Buffer overrun</td><td>할당 경계 너머로 쓰기</td><td>쓰는 순간 가드 페이지에서 AV. 크래시 콜스택 = 범인</td></tr>
+                    <tr><td>Use-after-free</td><td>해제 후 접근</td><td>해제된 페이지 접근 즉시 AV. <code>!heap -p -a</code>가 <code>free-ed</code> 표시</td></tr>
+                    <tr><td>Double free</td><td>같은 블록을 두 번 해제</td><td><code>RtlFreeHeap</code>에서 <code>0xC0000374</code> 또는 verifier stop</td></tr>
+                </table>
+
+                <h3 id="ct-overrun"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Buffer overrun</h3>
+                <p>가장 고전적인 손상이다. 크기 계산 실수, off-by-one, 잘못된 stride로 이미지 한 줄을 넘겨 쓰는 경우 등이 모두 여기에 든다. Full PageHeap에서는 오버런이 곧 가드 페이지 쓰기라서 즉시 잡힌다. 콜스택 맨 위를 그대로 믿어도 된다.</p>
+
+                <h3 id="ct-uaf"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Use-after-free</h3>
+                <p>멀티스레드에서 객체 수명 관리가 어긋날 때 흔하다. 한 스레드가 버퍼를 해제했는데 다른 스레드가 아직 그 포인터를 들고 있는 식이다. PageHeap이 해제된 페이지를 막아두므로 접근 즉시 AV가 나고, <code>!heap -p -a</code>의 할당 스택으로 어떤 버퍼였는지 식별한다.</p>
+
+                <h3 id="ct-double"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Double free</h3>
+                <p>같은 포인터를 두 곳에서 해제하거나, 소유권 이전을 잘못 설계했을 때 난다. <code>std::unique_ptr</code>로 소유권을 명확히 하면 상당수가 사라진다. CLAUDE.md의 스마트 포인터 정책(직접 <code>new</code>/<code>delete</code> 금지)이 이런 부류를 구조적으로 막는 안전장치다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>예방이 분석보다 싸다</strong>
+                        RAII와 스마트 포인터로 수명을 코드 구조에 묶어 두면 double free와 use-after-free의 큰 줄기가 사라진다. PageHeap은 이미 새어 나간 버그를 잡는 도구이고, 처음부터 새지 않게 하는 건 설계의 몫이다.
+                    </div>
+                </div>
+
+                <h2 id="mv-case"><i class="fa-solid fa-industry"></i> 머신비전 실전 시나리오</h2>
+                <p>이론을 비전 SDK 맥락으로 옮겨 본다. 고객사에서 "장시간 검사를 돌리면 가끔 죽는다"는 제보가 들어왔다고 하자.</p>
+
+                <h3 id="mv-overrun"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 시나리오 1 — ROI 복사 오버런</h3>
+                <div class="debug-section problem">
+                    <div class="debug-label"><i class="fa-solid fa-circle-xmark"></i> 증상</div>
+                    <p>특정 해상도에서만, 그것도 며칠에 한 번씩 검사 프로세스가 할당자 내부에서 죽는다. 덤프의 예외 코드는 <code>0xC0000374</code>, 콜스택 맨 위는 매번 다른 위치다.</p>
+                </div>
+                <div class="debug-section cause">
+                    <div class="debug-label"><i class="fa-solid fa-magnifying-glass"></i> 원인</div>
+                    <p>ROI를 잘라 별도 버퍼로 복사하는 코드에서 <strong>대상 버퍼의 stride를 소스 기준으로 계산</strong>했다. 폭이 4의 배수가 아닌 해상도에서 행마다 몇 바이트씩 경계를 넘겨 썼고, 인접 힙 블록의 헤더가 조금씩 망가졌다.</p>
+                </div>
+                <div class="debug-section solution">
+                    <div class="debug-label"><i class="fa-solid fa-circle-check"></i> 추적</div>
+                    <p>가상의 입력으로 Full PageHeap을 켠 진단 빌드를 재현 장비에 올렸다. 잘못 넘겨 쓰는 첫 행에서 즉시 AV가 났고, 크래시 콜스택 맨 위가 복사 루프를 정확히 가리켰다. 정적 덤프로는 며칠을 헤맬 버그가 PageHeap에서는 한 번에 잡혔다.</p>
+                </div>
+
+                <h3 id="mv-uaf"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 시나리오 2 — grab 버퍼 use-after-free</h3>
+                <p>두 번째는 멀티스레드 수명 문제다. grab 스레드가 카메라(또는 GenICam 버퍼)에서 프레임을 받아 큐에 올리고, process 스레드가 꺼내 검사한다. 의사코드로 단순화하면 다음과 같다.</p>
+
+                <pre><code>// grab 스레드
+auto frame = bufferPool.acquire();   // 풀에서 버퍼 획득
+fillFromCamera(frame);
+queue.push(frame);
+// ... 잘못된 지점: 큐가 가득 차면 오래된 프레임을 풀로 반납
+if (queue.full())
+    bufferPool.release(queue.popOldest());   // 아직 process가 보고 있을 수 있다
+
+// process 스레드
+auto frame = queue.pop();
+runInspection(frame);                // release된 버퍼를 참조 → use-after-free</code></pre>
+
+                <div class="debug-section problem">
+                    <div class="debug-label"><i class="fa-solid fa-circle-xmark"></i> 증상</div>
+                    <p>고부하(고속 grab)에서만 간헐적으로 access violation. 부하가 낮으면 재현이 안 된다. 타이밍 의존이라 로그를 추가하면 증상이 옮겨 다닌다.</p>
+                </div>
+                <div class="debug-section cause">
+                    <div class="debug-label"><i class="fa-solid fa-magnifying-glass"></i> 원인</div>
+                    <p>큐가 가득 찼을 때 오래된 프레임을 풀로 반납하는데, 그 프레임을 <strong>process 스레드가 아직 검사 중</strong>일 수 있다. grab이 release한 버퍼를 process가 계속 읽어 use-after-free가 된다.</p>
+                </div>
+                <div class="debug-section solution">
+                    <div class="debug-label"><i class="fa-solid fa-circle-check"></i> 추적</div>
+                    <p>Full PageHeap을 켜자 release된 페이지를 process가 건드리는 순간 즉시 AV. <code>!heap -p -a &lt;faultAddr&gt;</code>가 <code>free-ed allocation</code>으로 표시하고, 할당 스택이 grab 스레드의 <code>bufferPool.acquire</code>를 가리켰다. 버퍼 수명이 grab과 process 사이에서 어긋났음을 확정했다. 근본 해결은 참조 카운트(<code>std::shared_ptr</code>)로 검사가 끝나야만 반납되게 하는 것이다.</p>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 시나리오는 5편과 짝을 이룬다</strong>
+                        같은 grab↔process 파이프라인에서, 수명 문제는 use-after-free(이번 편)로, 락 순서 문제는 데드락(<a href="windbg-05-deadlock-hang.html">5편</a>)으로 드러난다. 멀티스레드 버그는 한 가지 도구로 끝나지 않는다. PageHeap과 스레드 분석을 함께 들고 있어야 한다.
+                    </div>
+                </div>
+
+                <h2 id="caution"><i class="fa-solid fa-triangle-exclamation"></i> PageHeap 운영 주의</h2>
+                <p>PageHeap은 강력하지만 공짜가 아니다. 운영 환경에 함부로 켜면 새로운 문제를 만든다.</p>
+
+                <ul>
+                    <li><strong>메모리 폭증</strong> — Full PageHeap은 할당마다 페이지를 더 쓴다. 큰 프레임 버퍼를 대량으로 다루는 비전 앱은 메모리가 빠르게 고갈될 수 있다. 크기 범위 한정(<code>/size</code>)이나 Normal PageHeap으로 완화한다.</li>
+                    <li><strong>성능 저하</strong> — 페이지 단위 할당과 보호 전환으로 처리량이 떨어진다. 실시간 검사 타이밍에 영향을 줄 수 있으니 성능 측정용으로는 쓰지 않는다.</li>
+                    <li><strong>상시 적용 금지</strong> — 고객 운영 환경에 PageHeap을 켜둔 채 두면 안 된다. 재현 시도용으로 한정하고, 끝나면 반드시 <code>gflags /p /disable</code>로 해제한다.</li>
+                    <li><strong>해제 확인</strong> — 설정이 레지스트리에 남기 때문에, 해제했는지 <code>gflags /p</code>로 확인하는 습관을 들인다. 켜둔 걸 잊으면 "왜 이 PC만 느리지"의 원인이 된다.</li>
+                </ul>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>고객사에 적용할 때의 원칙</strong>
+                        고객 장비에 PageHeap을 켜야 할 때는 별도 진단 빌드/세션으로 한정하고, 메모리 여유를 먼저 확인한다. <code>/size</code>로 의심 구간만 좁히고, 재현 후 즉시 해제한다. "잠깐 켜고 잊은" PageHeap이 또 다른 장애 신고로 돌아오는 일을 막아야 한다.
+                    </div>
+                </div>
+
+                <div class="result-box">
+                    <div class="result-icon"><i class="fa-solid fa-circle-check"></i></div>
+                    <h3>이번 편 요약</h3>
+                    <p>힙 손상은 콜스택이 거짓말을 한다. Full PageHeap으로 손상을 발생 즉시 크래시로 바꾸고, <code>!heap -p -a</code>의 할당 스택으로 범인을 추적한다.</p>
+                </div>
+
+                <p>다음 <a href="windbg-05-deadlock-hang.html">5편</a>에서는 프로세스가 죽지 않고 멈추는 또 다른 난제, <strong>데드락과 행(hang)</strong>을 다룬다. 크래시가 없으니 덤프부터 직접 떠야 하고, 모든 스레드의 콜스택을 한꺼번에 읽어 서로를 기다리는 사이클을 찾아내는 분석이다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료 · 시리즈</div>
+                    <ul>
+                        <li><a href="windbg-01-dump-types.html">1편 — Windows 크래시 덤프: 종류와 생성 설정</a></li>
+                        <li><a href="windbg-02-setup.html">2편 — WinDbg 입문: 분석 환경 세팅과 심볼</a></li>
+                        <li><a href="windbg-03-crash-analysis.html">3편 — 크래시 원인 분석 실전: 콜스택과 !analyze</a></li>
+                        <li><a href="windbg-05-deadlock-hang.html">5편 — 데드락·행(Hang) 분석: 멀티스레드 추적</a></li>
+                        <li><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/gflags-and-pageheap" target="_blank" rel="noopener">Microsoft Learn — GFlags and PageHeap</a></li>
+                        <li><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/application-verifier" target="_blank" rel="noopener">Microsoft Learn — Application Verifier</a></li>
+                        <li><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/-heap" target="_blank" rel="noopener">Microsoft Learn — !heap 확장 명령</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('debug');
+    renderPostNav('debug');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

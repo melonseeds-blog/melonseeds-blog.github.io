@@ -1,0 +1,490 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>크래시 원인 분석 실전 — 콜스택과 !analyze - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warning { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warning i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .references li a { color: var(--primary); text-decoration: none; }
+        .references li a:hover { text-decoration: underline; }
+        .cmd-caption { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; margin: 18px 0 -8px; display: flex; align-items: center; gap: 6px; font-family: 'Pretendard', sans-serif; }
+        .cmd-caption i { color: var(--melon); }
+        .excode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin: 16px 0; }
+        .excode-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; border-top: 3px solid var(--melon); }
+        .excode-card .ec-code { font-family: 'Consolas', monospace; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); }
+        .excode-card .ec-name { font-size: 0.82rem; font-weight: 600; color: var(--text); margin: 2px 0 6px; }
+        .excode-card .ec-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+        @media (max-width: 900px) { .floating-toc-inner { padding: 0 16px; } }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#analyze-v" data-section="analyze-v">!analyze -v</a><a href="#callstack" data-section="callstack">콜스택 읽기</a><a href="#exception-patterns" data-section="exception-patterns">예외 패턴</a><a href="#find-my-code" data-section="find-my-code">내 코드 찾기</a><a href="#mv-case" data-section="mv-case">머신비전 사례</a><a href="#wrap-up" data-section="wrap-up">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">트러블슈팅</span>
+                </div>
+                <h1>크래시 원인 분석 실전 — 콜스택과 !analyze</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-16</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 11분 분량</span>
+                    <span><i class="fa-solid fa-bug"></i> 트러블슈팅</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li><code>!analyze -v</code> 출력에서 꼭 봐야 할 네 줄 — 예외 코드·FAULTING_IP·STACK_TEXT·MODULE_NAME</li>
+                        <li>콜스택 명령 <code>k</code> / <code>kb</code> / <code>kn</code> / <code>kp</code>의 차이와 프레임 해석</li>
+                        <li>대표 예외 패턴 — Access Violation, Stack Overflow, C++ 예외</li>
+                        <li><code>lm</code>·<code>lmvm</code>·<code>.ecxr</code>·<code>r</code>·<code>dv</code>로 내 모듈을 찾는 법</li>
+                        <li>이미지 버퍼 Access Violation 시나리오로 콜스택 해석 시연</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#analyze-v">!analyze -v 읽는 법</a></li>
+                        <li><a href="#callstack">콜스택 읽기 — k 계열 명령</a></li>
+                        <li><a href="#exception-patterns">주요 예외 패턴</a></li>
+                        <li><a href="#find-my-code">콜스택에서 내 코드 찾기</a></li>
+                        <li><a href="#mv-case">머신비전 실전 시나리오</a></li>
+                        <li><a href="#wrap-up">정리와 시리즈 마무리</a></li>
+                    </ol>
+                </div>
+
+                <p><a href="windbg-01-dump-types.html">1편</a>에서 덤프를 받고, <a href="windbg-02-setup.html">2편</a>에서 WinDbg와 심볼을 맞췄다. 이제 본론이다. 덤프를 열고 <strong>"왜 죽었는가"</strong>를 짚어낸다. 핵심은 두 가지다. 어떤 종류의 사고였는지(<strong>예외 코드</strong>), 그리고 사고 직전에 어떤 경로로 거기까지 왔는지(<strong>콜스택</strong>). 이 둘을 읽으면 대부분의 크래시는 윤곽이 잡힌다.</p>
+
+                <h2 id="analyze-v"><i class="fa-solid fa-magnifying-glass-chart"></i> !analyze -v 읽는 법</h2>
+                <p><code>!analyze -v</code>는 출력이 길다. 처음 보면 압도되지만, 실제로 집중해서 봐야 할 줄은 몇 개뿐이다. 아래는 전형적인 출력을 핵심만 추린 예시다.</p>
+<pre><code>0:000&gt; !analyze -v
+*******************************************************************************
+*                        Exception Analysis                                   *
+*******************************************************************************
+
+EXCEPTION_CODE: (NTSTATUS) 0xc0000005 - ... 0x... 명령이 0x... 메모리를 참조했습니다.
+
+FAULTING_IP:
+VisionCore!ImageBuffer::At+2a
+00007ff8`9c2e567a 0fb60401        movzx   eax,byte ptr [rax+rax]
+
+EXCEPTION_RECORD:  (.exr -1)
+ExceptionAddress: 00007ff89c2e567a (VisionCore!ImageBuffer::At+0x000000000000002a)
+   ExceptionCode: c0000005 (Access violation)
+  ExceptionFlags: 00000000
+NumberParameters: 2
+   Parameter[0]: 0000000000000000   &lt;- 읽기(0) 시도
+   Parameter[1]: 0000000000000000   &lt;- 접근하려던 주소 = 0 (널!)
+
+PROCESS_NAME:  MyVisionApp.exe
+
+STACK_TEXT:
+00 VisionCore!ImageBuffer::At+0x2a
+01 VisionCore!GaussianFilter::Apply+0x1f4
+02 VisionCore!ProcessBlock::Execute+0x88
+03 HostApp!Pipeline::Run+0x143
+04 HostApp!main+0x66
+
+MODULE_NAME: VisionCore
+IMAGE_NAME:  VisionCore.dll
+FAILURE_BUCKET_ID: NULL_POINTER_READ_c0000005_VisionCore.dll!ImageBuffer::At</code></pre>
+
+                <p>이 출력에서 반드시 확인하는 네 가지는 다음과 같다.</p>
+                <table>
+                    <tr><th>필드</th><th>의미</th><th>이 예시에서</th></tr>
+                    <tr><td><strong>EXCEPTION_CODE</strong></td><td>사고의 종류</td><td>0xc0000005 — Access Violation</td></tr>
+                    <tr><td><strong>FAULTING_IP</strong></td><td>크래시가 난 기계 명령 위치</td><td>ImageBuffer::At 함수 내부</td></tr>
+                    <tr><td><strong>STACK_TEXT</strong></td><td>그 지점까지 온 호출 경로</td><td>Pipeline → Execute → Apply → At</td></tr>
+                    <tr><td><strong>MODULE_NAME</strong></td><td>의심 모듈</td><td>VisionCore (우리 모듈!)</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>FAILURE_BUCKET_ID는 요약 한 줄이다</strong>
+                        맨 아래 <code>FAILURE_BUCKET_ID</code>는 WinDbg가 위 정보를 한 줄로 압축한 분류 키다. 위 예시의 <code>NULL_POINTER_READ_c0000005_VisionCore.dll!ImageBuffer::At</code>만 봐도 "VisionCore의 ImageBuffer::At에서 널 포인터 읽기로 죽었다"가 그대로 읽힌다. 여러 덤프를 같은 버킷으로 묶어 "동일 원인인지" 판단할 때도 유용하다.
+                    </div>
+                </div>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>!analyze의 MODULE_NAME을 맹신하지 않는다</strong>
+                        <code>!analyze -v</code>는 휴리스틱으로 "범인"을 추정한다. 그런데 진짜 원인은 우리 모듈인데 크래시는 시스템 DLL 안에서 났거나, 반대로 시스템 모듈이 지목됐지만 실제로는 우리가 넘긴 잘못된 인자가 원인인 경우도 많다. <code>!analyze</code>의 결론은 <strong>출발점</strong>으로 삼고, 콜스택을 직접 읽어 검증한다.
+                    </div>
+                </div>
+
+                <h2 id="callstack"><i class="fa-solid fa-list-ol"></i> 콜스택 읽기 — k 계열 명령</h2>
+                <p>콜스택(call stack)은 "지금 이 함수에 오기까지 거쳐 온 호출 경로"다. 크래시 분석의 중심이며, <code>k</code> 계열 명령으로 본다. 접미사에 따라 정보량이 달라진다.</p>
+
+                <h3 id="k-commands"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> k / kb / kn / kp 차이</h3>
+                <table>
+                    <tr><th>명령</th><th>보여 주는 것</th><th>쓰는 상황</th></tr>
+                    <tr><td><code>k</code></td><td>기본 콜스택 (Child-SP, RetAddr, Call Site)</td><td>전체 흐름을 빠르게 훑을 때</td></tr>
+                    <tr><td><code>kb</code></td><td>위 + 인자 앞 3개(스택 기준)</td><td>넘어온 값을 가늠할 때</td></tr>
+                    <tr><td><code>kn</code></td><td>위 + 프레임 번호</td><td>특정 프레임으로 이동(<code>.frame</code>)하기 전</td></tr>
+                    <tr><td><code>kp</code></td><td>완전한 함수 인자(이름·값)</td><td>private pdb가 있을 때 정밀 분석</td></tr>
+                    <tr><td><code>kv</code></td><td>위 + 호출 규약·FPO 정보</td><td>스택이 의심스러울 때</td></tr>
+                </table>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>x64에서 kb 인자는 참고만</strong>
+                        <code>kb</code>가 보여 주는 인자는 x86 시절 스택 전달 방식을 전제로 한다. x64는 앞쪽 인자를 레지스터로 전달하므로, <code>kb</code>의 인자 3개가 실제 호출 인자와 다를 수 있다. x64에서 인자를 정확히 보려면 private pdb를 갖춘 상태에서 <code>kp</code>를 쓰거나, <code>.frame</code>으로 해당 프레임에 들어가 <code>dv</code>로 확인한다.
+                    </div>
+                </div>
+
+                <h3 id="frame-interpret"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 스택 프레임 해석</h3>
+                <p><code>kn</code> 출력의 한 줄을 뜯어보면 콜스택 읽는 법이 잡힌다.</p>
+<pre><code>0:000&gt; kn
+ # Child-SP          RetAddr           Call Site
+00 000000ab`12dff8a0 00007ff8`9c2e1abc VisionCore!ImageBuffer::At+0x2a
+01 000000ab`12dff8e0 00007ff8`9c2e0d44 VisionCore!GaussianFilter::Apply+0x1f4
+02 000000ab`12dff920 00007ff8`9c2dffaa VisionCore!ProcessBlock::Execute+0x88
+03 000000ab`12dff990 00007ff7`aabb1234 HostApp!Pipeline::Run+0x143
+04 000000ab`12dffa10 00007ff7`aabb0066 HostApp!main+0x66</code></pre>
+                <ul>
+                    <li><strong>맨 위(프레임 00)가 크래시가 난 지점</strong>이다. 여기서는 <code>ImageBuffer::At</code> 함수 내부 +0x2a 위치다.</li>
+                    <li>아래로 내려갈수록 "그 함수를 부른 쪽"이다. <code>main</code> → <code>Pipeline::Run</code> → <code>Execute</code> → <code>Apply</code> → <code>At</code> 순으로 호출이 흘렀고, 가장 깊은 <code>At</code>에서 터졌다.</li>
+                    <li><code>모듈!함수+0x오프셋</code> 형식에서 <strong>오프셋</strong>은 함수 시작점부터의 거리다. 줄번호까지 보려면 private pdb가 필요하다.</li>
+                    <li><strong>Child-SP</strong>는 그 프레임의 스택 포인터, <strong>RetAddr</strong>은 그 함수가 끝나면 돌아갈 주소다.</li>
+                </ul>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>읽는 방향 — 위에서 아래로 "왜"를 묻는다</strong>
+                        맨 위 프레임이 "무엇이 터졌나"이고, 한 줄씩 내려가며 "누가 그걸 불렀나 → 왜 그런 인자로 불렀나"를 추적한다. 크래시는 <code>At</code>에서 났지만, 원인은 그 위 어딘가(예: <code>Apply</code>가 잘못된 좌표를 넘겼다)에 있는 경우가 대부분이다. 그래서 맨 위만 보고 끝내지 않는다.
+                    </div>
+                </div>
+
+                <h2 id="exception-patterns"><i class="fa-solid fa-bolt"></i> 주요 예외 패턴</h2>
+                <p>예외 코드만 봐도 사고 유형이 절반은 좁혀진다. 현장에서 자주 만나는 세 가지를 정리한다.</p>
+
+                <div class="excode-grid">
+                    <div class="excode-card">
+                        <div class="ec-code">0xC0000005</div>
+                        <div class="ec-name">Access Violation</div>
+                        <div class="ec-desc">접근 권한 없는 메모리 참조. 널 포인터, 해제된 메모리, 범위 밖 인덱스가 주범이다.</div>
+                    </div>
+                    <div class="excode-card">
+                        <div class="ec-code">0xC00000FD</div>
+                        <div class="ec-name">Stack Overflow</div>
+                        <div class="ec-desc">스택 가드 페이지 침범. 거의 무한 재귀 또는 과도한 스택 할당이 원인이다.</div>
+                    </div>
+                    <div class="excode-card">
+                        <div class="ec-code">0xE06D7363</div>
+                        <div class="ec-name">C++ Exception</div>
+                        <div class="ec-desc">C++ throw가 처리되지 않음. 매직 넘버 'msc'에서 유래한 코드다.</div>
+                    </div>
+                </div>
+
+                <h3 id="access-violation"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Access Violation (0xC0000005)</h3>
+                <p>가장 흔한 크래시다. 허용되지 않은 메모리를 건드렸을 때 발생한다. <code>!analyze -v</code>의 <code>EXCEPTION_RECORD</code>에 담긴 두 파라미터가 결정적 단서다.</p>
+                <ul>
+                    <li><strong>Parameter[0]</strong> — 접근 유형. <code>0</code>=읽기, <code>1</code>=쓰기, <code>8</code>=실행(DEP 위반)을 뜻한다.</li>
+                    <li><strong>Parameter[1]</strong> — 접근하려던 주소.</li>
+                </ul>
+                <p>이 두 값으로 원인 유형을 좁힌다.</p>
+                <ul>
+                    <li>주소가 <code>0</code> 또는 그 근처(<code>0x00000008</code> 등) → <strong>널 포인터 역참조</strong>일 가능성이 높다. 객체 포인터가 null인 채로 멤버에 접근한 경우다.</li>
+                    <li>접근 유형이 <strong>쓰기(1)</strong>이고 주소가 그럴듯한 큰 값 → 버퍼 경계를 넘어 <strong>범위 밖 쓰기(out-of-bounds write)</strong>일 수 있다.</li>
+                    <li>주소가 한때 유효했을 법한 값인데 지금은 죽어 있음 → <strong>해제 후 사용(use-after-free)</strong>이나 댕글링 포인터를 의심한다.</li>
+                </ul>
+
+                <h3 id="stack-overflow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Stack Overflow (0xC00000FD)</h3>
+                <p>스택을 다 써 버려 가드 페이지를 침범하면 발생한다. 현장에서는 대부분 <strong>무한 재귀</strong>가 원인이다. 콜스택을 보면 진단이 즉각적이다 — <strong>같은 함수들이 끝없이 반복</strong>되기 때문이다.</p>
+<pre><code>0:000&gt; k
+ # Call Site
+00 VisionCore!ContourNode::Traverse+0x33
+01 VisionCore!ContourNode::Traverse+0x33
+02 VisionCore!ContourNode::Traverse+0x33
+03 VisionCore!ContourNode::Traverse+0x33
+...
+(동일 프레임이 수천 줄 반복)</code></pre>
+                <p>이런 패턴이 보이면 종료 조건이 빠진 재귀를 의심한다. 콜스택이 너무 길어 잘리면 <code>kn 200</code>처럼 프레임 수를 지정해 본다.</p>
+
+                <h3 id="cpp-exception"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> C++ 예외 (0xE06D7363)</h3>
+                <p>코드 <code>0xE06D7363</code>은 C++ <code>throw</code>로 던져진 예외가 끝까지 처리되지 않아 프로세스가 종료된 경우다. 끝의 <code>6D7363</code>이 ASCII로 'msc'(Microsoft C++)라서 외워 두면 바로 알아본다. 이 경우 콜스택의 위쪽에 <code>RaiseException</code>, <code>_CxxThrowException</code> 같은 런타임 함수가 보이고, 그 아래로 실제 <code>throw</code>를 일으킨 우리 함수가 나온다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>어떤 예외가 던져졌나</strong>
+                        C++ 예외 덤프에서는 던져진 예외 객체의 타입을 확인하는 것이 핵심이다. <code>.exr -1</code>로 예외 레코드를 보고, 콜스택 아래쪽의 우리 함수를 짚으면 "어떤 검사 단계에서 무슨 예외를 던졌는지"가 드러난다. 우리 SDK가 내부 예외를 API 경계에서 <code>ErrorCode</code>로 변환하도록 설계돼 있다면, 이 크래시는 그 경계가 뚫렸다는 신호이기도 하다.
+                    </div>
+                </div>
+
+                <h2 id="find-my-code"><i class="fa-solid fa-crosshairs"></i> 콜스택에서 내 코드 찾기</h2>
+                <p>콜스택에는 우리 모듈과 시스템 DLL이 뒤섞여 나온다. 분석의 요령은 <strong>그 사이에서 "우리 코드"를 빠르게 식별</strong>하는 것이다.</p>
+
+                <h3 id="lm-commands"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> lm / lmvm — 모듈 식별과 버전 확인</h3>
+                <p><code>lm</code>은 로드된 모듈 목록을, <code>lmvm &lt;모듈&gt;</code>은 특정 모듈의 상세 정보를 보여 준다. 우리 모듈의 <strong>버전이 덤프와 일치하는지</strong> 확인하는 핵심 명령이다.</p>
+<pre><code>:: 로드된 모듈 목록 — 심볼 상태도 함께 표시
+0:000&gt; lm
+
+:: 우리 모듈 상세 — 경로, 타임스탬프, 버전, pdb 매칭
+0:000&gt; lmvm VisionCore
+    Image path: C:\Program Files\MyVision\VisionCore.dll
+    Image name: VisionCore.dll
+    Timestamp:  ...
+    File version:     1.4.2.0
+    Symbol file: C:\ProductSymbols\VisionCore.pdb
+    Loaded symbol image file: VisionCore.dll</code></pre>
+                <p>시스템 모듈은 익숙해지면 한눈에 걸러진다. <code>ntdll</code>, <code>kernel32</code>, <code>kernelbase</code>, <code>ucrtbase</code>, <code>vcruntime140</code>, <code>msvcp140</code> 등은 Windows·런타임 모듈이다. 콜스택에서 이들을 제외하고 남는 <code>VisionCore</code>, <code>HostApp</code> 같은 이름이 우리가 봐야 할 코드다.</p>
+
+                <h3 id="context-commands"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> .ecxr / r / dv — 사고 현장으로 이동</h3>
+                <p>덤프를 열면 디버거의 현재 컨텍스트가 예외 지점이 아닐 수 있다. <code>.ecxr</code>로 <strong>예외가 발생한 바로 그 컨텍스트</strong>로 이동한 뒤 콜스택과 레지스터, 지역 변수를 본다.</p>
+<pre><code>:: 예외 컨텍스트 레코드로 이동 (사고 현장으로 점프)
+0:000&gt; .ecxr
+
+:: 그 시점의 레지스터 — rax 등에서 문제 포인터를 추적
+0:000&gt; r
+
+:: n번 프레임으로 들어간 뒤 지역 변수 확인 (private pdb 필요)
+0:000&gt; .frame 1
+0:000&gt; dv
+            this = 0x000001f2`33aa0090
+        srcImage = 0x000001f2`33aa0100
+       kernelSize = 5
+            width = 2448
+           height = 0          &lt;- 의심스러운 값!</code></pre>
+                <p><code>dv</code>(display variables)는 private pdb가 있어야 지역 변수를 이름과 값으로 보여 준다. 위처럼 <code>height = 0</code> 같은 값이 잡히면, 콜스택만으로는 안 보이던 "왜"의 실마리가 풀린다. 변수의 타입 구조를 더 파고들 때는 <code>dt</code>(display type)를 함께 쓴다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>dv가 안 보이면 풀 덤프 + private pdb를 확인</strong>
+                        <code>dv</code>로 지역 변수가 안 나오거나 <code>&lt;value unavailable&gt;</code>로 뜬다면, 미니덤프라 메모리가 없거나(<a href="windbg-01-dump-types.html">1편</a> 참고) private pdb가 아닌 export 심볼만 잡힌 상태(<a href="windbg-02-setup.html">2편</a> 참고)다. 변수 값까지 봐야 하는 분석에서 1·2편의 준비가 그대로 효력을 발휘한다.
+                    </div>
+                </div>
+
+                <h2 id="mv-case"><i class="fa-solid fa-microchip"></i> 머신비전 실전 시나리오</h2>
+                <p>지금까지의 명령을 하나의 가상 사례로 엮어 본다. 고객사 제보는 이랬다고 하자. <em>"특정 카메라로 라인 검사 중 가끔 프로그램이 그냥 꺼진다. 항상은 아니고 어쩌다 한 번."</em> WER LocalDumps로 풀 덤프를 받아 열었다.</p>
+
+                <h3 id="case-step1"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1단계 — !analyze -v로 큰 그림</h3>
+                <p>예외 코드는 <code>0xC0000005</code>(Access Violation), 접근 유형은 <strong>쓰기(Parameter[0]=1)</strong>, 의심 모듈은 <code>VisionCore</code>였다. 콜스택은 다음과 같았다.</p>
+<pre><code>0:000&gt; .ecxr
+0:000&gt; kn
+ # Call Site
+00 VisionCore!ImageBuffer::SetPixel+0x41
+01 VisionCore!ThresholdFilter::Apply+0x2da
+02 VisionCore!ProcessBlock::Execute+0x88
+03 HostApp!InspectionPipeline::RunFrame+0x1c7
+04 HostApp!CameraGrabThread::OnFrame+0x95</code></pre>
+
+                <h3 id="case-step2"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 2단계 — 콜스택 해석</h3>
+                <p>맨 위는 <code>ImageBuffer::SetPixel</code>, 쓰기 도중 크래시. 호출 경로는 카메라 프레임 콜백(<code>OnFrame</code>)에서 시작해 검사 파이프라인을 거쳐 <code>ThresholdFilter</code>가 픽셀을 쓰다가 터졌다. "쓰기 + 범위 밖 주소"는 <strong>버퍼 경계를 넘은 쓰기</strong>의 전형이다.</p>
+
+                <h3 id="case-step3"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 3단계 — dv로 변수 확인</h3>
+                <p>풀 덤프라 지역 변수를 볼 수 있었다. <code>ThresholdFilter::Apply</code> 프레임으로 들어가 <code>dv</code>를 실행했다.</p>
+<pre><code>0:000&gt; .frame 1
+0:000&gt; dv
+        this = 0x000001f2`33aa0090
+    srcImage = 0x000001f2`33aa0100
+       width = 2448
+      height = 2050        &lt;- 버퍼가 가정한 높이
+      stride = 2448
+          y = 2049
+          x = 0
+0:000&gt; dt VisionCore!ImageBuffer 0x000001f2`33aa0100
+   +0x010 m_width  : 0n2448
+   +0x014 m_height : 0n2048   &lt;- 실제 버퍼 높이!</code></pre>
+                <p>여기서 모순이 드러난다. 필터는 <code>height = 2050</code>을 전제로 루프를 돌았는데, 실제 <code>ImageBuffer</code>의 <code>m_height</code>는 <code>2048</code>이었다. 2048 높이로 잡힌 버퍼에 <code>y = 2049</code> 행을 쓰려다 경계를 넘어 Access Violation이 난 것이다.</p>
+
+                <h3 id="case-step4"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 4단계 — 결론과 재현 조건</h3>
+                <p>"가끔만" 죽는 이유도 설명된다. 대부분의 프레임은 높이가 일치하지만, 특정 트리거 타이밍에서 <strong>이전 해상도 설정값(2050)으로 필터가 돌고 버퍼는 새 해상도(2048)로 재할당된</strong> 한 프레임에서만 어긋난다. 즉 카메라 해상도 변경과 버퍼 재할당 사이의 경합(race)이 의심된다. 분석 결과를 다음처럼 정리해 개발팀과 고객에게 전달한다.</p>
+                <ul>
+                    <li><strong>증상</strong> — 라인 검사 중 간헐적 크래시</li>
+                    <li><strong>직접 원인</strong> — <code>ImageBuffer::SetPixel</code>에서 범위 밖 쓰기(0xC0000005, write)</li>
+                    <li><strong>근본 원인</strong> — 필터가 사용한 높이(2050)와 버퍼 실제 높이(2048) 불일치, 해상도 변경 시점의 경합 추정</li>
+                    <li><strong>재현 조건</strong> — 해상도 변경 직후 첫 프레임</li>
+                    <li><strong>조치 방향</strong> — 필터 진입 시 버퍼의 실제 <code>m_width</code>/<code>m_height</code>로 경계 검증, 해상도 변경과 버퍼 재할당의 동기화</li>
+                </ul>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>덤프가 "재현 없는 재현"을 만든다</strong>
+                        개발 PC에서 한 번도 재현 못 한 문제였지만, 풀 덤프 하나로 <strong>버퍼의 실제 멤버 값</strong>까지 확인해 근본 원인을 좁혔다. 이것이 덤프 분석의 힘이다. 콜스택으로 "어디서"를, 변수 값으로 "왜"를 메우면, 현장에 가지 않고도 원인에 도달한다.
+                    </div>
+                </div>
+
+                <h2 id="wrap-up"><i class="fa-solid fa-flag-checkered"></i> 정리와 시리즈 마무리</h2>
+                <p>세 편에 걸친 흐름을 다시 한 줄로 잇는다.</p>
+                <ul>
+                    <li><a href="windbg-01-dump-types.html"><strong>1편</strong></a> — 사용자 모드 덤프를 이해하고, WER LocalDumps·ProcDump로 현장에서 받아온다. 제품 버전을 함께 받는다.</li>
+                    <li><a href="windbg-02-setup.html"><strong>2편</strong></a> — WinDbg를 설치하고, OS 심볼은 공개 서버로, 우리 모듈은 버전별 pdb로 맞춘다.</li>
+                    <li><strong>3편(이 글)</strong> — <code>!analyze -v</code>로 예외 코드·콜스택을 읽고, <code>k</code>/<code>lmvm</code>/<code>.ecxr</code>/<code>dv</code>로 우리 코드의 원인을 짚는다.</li>
+                </ul>
+                <p>실무에서 가장 중요한 습관은 단순하다. <strong>"예외 코드로 유형을 좁히고, 콜스택으로 위치를 찾고, 변수 값으로 이유를 메운다."</strong> 이 순서를 지키면 대부분의 크래시는 원인까지 추적된다. 그리고 그 출발점은 늘 <strong>좋은 덤프와 맞는 심볼</strong>이라는 것을, 1·2편이 받쳐 준다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>다음 단계</strong>
+                        여기까지가 "크래시 원인 분석"의 기본기다. 한 걸음 더 들어가면 힙 손상(<code>!heap</code>, PageHeap)과 데드락·행(멀티스레드 추적) 분석이 기다린다. 같은 트러블슈팅 시리즈에서 이어 다룬다. 우선은 이 세 편의 흐름을 실제 덤프 하나로 처음부터 끝까지 따라 해 보는 것을 권한다.
+                    </div>
+                </div>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료 &amp; 시리즈</div>
+                    <ul>
+                        <li><a href="windbg-01-dump-types.html">1편 — Windows 크래시 덤프: 종류와 생성 설정</a> : 풀 덤프가 있어야 변수 값을 본다</li>
+                        <li><a href="windbg-02-setup.html">2편 — WinDbg 입문: 분석 환경 세팅과 심볼</a> : private pdb가 있어야 dv가 동작한다</li>
+                        <li><a href="cpp-image-buffer-design.html">C++ 이미지 버퍼 클래스 설계</a> : 사례에 등장한 ImageBuffer의 width/height 멤버 설계</li>
+                        <li><a href="cpp-smart-pointers.html">스마트 포인터 깊이 보기</a> : use-after-free·댕글링 포인터를 애초에 줄이는 소유권 설계</li>
+                        <li><a href="https://learn.microsoft.com/windows-hardware/drivers/debuggercmds/-analyze" target="_blank" rel="noopener">Microsoft Learn — !analyze</a> : 자동 분석 확장 명령 레퍼런스</li>
+                        <li><a href="https://learn.microsoft.com/windows-hardware/drivers/debuggercmds/k--kb--kc--kd--kp--kp--kv--display-stack-backtrace-" target="_blank" rel="noopener">Microsoft Learn — k* (Display Stack Backtrace)</a> : k 계열 명령 공식 문서</li>
+                        <li><a href="https://learn.microsoft.com/windows-hardware/drivers/debuggercmds/-ecxr--display-exception-context-record-" target="_blank" rel="noopener">Microsoft Learn — .ecxr</a> : 예외 컨텍스트 레코드로 이동</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('debug');
+    renderPostNav('debug');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
