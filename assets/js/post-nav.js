@@ -63,6 +63,7 @@ const POST_NAV_DATA = {
         { file: 'book-learning-opencv.html', title: 'Learning OpenCV — Bradski & Kaehler' },
         { file: 'book-deep-learning.html', title: 'Deep Learning — Goodfellow·Bengio·Courville' },
         { file: 'book-hands-on-ml.html', title: 'Hands-On Machine Learning — Aurélien Géron' },
+        { file: 'book-missing-readme.html', title: '개발자 온보딩 가이드 (The Missing README)' },
     ],
     'dev-theory': [
         { file: 'theory-01-oop-fundamentals.html', title: '객체지향 4대 특성' },
