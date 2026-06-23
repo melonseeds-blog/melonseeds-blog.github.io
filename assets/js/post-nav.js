@@ -64,6 +64,8 @@ const POST_NAV_DATA = {
         { file: 'book-deep-learning.html', title: 'Deep Learning — Goodfellow·Bengio·Courville' },
         { file: 'book-hands-on-ml.html', title: 'Hands-On Machine Learning — Aurélien Géron' },
         { file: 'book-missing-readme.html', title: '개발자 온보딩 가이드 (The Missing README)' },
+        { file: 'book-git-for-teams.html', title: '팀을 위한 git (Git for Teams)' },
+        { file: 'book-continuous-delivery.html', title: '신뢰할 수 있는 소프트웨어 출시 (Continuous Delivery)' },
     ],
     'dev-theory': [
         { file: 'theory-01-oop-fundamentals.html', title: '객체지향 4대 특성' },
