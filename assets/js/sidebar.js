@@ -1,4 +1,4 @@
-﻿/* Melon Seeds - Sidebar Component (Font Awesome) */
+/* Melon Seeds - Sidebar Component (Font Awesome) */
 /* 서브 카테고리 지원 */
 
 function renderSidebar(currentCat) {
@@ -20,7 +20,9 @@ function renderSidebar(currentCat) {
           subs: [
               { id: 'tech-sensor',  label: '센서 / ISP' },
               { id: 'tech-stereo',  label: '3D 스테레오 비전' },
-              { id: 'tech-ai',      label: 'AI / OpenAI' },
+              { id: 'tech-ai',      label: 'AI / OpenAI',
+                subs: [ { id: 'tech-ai-llm', label: 'LLM 디코딩·프롬프트' } ]
+              },
               { id: 'tech-factory', label: '스마트 공장' },
               { id: 'tech-comm',    label: '통신/인터페이스' },
               { id: 'tech-halcon',  label: 'HALCON 비전 라이브러리' },

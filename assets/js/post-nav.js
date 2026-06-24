@@ -1,4 +1,4 @@
-﻿/* 같은 카테고리 이전/다음 글 네비게이션 */
+/* 같은 카테고리 이전/다음 글 네비게이션 */
 const POST_NAV_DATA = {
     'debug': [
         { file: 'github-pages-404.html', title: 'GitHub Pages 배포 시 404 에러 해결' },
@@ -167,6 +167,11 @@ const POST_NAV_DATA = {
         { file: 'ai-12-opencv-dnn.html', title: 'OpenCV DNN 모듈 실전' },
         { file: 'ai-13-industrial-deep-learning.html', title: '산업 비전에서의 딥러닝 — 하이브리드 전략' },
     ],
+    'tech-ai-llm': [
+        { file: 'llm-decoding-01-sampling.html', title: 'LLM 디코딩 심화 1 — 샘플링의 내부 동작' },
+        { file: 'llm-decoding-02-penalties.html', title: 'LLM 디코딩 심화 2 — 반복 억제와 고급 샘플러' },
+        { file: 'llm-decoding-03-search-control.html', title: 'LLM 디코딩 심화 3 — 탐색과 제어' },
+    ],
     'tech-factory': [
         { file: 'factory-01-what-is-smart-factory.html', title: '스마트 공장이란' },
         { file: 'factory-02-vision-system-components.html', title: '산업용 머신비전 검사 시스템의 구성' },
@@ -316,6 +321,7 @@ const CAT_LABELS = {
     'tech-halcon': 'HALCON 비전 라이브러리',
     'tech-factory': '스마트 공장',
     'tech-ai': 'AI / OpenAI',
+    'tech-ai-llm': 'LLM 디코딩·프롬프트',
     'tech-gpu': 'GPU / CUDA',
     'dev-lang-python': 'Python 시리즈',
     'dev-wpf': 'WPF / C#',

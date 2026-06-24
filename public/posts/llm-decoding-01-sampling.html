@@ -1,0 +1,484 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM 디코딩 심화 1 — 샘플링의 내부 동작 (temperature·top-p·top-k) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 수식 블록 */
+        .formula {
+            background: #f8fafc; border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0;
+            padding: 14px 22px; margin: 16px 0;
+            font-family: 'Consolas', 'D2Coding', 'Cambria Math', serif;
+            font-size: 0.98rem; color: var(--text); text-align: center;
+            overflow-x: auto; line-height: 1.9;
+        }
+        .formula .formula-note {
+            display: block; margin-top: 6px;
+            font-family: 'Pretendard', sans-serif; font-size: 0.78rem;
+            color: var(--text-muted); text-align: center;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+            .formula { font-size: 0.85rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#logits" data-section="logits">logit → 확률</a><a href="#temperature" data-section="temperature">Temperature</a><a href="#topk-topp" data-section="topk-topp">Top-k / Top-p</a><a href="#order" data-section="order">적용 순서</a><a href="#pitfalls" data-section="pitfalls">함정</a><a href="#takeaway" data-section="takeaway">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>LLM 디코딩 심화 1 — 샘플링은 logit에 무슨 짓을 하는가</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-24</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 11분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>temperature가 softmax의 어느 위치에 들어가고 logit에 실제로 무슨 연산을 하는지</li>
+                        <li>top-k와 top-p(nucleus)가 분포를 자르는 방식과 그 수학</li>
+                        <li>여러 파라미터가 동시에 켜졌을 때 적용되는 순서와 그것이 만드는 함정</li>
+                        <li>"temperature를 낮추면 일관적" 수준을 넘어선 실제 동작</li>
+                    </ul>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 시리즈의 관점</strong>
+                        "온도를 낮추면 보수적, 높이면 창의적" 같은 설명은 어디에나 있다. 이 글은 그 한 줄 뒤에서 <strong>logit에 실제로 어떤 연산이 일어나는지</strong>, 그리고 파라미터들이 서로 어떻게 간섭하는지를 다룬다.
+                    </div>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#logits">logit에서 확률까지</a></li>
+                        <li><a href="#temperature">Temperature — softmax 안의 나눗셈</a></li>
+                        <li><a href="#topk-topp">Top-k와 Top-p(nucleus)</a></li>
+                        <li><a href="#order">파라미터 적용 순서</a></li>
+                        <li><a href="#pitfalls">잘 모르는 함정들</a></li>
+                        <li><a href="#takeaway">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="logits"><i class="fa-solid fa-calculator"></i> logit에서 확률까지</h2>
+                <p>모델의 마지막 층은 어휘(vocabulary)의 모든 토큰에 대해 점수를 하나씩 내놓는다. 이 점수를 <strong>logit</strong>이라 한다. 디코딩 파라미터는 거의 전부 "이 logit 벡터를 어떻게 가공해서 토큰 하나를 뽑을 것인가"에 관한 것이다. 즉 모델 가중치는 그대로 두고, <strong>출력 분포만 후처리</strong>하는 단계다.</p>
+                <p>logit을 확률로 바꾸는 표준 함수가 softmax다.</p>
+                <pre><code>p_i = exp(z_i) / Σ_j exp(z_j)</code></pre>
+                <p>여기서 <code>z_i</code>가 i번째 토큰의 logit이다. 핵심은 softmax가 <strong>차이(difference)</strong>에만 반응한다는 점이다. 모든 logit에 같은 값을 더해도 확률은 변하지 않는다 — exp의 비율로 정의되기 때문이다. 그래서 logit의 절대값이 아니라 <strong>토큰 간 logit 격차</strong>가 분포의 뾰족함을 결정한다. 이 사실을 잡고 있어야 temperature가 왜 그렇게 동작하는지 보인다.</p>
+
+                <h2 id="temperature"><i class="fa-solid fa-temperature-half"></i> Temperature — softmax 안의 나눗셈</h2>
+                <p>temperature <code>T</code>는 softmax 안에서 logit을 나눈다.</p>
+                <pre><code>p_i = exp(z_i / T) / Σ_j exp(z_j / T)</code></pre>
+                <p>여기서 중요한 건 나눗셈이 <strong>logit 격차 자체를 스케일</strong>한다는 점이다. <code>T &lt; 1</code>이면 격차가 벌어져 분포가 뾰족해지고(상위 토큰에 확률이 쏠림), <code>T &gt; 1</code>이면 격차가 줄어 분포가 평평해진다(꼬리 토큰이 살아남음).</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>잘 안 알려진 경계값</strong>
+                        <code>T → 0</code>은 격차를 무한히 키워 argmax(=greedy)로 수렴한다. <code>T = 1</code>은 모델이 학습한 원본 분포 그대로다. 그래서 "T=0.7"은 원본보다 약간 뾰족하게 만든 것이지, 어떤 절대적 보수성 수치가 아니다. 모델·태스크마다 같은 0.7이 다르게 느껴지는 이유다.
+                    </div>
+                </div>
+
+                <p>실무에서 자주 놓치는 점: temperature는 <strong>곱이 아니라 나눗셈</strong>이라 0에 가까워질수록 효과가 비선형으로 폭발한다. T를 0.5→0.4로 줄이는 것과 0.2→0.1로 줄이는 것은 체감 차이가 전혀 다르다. 낮은 영역에서 미세 조정할수록 한 번에 크게 바꾸지 말아야 한다.</p>
+
+                <h2 id="topk-topp"><i class="fa-solid fa-scissors"></i> Top-k와 Top-p(nucleus)</h2>
+                <p>temperature가 분포의 모양을 바꾼다면, top-k와 top-p는 분포의 <strong>꼬리를 잘라내는</strong> 절단(truncation) 기법이다. 잘라낸 뒤 남은 토큰만으로 다시 정규화해서 샘플링한다.</p>
+
+                <h3 id="topk"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Top-k — 개수로 자른다</h3>
+                <p>확률 상위 <code>k</code>개 토큰만 남기고 나머지는 버린다. 단순하지만 약점이 있다. 분포가 매우 뾰족한 자리(다음 토큰이 거의 확정인 곳)에서도 k개를 남기고, 분포가 매우 평평한 자리(진짜 여러 선택지가 있는 곳)에서도 똑같이 k개만 남긴다. <strong>맥락의 불확실성을 반영하지 못하는 고정 절단</strong>이라는 게 한계다.</p>
+
+                <h3 id="topp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Top-p — 누적 확률로 자른다</h3>
+                <p>확률을 큰 순서로 더해가며 누적이 <code>p</code>(예: 0.9)를 넘는 최소 집합(nucleus)만 남긴다. 분포가 뾰족하면 한두 개만, 평평하면 수십 개가 남는다. 즉 <strong>맥락마다 후보 수가 동적으로 바뀐다</strong>. top-k의 고정 절단 문제를 해결한 것이 top-p다.</p>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>top-p의 숨은 함정</strong>
+                        top-p는 "누적 p까지"라서, 1등 토큰 확률이 이미 p를 넘으면 <strong>그 토큰 하나만</strong> 남는다(사실상 greedy). 반대로 분포가 극도로 평평하면 거의 전 어휘가 nucleus에 들어와 절단 효과가 사라진다. p=0.9가 "항상 적당히 다양"을 보장하지 않는다 — 분포 모양에 따라 1개에서 수만 개까지 출렁인다.
+                    </div>
+                </div>
+
+                <h2 id="order"><i class="fa-solid fa-arrow-right-arrow-left"></i> 파라미터 적용 순서</h2>
+                <p>여기서부터가 대부분의 가이드가 빠뜨리는 부분이다. temperature·top-k·top-p를 동시에 켜면 <strong>적용 순서</strong>가 결과를 바꾼다. 대표적인 구현(HF transformers 등)의 일반적 순서는 다음과 같다.</p>
+                <pre><code>1. logit 계산
+2. (repetition/penalty 류 logit 처리)
+3. temperature 적용  (logit / T)
+4. top-k 절단
+5. top-p 절단
+6. softmax → 정규화 → 샘플링</code></pre>
+                <p>핵심 함의: <strong>temperature가 truncation보다 먼저</strong> 적용되는 경우, 높은 T로 분포를 평평하게 만든 뒤 top-p가 자르므로 nucleus가 넓어진다. 만약 순서가 반대인 구현이라면(먼저 자르고 나중에 T) 같은 파라미터라도 결과가 달라진다. <strong>"같은 T·top-p인데 라이브러리마다 결과가 다르다"는 대부분 적용 순서 차이</strong>다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실무 팁</strong>
+                        temperature와 top-p를 <strong>동시에 강하게</strong> 거는 건 보통 나쁜 조합이다. T를 높여 꼬리를 살려놓고 top-p로 다시 꼬리를 자르면 서로 상쇄돼 의도를 읽기 어렵다. 한쪽을 주력으로 정하라 — 다양성 제어는 top-p에 맡기고 T는 1 근처로 두거나, T로만 조절하고 top-p는 1.0(비활성)으로 두는 식이 디버깅이 쉽다.
+                    </div>
+                </div>
+
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 잘 모르는 함정들</h2>
+                <ul>
+                    <li><strong>T=0과 greedy의 미묘한 차이</strong> — 많은 API가 <code>temperature=0</code>을 greedy로 매핑하지만, 내부적으로는 0 나눗셈을 피하려 아주 작은 값으로 치환하거나 argmax로 분기한다. 동점(tie) logit이 있으면 구현마다 tie-break가 달라 "T=0인데 출력이 가끔 바뀐다"가 나온다. 완전 결정적 재현이 필요하면 seed까지 고정해야 한다.</li>
+                    <li><strong>top-p와 top-k 동시 사용</strong> — 둘 다 켜면 보통 교집합(둘 다 통과한 토큰)만 남는다. 의도치 않게 후보가 과하게 줄 수 있다.</li>
+                    <li><strong>로그 확률(logprob) 해석</strong> — API가 돌려주는 logprob은 보통 <strong>truncation·penalty 적용 후</strong> 값이 아니라 원본 분포 기준인 경우가 많다. 디코딩 설정과 logprob을 곧장 연결해 해석하면 어긋난다.</li>
+                </ul>
+
+                <h2 id="takeaway"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>핵심 요약</strong>
+                        ① softmax는 logit 격차에만 반응한다. ② temperature는 그 격차를 나눗셈으로 스케일 — 0 근처에서 비선형 폭발. ③ top-k는 고정 절단, top-p는 동적 절단(분포 모양에 따라 1개~수만 개). ④ 파라미터는 순서대로 적용되며, T와 top-p를 동시에 강하게 거는 건 서로 상쇄돼 디버깅을 어렵게 한다.
+                    </div>
+                </div>
+                <p>다음 글에서는 반복을 억제하는 penalty 3종(repetition·frequency·presence)이 logit에 실제로 무슨 연산을 하는지, 그리고 min-p 같은 비교적 새로운 샘플러를 다룬다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고</div>
+                    <ul>
+                        <li>Holtzman et al., "The Curious Case of Neural Text Degeneration" (2020) — nucleus sampling(top-p) 원논문</li>
+                        <li>관련: <a href="llm-decoding-02-penalties.html">디코딩 심화 2 — 반복 억제와 고급 샘플링</a>, <a href="llm-decoding-03-search-control.html">디코딩 심화 3 — 탐색과 제어</a></li>
+                    </ul>
+                </div>
+</div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai-llm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai-llm');
+</script>
+
+</body>
+</html>
