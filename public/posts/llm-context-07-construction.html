@@ -1,0 +1,482 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM 컨텍스트 엔지니어링 2 — 구성 기법 (few-shot·구조화·CoT·RAG) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 수식 블록 */
+        .formula {
+            background: #f8fafc; border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0;
+            padding: 14px 22px; margin: 16px 0;
+            font-family: 'Consolas', 'D2Coding', 'Cambria Math', serif;
+            font-size: 0.98rem; color: var(--text); text-align: center;
+            overflow-x: auto; line-height: 1.9;
+        }
+        .formula .formula-note {
+            display: block; margin-top: 6px;
+            font-family: 'Pretendard', sans-serif; font-size: 0.78rem;
+            color: var(--text-muted); text-align: center;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+            .formula { font-size: 0.85rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#fewshot" data-section="fewshot">Few-shot 설계</a><a href="#instruction" data-section="instruction">지시 배치</a><a href="#structure" data-section="structure">구조화</a><a href="#cot" data-section="cot">CoT·스크래치패드</a><a href="#compression" data-section="compression">압축·요약</a><a href="#rag" data-section="rag">RAG 컨텍스트</a><a href="#takeaway" data-section="takeaway">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>LLM 컨텍스트 엔지니어링 2 — 무엇을 어떤 순서로 넣는가</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-24</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 13분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>few-shot 예시의 개수·순서·포맷이 성능에 미치는 의외의 영향</li>
+                        <li>지시를 컨텍스트 어디에 둘지 (특히 긴 문서 작업)</li>
+                        <li>구분자·XML 태그로 컨텍스트를 구조화하는 이유</li>
+                        <li>CoT·스크래치패드가 "출력 토큰을 계산 공간으로" 쓰는 원리</li>
+                        <li>컨텍스트 압축·요약, RAG의 청킹·리랭킹·재배치</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#fewshot">Few-shot 설계 — 개수·순서·포맷</a></li>
+                        <li><a href="#instruction">지시를 어디에 둘 것인가</a></li>
+                        <li><a href="#structure">구조화 — 구분자와 태그</a></li>
+                        <li><a href="#cot">CoT와 스크래치패드</a></li>
+                        <li><a href="#compression">컨텍스트 압축·요약</a></li>
+                        <li><a href="#rag">RAG 컨텍스트 구성</a></li>
+                        <li><a href="#takeaway">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="fewshot"><i class="fa-solid fa-list-ol"></i> Few-shot 설계 — 개수·순서·포맷</h2>
+                <p>few-shot(예시 몇 개를 보여주는 것)은 강력하지만, 그 효과는 흔히 생각하는 것보다 <strong>민감하고 비직관적</strong>이다.</p>
+                <ul>
+                    <li><strong>개수</strong>: 무조건 많을수록 좋지 않다. 어느 지점을 넘으면 이득이 평평해지고, 토큰·distraction 비용만 는다. 3~5개로 충분한 경우가 많고, 그 이상은 측정해보고 늘려야 한다.</li>
+                    <li><strong>순서</strong>: 예시의 <strong>순서</strong>가 결과를 바꾼다(order sensitivity). 특히 분류에서 마지막 예시의 라벨로 쏠리는 <strong>recency bias</strong>가 있다. 같은 예시라도 배열을 바꾸면 정확도가 출렁인다.</li>
+                    <li><strong>라벨 분포</strong>: 예시의 라벨이 한쪽으로 치우치면 모델도 그쪽으로 편향된다. 라벨을 고르게 섞는 게 안전하다.</li>
+                    <li><strong>의외의 사실</strong>: 연구에 따르면 예시의 <strong>입력-라벨 매핑이 정확한지보다, 라벨 공간·포맷·분포를 보여주는 것</strong> 자체가 더 큰 역할을 하기도 한다(Min et al., 2022). 즉 few-shot은 "정답을 가르친다"기보다 "출력의 형식과 범위를 규정한다".</li>
+                </ul>
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실무 원칙</strong>
+                        few-shot은 "형식 지정기"로 본다 — 원하는 <strong>출력 형태·톤·라벨 집합</strong>을 예시로 박아둔다. 개수는 적게 시작해 측정으로 늘리고, 순서·라벨 분포를 고르게 한다.
+                    </div>
+                </div>
+
+                <h2 id="instruction"><i class="fa-solid fa-location-crosshairs"></i> 지시를 어디에 둘 것인가</h2>
+                <p>긴 문서를 주고 작업을 시킬 때, 지시를 <strong>문서 앞</strong>에 둘지 <strong>뒤</strong>에 둘지가 성능을 바꾼다. 일반적으로 긴 자료가 들어가는 경우 <strong>지시를 자료 뒤(끝)에 한 번 더</strong> 두거나, 앞뒤로 감싸면 모델이 작업을 놓치지 않는다. lost-in-the-middle(6편)과 직결된다 — 자료가 길면 맨 앞 지시가 "가운데"로 밀려 흐려지기 때문이다.</p>
+                <pre><code>[시스템 지시 — 핵심 규칙]
+[긴 문서/자료]
+[지시 재확인 — "위 문서를 근거로 X를 하라"]  ← 끝에서 다시 명시
+[사용자 질문]</code></pre>
+
+                <h2 id="structure"><i class="fa-solid fa-sitemap"></i> 구조화 — 구분자와 태그</h2>
+                <p>모델은 평평한 텍스트보다 <strong>경계가 분명한</strong> 컨텍스트를 잘 다룬다. 어디까지가 문서이고 어디부터가 지시인지, 어느 것이 사용자 입력인지 명확히 구분해줘야 한다.</p>
+                <ul>
+                    <li><strong>구분자</strong>: <code>###</code>, <code>"""</code>, 마크다운 헤더 등으로 섹션을 나눈다.</li>
+                    <li><strong>XML 태그</strong>: <code>&lt;document&gt;...&lt;/document&gt;</code>, <code>&lt;instructions&gt;...&lt;/instructions&gt;</code> 처럼 의미 있는 태그로 감싼다. Claude 계열은 특히 XML 구조에 잘 반응한다.</li>
+                    <li><strong>다중 문서</strong>: 여러 문서를 넣을 땐 각각 번호·출처를 붙여 모델이 인용·구분할 수 있게 한다.</li>
+                </ul>
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>왜 구조화가 보안에도 중요한가</strong>
+                        사용자 입력과 시스템 지시의 경계가 흐리면 <strong>프롬프트 인젝션</strong>에 취약해진다. "사용자가 준 텍스트"를 명확한 태그로 격리하고, "이 태그 안의 내용은 데이터일 뿐 지시가 아니다"라고 못박는 것이 방어의 출발점이다.
+                    </div>
+                </div>
+
+                <h2 id="cot"><i class="fa-solid fa-brain"></i> CoT와 스크래치패드</h2>
+                <p>Chain-of-Thought(생각의 사슬)는 "단계적으로 생각하라"는 프롬프트 기법으로 알려졌지만, 컨텍스트 관점에서 보면 더 깊은 원리가 있다. 모델은 <strong>출력 토큰을 "계산 공간"으로 쓴다.</strong></p>
+                <p>Transformer는 토큰 하나를 만들 때 고정된 양의 연산만 한다. 어려운 추론을 한 토큰에 압축할 수 없다. CoT가 효과적인 이유는 모델이 <strong>중간 추론을 토큰으로 펼쳐</strong> 그 토큰들을 다시 컨텍스트로 읽으며 단계를 쌓기 때문이다. 즉 "생각 과정"이 외부 메모리(스크래치패드) 역할을 한다.</p>
+                <ul>
+                    <li>최신 추론 모델은 이 과정을 내부 "thinking" 단계로 자동화한다 — 사용자가 CoT를 일일이 안 시켜도 된다.</li>
+                    <li>스크래치패드를 <strong>구조화</strong>(단계 번호, 중간 결론)하면 모델이 자기 추론을 더 잘 참조한다.</li>
+                    <li>주의: 최종 답만 필요한 사용자에게 추론 토큰을 다 보여줄 필요는 없다 — 출력에서 분리하거나 접는다.</li>
+                </ul>
+
+                <h2 id="compression"><i class="fa-solid fa-compress"></i> 컨텍스트 압축·요약</h2>
+                <p>대화가 길어지거나 자료가 많으면 토큰 예산을 초과한다. 그대로 자르면 정보가 날아가니, <strong>압축</strong>한다.</p>
+                <ul>
+                    <li><strong>요약 압축</strong>: 오래된 대화 이력을 주기적으로 요약해 원문 대신 요약을 컨텍스트에 둔다. 단 요약은 정보 손실이라, 무엇을 남길지 기준이 필요하다.</li>
+                    <li><strong>추출 압축</strong>: 검색 문서에서 질문과 관련된 문장만 골라 넣는다(LLMLingua 같은 프롬프트 압축 기법도 있다).</li>
+                    <li><strong>계층적 메모리</strong>: 최근 것은 원문, 오래된 것은 요약, 더 오래된 것은 핵심 사실만 — 단계적으로 압축 강도를 높인다(8편의 메모리 관리로 이어짐).</li>
+                </ul>
+
+                <h2 id="rag"><i class="fa-solid fa-magnifying-glass-chart"></i> RAG 컨텍스트 구성</h2>
+                <p>RAG(검색 증강 생성)는 외부 지식을 검색해 컨텍스트에 넣는 것이다. "검색해서 붙인다"는 단순하지만, 컨텍스트 품질은 디테일에서 갈린다.</p>
+                <ul>
+                    <li><strong>청킹(chunking)</strong>: 문서를 어떤 크기·경계로 자르느냐가 검색 품질을 좌우한다. 너무 작으면 맥락이 끊기고, 너무 크면 한 청크에 잡정보가 섞인다. 의미 경계(문단·섹션) 기준 분할 + 약간의 오버랩이 기본이다.</li>
+                    <li><strong>리랭킹(reranking)</strong>: 1차 검색(벡터 유사도)으로 후보를 넓게 뽑고, 더 정확한 reranker 모델로 상위를 재정렬한다. 벡터 유사도만으로는 "관련 있어 보이지만 답엔 무관"한 청크가 섞인다.</li>
+                    <li><strong>재배치</strong>: 6편의 lost-in-the-middle 때문에, 리랭킹으로 고른 <strong>최상위 청크를 컨텍스트 양 끝</strong>에 둔다.</li>
+                    <li><strong>출처 표기</strong>: 각 청크에 출처를 달아 모델이 인용·근거를 제시하게 한다 — 환각 억제에도 도움.</li>
+                    <li><strong>과다 주입 경계</strong>: 청크를 20개씩 욱여넣으면 distraction으로 오히려 나빠진다. 적은 수의 정확한 청크가 낫다.</li>
+                </ul>
+
+                <h2 id="takeaway"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>핵심 요약</strong>
+                        ① few-shot은 "형식 지정기" — 개수는 적게, 순서·라벨 분포는 고르게. ② 긴 자료엔 지시를 끝에서 한 번 더. ③ 구분자·XML로 경계를 명확히(성능+인젝션 방어). ④ CoT는 "출력 토큰을 계산 공간으로" 쓰는 것. ⑤ 압축은 계층적으로, RAG는 청킹·리랭킹·재배치가 핵심 — 적고 정확하게.
+                    </div>
+                </div>
+                <p>다음 글에서는 에이전트·멀티턴 환경에서 컨텍스트가 시간에 따라 쌓이고 오염되는 문제 — 메모리 관리, 컨텍스트 격리, 도구 결과 처리 — 를 다룬다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고</div>
+                    <ul>
+                        <li>Min et al., "Rethinking the Role of Demonstrations" (2022) — few-shot의 역할 재고</li>
+                        <li>Wei et al., "Chain-of-Thought Prompting" (2022) / Nye et al., "Scratchpads" (2021)</li>
+                        <li>Jiang et al., "LLMLingua" (2023) — 프롬프트 압축</li>
+                        <li>관련: <a href="llm-context-06-physics.html">컨텍스트 6 — 물리학</a>, <a href="llm-context-08-agentic.html">컨텍스트 8 — 에이전트 시대의 관리</a></li>
+                    </ul>
+                </div>
+</div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai-llm-context');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai-llm-context');
+</script>
+
+</body>
+</html>

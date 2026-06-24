@@ -1,0 +1,484 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM 컨텍스트 엔지니어링 3 — 에이전트 시대의 컨텍스트 관리 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 수식 블록 */
+        .formula {
+            background: #f8fafc; border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0;
+            padding: 14px 22px; margin: 16px 0;
+            font-family: 'Consolas', 'D2Coding', 'Cambria Math', serif;
+            font-size: 0.98rem; color: var(--text); text-align: center;
+            overflow-x: auto; line-height: 1.9;
+        }
+        .formula .formula-note {
+            display: block; margin-top: 6px;
+            font-family: 'Pretendard', sans-serif; font-size: 0.78rem;
+            color: var(--text-muted); text-align: center;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+            .formula { font-size: 0.85rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#shift" data-section="shift">정적 → 동적</a><a href="#failures" data-section="failures">컨텍스트 실패 4종</a><a href="#memory" data-section="memory">메모리 관리</a><a href="#tools" data-section="tools">도구 결과 관리</a><a href="#isolation" data-section="isolation">컨텍스트 격리</a><a href="#assembly" data-section="assembly">동적 조립</a><a href="#takeaway" data-section="takeaway">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>LLM 컨텍스트 엔지니어링 3 — 살아 움직이는 컨텍스트를 관리한다</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-24</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 14분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>일회성 프롬프트에서 시간에 따라 쌓이는 에이전트 컨텍스트로의 전환</li>
+                        <li>컨텍스트가 망가지는 4가지 방식 — poisoning·distraction·confusion·clash</li>
+                        <li>멀티턴 메모리: 단기/장기, 요약·계층화</li>
+                        <li>도구 출력이 컨텍스트를 폭파시키는 문제와 관리법</li>
+                        <li>서브에이전트·컨텍스트 격리, 동적 컨텍스트 조립</li>
+                    </ul>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>왜 에이전트에서 컨텍스트가 어려워지는가</strong>
+                        단일 질의응답에서는 컨텍스트를 한 번 잘 짜면 끝이다. 하지만 에이전트는 <strong>여러 턴에 걸쳐 도구를 호출하고, 그 결과가 다시 컨텍스트에 쌓인다.</strong> 컨텍스트가 살아 움직이며 점점 길고 지저분해진다. 여기서부터는 "잘 쓰는 법"이 아니라 "<strong>관리하는 법</strong>"의 문제다.
+                    </div>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#shift">정적 프롬프트에서 동적 컨텍스트로</a></li>
+                        <li><a href="#failures">컨텍스트가 망가지는 4가지 방식</a></li>
+                        <li><a href="#memory">멀티턴 메모리 관리</a></li>
+                        <li><a href="#tools">도구 결과 관리</a></li>
+                        <li><a href="#isolation">컨텍스트 격리와 서브에이전트</a></li>
+                        <li><a href="#assembly">동적 컨텍스트 조립</a></li>
+                        <li><a href="#takeaway">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="shift"><i class="fa-solid fa-arrows-spin"></i> 정적 프롬프트에서 동적 컨텍스트로</h2>
+                <p>에이전트의 한 스텝은 대략 이렇게 돈다: 모델이 도구를 호출 → 도구가 결과를 반환 → 그 결과가 컨텍스트에 추가됨 → 모델이 다음을 판단. 이 루프가 수십 번 돌면 컨텍스트에는 <strong>지시 + 원래 질문 + 수많은 도구 호출과 그 결과 + 중간 추론</strong>이 켜켜이 쌓인다.</p>
+                <p>그래서 에이전트의 컨텍스트 엔지니어링은 "<strong>매 스텝 모델에게 보낼 컨텍스트를 동적으로 조립</strong>하는 것"이 된다. 무엇을 남기고, 무엇을 요약하고, 무엇을 버릴지를 매번 결정해야 한다. 이것이 최근 "프롬프트 엔지니어링"보다 "컨텍스트 엔지니어링"이라는 말이 쓰이는 핵심 이유다.</p>
+
+                <h2 id="failures"><i class="fa-solid fa-skull"></i> 컨텍스트가 망가지는 4가지 방식</h2>
+                <p>긴 컨텍스트는 단지 비쌀 뿐 아니라 <strong>품질을 떨어뜨린다</strong>. 대표적 실패 유형이 정리돼 있다(Drew Breunig 등).</p>
+                <table>
+                    <tr><th>실패</th><th>무엇</th></tr>
+                    <tr><td><strong>Poisoning</strong>(오염)</td><td>한 번 들어간 환각·오류가 컨텍스트에 남아 이후 판단을 계속 오염시킴</td></tr>
+                    <tr><td><strong>Distraction</strong>(산만)</td><td>컨텍스트가 너무 길어 모델이 핵심보다 곁가지에 끌려감</td></tr>
+                    <tr><td><strong>Confusion</strong>(혼동)</td><td>관련 없는 정보·도구가 많아 모델이 무엇을 쓸지 헷갈림</td></tr>
+                    <tr><td><strong>Clash</strong>(충돌)</td><td>컨텍스트 안의 정보끼리 모순돼 모델이 잘못된 쪽을 따름</td></tr>
+                </table>
+                <p>핵심 교훈: <strong>컨텍스트는 쌓을수록 좋은 게 아니라, 관리하지 않으면 독이 된다.</strong> 특히 poisoning은 무섭다 — 에이전트가 초반에 한 번 잘못된 사실을 "기억"하면, 그 뒤 모든 스텝이 오염된 전제 위에서 돌아간다.</p>
+
+                <h2 id="memory"><i class="fa-solid fa-brain"></i> 멀티턴 메모리 관리</h2>
+                <p>대화·작업이 길어질 때 이력을 어떻게 들고 갈지가 메모리 문제다.</p>
+                <ul>
+                    <li><strong>단기 메모리</strong>: 최근 N턴은 원문 그대로 유지(최신 맥락은 중요).</li>
+                    <li><strong>요약 메모리</strong>: 오래된 턴은 요약본으로 대체(7편 압축). 단 무엇을 남길지 기준 필요.</li>
+                    <li><strong>장기 메모리(외부화)</strong>: 컨텍스트 밖 저장소(벡터DB·파일·노트)에 사실을 적고, 필요할 때만 검색해 다시 불러온다. 컨텍스트를 "작업 기억"으로, 외부를 "장기 기억"으로 분리하는 발상.</li>
+                    <li><strong>구조화된 메모(scratch note)</strong>: 에이전트가 진행 상황·결정·미해결 항목을 별도 메모로 유지하고, 매 스텝 그 메모를 컨텍스트에 넣는다. 긴 작업에서 "지금 어디까지 했는지"를 잃지 않게 한다.</li>
+                </ul>
+
+                <h2 id="tools"><i class="fa-solid fa-screwdriver-wrench"></i> 도구 결과 관리</h2>
+                <p>에이전트 컨텍스트를 가장 빠르게 폭파시키는 건 <strong>도구 출력</strong>이다. 검색 한 번에 문서 수천 토큰, 파일 읽기 한 번에 수만 토큰이 들어온다. 그대로 쌓으면 몇 스텝 만에 윈도우가 찬다.</p>
+                <ul>
+                    <li><strong>요약 후 저장</strong>: 큰 도구 결과는 핵심만 추려 컨텍스트에 넣고, 원본은 외부에 둔 뒤 참조(ID·경로)만 남긴다.</li>
+                    <li><strong>오래된 결과 정리(pruning)</strong>: 이미 활용이 끝난 과거 도구 출력은 컨텍스트에서 덜어낸다(접거나, 요약으로 치환).</li>
+                    <li><strong>관련 없는 도구 숨기기</strong>: 사용 가능한 도구가 수십 개면 그 정의만으로도 컨텍스트를 먹고 confusion을 일으킨다. 현재 단계에 필요한 도구만 노출한다.</li>
+                    <li><strong>실패 결과 처리</strong>: 도구 에러·빈 결과도 컨텍스트에 남으면 잡음이다. 간결한 신호로 요약한다.</li>
+                </ul>
+
+                <h2 id="isolation"><i class="fa-solid fa-people-arrows"></i> 컨텍스트 격리와 서브에이전트</h2>
+                <p>한 컨텍스트에 모든 걸 담으려 하면 distraction·confusion이 누적된다. 대안은 <strong>컨텍스트를 나누는 것</strong>이다.</p>
+                <ul>
+                    <li><strong>서브에이전트</strong>: 하위 작업을 별도 에이전트(별도 컨텍스트)에 위임하고, 그 <strong>결과 요약만</strong> 부모 컨텍스트로 가져온다. 하위 작업의 잡다한 중간 과정이 부모를 오염시키지 않는다.</li>
+                    <li><strong>관심사 분리</strong>: 검색 담당, 코드 작성 담당, 검증 담당을 각자 깨끗한 컨텍스트에서 돌린다. 각 컨텍스트가 작고 집중돼 품질이 올라간다.</li>
+                    <li><strong>트레이드오프</strong>: 격리하면 에이전트 간 정보 공유가 줄어든다. "무엇을 요약해 넘길지"의 인터페이스 설계가 새 과제가 된다.</li>
+                </ul>
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>핵심 발상</strong>
+                        "하나의 거대한 컨텍스트"보다 "<strong>여러 개의 작고 깨끗한 컨텍스트 + 요약된 인터페이스</strong>"가 대체로 낫다. 사람 조직이 일을 나누고 보고로 합치는 것과 같다.
+                    </div>
+                </div>
+
+                <h2 id="assembly"><i class="fa-solid fa-cubes"></i> 동적 컨텍스트 조립</h2>
+                <p>정리하면, 에이전트의 매 스텝은 다음을 동적으로 조립하는 일이다.</p>
+                <pre><code>이번 스텝 컨텍스트 =
+    시스템 지시(고정·캐시)
+  + 핵심 작업 목표 / 진행 메모
+  + 관련 있는 장기 기억(검색해서)
+  + 최근 대화·도구 결과(원문)
+  + 오래된 것(요약본)
+  + 지금 단계에 필요한 도구만</code></pre>
+                <p>이 조립을 매 스텝 갱신하는 것이 에이전트 컨텍스트 엔지니어링이다. 평가도 중요하다 — 컨텍스트 변화가 성능을 올렸는지 내렸는지 <strong>측정</strong>해야 한다(needle test, 작업 성공률, 토큰당 성능). 감으로 "더 넣으면 낫겠지"는 대개 틀린다.</p>
+
+                <h2 id="takeaway"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>핵심 요약</strong>
+                        ① 에이전트 컨텍스트는 매 스텝 동적으로 조립·관리하는 대상이다. ② 컨텍스트는 4가지로 망가진다 — poisoning·distraction·confusion·clash. ③ 메모리는 단기 원문 / 오래된 요약 / 장기 외부화로 계층화. ④ 도구 출력은 요약·정리·관련 도구만 노출. ⑤ 거대한 단일 컨텍스트보다 작고 깨끗한 컨텍스트 여러 개(서브에이전트)가 낫다. ⑥ 컨텍스트 변경은 감이 아니라 측정으로 검증한다.
+                    </div>
+                </div>
+                <p>이로써 컨텍스트 엔지니어링 시리즈는 물리학(6)·구성 기법(7)·에이전트 관리(8)로 마무리된다. 디코딩 5편과 함께 보면 "모델 출력을 어떻게 뽑고, 모델에 무엇을 넣을지"의 양면을 모두 다룬 셈이다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고</div>
+                    <ul>
+                        <li>Drew Breunig, "How Contexts Fail" / "How to Fix Your Context" (2025)</li>
+                        <li>Anthropic, "Effective Context Engineering for AI Agents" / "Building Effective Agents"</li>
+                        <li>Packer et al., "MemGPT" (2023) — 계층적 메모리</li>
+                        <li>관련: <a href="llm-context-06-physics.html">컨텍스트 6 — 물리학</a>, <a href="llm-context-07-construction.html">컨텍스트 7 — 구성 기법</a>, <a href="llm-decoding-01-sampling.html">디코딩 시리즈</a></li>
+                    </ul>
+                </div>
+</div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai-llm-context');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai-llm-context');
+</script>
+
+</body>
+</html>

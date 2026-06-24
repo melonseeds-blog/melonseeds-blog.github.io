@@ -21,7 +21,7 @@ function renderSidebar(currentCat) {
               { id: 'tech-sensor',  label: '센서 / ISP' },
               { id: 'tech-stereo',  label: '3D 스테레오 비전' },
               { id: 'tech-ai',      label: 'AI / OpenAI',
-                subs: [ { id: 'tech-ai-llm', label: 'LLM 디코딩·프롬프트' } ]
+                subs: [ { id: 'tech-ai-llm', label: 'LLM 디코딩·프롬프트' }, { id: 'tech-ai-llm-context', label: 'LLM 컨텍스트 엔지니어링' } ]
               },
               { id: 'tech-factory', label: '스마트 공장' },
               { id: 'tech-comm',    label: '통신/인터페이스' },

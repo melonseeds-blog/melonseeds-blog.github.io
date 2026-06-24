@@ -174,6 +174,11 @@ const POST_NAV_DATA = {
         { file: 'llm-decoding-04-acceleration.html', title: 'LLM 디코딩 심화 4 — 추론 가속' },
         { file: 'llm-decoding-05-quality-control.html', title: 'LLM 디코딩 심화 5 — 품질·환각 제어' },
     ],
+    'tech-ai-llm-context': [
+        { file: 'llm-context-06-physics.html', title: 'LLM 컨텍스트 엔지니어링 1 — 컨텍스트의 물리학' },
+        { file: 'llm-context-07-construction.html', title: 'LLM 컨텍스트 엔지니어링 2 — 구성 기법' },
+        { file: 'llm-context-08-agentic.html', title: 'LLM 컨텍스트 엔지니어링 3 — 에이전트 시대의 관리' },
+    ],
     'tech-factory': [
         { file: 'factory-01-what-is-smart-factory.html', title: '스마트 공장이란' },
         { file: 'factory-02-vision-system-components.html', title: '산업용 머신비전 검사 시스템의 구성' },
@@ -324,6 +329,7 @@ const CAT_LABELS = {
     'tech-factory': '스마트 공장',
     'tech-ai': 'AI / OpenAI',
     'tech-ai-llm': 'LLM 디코딩·프롬프트',
+    'tech-ai-llm-context': 'LLM 컨텍스트 엔지니어링',
     'tech-gpu': 'GPU / CUDA',
     'dev-lang-python': 'Python 시리즈',
     'dev-wpf': 'WPF / C#',
