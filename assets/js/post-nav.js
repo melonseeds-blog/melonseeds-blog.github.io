@@ -171,6 +171,8 @@ const POST_NAV_DATA = {
         { file: 'llm-decoding-01-sampling.html', title: 'LLM 디코딩 심화 1 — 샘플링의 내부 동작' },
         { file: 'llm-decoding-02-penalties.html', title: 'LLM 디코딩 심화 2 — 반복 억제와 고급 샘플러' },
         { file: 'llm-decoding-03-search-control.html', title: 'LLM 디코딩 심화 3 — 탐색과 제어' },
+        { file: 'llm-decoding-04-acceleration.html', title: 'LLM 디코딩 심화 4 — 추론 가속' },
+        { file: 'llm-decoding-05-quality-control.html', title: 'LLM 디코딩 심화 5 — 품질·환각 제어' },
     ],
     'tech-factory': [
         { file: 'factory-01-what-is-smart-factory.html', title: '스마트 공장이란' },

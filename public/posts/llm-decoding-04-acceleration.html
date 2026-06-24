@@ -1,0 +1,507 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM 디코딩 심화 4 — 추론 가속 (speculative·Medusa·EAGLE) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 수식 블록 */
+        .formula {
+            background: #f8fafc; border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0;
+            padding: 14px 22px; margin: 16px 0;
+            font-family: 'Consolas', 'D2Coding', 'Cambria Math', serif;
+            font-size: 0.98rem; color: var(--text); text-align: center;
+            overflow-x: auto; line-height: 1.9;
+        }
+        .formula .formula-note {
+            display: block; margin-top: 6px;
+            font-family: 'Pretendard', sans-serif; font-size: 0.78rem;
+            color: var(--text-muted); text-align: center;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+            .formula { font-size: 0.85rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why-slow" data-section="why-slow">왜 느린가</a><a href="#speculative" data-section="speculative">Speculative</a><a href="#why-lossless" data-section="why-lossless">무손실 원리</a><a href="#self-medusa-eagle" data-section="self-medusa-eagle">Medusa·EAGLE</a><a href="#lookahead-ngram" data-section="lookahead-ngram">Lookahead·n-gram</a><a href="#batching" data-section="batching">배치·KV캐시</a><a href="#when" data-section="when">언제 쓰나</a><a href="#takeaway" data-section="takeaway">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>LLM 디코딩 심화 4 — 품질은 그대로, 속도만 올리는 법</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-24</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 13분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>자기회귀 디코딩이 왜 느린가 — 토큰당 1회 forward, 메모리 바운드</li>
+                        <li>Speculative decoding의 draft→verify 구조와 "분포를 보존하는" 수학</li>
+                        <li>Self-speculative · Medusa(다중 헤드) · EAGLE(feature-level)</li>
+                        <li>Lookahead(Jacobi) · prompt lookup / n-gram speculation</li>
+                        <li>KV 캐시·연속 배치와의 관계, 언제 효과적인가</li>
+                    </ul>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 글의 관점</strong>
+                        1~3편이 "무엇을 뽑을지(품질·다양성)"였다면, 이 글은 "<strong>같은 출력을 얼마나 빨리 뽑을지</strong>"다. 핵심은 대부분의 기법이 <strong>출력 품질을 한 글자도 바꾸지 않으면서</strong> 속도만 올린다는 점이다.
+                    </div>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-slow">왜 자기회귀 디코딩은 느린가</a></li>
+                        <li><a href="#speculative">Speculative decoding — 추측하고 검증한다</a></li>
+                        <li><a href="#why-lossless">왜 품질이 손상되지 않는가</a></li>
+                        <li><a href="#self-medusa-eagle">Self-speculative · Medusa · EAGLE</a></li>
+                        <li><a href="#lookahead-ngram">Lookahead와 n-gram speculation</a></li>
+                        <li><a href="#batching">배치·KV 캐시와의 관계</a></li>
+                        <li><a href="#when">언제 효과적인가</a></li>
+                        <li><a href="#takeaway">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why-slow"><i class="fa-solid fa-hourglass-half"></i> 왜 자기회귀 디코딩은 느린가</h2>
+                <p>LLM은 토큰을 하나 만들 때마다 모델 전체를 <strong>한 번씩 forward</strong>한다. 100토큰을 만들려면 forward를 100번 해야 한다. 이전 토큰이 나와야 다음 토큰을 계산할 수 있으니 <strong>순차적(autoregressive)</strong>이라 병렬화도 안 된다.</p>
+                <p>더 중요한 건 이 과정이 <strong>메모리 바운드(memory-bound)</strong>라는 점이다. 토큰 1개를 만드는 데 필요한 연산량은 적은데, 그 1개를 위해 <strong>수십 GB의 모델 가중치를 GPU 메모리에서 다 읽어와야</strong> 한다. 즉 계산이 부족한 게 아니라 "가중치를 메모리에서 옮기는 시간"이 병목이다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>핵심 통찰</strong>
+                        한 번 forward에서 토큰 1개를 만들든 여러 개를 <strong>검증</strong>하든, 가중치를 읽는 비용은 거의 같다(메모리 바운드라). 그렇다면 "한 번의 forward로 여러 토큰을 처리"할 수만 있으면 공짜에 가깝게 빨라진다. 가속 기법 대부분이 이 빈틈을 노린다.
+                    </div>
+                </div>
+
+                <h2 id="speculative"><i class="fa-solid fa-gauge-high"></i> Speculative decoding — 추측하고 검증한다</h2>
+                <p>핵심 아이디어: <strong>작고 빠른 draft 모델</strong>이 다음 토큰 여러 개를 추측하고, <strong>크고 정확한 target 모델</strong>이 그 추측들을 <strong>한 번의 forward로 동시에 검증</strong>한다.</p>
+                <pre><code>1. draft 모델이 다음 k개 토큰을 빠르게 생성:  t1, t2, ..., tk
+2. target 모델이 그 k개를 한 번에 forward → 각 위치의 진짜 분포 확인
+3. 앞에서부터 맞는 토큰은 수락(accept), 처음 틀린 곳에서 거절(reject)
+4. 거절된 자리는 target 분포로 다시 1개 샘플 → 다음 라운드</code></pre>
+                <p>draft가 잘 맞히면 한 번의 target forward로 여러 토큰이 통과한다. draft가 다 틀려도 최소 1토큰은 target이 직접 만들어내므로 <strong>느려지지는 않는다</strong>(최악이 일반 디코딩과 비슷). 보통 2~3배 속도 향상을 본다.</p>
+
+                <h2 id="why-lossless"><i class="fa-solid fa-shield-halved"></i> 왜 품질이 손상되지 않는가</h2>
+                <p>여기가 speculative decoding의 정수다. "작은 모델이 만든 토큰을 쓰는데 왜 품질이 안 떨어지나?"</p>
+                <p>답은 검증 단계가 <strong>수정된 거절 샘플링(modified rejection sampling)</strong>이라는 데 있다. draft가 제안한 토큰 <code>x</code>를 target 분포 <code>p</code>와 draft 분포 <code>q</code>로 이렇게 판정한다.</p>
+                <pre><code>수락 확률 = min(1, p(x) / q(x))
+거절 시  = (p - q)의 양수 부분으로 재정규화한 분포에서 샘플</code></pre>
+                <p>이 규칙의 수학적 보장이 핵심이다 — <strong>최종적으로 뽑히는 토큰의 분포는 정확히 target 모델 <code>p</code>와 같다</strong>. draft 모델이 무엇이든(아무리 나빠도) 결과 분포는 변하지 않는다. draft의 품질은 <strong>속도에만</strong> 영향을 주고 <strong>출력 분포에는 전혀 영향이 없다</strong>. 그래서 "무손실 가속(lossless acceleration)"이라 부른다.</p>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>자주 하는 오해</strong>
+                        "speculative decoding은 품질을 약간 희생해 속도를 얻는다"는 틀렸다. greedy든 sampling이든, 거절 샘플링이 분포를 보존하므로 <strong>출력은 통계적으로 동일</strong>하다. 단, 부동소수점 오차나 구현 차이로 토큰이 미세하게 갈릴 수는 있다.
+                    </div>
+                </div>
+
+                <h2 id="self-medusa-eagle"><i class="fa-solid fa-layer-group"></i> Self-speculative · Medusa · EAGLE</h2>
+                <p>별도 draft 모델을 두는 건 번거롭다(두 모델을 메모리에 올려야 함). 그래서 "draft를 모델 안에서 만들자"는 변형들이 나왔다.</p>
+
+                <h3 id="self-spec"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Self-speculative decoding</h3>
+                <p>같은 모델의 <strong>일부 층만</strong> 써서(층 건너뛰기) draft를 만들고, 전체 층으로 검증한다. 별도 모델이 필요 없다.</p>
+
+                <h3 id="medusa"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Medusa — 다중 디코딩 헤드</h3>
+                <p>모델 위에 <strong>추가 예측 헤드(head)를 여러 개</strong> 붙여, "다음 토큰", "다다음 토큰", "그 다음"을 한 번에 추측하게 한다. 이 헤드들의 추측을 트리로 묶어 target이 한 번에 검증한다. 별도 draft 모델 없이 헤드만 추가 학습하면 된다.</p>
+
+                <h3 id="eagle"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> EAGLE — feature 수준 자기회귀</h3>
+                <p>토큰이 아니라 모델 <strong>내부 표현(feature)</strong> 수준에서 다음을 예측해 draft를 만든다. 토큰 수준 추측보다 정확도가 높아 수락률이 올라가고, 그만큼 더 빠르다. 현재 speculative 계열 중 가속비가 높은 축에 속한다.</p>
+
+                <h2 id="lookahead-ngram"><i class="fa-solid fa-forward"></i> Lookahead와 n-gram speculation</h2>
+                <h3 id="lookahead"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Lookahead decoding (Jacobi)</h3>
+                <p>draft 모델 자체가 없는 접근. 여러 위치의 토큰을 <strong>동시에 추측하고 반복적으로 수렴</strong>시키는 Jacobi 반복을 쓴다. 추측한 n-gram을 캐시에 모아 재활용한다. 별도 모델·추가 학습이 필요 없다는 게 장점이다.</p>
+                <h3 id="prompt-lookup"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Prompt lookup / n-gram speculation</h3>
+                <p>가장 단순하면서 특정 상황에 강력하다. 출력에 입력의 텍스트가 그대로 다시 나올 법한 작업(요약·편집·RAG·코드 수정)에서는, draft를 <strong>입력 텍스트에서 n-gram 매칭</strong>으로 가져온다. 모델 호출 없이 "방금 본 구절"을 추측으로 제안하니, 인용·반복이 많은 작업에서 큰 가속을 낸다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실무 선택 기준</strong>
+                        ① 입력 재사용이 많은 작업(요약·편집·RAG) → <strong>prompt lookup</strong>이 거의 공짜. ② 범용 가속 + 추가 학습 가능 → <strong>Medusa/EAGLE</strong>. ③ 좋은 소형 동족 모델이 있음 → <strong>draft 모델 speculative</strong>. ④ 아무것도 추가 못 함 → <strong>lookahead</strong>.
+                    </div>
+                </div>
+
+                <h2 id="batching"><i class="fa-solid fa-server"></i> 배치·KV 캐시와의 관계</h2>
+                <p>가속을 이야기할 때 디코딩 알고리즘만 보면 절반만 보는 것이다. 실제 처리량(throughput)은 서빙 계층이 좌우한다.</p>
+                <ul>
+                    <li><strong>KV 캐시</strong> — 이미 계산한 토큰의 key/value를 저장해 매 스텝 재계산을 피한다. 디코딩 속도의 기본 전제. 길이가 길수록 KV 캐시 메모리가 병목이 된다.</li>
+                    <li><strong>연속 배치(continuous batching)</strong> — 여러 요청을 동적으로 묶어 GPU를 항상 채운다. vLLM·TGI 등이 쓰는 핵심 기법으로, 단일 요청 지연보다 전체 처리량을 끌어올린다.</li>
+                    <li><strong>PagedAttention</strong> — KV 캐시를 페이지 단위로 관리해 메모리 단편화를 줄인다(vLLM).</li>
+                    <li>speculative decoding은 이들과 <strong>함께</strong> 작동한다. 단, 배치가 클 때는 GPU가 이미 꽉 차서(연산 바운드로 전환) speculative의 이득이 줄어들 수 있다 — 메모리 바운드일 때 가장 효과적이다.</li>
+                </ul>
+
+                <h2 id="when"><i class="fa-solid fa-circle-question"></i> 언제 효과적인가</h2>
+                <table>
+                    <tr><th>상황</th><th>speculative 효과</th></tr>
+                    <tr><td>단일·소수 요청 (배치 작음)</td><td>큼 — 메모리 바운드라 빈 연산 여유를 검증에 씀</td></tr>
+                    <tr><td>대규모 동시 요청 (배치 큼)</td><td>작아짐 — GPU가 이미 포화(연산 바운드)</td></tr>
+                    <tr><td>draft 정확도 높음(동족 모델·쉬운 도메인)</td><td>큼 — 수락률↑</td></tr>
+                    <tr><td>입력 재사용 많은 작업(요약·RAG)</td><td>큼 — prompt lookup이 강력</td></tr>
+                    <tr><td>창의적·예측 어려운 생성</td><td>작음 — draft가 자주 빗나감</td></tr>
+                </table>
+
+                <h2 id="takeaway"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>핵심 요약</strong>
+                        ① 디코딩은 메모리 바운드라 "한 forward에 여러 토큰 검증"이 거의 공짜다. ② speculative decoding은 거절 샘플링으로 <strong>분포를 정확히 보존</strong> — 무손실 가속. ③ Medusa·EAGLE·self-spec은 draft를 모델 안에서 해결. ④ prompt lookup은 입력 재사용 작업에서 모델 호출 없이 가속. ⑤ 실제 처리량은 KV 캐시·연속 배치 같은 서빙 계층과 함께 결정된다.
+                    </div>
+                </div>
+                <p>다음 글에서는 속도가 아니라 <strong>품질과 환각(hallucination)</strong>을 제어하는 고급 디코딩 — contrastive 계열, DoLa, CFG, Mirostat, 엔트로피 기반 적응 샘플링, 구조적 디코딩 심화 — 를 다룬다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고</div>
+                    <ul>
+                        <li>Leviathan et al., "Fast Inference from Transformers via Speculative Decoding" (2023)</li>
+                        <li>Chen et al., "Accelerating LLM Decoding with Speculative Sampling" (2023) — 거절 샘플링 분포 보존</li>
+                        <li>Cai et al., "Medusa" (2024) / Li et al., "EAGLE" (2024) / Fu et al., "Lookahead Decoding" (2024)</li>
+                        <li>Kwon et al., "vLLM / PagedAttention" (2023)</li>
+                        <li>관련: <a href="llm-decoding-01-sampling.html">디코딩 심화 1</a>, <a href="llm-decoding-05-quality-control.html">디코딩 심화 5 — 품질·환각 제어</a></li>
+                    </ul>
+                </div>
+</div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai-llm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai-llm');
+</script>
+
+</body>
+</html>
