@@ -1,0 +1,383 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code를 구조로 이해하기 — 6가지 확장 메커니즘과 선택 기준 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#overview" data-section="overview">왜 구조로 보나</a><a href="#model" data-section="model">한 장 멘탈 모델</a><a href="#layers" data-section="layers">6가지 레이어</a><a href="#choose" data-section="choose">언제 무엇을</a><a href="#common" data-section="common">일반적인가</a><a href="#practice" data-section="practice">생산성으로</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">도구/환경 설정</span>
+                </div>
+                <h1>Claude Code를 구조로 이해하기 — 6가지 확장 메커니즘과 선택 기준</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 12분 분량</span>
+                    <span><i class="fa-solid fa-screwdriver-wrench"></i> 도구/환경 설정</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 글의 목적</strong>
+                        Claude Code의 확장 기능들(slash command·skill·subagent·hook·MCP·plugin)을 하나씩 따로 외우는 대신, "각각이 무엇을 더해 주는가"라는 한 장의 구조로 묶어 본다. 구조를 잡으면 새 기능이 나와도 어디에 끼우면 되는지 바로 보인다. 명령어·파일 경로는 버전에 따라 바뀔 수 있으니 세부는 공식 문서를 함께 확인한다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>확장을 "무엇을 더하는가" 한 문장으로 묶는 멘탈 모델</li>
+                        <li>6가지 확장 레이어 — 정의·저장 위치·트리거·쓸 때</li>
+                        <li>같은 일에 무엇을 골라야 하나 — 선택 기준과 의사결정 순서</li>
+                        <li>이 구조가 Claude만의 것인지, 업계 공통인지</li>
+                        <li>구조 이해를 실제 생산성으로 잇는 출발 순서</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#overview">왜 "구조로" 이해해야 하나</a></li>
+                        <li><a href="#model">한 장으로 보는 멘탈 모델</a></li>
+                        <li><a href="#layers">6가지 확장 레이어</a></li>
+                        <li><a href="#choose">언제 무엇을 — 선택 기준</a></li>
+                        <li><a href="#common">이게 Claude만의 구조인가</a></li>
+                        <li><a href="#practice">구조 이해를 생산성으로</a></li>
+                        <li><a href="#wrap">정리와 주의</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="overview"><i class="fa-solid fa-circle-question"></i> 왜 "구조로" 이해해야 하나</h2>
+                <p>Claude Code를 처음 쓰면 기능 이름이 빠르게 늘어난다. slash command, skill, subagent, hook, MCP, plugin, 거기에 CLAUDE.md와 settings.json까지. 각각을 개별 튜토리얼로 따라 하면 동작은 시키지만, "이 일에는 무엇을 써야 하지?"라는 질문 앞에서는 매번 막힌다.</p>
+                <p>이 기능들은 서로 경쟁 관계가 아니다. <strong>한 가지 공통 목적 — 모델의 기본 동작을 내 작업 방식에 맞게 확장하는 것 — 을 서로 다른 축에서 푸는 도구들</strong>이다. 그래서 외울 게 아니라 한 장의 구조로 묶어야 한다. 구조가 잡히면 선택이 빨라지고, 새 기능이 추가돼도 "아, 이건 트리거 축의 변형이구나"처럼 자리부터 보인다.</p>
+
+                <h2 id="model"><i class="fa-solid fa-diagram-project"></i> 한 장으로 보는 멘탈 모델</h2>
+                <p>"Claude를 확장한다"는 말은 결국 아래 네 가지 질문 중 하나에 답하는 것이다. 6개 기능은 이 네 질문에 대한 서로 다른 대답일 뿐이다.</p>
+                <table class="compare-table">
+                    <tr><th>확장의 축</th><th>핵심 질문</th><th>주로 쓰는 기능</th></tr>
+                    <tr><td><strong>지식·절차</strong></td><td>무엇을, 어떻게 하라고 가르칠까</td><td>CLAUDE.md · Slash command · Skill</td></tr>
+                    <tr><td><strong>일손(컨텍스트)</strong></td><td>이 일을 어디서(누가) 처리하게 할까</td><td>Subagent</td></tr>
+                    <tr><td><strong>연결</strong></td><td>바깥의 무엇에 닿게 할까</td><td>MCP</td></tr>
+                    <tr><td><strong>자동 개입</strong></td><td>언제 자동으로 끼어들게 할까</td><td>Hook</td></tr>
+                </table>
+                <p>그리고 <strong>Plugin</strong>은 다섯 번째 축이 아니라, 위의 것들을 하나로 묶어 남에게 배포하는 <em>포장지</em>다. 이 그림을 머릿속에 두고 각 레이어를 본다.</p>
+
+                <h2 id="layers"><i class="fa-solid fa-layer-group"></i> 6가지 확장 레이어</h2>
+                <p>각 레이어를 <strong>정의 · 저장 위치 · 트리거 · 쓸 때</strong> 순으로 정리한다. 저장 위치의 <code>~/.claude/</code>는 모든 프로젝트에 적용되는 개인 설정, <code>.claude/</code>는 해당 프로젝트(팀과 git으로 공유)다.</p>
+
+                <h3 id="l-command"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ① Slash command — 내가 부르는 재사용 프롬프트</h3>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">COMMAND</span> 자주 쓰는 지시를 명령어로 등록 <span class="lay-where">.claude/commands/이름.md</span></h4>
+                    <p>매번 길게 타이핑하던 지시를 Markdown 파일 한 장으로 저장해 두고 <code>/이름</code>으로 부른다. 파일 내용이 그대로 프롬프트로 펼쳐진다. 인자도 받을 수 있다.</p>
+                    <p><strong>트리거</strong> — 사용자가 직접 <code>/명령</code> 입력 (명시적).</p>
+                    <div class="lay-when"><i class="fa-solid fa-circle-check"></i> 쓸 때: "이 정형 지시를 내가 원할 때 즉시 부르고 싶다" — 배포·릴리스 노트·정해진 리뷰 절차처럼 내가 시점을 정하는 작업.</div>
+                </div>
+
+                <h3 id="l-skill"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ② Skill — 모델이 알아서 따르는 절차 패키지</h3>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">SKILL</span> 절차·지식을 모듈로 묶어 자동 로드 <span class="lay-where">.claude/skills/이름/SKILL.md</span></h4>
+                    <p>디렉터리 단위의 Markdown 패키지다. <code>SKILL.md</code>의 frontmatter에 "이 스킬은 언제 쓰는가"를 자연어로 적으면, 모델이 매 턴 그 설명을 읽고 지금 필요한지 <strong>스스로 판단</strong>해 적용한다. 보조 파일(스크립트·예시)을 함께 두고 필요할 때만 읽는 지연 로드 구조라 컨텍스트를 아낀다.</p>
+                    <p><strong>트리거</strong> — 모델이 description을 보고 자동 (원하면 <code>/스킬이름</code> 명시 호출도 가능).</p>
+                    <div class="lay-when"><i class="fa-solid fa-circle-check"></i> 쓸 때: "같은 절차·규칙을 매번 다시 설명하고 있다" — 코딩 컨벤션, 반복 체크리스트, 특정 작업의 표준 순서.</div>
+                </div>
+
+                <h3 id="l-subagent"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ③ Subagent — 분리된 컨텍스트에 위임</h3>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">SUBAGENT</span> 별도 컨텍스트를 가진 보조 에이전트 <span class="lay-where">.claude/agents/이름.md</span></h4>
+                    <p>자기만의 컨텍스트 윈도우·도구 세트·시스템 프롬프트를 가진 별도 에이전트다. 메인 세션이 무거운 일을 통째로 떠안으면 윈도우가 빨리 차는데, subagent에 위임하면 그쪽에서 처리하고 메인은 <strong>요약 결과만</strong> 받는다. 함수 호출과 비슷한 추상이다.</p>
+                    <p><strong>트리거</strong> — 모델이 작업과 description을 맞춰 자동 위임.</p>
+                    <div class="lay-when"><i class="fa-solid fa-circle-check"></i> 쓸 때: "메인에서 직접 하면 컨텍스트가 부담되는, 결과만 받으면 되는 일" — 대형 코드 리뷰, 광범위 조사, 여러 파일 일관성 검사. 작은 일에 남발하면 호출 오버헤드로 오히려 손해.</div>
+                </div>
+
+                <h3 id="l-hook"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ④ Hook — 정해진 시점에 자동 실행</h3>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">HOOK</span> 라이프사이클 이벤트에 거는 스크립트 <span class="lay-where">.claude/settings.json 의 hooks</span></h4>
+                    <p>도구 실행 전후나 세션 시작 같은 정해진 시점에 셸 명령을 <strong>결정론적으로</strong> 실행한다. 모델의 판단에 맡기지 않고 "무조건" 돌게 만드는 게 핵심이라, 정책 강제와 자동화에 쓴다. 주요 이벤트로 <code>PreToolUse</code>(도구 실행 전, 차단 가능)·<code>PostToolUse</code>(실행 후)·<code>UserPromptSubmit</code>·<code>Stop</code>·<code>SessionStart</code> 등이 있다.</p>
+                    <p><strong>트리거</strong> — 해당 이벤트가 발생하면 자동 (모델 판단 아님).</p>
+                    <div class="lay-when"><i class="fa-solid fa-circle-check"></i> 쓸 때: "이건 반드시·매번 일어나야 한다" — 파일 저장 후 자동 포맷/lint, 위험 명령 차단, 커밋 전 검사.</div>
+                </div>
+
+                <h3 id="l-mcp"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ⑤ MCP — 바깥 도구·데이터에 연결</h3>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">MCP</span> 외부 시스템을 도구로 연결하는 프로토콜 <span class="lay-where">.mcp.json</span></h4>
+                    <p>Model Context Protocol. 데이터베이스·이슈 트래커·브라우저·사내 API 같은 외부 시스템을 표준 방식으로 연결해, 모델이 그것들을 도구처럼 호출하게 한다. 연결 정보를 <code>.mcp.json</code>에 적어 두면 세션 시작 시 서버가 떠 모델이 필요할 때 호출한다.</p>
+                    <p><strong>트리거</strong> — 모델이 필요하다고 판단할 때 자동 호출.</p>
+                    <div class="lay-when"><i class="fa-solid fa-circle-check"></i> 쓸 때: "Claude가 우리 DB/Slack/브라우저/사내 시스템에 직접 닿아야 한다" — 모델 자체엔 없는 외부 능력 추가.</div>
+                </div>
+
+                <h3 id="l-plugin"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> ⑥ Plugin — 위를 묶어 배포</h3>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">PLUGIN</span> command·skill·agent·hook·MCP를 한 패키지로 <span class="lay-where">.claude-plugin/plugin.json</span></h4>
+                    <p>앞의 확장들을 하나의 설치 가능한 묶음으로 포장한 것이다. 매니페스트(<code>plugin.json</code>)에 메타데이터를 적고, 마켓플레이스나 git을 통해 팀·커뮤니티가 받아 쓴다. 플러그인 안의 스킬은 <code>/플러그인이름:스킬이름</code>처럼 네임스페이스가 붙는다.</p>
+                    <p><strong>트리거</strong> — 설치 후, 안에 든 각 요소가 자기 방식대로 동작.</p>
+                    <div class="lay-when"><i class="fa-solid fa-circle-check"></i> 쓸 때: "내가 만든 확장 묶음을 팀 전체·여러 프로젝트에 일관되게 퍼뜨리고 싶다".</div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-gear"></i>
+                    <div class="callout-body">
+                        <strong>바탕에 깔리는 설정 계층</strong>
+                        6개 레이어 밑에는 항상 <code>CLAUDE.md</code>(상시 적용되는 지시·맥락)와 <code>settings.json</code>(권한·환경 변수·훅·모델 선택), 그리고 자동 메모리가 깔려 있다. 같은 항목은 <strong>프로젝트(.claude) 설정이 개인(~/.claude) 설정을 덮어쓴다</strong>. 확장을 만들기 전에, 상시 지시는 CLAUDE.md로 두는 게 먼저다.
+                    </div>
+                </div>
+
+                <h2 id="choose"><i class="fa-solid fa-code-branch"></i> 언제 무엇을 — 선택 기준</h2>
+                <p>핵심 구분 축은 세 가지다. <strong>(1) 누가 트리거하나</strong>(내가 명시 / 모델이 자동 / 이벤트가 자동), <strong>(2) 컨텍스트가 분리되나</strong>, <strong>(3) 무엇을 더하나</strong>(지식 / 일손 / 연결 / 자동개입).</p>
+
+                <table class="compare-table">
+                    <tr><th>기능</th><th>무엇을 더하나</th><th>트리거</th><th>컨텍스트</th><th>전형적 용도</th></tr>
+                    <tr><td><strong>Slash command</strong></td><td>지식·절차</td><td>사용자 명시 <code>/cmd</code></td><td>메인 안</td><td>정형 지시 즉시 호출</td></tr>
+                    <tr><td><strong>Skill</strong></td><td>지식·절차</td><td>모델 자동 / 명시</td><td>메인 안(지연 로드)</td><td>반복 절차·규칙 자동 적용</td></tr>
+                    <tr><td><strong>Subagent</strong></td><td>일손</td><td>모델 자동</td><td>분리됨</td><td>무거운 위임(리뷰·조사)</td></tr>
+                    <tr><td><strong>Hook</strong></td><td>자동 개입</td><td>이벤트 자동</td><td>해당 없음</td><td>정책 강제·자동화</td></tr>
+                    <tr><td><strong>MCP</strong></td><td>연결</td><td>모델 자동</td><td>해당 없음</td><td>외부 도구·데이터 접근</td></tr>
+                    <tr><td><strong>Plugin</strong></td><td>(묶음 배포)</td><td>설치</td><td>—</td><td>팀·커뮤니티 공유</td></tr>
+                </table>
+
+                <p>막힐 때는 위에서부터 내려오며 답하면 대개 갈린다.</p>
+                <ol class="decision-list">
+                    <li>바깥 시스템(DB·Slack·브라우저·사내 API)에 <strong>닿아야</strong> 하나? → <strong>MCP</strong></li>
+                    <li>특정 시점에 <strong>반드시·매번</strong> 자동 실행돼야 하나(저장 후 lint, 위험 명령 차단)? → <strong>Hook</strong></li>
+                    <li>무겁고 분리해도 되는 일을 <strong>위임</strong>하고 결과만 받으면 되나? → <strong>Subagent</strong></li>
+                    <li>반복되는 절차·규칙을 모델이 <strong>알아서</strong> 따르게 하고 싶나? → <strong>Skill</strong></li>
+                    <li>정형 지시를 <strong>내가 원할 때</strong> 직접 부르고 싶나? → <strong>Slash command</strong></li>
+                    <li>위에서 만든 것들을 <strong>남에게 배포</strong>하나? → <strong>Plugin</strong></li>
+                </ol>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>경계가 겹칠 땐 "분리"와 "강제"로 가른다</strong>
+                        Skill과 Subagent가 헷갈리면 컨텍스트 분리가 필요한지로 가른다 — 필요하면 Subagent, 아니면 Skill. Skill과 Hook이 헷갈리면 "모델 판단에 맡겨도 되나(Skill)" vs "무조건 돌아야 하나(Hook)"로 가른다. 이 둘은 배타적이지 않아 함께 합성할 수도 있다(예: Skill 안에서 특정 작업을 Subagent에 위임).
+                    </div>
+                </div>
+
+                <h2 id="common"><i class="fa-solid fa-globe"></i> 이게 Claude만의 구조인가</h2>
+                <p>질문을 정확히 두 층으로 나누면 답이 분명해진다.</p>
+
+                <h3 id="c-command"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 명시 명령(slash command류)은 발상이 보편적</h3>
+                <p>"자주 쓰는 지시를 명령으로 등록해 재사용한다"는 발상 자체는 새롭지 않다. 여러 AI 코딩 도구가 각자의 이름과 UX로 비슷한 명령·규칙 개념을 제공한다. 표면은 달라도 메커니즘은 <strong>"사용자 입력 → 프롬프트로 확장 → 실행"</strong>으로 같다. 그래서 한 도구에서 익힌 감각이 다른 도구로 대체로 옮겨 간다.</p>
+
+                <h3 id="c-standard"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Skill·MCP는 공개 표준으로 가고 있다</h3>
+                <p>두 레이어는 Claude 안에 갇힌 기능이 아니라 도구 경계를 넘는 표준을 지향한다.</p>
+                <ul>
+                    <li><strong>Agent Skills</strong> — Anthropic이 <code>SKILL.md</code> 형식을 공개 표준으로 내놓아, 한 번 작성한 스킬을 여러 도구·환경에서 재사용하는 방향을 잡았다. "절차를 한 번 가르쳐 두면 어디서든 쓴다"가 목표다.</li>
+                    <li><strong>MCP</strong> — 외부 도구 연결 프로토콜로, Anthropic이 처음 제안했지만 주요 AI 제공자와 도구들이 채택하면서 사실상 업계 공용 규격이 됐다. MCP 서버 하나를 만들면 이를 지원하는 여러 클라이언트에서 함께 쓸 수 있다.</li>
+                </ul>
+                <p>정리하면, 이 구조는 "Claude만의 특이한 장치"가 아니라 <strong>에이전트형 AI 도구가 공통으로 수렴하고 있는 골격</strong>에 가깝다. 그래서 구조로 한 번 이해해 두면 투자가 특정 도구에 종속되지 않는다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>수치·채택 현황은 빠르게 바뀐다</strong>
+                        "어떤 도구가 무엇을 지원한다", "표준 버전이 몇이다" 같은 구체 사실은 변동이 잦다. 이 글은 의도적으로 큰 흐름만 다뤘다. 최신 채택 현황·정확한 사양은 각 공식 문서에서 그때그때 확인하는 게 맞다.
+                    </div>
+                </div>
+
+                <h2 id="practice"><i class="fa-solid fa-gauge-high"></i> 구조 이해를 생산성으로</h2>
+                <p>구조를 아는 것과 생산성이 오르는 것은 다르다. 둘을 잇는 건 "지금 내 마찰을 어느 레이어로 옮길까"라는 한 가지 습관이다. 권하는 출발 순서는 가벼운 것부터다.</p>
+
+                <h3 id="p-start"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> CLAUDE.md → Skill → 나머지 순으로</h3>
+                <ol class="decision-list">
+                    <li><strong>CLAUDE.md부터.</strong> 매 세션 반복하는 맥락(빌드 명령·코딩 규칙·금지 사항)을 여기 적는다. 진입 비용이 가장 낮고 효과가 즉시 난다.</li>
+                    <li><strong>반복 설명은 Skill로.</strong> "이 절차를 또 설명하고 있네" 싶은 게 보이면 그게 첫 스킬 후보다. Markdown 한 장이면 시작된다.</li>
+                    <li><strong>무거운 위임은 Subagent로.</strong> 메인 대화를 어지럽히는 대형 리뷰·조사를 떼어 낸다.</li>
+                    <li><strong>꼭 지켜야 할 규칙은 Hook으로.</strong> 사람·모델이 깜빡해도 강제되는 안전장치로 만든다.</li>
+                    <li><strong>외부 능력은 MCP, 공유는 Plugin.</strong> 팀에 퍼뜨릴 단계가 오면 묶는다.</li>
+                </ol>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>"매번 다시 하는 것"이 다음 후보다</strong>
+                        생산성 향상은 거창한 설계가 아니라, 반복되는 마찰을 발견해 알맞은 레이어로 옮기는 일의 누적이다. 같은 지시를 반복하면 Skill, 같은 위험을 반복 점검하면 Hook, 같은 외부 조회를 반복하면 MCP. 한편, 작은 일에 무거운 subagent나 과한 스킬을 남발하면 관리 비용만 늘어난다 — 마찰이 실제로 반복될 때 구조화한다.
+                    </div>
+                </div>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 주의</h2>
+                <ul>
+                    <li><strong>한 문장 요약</strong> — 확장이란 모델에 지식(command·skill)·일손(subagent)·연결(MCP)·자동개입(hook)을 더하는 것이고, plugin은 그것들의 포장지다.</li>
+                    <li><strong>선택은 세 축으로</strong> — 누가 트리거하나 / 컨텍스트가 분리되나 / 무엇을 더하나. 이 셋이면 대부분 갈린다.</li>
+                    <li><strong>전이 가능한 투자</strong> — Skill·MCP는 표준을 향하므로, 구조로 익힌 이해는 특정 도구에 묶이지 않는다.</li>
+                    <li><strong>세부는 공식 문서로</strong> — 파일 경로·명령어·이벤트 이름은 버전에 따라 바뀐다. 이 글의 구조를 뼈대로 두고 정확한 사양은 문서에서 확인한다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Claude Code 공식 문서 — <a href="https://docs.claude.com/en/docs/claude-code/overview" target="_blank" rel="noopener">docs.claude.com/en/docs/claude-code</a></li>
+                        <li>Model Context Protocol — <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">modelcontextprotocol.io</a></li>
+                        <li>열람일: 2026-06-25. 세부 사양·채택 현황은 변동될 수 있어 공식 문서 확인 권장.</li>
+                        <li>함께 보기(강의 정리): <a href="course-claude-code-extensions.html">Subagents &amp; Agent Skills</a>, <a href="course-claude-mcp-intro.html">MCP 입문</a>, <a href="course-claude-mcp-advanced.html">MCP 심화</a></li>
+                        <li>함께 보기(실전): <a href="claude-code-practical.html">Claude Code 실전 활용 가이드</a>, <a href="claude-code-plugins.html">유용한 플러그인 모음</a></li>
+                        <li>입문: <a href="claude-code-intro.html">Claude Code 소개</a>, <a href="course-claude-code-101.html">Claude Code 101</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tool');
+    renderPostNav('tool');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
