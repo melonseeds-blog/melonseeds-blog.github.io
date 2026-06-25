@@ -29,7 +29,11 @@ function renderSidebar(currentCat) {
               { id: 'tech-gpu',     label: 'GPU / CUDA' },
           ]
         },
-        { id: 'trend',  icon: 'fa-solid fa-satellite-dish',    label: '기술 트렌드',    color: 'trend',  desc: '기술 뉴스, 새로운 기술' },
+        { id: 'trend',  icon: 'fa-solid fa-satellite-dish',    label: '기술 트렌드',    color: 'trend',  desc: '기술 뉴스, 새로운 기술',
+          subs: [
+              { id: 'trend-monthly', label: '월간 트렌드 브리핑' },
+          ]
+        },
         { id: 'tool',   icon: 'fa-solid fa-screwdriver-wrench', label: '도구/환경 설정', color: 'tool',   desc: 'Git, IDE, Claude' },
         { id: 'debug',  icon: 'fa-solid fa-bug',              label: '트러블슈팅',     color: 'debug',  desc: '문제 해결 기록',
           subs: [

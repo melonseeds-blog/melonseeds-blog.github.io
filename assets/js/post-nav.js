@@ -312,6 +312,9 @@ const POST_NAV_DATA = {
     'read': [
         { file: 'read-recommended-sites.html', title: '개발자가 북마크해둘 추천 사이트 모음' },
     ],
+    'trend-monthly': [
+        { file: 'trend-2026-06.html', title: '월간 트렌드 브리핑 — 2026년 6월호' },
+    ],
     'tool': [
         { file: 'git-basics.html', title: 'Git 기본 명령어 가이드' },
         { file: 'claude-code-architecture.html', title: 'Claude Code를 구조로 이해하기 — 6가지 확장 메커니즘' },
@@ -348,7 +351,8 @@ const CAT_LABELS = {
     'course-claude': 'Claude 공식 강의',
     'read': '읽을거리',
     'debug': '트러블슈팅',
-    'debug-windbg': 'Windows 크래시 덤프 분석'
+    'debug-windbg': 'Windows 크래시 덤프 분석',
+    'trend-monthly': '월간 트렌드 브리핑'
 };
 
 function renderPostNav(category) {
