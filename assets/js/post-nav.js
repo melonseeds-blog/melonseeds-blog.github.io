@@ -317,6 +317,7 @@ const POST_NAV_DATA = {
     ],
     'tool': [
         { file: 'git-basics.html', title: 'Git 기본 명령어 가이드' },
+        { file: 'git-repo-structure.html', title: 'AI 시대의 Git 레포 구성 가이드' },
         { file: 'claude-code-architecture.html', title: 'Claude Code를 구조로 이해하기 — 6가지 확장 메커니즘' },
         { file: 'claude-code-practical.html', title: 'Claude Code 실전 활용 가이드' },
         { file: 'claude-code-plugins.html', title: 'Claude Code 유용한 플러그인 모음' },
@@ -363,8 +364,9 @@ function renderPostNav(category) {
     const idx = posts.findIndex(p => p.file === currentFile);
     if (idx === -1) return;
 
-    // ===== 시리즈 진행도 (글 상단) =====
-    if (!document.querySelector('.series-progress')) {
+    // ===== 시리즈 진행도 (글 상단) — 연재 시리즈 카테고리에만 표시 (모음 카테고리는 제외) =====
+    const NON_SERIES_CATS = ['tool', 'book', 'read'];
+    if (!document.querySelector('.series-progress') && !NON_SERIES_CATS.includes(category)) {
         const meta = document.querySelector('.post-detail-meta');
         if (meta) {
             const total = posts.length;
