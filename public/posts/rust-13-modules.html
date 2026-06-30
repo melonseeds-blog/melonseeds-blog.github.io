@@ -1,0 +1,450 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 시스템과 크레이트 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm { color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why" data-section="why">왜 모듈인가</a><a href="#modpubuse" data-section="modpubuse">mod·pub·use</a><a href="#files" data-section="files">파일·디렉터리</a><a href="#paths" data-section="paths">경로 키워드</a><a href="#cargo" data-section="cargo">Cargo·워크스페이스</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">Rust 시리즈</span>
+                </div>
+                <h1>모듈 시스템과 크레이트</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-brands fa-rust"></i> Rust 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 편에서 배우는 것</strong>
+                        Rust 코드를 어떻게 여러 조각으로 나누고 다시 이어 붙이는지 본다. <code>mod</code>로 모듈 트리를 만들고, <code>pub</code>으로 공개 범위를 정하고, <code>use</code>로 긴 경로를 줄인다. 한 파일이 어떻게 여러 파일·디렉터리로 자라는지, <code>crate</code>·<code>super</code>·<code>self</code> 경로가 무엇을 가리키는지 익힌다. 끝으로 <code>Cargo.toml</code>로 외부 크레이트를 끌어오고, 워크스페이스로 여러 크레이트를 한 묶음으로 다루는 법을 맛본다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>모듈 트리가 무엇이고 왜 헤더 대신 이 방식을 쓰나</li>
+                        <li><code>mod</code>로 모듈 선언, <code>pub</code>으로 공개, <code>use</code>로 경로 단축</li>
+                        <li>인라인 모듈 → 파일 모듈 → 디렉터리 모듈로 코드 쪼개기</li>
+                        <li><code>crate</code>·<code>super</code>·<code>self</code> 경로 키워드</li>
+                        <li><code>Cargo.toml</code> 의존성 선언과 워크스페이스 맛보기</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">왜 모듈 시스템인가</a></li>
+                        <li><a href="#modpubuse">mod · pub · use</a></li>
+                        <li><a href="#files">파일과 디렉터리로 쪼개기</a></li>
+                        <li><a href="#paths">crate · super · self 경로</a></li>
+                        <li><a href="#cargo">Cargo.toml과 워크스페이스</a></li>
+                        <li><a href="#wrap">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why"><i class="fa-solid fa-circle-question"></i> 왜 모듈 시스템인가</h2>
+                <p>프로그램이 커지면 코드를 나눠야 한다. C++에서는 코드를 <code>.h</code> 헤더와 <code>.cpp</code> 구현으로 가르고, 이름 충돌을 막으려고 <code>namespace</code>로 묶고, 누가 무엇을 보게 할지는 <code>#include</code>와 빌드 시스템이 결정한다. 선언과 정의가 따로 놀고, 텍스트 단위의 <code>#include</code>가 컴파일 순서에 끼어든다.</p>
+                <p>Rust는 이 일을 하나의 메커니즘 <strong>모듈 트리</strong>로 푼다. 크레이트(crate)는 컴파일의 한 단위다. 실행 파일을 만드는 바이너리 크레이트는 <code>main.rs</code>가, 라이브러리 크레이트는 <code>lib.rs</code>가 뿌리(루트)다. 그 뿌리에서 <code>mod</code> 선언으로 가지를 뻗어 모듈 트리가 자란다. 모든 항목은 기본이 비공개라, <strong>공개하고 싶은 것만 <code>pub</code>으로 골라 내보낸다.</strong></p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — 헤더가 없다</strong>
+                        Rust에는 선언을 따로 적는 헤더가 없다. 한 곳에 정의를 쓰면 그게 곧 선언이다. 또 <code>#include</code> 같은 텍스트 복사가 없어, 어떤 모듈을 두 곳에서 써도 코드가 두 번 들어가지 않는다. 가시성도 파일 분할과 분리돼 있다 — 파일을 나눴다고 자동으로 공개되지 않고, <code>pub</code>을 붙여야만 밖에서 보인다.
+                    </div>
+                </div>
+
+                <h2 id="modpubuse"><i class="fa-solid fa-cube"></i> mod · pub · use</h2>
+                <p>세 키워드의 역할은 분명하다. <code>mod</code>는 모듈을 <strong>선언</strong>하고, <code>pub</code>은 항목을 <strong>공개</strong>하고, <code>use</code>는 긴 경로를 짧은 이름으로 <strong>끌어온다</strong>. 한 파일 안에서 인라인 모듈로 셋을 모두 보면 이렇다.</p>
+
+                <pre class="code"><code><span class="cm">// src/main.rs — 한 파일 안에서 모듈 트리 만들기</span>
+mod network {
+    <span class="cm">// 모듈 안의 항목은 기본이 비공개다.</span>
+    pub mod client {
+        <span class="cm">// pub을 붙여야 바깥 모듈에서 호출할 수 있다.</span>
+        pub fn connect(host: &str) -> String {
+            format!("connected to {host}")
+        }
+
+        <span class="cm">// pub이 없으니 client 모듈 밖에서는 보이지 않는다.</span>
+        fn handshake() -> u32 {
+            42
+        }
+    }
+}
+
+<span class="cm">// 긴 경로를 use로 한 번 끌어오면 짧은 이름으로 쓴다.</span>
+use network::client;
+
+fn main() {
+    let msg = client::connect("example.com");
+    println!("{msg}");
+}</code></pre>
+
+                <p><code>handshake</code>는 <code>pub</code>이 없어서 <code>client</code> 모듈 안에서만 쓸 수 있다. 밖에서 호출하면 컴파일 오류가 난다. 가시성은 항상 <strong>한 단계씩</strong> 열린다 — <code>client</code>를 공개해도 그 안의 항목까지 자동으로 공개되지는 않는다.</p>
+
+                <h3 id="pub-variants"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> pub의 갈래와 구조체 필드</h3>
+                <p>구조체는 타입을 공개해도 필드는 따로 공개해야 한다. 이 점이 캡슐화를 자연스럽게 만든다.</p>
+
+                <pre class="code"><code>mod geometry {
+    pub struct Point {
+        pub x: f64,      <span class="cm">// 공개 필드</span>
+        y: f64,          <span class="cm">// 비공개 필드 — 모듈 밖에서 직접 못 읽는다</span>
+    }
+
+    impl Point {
+        <span class="cm">// 비공개 필드가 있으니 생성은 이런 연관 함수로만 가능하다.</span>
+        pub fn new(x: f64, y: f64) -> Point {
+            Point { x, y }
+        }
+
+        <span class="cm">// &self는 값을 빌려 읽기만 한다 — 소유권을 가져가지 않는다.</span>
+        pub fn distance_from_origin(&self) -> f64 {
+            (self.x * self.x + self.y * self.y).sqrt()
+        }
+    }
+}
+
+fn main() {
+    let p = geometry::Point::new(3.0, 4.0);
+    println!("x = {}", p.x);                    <span class="cm">// OK: x는 pub</span>
+    println!("dist = {}", p.distance_from_origin()); <span class="cm">// 5.0</span>
+    <span class="cm">// println!("{}", p.y);  // 컴파일 오류: y는 비공개</span>
+}</code></pre>
+
+                <p><code>distance_from_origin</code>은 <code>&amp;self</code>로 자기 자신을 <strong>빌려</strong> 읽기만 한다. 값을 옮기지 않으니 호출 뒤에도 <code>p</code>를 계속 쓸 수 있다. <code>use</code>로 이름을 끌어올 때 충돌이 나면 <code>as</code>로 별명을 준다.</p>
+
+                <pre class="code"><code>use std::fmt::Result;
+use std::io::Result as IoResult;   <span class="cm">// 같은 이름 Result 충돌을 별명으로 해소</span>
+
+fn render() -> Result { Ok(()) }
+fn read() -> IoResult&lt;()&gt; { Ok(()) }</code></pre>
+
+                <h2 id="files"><i class="fa-solid fa-folder-tree"></i> 파일과 디렉터리로 쪼개기</h2>
+                <p>인라인 모듈이 커지면 파일로 옮긴다. 규칙은 단순하다. <code>mod 이름;</code>처럼 <strong>본문 대신 세미콜론</strong>으로 선언하면, 컴파일러가 같은 이름의 파일에서 본문을 찾는다.</p>
+
+                <p>예를 들어 루트에서 <code>mod network;</code>라고 쓰면 컴파일러는 <code>src/network.rs</code>를 읽는다. 그 모듈이 다시 하위 모듈을 가지면 두 가지 배치가 가능하다.</p>
+
+                <pre class="code"><code><span class="cm">// 디렉터리 모듈 배치 (현대 Rust 권장 형태)</span>
+<span class="cm">// src/</span>
+<span class="cm">//  ├─ main.rs        ← 크레이트 루트</span>
+<span class="cm">//  ├─ network.rs     ← network 모듈 본문, 하위 모듈을 선언</span>
+<span class="cm">//  └─ network/</span>
+<span class="cm">//       └─ client.rs ← network::client 모듈 본문</span></code></pre>
+
+                <pre class="code"><code><span class="cm">// src/main.rs</span>
+mod network;   <span class="cm">// src/network.rs 를 읽어 온다</span>
+
+fn main() {
+    let s = network::client::connect("example.com");
+    println!("{s}");
+}</code></pre>
+
+                <pre class="code"><code><span class="cm">// src/network.rs</span>
+pub mod client;   <span class="cm">// src/network/client.rs 를 읽어 온다</span></code></pre>
+
+                <pre class="code"><code><span class="cm">// src/network/client.rs</span>
+pub fn connect(host: &str) -> String {
+    format!("connected to {host}")
+}</code></pre>
+
+                <p>파일을 어떻게 나눠도 <strong>모듈 트리의 경로는 그대로다</strong>. 위 코드에서 함수는 한 파일에 있든 세 파일에 흩어져 있든 똑같이 <code>network::client::connect</code>로 부른다. 파일 위치는 구현 세부일 뿐, 호출하는 쪽의 경로를 바꾸지 않는다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>파일을 만들었다고 모듈이 되지 않는다</strong>
+                        <code>src/network/client.rs</code> 파일을 만들어도, 부모에 <code>mod client;</code> 선언이 없으면 컴파일에 포함되지 않는다. C++의 빌드 시스템이 소스 목록을 관리하던 자리를, Rust에서는 <code>mod</code> 선언이 대신한다. 트리에 연결돼야 비로소 코드가 산다.
+                    </div>
+                </div>
+
+                <h2 id="paths"><i class="fa-solid fa-route"></i> crate · super · self 경로</h2>
+                <p>모듈 안에서 다른 항목을 가리킬 때 경로를 쓴다. <strong>절대 경로</strong>는 크레이트 루트를 뜻하는 <code>crate</code>에서 시작하고, <strong>상대 경로</strong>는 현재 위치를 뜻하는 <code>self</code>나 부모를 뜻하는 <code>super</code>에서 시작한다. <code>super</code>는 파일 시스템의 <code>..</code>과 같은 감각이다.</p>
+
+                <pre class="code"><code>mod store {
+    pub fn open() -> &'static str {
+        "store open"
+    }
+
+    pub mod front {
+        pub fn greet() -> String {
+            <span class="cm">// super = 부모 모듈(store). 형제 함수 open을 부른다.</span>
+            let status = super::open();
+            <span class="cm">// crate = 크레이트 루트에서 내려오는 절대 경로.</span>
+            let banner = crate::config::BANNER;
+            format!("{banner}: {status}")
+        }
+    }
+}
+
+mod config {
+    pub const BANNER: &str = "MyShop";
+}
+
+fn main() {
+    <span class="cm">// 루트에서는 절대 경로로 자연스럽게 접근한다.</span>
+    println!("{}", store::front::greet());  <span class="cm">// MyShop: store open</span>
+}</code></pre>
+
+                <p>고르는 기준은 단순하다. 항목이 모듈 트리에서 함께 움직일 것 같으면 <code>super</code> 같은 상대 경로가 리팩터링에 강하고, 멀리 떨어진 안정된 위치를 가리키면 <code>crate</code> 절대 경로가 읽기 쉽다. <code>self</code>는 현재 모듈을 명시할 때나 <code>use</code>에서 여러 항목을 묶을 때 쓴다.</p>
+
+                <pre class="code"><code><span class="cm">// self는 현재 모듈을 가리킨다. 묶음 import에서 자주 보인다.</span>
+use std::io::{self, Write};   <span class="cm">// std::io 모듈 자체 + io::Write 트레잇</span>
+
+fn log(line: &str) -> io::Result&lt;()&gt; {
+    let mut out = io::stdout();
+    out.write_all(line.as_bytes())   <span class="cm">// Write 트레잇 메서드</span>
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — 경로가 곧 의존성이다</strong>
+                        C++의 <code>::</code> 네임스페이스 경로는 이름을 한정할 뿐, 그 심볼이 어디서 컴파일되는지는 헤더와 링커가 따로 정한다. Rust에서는 <code>crate::</code> · <code>super::</code> 경로가 모듈 트리의 실제 위치를 가리키고, 그 트리가 곧 컴파일 단위 구성이다. 경로와 빌드 구성이 분리돼 있지 않다.
+                    </div>
+                </div>
+
+                <h2 id="cargo"><i class="fa-solid fa-box-open"></i> Cargo.toml과 워크스페이스</h2>
+                <p>외부 크레이트를 쓰려면 <code>Cargo.toml</code>의 <code>[dependencies]</code>에 한 줄 적으면 된다. Cargo가 <a href="https://crates.io" target="_blank" rel="noopener">crates.io</a>에서 받아 빌드까지 엮는다. C++처럼 헤더 경로·라이브러리 경로·링크 플래그를 손으로 맞출 필요가 없다.</p>
+
+                <pre class="code"><code><span class="cm"># Cargo.toml — 의존성을 선언하면 Cargo가 받아서 빌드까지 연결한다</span>
+[package]
+name = "myshop"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+rand = "0.8"</code></pre>
+
+                <p>선언한 외부 크레이트는 코드에서 그 이름을 루트로 하는 경로로 쓴다. <code>std</code>를 쓰던 방식과 똑같다.</p>
+
+                <pre class="code"><code>use rand::Rng;   <span class="cm">// 외부 크레이트 rand에서 Rng 트레잇을 끌어온다</span>
+
+fn roll_dice() -> u32 {
+    let mut rng = rand::thread_rng();
+    rng.gen_range(1..=6)   <span class="cm">// 1 이상 6 이하 난수</span>
+}</code></pre>
+
+                <table class="compare-table">
+                    <tr><th>관심사</th><th>C++ 전형</th><th>Rust + Cargo</th></tr>
+                    <tr><td>이름 한정</td><td><code>namespace</code> + <code>::</code></td><td>모듈 트리 + 경로(<code>::</code>)</td></tr>
+                    <tr><td>선언/정의 분리</td><td>헤더(.h) + 구현(.cpp)</td><td>분리 없음 — 정의가 곧 선언</td></tr>
+                    <tr><td>다른 파일 포함</td><td><code>#include</code> 텍스트 복사</td><td><code>mod</code> 선언으로 트리에 연결</td></tr>
+                    <tr><td>외부 라이브러리</td><td>경로·링크 플래그 수동 설정</td><td><code>Cargo.toml</code> 한 줄</td></tr>
+                    <tr><td>여러 패키지 묶음</td><td>상위 빌드 스크립트로 조립</td><td>워크스페이스</td></tr>
+                </table>
+
+                <h3 id="workspace"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 워크스페이스 맛보기</h3>
+                <p>프로젝트가 여러 크레이트로 커지면 <strong>워크스페이스</strong>로 묶는다. 여러 크레이트가 하나의 <code>Cargo.lock</code>과 공통 <code>target/</code> 출력 폴더를 공유해, 의존성 버전이 한 묶음 안에서 일관되게 맞춰진다.</p>
+
+                <pre class="code"><code><span class="cm"># 최상위 Cargo.toml — 멤버 크레이트를 묶는 워크스페이스</span>
+[workspace]
+members = ["core", "cli"]
+resolver = "2"</code></pre>
+
+                <pre class="code"><code><span class="cm"># cli/Cargo.toml — 같은 워크스페이스 안의 core를 경로로 의존한다</span>
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+core = { path = "../core" }</code></pre>
+
+                <p>이렇게 두면 <code>cli</code> 크레이트의 코드에서 <code>core</code>를 외부 크레이트처럼 부른다 — <code>use core::geometry::Point;</code> 식이다. 모듈이 한 크레이트 안의 구획이라면, 워크스페이스는 여러 크레이트를 한 저장소에서 함께 빌드·테스트하는 상위 묶음이다.</p>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <ul>
+                    <li><strong>크레이트는 컴파일 단위</strong> — <code>main.rs</code>(바이너리)나 <code>lib.rs</code>(라이브러리)가 모듈 트리의 뿌리다.</li>
+                    <li><strong>mod · pub · use</strong> — <code>mod</code>로 선언하고, 기본 비공개를 <code>pub</code>으로 한 단계씩 열고, <code>use</code>로 긴 경로를 줄인다.</li>
+                    <li><strong>파일 분할은 트리와 무관</strong> — 한 파일이든 디렉터리든 호출 경로는 그대로다. <code>mod</code> 선언이 없으면 파일은 빌드에 포함되지 않는다.</li>
+                    <li><strong>경로 키워드</strong> — <code>crate</code>(루트 절대 경로), <code>super</code>(부모), <code>self</code>(현재 모듈).</li>
+                    <li><strong>Cargo가 의존성을 일원화</strong> — <code>Cargo.toml</code> 한 줄로 외부 크레이트를 엮고, 워크스페이스로 여러 크레이트를 한 묶음으로 다룬다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>The Rust Programming Language (공식 The Book) — <a href="https://doc.rust-lang.org/book/" target="_blank" rel="noopener">doc.rust-lang.org/book</a></li>
+                        <li>The Book, Ch.7 Managing Growing Projects with Packages, Crates, and Modules — <a href="https://doc.rust-lang.org/book/ch07-00-managing-growing-projects-with-packages-crates-and-modules.html" target="_blank" rel="noopener">ch07</a></li>
+                        <li>The Cargo Book — Specifying Dependencies — <a href="https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html" target="_blank" rel="noopener">cargo/reference/specifying-dependencies</a></li>
+                        <li>The Cargo Book — Workspaces — <a href="https://doc.rust-lang.org/cargo/reference/workspaces.html" target="_blank" rel="noopener">cargo/reference/workspaces</a></li>
+                        <li>표준 라이브러리 <code>std::io</code> — <a href="https://doc.rust-lang.org/std/io/index.html" target="_blank" rel="noopener">doc.rust-lang.org/std/io</a></li>
+                        <li>열람일: 2026-06-25. 세부 사양은 Rust 에디션·버전에 따라 달라질 수 있어 공식 문서 확인 권장.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-rust');
+    renderPostNav('dev-lang-rust');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

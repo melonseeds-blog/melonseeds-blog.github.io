@@ -1,0 +1,428 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스마트 포인터 — Box·Rc·RefCell - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm { color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why" data-section="why">왜 스마트 포인터인가</a><a href="#box" data-section="box">Box&lt;T&gt;</a><a href="#rc" data-section="rc">Rc&lt;T&gt;</a><a href="#refcell" data-section="refcell">RefCell&lt;T&gt;</a><a href="#pattern" data-section="pattern">Rc&lt;RefCell&lt;T&gt;&gt;</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">Rust 시리즈</span>
+                </div>
+                <h1>스마트 포인터 — Box·Rc·RefCell</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-brands fa-rust"></i> Rust 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 편에서 배우는 것</strong>
+                        스마트 포인터는 단순한 포인터가 아니라, 데이터를 가리키면서 동시에 추가 메타데이터와 동작을 들고 다니는 타입이다. 이 글에서는 힙에 값을 두는 <code>Box&lt;T&gt;</code>, 하나의 값을 여러 곳에서 공유 소유하는 <code>Rc&lt;T&gt;</code>, 불변 참조 뒤에서도 안쪽 값을 바꾸게 해 주는 <code>RefCell&lt;T&gt;</code>를 차례로 다룬다. 마지막에 이 셋을 합친 <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> 관용 패턴까지 본다. C++의 <code>unique_ptr</code>·<code>shared_ptr</code>과 무엇이 같고 무엇이 다른지를 곳곳에서 대조한다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>왜 소유권 언어에 스마트 포인터가 필요한가</li>
+                        <li><code>Box&lt;T&gt;</code> — 힙 할당과 재귀 타입, <code>unique_ptr</code> 대응</li>
+                        <li><code>Rc&lt;T&gt;</code> — 참조 카운트 기반 공유 소유, <code>shared_ptr</code>과의 차이</li>
+                        <li><code>RefCell&lt;T&gt;</code> — 내부 가변성과 런타임 빌림 검사</li>
+                        <li><code>Rc&lt;RefCell&lt;T&gt;&gt;</code> — 공유되면서 변경 가능한 데이터 패턴</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">왜 스마트 포인터인가</a></li>
+                        <li><a href="#box">Box&lt;T&gt; — 힙에 값을 둔다</a></li>
+                        <li><a href="#rc">Rc&lt;T&gt; — 공유 소유</a></li>
+                        <li><a href="#refcell">RefCell&lt;T&gt; — 내부 가변성</a></li>
+                        <li><a href="#pattern">Rc&lt;RefCell&lt;T&gt;&gt; 패턴</a></li>
+                        <li><a href="#wrap">정리와 선택 기준</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why"><i class="fa-solid fa-circle-question"></i> 왜 스마트 포인터인가</h2>
+                <p>Rust의 기본 참조 <code>&amp;T</code>·<code>&amp;mut T</code>는 빌림(borrow)일 뿐 값을 소유하지 않는다. 컴파일 타임에 크기를 알 수 없는 값을 다루거나, 하나의 값을 여러 주인이 공유하거나, 불변으로 빌린 값의 안쪽만 바꾸고 싶을 때는 일반 참조로 풀리지 않는다. 이때 쓰는 것이 스마트 포인터다.</p>
+                <p>스마트 포인터는 포인터처럼 동작하지만 소유권과 추가 기능을 함께 들고 다니는 타입이다. 대부분 <code>Deref</code> 트레이트로 가리키는 값처럼 역참조되고, <code>Drop</code> 트레이트로 스코프를 벗어날 때 정리 동작을 수행한다. 표준 라이브러리의 핵심 셋이 <code>Box&lt;T&gt;</code>, <code>Rc&lt;T&gt;</code>, <code>RefCell&lt;T&gt;</code>다.</p>
+                <p>각각이 푸는 문제를 한 줄로 요약하면 이렇다.</p>
+                <ul>
+                    <li><strong>Box&lt;T&gt;</strong> — 값을 스택이 아니라 힙에 두고, 단일 소유권으로 관리한다.</li>
+                    <li><strong>Rc&lt;T&gt;</strong> — 같은 값을 여러 소유자가 공유하되, 단일 스레드에서만 쓴다.</li>
+                    <li><strong>RefCell&lt;T&gt;</strong> — 불변 참조 뒤에서도 안쪽 값을 바꾼다. 빌림 규칙을 컴파일 타임이 아니라 런타임에 검사한다.</li>
+                </ul>
+
+                <h2 id="box"><i class="fa-solid fa-cube"></i> Box&lt;T&gt; — 힙에 값을 둔다</h2>
+                <p><code>Box&lt;T&gt;</code>는 가장 단순한 스마트 포인터다. 값을 힙에 할당하고, 스택에는 그 힙 주소를 가리키는 포인터만 남긴다. 소유자는 하나뿐이고, <code>Box</code>가 스코프를 벗어나면 힙의 값도 함께 해제된다.</p>
+
+                <pre class="code"><code>fn main() {
+    <span class="cm">// 정수 5를 힙에 할당하고 b가 그 값을 소유한다</span>
+    let b = Box::new(5);
+    println!("b = {}", b); <span class="cm">// Deref 덕분에 값처럼 출력된다</span>
+
+    <span class="cm">// b가 스코프를 벗어나면 힙의 5도 자동 해제된다</span>
+}</code></pre>
+
+                <p>스택에 그냥 두면 될 정수를 굳이 박싱할 일은 드물다. <code>Box</code>가 진짜 필요한 대표 사례는 <strong>컴파일 타임에 크기를 알 수 없는 재귀 타입</strong>이다. 아래 연결 리스트는 <code>Box</code> 없이는 무한 크기가 되어 컴파일되지 않는다.</p>
+
+                <pre class="code"><code><span class="cm">// 재귀적 타입: List는 자기 자신을 포함한다</span>
+enum List {
+    <span class="cm">// Box로 감싸 크기를 포인터 하나로 고정한다</span>
+    Cons(i32, Box&lt;List&gt;),
+    Nil,
+}
+
+use List::{Cons, Nil};
+
+fn main() {
+    <span class="cm">// 1 -> 2 -> 3 -> Nil 형태의 리스트</span>
+    let list = Cons(1, Box::new(Cons(2, Box::new(Cons(3, Box::new(Nil))))));
+
+    <span class="cm">// 첫 원소만 꺼내 본다</span>
+    if let Cons(head, _) = &amp;list {
+        println!("head = {}", head); <span class="cm">// head = 1</span>
+    }
+}</code></pre>
+
+                <p><code>List</code> 안에 <code>List</code>를 직접 넣으면 컴파일러가 크기를 무한히 계산하게 된다. <code>Box&lt;List&gt;</code>로 바꾸면 필드 크기가 "포인터 한 개"로 고정되므로 크기가 결정된다. 트레이트 객체(<code>Box&lt;dyn Trait&gt;</code>)로 크기가 다른 여러 타입을 한 컨테이너에 담을 때도 같은 원리가 쓰인다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++ 대조 — Box는 std::unique_ptr에 가깝다</strong>
+                        <code>Box&lt;T&gt;</code>는 단일 소유 + 자동 해제라는 점에서 <code>std::unique_ptr&lt;T&gt;</code>에 대응한다. 다만 C++에서 <code>unique_ptr</code>은 비워질 수 있어 <code>nullptr</code> 검사가 필요하지만, <code>Box&lt;T&gt;</code>는 항상 유효한 값을 가리킨다 — "널일 수도 있는 박스"는 <code>Option&lt;Box&lt;T&gt;&gt;</code>로 타입에 명시한다. 또한 <code>Box</code>의 이동은 컴파일러가 강제하므로, 옮긴 뒤의 원본을 실수로 다시 쓰면 컴파일 에러가 난다.
+                    </div>
+                </div>
+
+                <h2 id="rc"><i class="fa-solid fa-share-nodes"></i> Rc&lt;T&gt; — 공유 소유</h2>
+                <p>값 하나를 여러 주인이 동시에 소유해야 할 때가 있다. 예컨대 그래프에서 한 노드를 여러 간선이 가리키는 경우다. 소유자가 정확히 하나여야 하는 Rust 기본 규칙으로는 표현할 수 없다. <code>Rc&lt;T&gt;</code>(Reference Counted)가 이를 푼다.</p>
+                <p><code>Rc::clone</code>을 호출하면 데이터를 복제하지 않고 <strong>참조 카운트만 1 늘린다</strong>. 마지막 <code>Rc</code>가 사라져 카운트가 0이 되는 순간 데이터가 해제된다. <code>Rc</code>는 단일 스레드 전용이다.</p>
+
+                <pre class="code"><code>use std::rc::Rc;
+
+fn main() {
+    <span class="cm">// 문자열을 Rc로 감싸 공유 소유로 만든다</span>
+    let a = Rc::new(String::from("shared data"));
+    println!("count after a = {}", Rc::strong_count(&amp;a)); <span class="cm">// 1</span>
+
+    <span class="cm">// clone은 데이터를 복사하지 않고 카운트만 올린다</span>
+    let b = Rc::clone(&amp;a);
+    println!("count after b = {}", Rc::strong_count(&amp;a)); <span class="cm">// 2</span>
+
+    {
+        let c = Rc::clone(&amp;a);
+        println!("count after c = {}", Rc::strong_count(&amp;a)); <span class="cm">// 3</span>
+        <span class="cm">// 같은 데이터를 세 곳에서 읽을 수 있다</span>
+        println!("{}, {}, {}", a, b, c);
+    } <span class="cm">// c가 스코프를 벗어나며 카운트가 2로 줄어든다</span>
+
+    println!("count after scope = {}", Rc::strong_count(&amp;a)); <span class="cm">// 2</span>
+}</code></pre>
+
+                <p><code>Rc::clone(&amp;a)</code>는 일부러 <code>a.clone()</code> 대신 쓴다. 깊은 복사가 아니라 "카운트만 증가하는 가벼운 연산"임을 코드에서 분명히 드러내기 위한 Rust 커뮤니티의 관례다.</p>
+
+                <table class="compare-table">
+                    <tr><th>항목</th><th>Rust <code>Rc&lt;T&gt;</code></th><th>C++ <code>std::shared_ptr&lt;T&gt;</code></th></tr>
+                    <tr><td>참조 카운트</td><td>있음 (강한 카운트)</td><td>있음</td></tr>
+                    <tr><td>스레드 안전</td><td>아님 — 멀티스레드는 <code>Arc&lt;T&gt;</code> 사용</td><td>카운트는 원자적이라 공유는 안전</td></tr>
+                    <tr><td>기본 가변성</td><td>불변 — 바꾸려면 <code>RefCell</code> 등 결합</td><td>가리키는 값을 직접 변경 가능</td></tr>
+                    <tr><td>순환 참조</td><td><code>Weak&lt;T&gt;</code>로 끊어야 누수 방지</td><td><code>weak_ptr</code>로 끊어야 함</td></tr>
+                </table>
+
+                <p>핵심 차이는 두 가지다. 첫째, <code>Rc</code>는 단일 스레드 전용이고 스레드 간 공유에는 원자적 카운트를 쓰는 <code>Arc&lt;T&gt;</code>를 별도로 선택한다 — 비용과 안전성을 타입으로 구분한다. 둘째, <code>Rc&lt;T&gt;</code>가 주는 것은 <strong>불변</strong> 공유뿐이다. <code>Rc</code>를 통해서는 안쪽 값을 바꿀 수 없다. 여기서 <code>RefCell</code>이 필요해진다.</p>
+
+                <h2 id="refcell"><i class="fa-solid fa-arrows-rotate"></i> RefCell&lt;T&gt; — 내부 가변성</h2>
+                <p>Rust의 빌림 규칙은 "불변 참조는 여럿, 가변 참조는 하나, 둘은 동시에 안 됨"을 컴파일 타임에 강제한다. 그런데 어떤 설계에서는 <strong>불변으로 보이는 값의 안쪽만 바꾸고</strong> 싶다. <code>RefCell&lt;T&gt;</code>는 이 빌림 검사를 컴파일 타임이 아니라 <strong>런타임</strong>으로 미룬다. 이를 내부 가변성(interior mutability)이라 한다.</p>
+                <p><code>borrow()</code>는 불변 빌림을, <code>borrow_mut()</code>는 가변 빌림을 런타임에 요청한다. 규칙을 어기면 컴파일은 통과하지만 실행 중에 패닉이 난다.</p>
+
+                <pre class="code"><code>use std::cell::RefCell;
+
+fn main() {
+    <span class="cm">// value 자체는 불변(let)이지만 안쪽은 바꿀 수 있다</span>
+    let value = RefCell::new(5);
+
+    <span class="cm">// 가변 빌림을 얻어 안쪽 값을 수정한다</span>
+    *value.borrow_mut() += 10;
+
+    <span class="cm">// 불변 빌림으로 읽는다</span>
+    println!("value = {}", value.borrow()); <span class="cm">// value = 15</span>
+}</code></pre>
+
+                <p>다음은 빌림 규칙을 런타임에 어긴 예다. 가변 빌림이 살아 있는 동안 또 가변 빌림을 시도하면 패닉한다. 이런 코드는 작성하면 안 되지만, <code>RefCell</code>이 무엇을 검사하는지 보여 준다.</p>
+
+                <pre class="code"><code>use std::cell::RefCell;
+
+fn main() {
+    let data = RefCell::new(vec![1, 2, 3]);
+
+    <span class="cm">// 가변 빌림을 변수로 잡아 둔다</span>
+    let mut first = data.borrow_mut();
+    first.push(4);
+
+    <span class="cm">// first가 살아 있는 동안의 추가 빌림은 런타임 패닉을 부른다.</span>
+    <span class="cm">// let second = data.borrow_mut(); // 실행 시 panic: already borrowed</span>
+
+    <span class="cm">// first를 명시적으로 드롭하면 그 다음 빌림은 안전하다</span>
+    drop(first);
+    println!("{:?}", data.borrow()); <span class="cm">// [1, 2, 3, 4]</span>
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>RefCell은 검사를 없애지 않는다 — 미룰 뿐이다</strong>
+                        같은 빌림 규칙이 그대로 적용된다. 다만 위반을 컴파일 에러 대신 런타임 패닉으로 잡는다. 그만큼 안전망이 약해지므로, 컴파일 타임 빌림으로 풀 수 있으면 그쪽을 먼저 쓰고 <code>RefCell</code>은 꼭 필요한 곳에만 둔다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++ 대조 — RefCell에 직접 대응물은 없다</strong>
+                        C++에는 빌림 규칙을 런타임에 강제하는 표준 타입이 없다. <code>const</code> 객체의 일부 멤버만 변경하려면 <code>mutable</code> 키워드를 쓰지만, 이는 동시 접근을 검사하지 않는다. <code>RefCell</code>의 진짜 가치는 "공유된 데이터를 안전하게 변경하되, 동시 가변 접근 같은 실수를 런타임에 확실히 잡아 준다"는 데 있다. C++에서 <code>const</code>를 우회해 값을 바꾸다 발생하던 미정의 동작 부류를, Rust는 명확한 패닉으로 바꿔 놓는다.
+                    </div>
+                </div>
+
+                <h2 id="pattern"><i class="fa-solid fa-layer-group"></i> Rc&lt;RefCell&lt;T&gt;&gt; 패턴</h2>
+                <p>이제 두 요구를 합친다 — <strong>여러 곳에서 공유하면서</strong>, <strong>그 값을 변경</strong>하고 싶다. <code>Rc&lt;T&gt;</code>는 공유를 주지만 불변이고, <code>RefCell&lt;T&gt;</code>는 변경을 주지만 공유가 안 된다. 둘을 겹친 <code>Rc&lt;RefCell&lt;T&gt;&gt;</code>가 단일 스레드에서 "공유되면서 변경 가능한" 데이터를 만드는 관용 패턴이다.</p>
+
+                <pre class="code"><code>use std::cell::RefCell;
+use std::rc::Rc;
+
+fn main() {
+    <span class="cm">// 공유 가능(Rc)하면서 변경 가능(RefCell)한 카운터</span>
+    let shared = Rc::new(RefCell::new(0));
+
+    <span class="cm">// 같은 값을 가리키는 두 핸들을 만든다 (데이터 복사 아님)</span>
+    let owner_a = Rc::clone(&amp;shared);
+    let owner_b = Rc::clone(&amp;shared);
+
+    <span class="cm">// 각 소유자가 안쪽 값을 변경한다</span>
+    *owner_a.borrow_mut() += 5;
+    *owner_b.borrow_mut() += 7;
+
+    <span class="cm">// 셋 다 같은 데이터를 가리키므로 결과가 공유된다</span>
+    println!("value = {}", shared.borrow()); <span class="cm">// value = 12</span>
+    println!("ref count = {}", Rc::strong_count(&amp;shared)); <span class="cm">// 3</span>
+}</code></pre>
+
+                <p>읽는 순서는 안에서 바깥이다. <code>RefCell&lt;i32&gt;</code>로 "이 정수는 런타임 빌림으로 변경 가능"하게 만들고, 그것을 <code>Rc&lt;...&gt;</code>로 감싸 "여러 소유자가 공유"하게 한다. <code>borrow_mut()</code>로 얻은 가변 빌림은 한 문장 안에서 즉시 쓰고 끝나므로, 위 코드에서는 빌림이 겹치지 않아 패닉이 없다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>조합으로 의미를 만든다</strong>
+                        Rust 표준 라이브러리는 "공유되며 변경 가능한 포인터" 같은 거대한 단일 타입을 주는 대신, 작은 빌딩 블록을 조합하게 한다. 단일 스레드면 <code>Rc&lt;RefCell&lt;T&gt;&gt;</code>, 멀티스레드면 <code>Arc&lt;Mutex&lt;T&gt;&gt;</code>처럼 필요한 보장만큼만 비용을 치른다. 조합 순서(<code>Rc</code>가 바깥, <code>RefCell</code>이 안)에 따라 가능한 동작이 달라지니, "무엇을 공유하고 무엇을 변경하는가"를 기준으로 층을 정한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>순환 참조 주의</strong>
+                        <code>Rc&lt;RefCell&lt;T&gt;&gt;</code>로 서로를 가리키는 구조(부모↔자식 등)를 만들면 참조 카운트가 0으로 떨어지지 않아 메모리가 누수될 수 있다. 한쪽 방향을 카운트를 올리지 않는 <code>Weak&lt;T&gt;</code>로 두어 순환을 끊는다 — C++에서 <code>shared_ptr</code> 순환을 <code>weak_ptr</code>로 끊는 것과 같은 발상이다.
+                    </div>
+                </div>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 선택 기준</h2>
+                <p>세 스마트 포인터는 경쟁이 아니라 서로 다른 축을 책임진다. 무엇이 필요한지로 고른다.</p>
+
+                <table class="compare-table">
+                    <tr><th>타입</th><th>해결하는 문제</th><th>소유</th><th>가변성</th><th>검사 시점</th></tr>
+                    <tr><td><code>Box&lt;T&gt;</code></td><td>힙 할당, 재귀 타입, 트레이트 객체</td><td>단일</td><td>일반 규칙</td><td>컴파일 타임</td></tr>
+                    <tr><td><code>Rc&lt;T&gt;</code></td><td>단일 스레드 공유 소유</td><td>다중</td><td>불변</td><td>컴파일 타임</td></tr>
+                    <tr><td><code>RefCell&lt;T&gt;</code></td><td>불변 참조 뒤의 내부 가변성</td><td>단일</td><td>가변(내부)</td><td>런타임</td></tr>
+                    <tr><td><code>Rc&lt;RefCell&lt;T&gt;&gt;</code></td><td>공유되며 변경 가능</td><td>다중</td><td>가변(내부)</td><td>런타임</td></tr>
+                </table>
+
+                <ul>
+                    <li><strong>한 문장 요약</strong> — 힙이 필요하면 <code>Box</code>, 공유가 필요하면 <code>Rc</code>, 불변 뒤의 변경이 필요하면 <code>RefCell</code>, 둘 다면 <code>Rc&lt;RefCell&lt;T&gt;&gt;</code>다.</li>
+                    <li><strong>C++ 대응</strong> — <code>Box</code>≈<code>unique_ptr</code>, <code>Rc</code>≈단일 스레드용 <code>shared_ptr</code>, <code>Arc</code>≈스레드 안전 <code>shared_ptr</code>. <code>RefCell</code>은 직접 대응물이 없는 Rust 고유의 런타임 빌림 검사다.</li>
+                    <li><strong>먼저 컴파일 타임으로</strong> — 런타임 검사(<code>RefCell</code>)는 안전망이 약하다. 일반 빌림이나 <code>Box</code>로 풀 수 있으면 그쪽을 먼저 쓴다.</li>
+                    <li><strong>멀티스레드는 다른 타입으로</strong> — <code>Rc</code>·<code>RefCell</code>은 단일 스레드 전용이다. 스레드 간에는 <code>Arc</code>·<code>Mutex</code>/<code>RwLock</code>을 쓴다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>The Rust Programming Language (The Book), Ch.15 Smart Pointers — <a href="https://doc.rust-lang.org/book/ch15-00-smart-pointers.html" target="_blank" rel="noopener">doc.rust-lang.org/book/ch15-00-smart-pointers.html</a></li>
+                        <li>std::boxed::Box — <a href="https://doc.rust-lang.org/std/boxed/struct.Box.html" target="_blank" rel="noopener">doc.rust-lang.org/std/boxed/struct.Box.html</a></li>
+                        <li>std::rc::Rc — <a href="https://doc.rust-lang.org/std/rc/struct.Rc.html" target="_blank" rel="noopener">doc.rust-lang.org/std/rc/struct.Rc.html</a></li>
+                        <li>std::cell::RefCell — <a href="https://doc.rust-lang.org/std/cell/struct.RefCell.html" target="_blank" rel="noopener">doc.rust-lang.org/std/cell/struct.RefCell.html</a></li>
+                        <li>열람일: 2026-06-25. 표준 라이브러리 API는 버전에 따라 바뀔 수 있어 공식 문서 확인 권장.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-rust');
+    renderPostNav('dev-lang-rust');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

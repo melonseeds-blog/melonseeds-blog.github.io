@@ -1,0 +1,401 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option과 Result — null 없는 설계 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm { color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why" data-section="why">왜 null이 문제인가</a><a href="#option">Option&lt;T&gt;</a><a href="#result">Result&lt;T,E&gt;</a><a href="#handle">꺼내고 다루기</a><a href="#question">? 연산자</a><a href="#wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">Rust 시리즈</span>
+                </div>
+                <h1>Option과 Result — null 없는 설계</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-brands fa-rust"></i> Rust 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 편에서 배우는 것</strong>
+                        Rust에는 null이 없다. "값이 없을 수도 있음"은 <code>Option&lt;T&gt;</code>로, "실패할 수도 있음"은 <code>Result&lt;T, E&gt;</code>로 <strong>타입에 드러낸다</strong>. 컴파일러가 두 경우를 모두 처리하도록 강제하므로, C++의 null 포인터 역참조나 무시된 에러 코드 같은 실수가 컴파일 단계에서 막힌다. 이 글은 두 타입을 <code>match</code>로 다루는 법, <code>unwrap</code>/<code>expect</code>의 함정, 그리고 에러 전파를 한 글자로 줄이는 <code>?</code> 연산자까지 본다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>null이 왜 위험한지와 Rust가 그것을 타입으로 없앤 방식</li>
+                        <li><code>Option&lt;T&gt;</code> — Some/None으로 "값의 부재"를 표현</li>
+                        <li><code>Result&lt;T, E&gt;</code> — Ok/Err로 "성공과 실패"를 표현</li>
+                        <li><code>match</code>로 안전하게 꺼내기, <code>unwrap</code>/<code>expect</code>의 주의점</li>
+                        <li><code>?</code> 연산자로 에러를 깔끔하게 전파하기</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">왜 null이 문제인가</a></li>
+                        <li><a href="#option">Option&lt;T&gt; — 값이 없을 수도 있음</a></li>
+                        <li><a href="#result">Result&lt;T, E&gt; — 실패할 수도 있음</a></li>
+                        <li><a href="#handle">값을 꺼내고 다루는 법</a></li>
+                        <li><a href="#question">? 연산자로 에러 전파</a></li>
+                        <li><a href="#wrap">정리와 주의</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why"><i class="fa-solid fa-circle-question"></i> 왜 null이 문제인가</h2>
+                <p>C++을 써 본 사람이라면 null 포인터 역참조로 프로그램이 죽어 본 경험이 있을 것이다. 문제의 본질은 <strong>"값이 있다"와 "값이 없다"가 같은 타입으로 표현된다</strong>는 데 있다. <code>Widget* w</code>는 유효한 객체를 가리킬 수도, <code>nullptr</code>일 수도 있는데 타입만 봐서는 구분되지 않는다. 그래서 검사를 깜빡하면 런타임에 터진다.</p>
+                <p>Rust는 이 문제를 언어 차원에서 없앴다. Rust에는 null이 아예 없고, 대신 "없을 수도 있는 값"을 표현하는 별도의 타입 <code>Option&lt;T&gt;</code>가 있다. 핵심은 <strong>Option은 일반 <code>T</code>와 다른 타입</strong>이라는 점이다. 값을 실제로 쓰려면 반드시 "있는 경우"와 "없는 경우"를 모두 처리해야 하고, 빠뜨리면 컴파일이 안 된다. 검사 누락이 런타임 사고가 아니라 컴파일 에러로 바뀐다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다</strong>
+                        C++17의 <code>std::optional&lt;T&gt;</code>는 Rust의 <code>Option&lt;T&gt;</code>와 발상이 같다. 다만 C++에서는 빈 <code>optional</code>을 검사 없이 <code>*opt</code>로 역참조해도 컴파일러가 막지 않는다(미정의 동작). Rust는 <code>Option</code> 안의 값을 꺼내려면 분기 처리를 <strong>문법적으로 강제</strong>한다. "있을 수 있는 실수"를 "할 수 없는 실수"로 바꾼 것이 차이다.
+                    </div>
+                </div>
+
+                <h2 id="option"><i class="fa-solid fa-box"></i> Option&lt;T&gt; — 값이 없을 수도 있음</h2>
+                <p><code>Option&lt;T&gt;</code>는 표준 라이브러리의 열거형(enum)이고 변형(variant)이 둘뿐이다. 값이 있으면 <code>Some(value)</code>, 없으면 <code>None</code>이다. 정의를 단순화하면 다음과 같다.</p>
+
+                <pre class="code"><code><span class="cm">// 표준 라이브러리에 이미 정의돼 있다 (직접 쓸 필요는 없다)</span>
+enum Option&lt;T&gt; {
+    Some(T),
+    None,
+}</code></pre>
+
+                <p>"이름으로 사용자를 찾는" 함수를 생각해 보자. 찾으면 나이를, 못 찾으면 아무것도 돌려주지 않는다. 반환 타입을 <code>Option&lt;u32&gt;</code>로 두면 "없을 수 있음"이 시그니처에 그대로 드러난다.</p>
+
+                <pre class="code"><code>fn find_age(name: &amp;str) -&gt; Option&lt;u32&gt; {
+    match name {
+        "Alice" =&gt; Some(30),
+        "Bob" =&gt; Some(25),
+        _ =&gt; None,
+    }
+}
+
+fn main() {
+    <span class="cm">// match로 두 경우를 모두 처리해야 한다</span>
+    match find_age("Alice") {
+        Some(age) =&gt; println!("나이: {}", age),
+        None =&gt; println!("찾을 수 없음"),
+    }
+}</code></pre>
+
+                <p>호출하는 쪽은 <code>find_age</code>가 <code>None</code>을 줄 수 있다는 사실을 무시할 수 없다. <code>Some(age)</code>와 <code>None</code> 두 갈래를 모두 적지 않으면 <code>match</code>가 모든 경우를 덮지 않았다며 컴파일 에러가 난다. 표준 라이브러리의 <code>HashMap::get</code>, <code>slice::first</code>, 문자열 검색 등 "없을 수 있는" 모든 API가 이 타입을 돌려준다.</p>
+
+                <h2 id="result"><i class="fa-solid fa-circle-exclamation"></i> Result&lt;T, E&gt; — 실패할 수도 있음</h2>
+                <p>"값이 없음"과 "작업이 실패함"은 다른 개념이다. 후자에는 <strong>실패의 이유</strong>가 따라온다. Rust는 이를 <code>Result&lt;T, E&gt;</code>로 표현한다. 성공이면 결과를 담은 <code>Ok(value)</code>, 실패면 에러를 담은 <code>Err(error)</code>다.</p>
+
+                <pre class="code"><code><span class="cm">// 이것도 표준 라이브러리 정의다</span>
+enum Result&lt;T, E&gt; {
+    Ok(T),
+    Err(E),
+}</code></pre>
+
+                <p>문자열을 정수로 바꾸는 작업은 실패할 수 있다("12"는 되지만 "abc"는 안 된다). 직접 만든 예로, 0으로 나누는 경우를 에러로 돌려주는 나눗셈 함수를 보자.</p>
+
+                <pre class="code"><code>fn divide(a: f64, b: f64) -&gt; Result&lt;f64, String&gt; {
+    if b == 0.0 {
+        Err(String::from("0으로 나눌 수 없음"))
+    } else {
+        Ok(a / b)
+    }
+}
+
+fn main() {
+    match divide(10.0, 2.0) {
+        Ok(value) =&gt; println!("결과: {}", value),   <span class="cm">// 결과: 5</span>
+        Err(msg) =&gt; println!("에러: {}", msg),
+    }
+
+    match divide(1.0, 0.0) {
+        Ok(value) =&gt; println!("결과: {}", value),
+        Err(msg) =&gt; println!("에러: {}", msg),       <span class="cm">// 에러: 0으로 나눌 수 없음</span>
+    }
+}</code></pre>
+
+                <p>여기서도 핵심은 같다. <code>Result</code>를 받은 쪽은 성공과 실패를 모두 다루도록 강제된다. C++의 정수 반환 에러 코드는 검사하지 않고 무시해도 경고조차 없을 수 있지만, Rust에서 <code>Result</code>를 받고 아무것도 하지 않으면 <code>#[must_use]</code> 속성 덕분에 컴파일러가 "이 값을 쓰지 않았다"고 경고한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>Option과 Result, 언제 무엇을</strong>
+                        값이 단순히 <strong>없을 수 있을 뿐</strong>이고 이유가 필요 없으면 <code>Option</code>. 작업이 <strong>실패할 수 있고 그 원인</strong>을 호출자에게 전하고 싶으면 <code>Result</code>. 둘은 서로 변환할 수도 있다 — <code>Option</code>을 <code>Result</code>로 바꾸는 <code>ok_or</code>, 반대로 <code>Result</code>를 <code>Option</code>으로 만드는 <code>ok</code> 메서드가 있다.
+                    </div>
+                </div>
+
+                <h2 id="handle"><i class="fa-solid fa-hand"></i> 값을 꺼내고 다루는 법</h2>
+                <p><code>match</code>는 가장 명시적이지만, 매번 두 갈래를 적기 번거로울 때가 있다. 표준 라이브러리는 더 짧은 도구를 제공한다.</p>
+
+                <h3 id="h-unwrap"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> unwrap과 expect — 편하지만 위험하다</h3>
+                <p><code>unwrap()</code>은 <code>Some</code>/<code>Ok</code>면 안의 값을 꺼내고, <code>None</code>/<code>Err</code>이면 그 자리에서 <strong>패닉(panic)</strong>을 일으켜 프로그램을 멈춘다. <code>expect("메시지")</code>는 패닉 시 지정한 메시지를 함께 출력한다.</p>
+
+                <pre class="code"><code>fn main() {
+    let some_value: Option&lt;i32&gt; = Some(7);
+    let n = some_value.unwrap();        <span class="cm">// 7 — Some이므로 안전</span>
+    println!("{}", n);
+
+    let nothing: Option&lt;i32&gt; = None;
+    <span class="cm">// 아래 줄은 패닉한다. 실제 코드에서는 피한다.</span>
+    <span class="cm">// let bad = nothing.expect("값이 있어야 함");</span>
+    let _ = nothing;
+}</code></pre>
+
+                <p><code>unwrap</code>은 "여기서 None/Err이면 버그이므로 차라리 멈추는 게 낫다"가 확실할 때만 쓴다. 예제 코드나 프로토타입에서는 흔하지만, 사용자 입력이나 파일·네트워크처럼 실패가 정상 범위인 곳에서 남발하면 사소한 입력 하나로 프로그램이 죽는다.</p>
+
+                <h3 id="h-helpers"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 패닉 없이 다루는 메서드들</h3>
+                <p>패닉을 피하면서 간결하게 쓰는 방법이 많다. <code>unwrap_or</code>는 없을 때 쓸 기본값을 주고, <code>map</code>은 안에 값이 있을 때만 변환을 적용하며, <code>if let</code>은 한 변형만 관심 있을 때 쓴다.</p>
+
+                <pre class="code"><code>fn find_age(name: &amp;str) -&gt; Option&lt;u32&gt; {
+    if name == "Alice" { Some(30) } else { None }
+}
+
+fn main() {
+    <span class="cm">// 1) 기본값: None이면 0을 쓴다</span>
+    let age = find_age("Charlie").unwrap_or(0);
+    println!("나이: {}", age);                  <span class="cm">// 나이: 0</span>
+
+    <span class="cm">// 2) map: Some일 때만 변환 (None은 그대로 None)</span>
+    let next: Option&lt;u32&gt; = find_age("Alice").map(|a| a + 1);
+    println!("{:?}", next);                     <span class="cm">// Some(31)</span>
+
+    <span class="cm">// 3) if let: Some인 경우에만 본문 실행</span>
+    if let Some(a) = find_age("Alice") {
+        println!("찾음: {}", a);                <span class="cm">// 찾음: 30</span>
+    }
+}</code></pre>
+
+                <p><code>{:?}</code>는 디버그 출력 형식으로, <code>Option</code>이나 <code>Result</code> 같은 타입을 그대로 찍어 볼 때 쓴다. 위 코드는 소유권 규칙을 위반하지 않는다 — <code>u32</code>는 복사(Copy)되는 타입이고, 클로저 <code>|a| a + 1</code>은 값을 받아 새 값을 돌려줄 뿐 빌림 충돌이 없다.</p>
+
+                <h2 id="question"><i class="fa-solid fa-arrow-right-from-bracket"></i> ? 연산자로 에러 전파</h2>
+                <p>여러 단계가 줄줄이 실패할 수 있을 때, 매 단계마다 <code>match</code>로 <code>Err</code>을 검사해 되돌려 주는 코드는 금방 장황해진다. <code>?</code> 연산자는 이 패턴을 한 글자로 줄인다. <code>Result</code> 뒤에 <code>?</code>를 붙이면, <strong>Ok면 값을 꺼내고 Err면 그 에러를 즉시 함수의 반환값으로 되돌린다.</strong></p>
+
+                <pre class="code"><code>fn divide(a: f64, b: f64) -&gt; Result&lt;f64, String&gt; {
+    if b == 0.0 {
+        Err(String::from("0으로 나눌 수 없음"))
+    } else {
+        Ok(a / b)
+    }
+}
+
+<span class="cm">// 두 번 연속 나눈다. 어느 단계든 실패하면 그 에러가 그대로 전파된다.</span>
+fn divide_twice(a: f64, b: f64, c: f64) -&gt; Result&lt;f64, String&gt; {
+    let first = divide(a, b)?;   <span class="cm">// Err이면 여기서 바로 return</span>
+    let second = divide(first, c)?;
+    Ok(second)
+}
+
+fn main() {
+    match divide_twice(100.0, 5.0, 2.0) {
+        Ok(v) =&gt; println!("결과: {}", v),   <span class="cm">// 결과: 10</span>
+        Err(e) =&gt; println!("에러: {}", e),
+    }
+
+    match divide_twice(100.0, 0.0, 2.0) {
+        Ok(v) =&gt; println!("결과: {}", v),
+        Err(e) =&gt; println!("에러: {}", e),  <span class="cm">// 에러: 0으로 나눌 수 없음</span>
+    }
+}</code></pre>
+
+                <p><code>?</code> 없이 같은 함수를 쓰면 <code>divide</code> 호출마다 <code>match</code>로 <code>Err</code>을 받아 <code>return</code>하는 코드가 반복돼 길이가 몇 배로 늘어난다. <code>?</code>는 "성공이면 계속, 실패면 즉시 위로"라는 흐름을 그대로 표현한다. 단, <code>?</code>는 <strong>반환 타입이 <code>Result</code>(또는 <code>Option</code>)인 함수 안에서만</strong> 쓸 수 있다 — 전파할 대상이 있어야 하기 때문이다. <code>Option</code>에 <code>?</code>를 쓰면 같은 방식으로 <code>None</code>이 전파된다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++의 std::optional / std::expected와 비교</strong>
+                        C++23의 <code>std::expected&lt;T, E&gt;</code>는 Rust의 <code>Result&lt;T, E&gt;</code>와 거의 같은 모양이다. 차이는 두 가지다. 첫째, Rust는 <code>?</code> 한 글자로 에러를 전파하지만 C++에는 동등한 언어 차원 연산자가 없어 <code>if (!exp) return exp.error();</code> 식으로 직접 풀어 써야 한다. 둘째, Rust의 <code>Result</code>는 <code>#[must_use]</code>라 무시하면 경고가 뜨지만, C++에서는 반환값을 버려도 기본적으로 조용하다. 결과적으로 Rust 쪽이 "에러 처리를 빠뜨리기 더 어렵게" 설계돼 있다.
+                    </div>
+                </div>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 주의</h2>
+                <ul>
+                    <li><strong>null이 없다</strong> — "없을 수 있는 값"은 <code>Option&lt;T&gt;</code>(Some/None), "실패할 수 있는 작업"은 <code>Result&lt;T, E&gt;</code>(Ok/Err)로 타입에 드러낸다.</li>
+                    <li><strong>처리가 강제된다</strong> — <code>match</code>는 모든 변형을 덮어야 컴파일되고, <code>Result</code>는 <code>#[must_use]</code>라 무시하면 경고가 난다. 검사 누락이 컴파일 단계에서 막힌다.</li>
+                    <li><strong>unwrap/expect는 신중히</strong> — None/Err일 때 패닉한다. "여기서 실패면 버그"가 확실할 때만 쓰고, 정상적으로 실패할 수 있는 곳에서는 <code>unwrap_or</code>·<code>map</code>·<code>match</code> 등으로 다룬다.</li>
+                    <li><strong>? 로 깔끔하게 전파</strong> — 반환 타입이 <code>Result</code>/<code>Option</code>인 함수 안에서 <code>?</code>를 쓰면 에러/None을 즉시 위로 되돌려 보일러플레이트를 없앤다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>The Rust Programming Language (The Book) — <a href="https://doc.rust-lang.org/book/" target="_blank" rel="noopener">doc.rust-lang.org/book</a></li>
+                        <li>Enum과 Option: The Book ch.6 — <a href="https://doc.rust-lang.org/book/ch06-00-enums.html" target="_blank" rel="noopener">ch06 Enums and Pattern Matching</a></li>
+                        <li>에러 처리와 Result, ? 연산자: The Book ch.9 — <a href="https://doc.rust-lang.org/book/ch09-00-error-handling.html" target="_blank" rel="noopener">ch09 Error Handling</a></li>
+                        <li>표준 라이브러리 문서 — <a href="https://doc.rust-lang.org/std/option/enum.Option.html" target="_blank" rel="noopener">std::option::Option</a>, <a href="https://doc.rust-lang.org/std/result/enum.Result.html" target="_blank" rel="noopener">std::result::Result</a></li>
+                        <li>열람일: 2026-06-25. 세부 API·문서 구성은 변동될 수 있어 공식 문서 확인 권장.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-rust');
+    renderPostNav('dev-lang-rust');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

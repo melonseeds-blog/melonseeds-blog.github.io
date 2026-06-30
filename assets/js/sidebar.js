@@ -9,6 +9,7 @@ function renderSidebar(currentCat) {
                 subs: [
                     { id: 'dev-lang-cpp', label: 'C++ 시리즈' },
                     { id: 'dev-lang-python', label: 'Python 시리즈' },
+                    { id: 'dev-lang-rust', label: 'Rust 시리즈' },
                 ]
               },
               { id: 'dev-wpf',    label: 'WPF / C#' },

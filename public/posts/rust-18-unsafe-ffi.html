@@ -1,0 +1,368 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>unsafe Rust와 FFI 기초 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm { color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why-unsafe" data-section="why-unsafe">왜 unsafe인가</a><a href="#what-unsafe" data-section="what-unsafe">unsafe가 푸는 것</a><a href="#wrap-safe" data-section="wrap-safe">안전한 추상화</a><a href="#extern-c" data-section="extern-c">extern "C" 기초</a><a href="#wrap" data-section="wrap">정리와 주의</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">Rust 시리즈</span>
+                </div>
+                <h1>unsafe Rust와 FFI 기초</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-brands fa-rust"></i> Rust 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 편에서 배우는 것</strong>
+                        <code>unsafe</code>가 실제로 푸는 것은 무엇이고(raw 포인터 역참조·extern 함수 호출 등), 무엇은 여전히 막혀 있는지 구분한다. <code>unsafe</code> 블록을 안전한 함수 시그니처로 감싸 호출자에게는 안전한 API만 노출하는 방법을 익힌다. 끝으로 <code>extern "C"</code>로 C 함수를 부르고 Rust 함수를 C에 내보내는 FFI의 기본 골격을 본다. C++ 경험자가 "Rust는 이 경계를 이렇게 다르게 다룬다"를 체감하는 게 목표다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li><code>unsafe</code>가 정확히 어떤 다섯 가지를 추가로 허용하는가</li>
+                        <li><code>unsafe</code>가 끄지 <em>않는</em> 것 — 빌림 검사기는 여전히 살아 있다</li>
+                        <li>raw 포인터를 안전한 함수 안에 가두는 추상화 패턴</li>
+                        <li><code>extern "C"</code>로 C 함수 호출하기, Rust 함수 내보내기</li>
+                        <li>C++과의 대조 — 불안전 영역을 격리한다는 발상</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-unsafe">왜 unsafe가 필요한가</a></li>
+                        <li><a href="#what-unsafe">unsafe가 푸는 다섯 가지</a></li>
+                        <li><a href="#wrap-safe">안전한 추상화로 감싸기</a></li>
+                        <li><a href="#extern-c">extern "C"로 FFI 시작하기</a></li>
+                        <li><a href="#wrap">정리와 주의</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why-unsafe"><i class="fa-solid fa-circle-question"></i> 왜 unsafe가 필요한가</h2>
+                <p>Rust의 기본 컴파일러는 메모리 안전을 정적으로 보장한다. 댕글링 포인터, 데이터 레이스, 해제 후 사용 같은 부류가 컴파일 단계에서 걸러진다. 그런데 이 보장은 컴파일러가 <strong>증명할 수 있는</strong> 범위 안에서만 작동한다. 운영체제 API를 직접 부르거나, C 라이브러리와 연동하거나, 하드웨어 레지스터를 다루는 일은 컴파일러가 정적으로 검증할 수 없다.</p>
+                <p><code>unsafe</code>는 이 지점에서 "이 부분은 내가 직접 불변식을 책임진다"고 컴파일러에 선언하는 키워드다. 안전 검사를 통째로 끄는 스위치가 아니라, <strong>몇 가지 추가 연산을 한정된 영역에서만 허용</strong>하는 표식이다. 핵심은 이 영역을 작게 격리하고, 그 바깥에는 안전한 인터페이스만 드러내는 것이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-brands fa-cuttlefish"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — 기본값이 반대다</strong>
+                        C++은 코드 전체가 사실상 "unsafe"다. 포인터 역참조, 형 변환, 수명 관리가 어디서든 가능하고 그만큼 어디서든 미정의 동작이 샐 수 있다. Rust는 기본이 안전하고, 위험한 연산은 <code>unsafe</code>로 표시한 영역에만 모인다. 그래서 메모리 버그를 추적할 때 C++은 코드 전체가 용의자지만, Rust는 <code>unsafe</code> 블록부터 들여다보면 된다. 감사 대상의 크기가 다르다.
+                    </div>
+                </div>
+
+                <h2 id="what-unsafe"><i class="fa-solid fa-unlock"></i> unsafe가 푸는 다섯 가지</h2>
+                <p><code>unsafe</code> 블록 안에서만 추가로 허용되는 연산은 다섯 가지로 정해져 있다. 그 외의 일반 규칙(빌림 검사·타입 검사)은 <strong>그대로 적용된다</strong>.</p>
+                <ul>
+                    <li>raw 포인터(<code>*const T</code>, <code>*mut T</code>) <strong>역참조</strong></li>
+                    <li><code>unsafe</code> 함수·메서드 <strong>호출</strong>(extern 함수 포함)</li>
+                    <li>가변 <code>static</code> 변수 접근·수정</li>
+                    <li><code>unsafe</code> 트레이트 구현</li>
+                    <li><code>union</code> 필드 접근</li>
+                </ul>
+                <p>raw 포인터는 <code>unsafe</code> 없이도 <em>만들 수</em> 있다. 막혀 있는 건 오직 <strong>역참조</strong>다. 아래 코드에서 포인터 생성은 안전한 코드, 역참조만 <code>unsafe</code> 블록에 들어간다.</p>
+
+                <pre class="code"><code>fn main() {
+    let mut value = 42;
+
+    <span class="cm">// 참조로부터 raw 포인터 만들기 — 여기까지는 안전한 코드다</span>
+    let const_ptr: *const i32 = &value;
+    let mut_ptr: *mut i32 = &mut value;
+
+    <span class="cm">// 역참조는 unsafe 블록 안에서만 허용된다</span>
+    unsafe {
+        println!("읽기: {}", *const_ptr);
+        *mut_ptr += 1;
+        println!("쓰기 후: {}", *mut_ptr);
+    }
+}</code></pre>
+
+                <p>여기서 중요한 오해를 짚는다. <code>unsafe</code>는 <strong>빌림 검사기를 끄지 않는다</strong>. 아래 코드는 <code>unsafe</code> 블록 안에 있어도 컴파일되지 않는다. 같은 값에 대한 가변 참조와 불변 참조를 동시에 살아 있게 두는 일은 여전히 금지된다.</p>
+
+                <pre class="code"><code>fn main() {
+    let mut value = 10;
+
+    let shared = &value;        <span class="cm">// 불변 참조</span>
+    let exclusive = &mut value; <span class="cm">// 같은 값의 가변 참조 — 컴파일 에러</span>
+
+    <span class="cm">// unsafe로 감싸도 빌림 규칙 위반은 그대로 막힌다</span>
+    unsafe {
+        println!("{} {}", shared, *exclusive);
+    }
+}</code></pre>
+
+                <p>즉 <code>unsafe</code>가 위임하는 책임은 "위에 적힌 다섯 연산이 메모리 안전 불변식을 깨지 않도록 직접 보장하라"는 것에 한정된다. 일반 안전 규칙은 그대로 강제된다.</p>
+
+                <h2 id="wrap-safe"><i class="fa-solid fa-box-archive"></i> 안전한 추상화로 감싸기</h2>
+                <p>실무에서 <code>unsafe</code>를 다루는 핵심 기법은 <strong>안전한 함수 시그니처 뒤에 가두기</strong>다. 함수 내부에 <code>unsafe</code> 블록이 있어도, 그 함수가 어떤 인자를 받든 메모리 안전을 깨지 않는다면 함수 자체는 <code>unsafe</code>로 표시할 필요가 없다. 호출자는 평범한 안전 함수로 쓴다.</p>
+                <p>표준 라이브러리의 <code>split_at_mut</code>이 대표적이다. 하나의 가변 슬라이스를 두 개의 겹치지 않는 가변 슬라이스로 나누는데, 빌림 검사기만으로는 "두 조각이 안 겹친다"를 증명하지 못해 내부에서 raw 포인터를 쓴다. 단순화한 형태로 직접 구현해 본다.</p>
+
+                <pre class="code"><code>use std::slice;
+
+<span class="cm">// 안전한 시그니처 — 호출자는 unsafe를 몰라도 된다</span>
+fn split_at_mut(values: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
+    let len = values.len();
+    let ptr = values.as_mut_ptr();
+
+    assert!(mid &lt;= len); <span class="cm">// 불변식을 함수 안에서 강제한다</span>
+
+    unsafe {
+        (
+            slice::from_raw_parts_mut(ptr, mid),
+            slice::from_raw_parts_mut(ptr.add(mid), len - mid),
+        )
+    }
+}
+
+fn main() {
+    let mut data = [1, 2, 3, 4, 5, 6];
+    let (left, right) = split_at_mut(&mut data, 3);
+
+    left[0] = 10;
+    right[0] = 40;
+
+    println!("{:?}", data); <span class="cm">// [10, 2, 3, 40, 5, 6]</span>
+}</code></pre>
+
+                <p>이 함수가 안전한 이유는 <strong>내부의 불변식을 함수가 스스로 보장</strong>하기 때문이다. <code>assert!(mid &lt;= len)</code>로 범위를 검사하고, 두 슬라이스가 같은 버퍼의 서로 다른 구간(<code>0..mid</code>와 <code>mid..len</code>)을 가리키므로 절대 겹치지 않는다. 어떤 인자가 들어와도 미정의 동작이 생기지 않으니 시그니처에 <code>unsafe</code>를 붙이지 않아도 된다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>경계의 위치가 설계의 핵심이다</strong>
+                        좋은 <code>unsafe</code> 코드는 "위험 영역을 최소 면적으로 격리하고, 그 둘레에 안전한 계약을 두른 것"이다. <code>unsafe</code> 블록은 가능한 한 짧게, 그리고 그 블록이 의존하는 불변식을 함수가 책임지고 검증하게 만든다. 호출자에게는 위험이 새 나가지 않는다.
+                    </div>
+                </div>
+
+                <h2 id="extern-c"><i class="fa-brands fa-cuttlefish"></i> extern "C"로 FFI 시작하기</h2>
+                <p>FFI(Foreign Function Interface)는 Rust가 다른 언어, 특히 C ABI를 따르는 코드와 함수를 주고받는 방법이다. 양방향 모두 <code>extern "C"</code>로 호출 규약을 명시한다. <code>"C"</code>는 C 언어의 ABI를 따른다는 표시다.</p>
+
+                <h3 id="ffi-call"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> C 함수 호출하기</h3>
+                <p><code>extern "C"</code> 블록 안에 외부 함수의 시그니처를 선언한다. 다른 언어 함수의 동작은 Rust 컴파일러가 검증할 수 없으므로, 이 함수 호출은 본질적으로 <code>unsafe</code>다. 아래는 C 표준 라이브러리의 <code>abs</code>를 부르는 예다.</p>
+
+                <pre class="code"><code><span class="cm">// C 표준 라이브러리의 함수 시그니처를 선언한다</span>
+extern "C" {
+    fn abs(input: i32) -> i32;
+}
+
+fn main() {
+    <span class="cm">// 외부 함수 호출은 unsafe — 컴파일러가 내부를 검증할 수 없다</span>
+    unsafe {
+        println!("abs(-7) = {}", abs(-7));
+    }
+}</code></pre>
+
+                <h3 id="ffi-export"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Rust 함수를 C에 내보내기</h3>
+                <p>반대 방향도 가능하다. Rust 함수를 C에서 부를 수 있게 내보내려면 <code>extern "C"</code>로 호출 규약을 맞추고, <code>#[no_mangle]</code>로 이름 맹글링을 꺼서 C 쪽이 기대하는 심볼 이름을 그대로 유지한다.</p>
+
+                <pre class="code"><code><span class="cm">// C에서 'add_one'이라는 이름 그대로 호출할 수 있게 내보낸다</span>
+#[no_mangle]
+pub extern "C" fn add_one(x: i32) -> i32 {
+    x + 1
+}</code></pre>
+
+                <p>이 함수 본문 자체는 안전한 Rust다. <code>unsafe</code>가 필요한 쪽은 호출하는 C 코드이지, 내보내는 Rust 함수의 정의가 아니다.</p>
+
+                <div class="callout info">
+                    <i class="fa-brands fa-cuttlefish"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — 경계가 코드에 새겨진다</strong>
+                        C++에서 C 라이브러리를 쓸 때 <code>extern "C"</code>는 이름 맹글링을 막는 링크 지시일 뿐, 호출부에 안전·불안전 구분이 따로 남지 않는다. Rust에서는 외부 함수 호출이 강제로 <code>unsafe</code> 블록에 들어가므로, 코드를 읽는 사람이 "여기서부터 컴파일러 보장이 끝난다"를 시각적으로 바로 안다. 신뢰 경계가 주석이 아니라 문법으로 표시된다.
+                    </div>
+                </div>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 주의</h2>
+                <ul>
+                    <li><strong>unsafe는 스위치가 아니다</strong> — raw 포인터 역참조, extern·unsafe 함수 호출, 가변 static 접근, unsafe 트레이트 구현, union 접근. 딱 이 다섯 가지만 추가로 연다.</li>
+                    <li><strong>빌림 검사기는 살아 있다</strong> — <code>unsafe</code> 안에서도 소유권·빌림 규칙은 그대로 강제된다. 끄는 것이 아니다.</li>
+                    <li><strong>작게 격리하고 안전하게 감싼다</strong> — 위험 영역을 최소화하고, 불변식을 함수가 책임지면 호출자에게는 안전한 API만 노출된다.</li>
+                    <li><strong>FFI는 unsafe의 대표 무대</strong> — <code>extern "C"</code>로 C 함수를 부르고, <code>#[no_mangle]</code> + <code>extern "C"</code>로 Rust 함수를 내보낸다.</li>
+                    <li><strong>경계가 문법으로 드러난다</strong> — C++과 달리 "보장이 끝나는 지점"이 <code>unsafe</code> 키워드로 명시되어, 감사할 면적이 작다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>The Rust Programming Language (The Book) — Unsafe Rust: <a href="https://doc.rust-lang.org/book/ch20-01-unsafe-rust.html" target="_blank" rel="noopener">doc.rust-lang.org/book/ch20-01-unsafe-rust.html</a></li>
+                        <li>The Rust Programming Language (The Book): <a href="https://doc.rust-lang.org/book/" target="_blank" rel="noopener">doc.rust-lang.org/book</a></li>
+                        <li>std::slice::from_raw_parts_mut: <a href="https://doc.rust-lang.org/std/slice/fn.from_raw_parts_mut.html" target="_blank" rel="noopener">doc.rust-lang.org/std/slice/fn.from_raw_parts_mut.html</a></li>
+                        <li>&lt;[T]&gt;::split_at_mut: <a href="https://doc.rust-lang.org/std/primitive.slice.html#method.split_at_mut" target="_blank" rel="noopener">doc.rust-lang.org/std/primitive.slice.html#method.split_at_mut</a></li>
+                        <li>열람일: 2026-06-25. 표준 라이브러리 시그니처·문서 경로는 버전에 따라 바뀔 수 있어 공식 문서 확인 권장.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-rust');
+    renderPostNav('dev-lang-rust');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

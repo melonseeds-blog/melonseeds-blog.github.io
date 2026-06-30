@@ -1,0 +1,426 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++/C 연동 — FFI 실전 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm { color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why" data-section="why">왜 FFI인가</a><a href="#abi" data-section="abi">C ABI 경계</a><a href="#repr" data-section="repr">데이터 전달</a><a href="#bindgen" data-section="bindgen">bindgen·cbindgen</a><a href="#bridge" data-section="bridge">기존 코드 잇기</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">Rust 시리즈</span>
+                </div>
+                <h1>C++/C 연동 — FFI 실전</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-brands fa-rust"></i> Rust 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 편에서 배우는 것</strong>
+                        Rust의 FFI는 새 ABI를 만드는 게 아니라, C가 이미 깔아 둔 평탄한 ABI 위에 올라타는 일이다. 이 편에서는 <code>extern "C"</code> 경계와 <code>#[no_mangle]</code>로 함수를 노출하는 법, <code>#[repr(C)]</code>로 구조체 레이아웃을 맞추는 법, bindgen·cbindgen으로 헤더를 자동 생성하는 흐름, 그리고 기존 C++ 코드베이스에 Rust를 점진적으로 끼워 넣는 전략을 다룬다. C++ 경험자가 C++/CLI와 무엇이 다른지 대조하며 읽으면 빠르다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>왜 C ABI가 모든 FFI의 공용 바닥인가</li>
+                        <li><code>extern "C"</code> · <code>#[no_mangle]</code>로 함수를 내보내고 불러오기</li>
+                        <li><code>#[repr(C)]</code>와 포인터로 데이터를 안전하게 주고받기</li>
+                        <li>bindgen(C→Rust)과 cbindgen(Rust→C) 자동화 개요</li>
+                        <li>기존 C++ 코드에 Rust를 점진적으로 잇는 전략</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">왜 FFI인가 — C ABI라는 공용어</a></li>
+                        <li><a href="#abi">extern "C"와 #[no_mangle] — 경계 만들기</a></li>
+                        <li><a href="#repr">repr(C)와 포인터 — 데이터 전달</a></li>
+                        <li><a href="#bindgen">bindgen과 cbindgen — 헤더 자동화</a></li>
+                        <li><a href="#bridge">기존 C++ 코드 잇기 — 점진 도입</a></li>
+                        <li><a href="#wrap">정리와 주의</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why"><i class="fa-solid fa-language"></i> 왜 FFI인가 — C ABI라는 공용어</h2>
+                <p>Rust로 새 프로젝트를 통째로 짜는 경우는 드물다. 대개는 검증된 C/C++ 자산이 이미 있고, 그 일부만 Rust로 바꾸거나 반대로 C에서 Rust 루틴을 호출하고 싶다. 이때 두 언어를 잇는 접착제가 FFI(Foreign Function Interface)다.</p>
+                <p>핵심은 Rust와 C++가 직접 대화하지 않는다는 점이다. 둘 다 <strong>C ABI</strong>라는 평탄하고 안정적인 호출 규약 위에서 만난다. C ABI는 이름 맹글링이 없고, 데이터 레이아웃이 단순하며, 사실상 모든 플랫폼이 표준으로 합의한 바닥이다. Rust는 자체 ABI를 안정화하지 않았지만, C ABI를 따르는 함수와 타입은 명시적으로 노출할 수 있다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++/CLI와 무엇이 다른가</strong>
+                        C++ 진영에서 .NET과 네이티브를 잇던 C++/CLI는 <code>/clr</code>로 컴파일된 관리(managed) 런타임이라는 무거운 다리를 놓는다. 반면 Rust FFI는 런타임도, GC도, 마샬링 계층도 없다. 그냥 같은 프로세스 안에서 C 함수 하나를 호출하는 것과 동일한 비용이다. "다리를 놓는다"가 아니라 "이미 깔린 C ABI라는 바닥에 같이 선다"에 가깝다.
+                    </div>
+                </div>
+
+                <h2 id="abi"><i class="fa-solid fa-right-left"></i> extern "C"와 #[no_mangle] — 경계 만들기</h2>
+                <p>FFI 경계는 두 방향이 있다. Rust가 C 함수를 <em>부르는</em> 쪽과, Rust가 함수를 C에 <em>내보내는</em> 쪽이다.</p>
+
+                <h3 id="a-import"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> C 함수를 Rust에서 부르기</h3>
+                <p>C 라이브러리의 함수를 쓰려면 <code>extern "C"</code> 블록에 시그니처를 선언한다. 선언만으로는 정의가 없으므로, 이 호출은 항상 <code>unsafe</code> 안에서 한다. 컴파일러가 외부 함수의 계약을 검증할 수 없기 때문이다.</p>
+                <pre class="code"><code><span class="cm">// C 표준 라이브러리의 abs를 직접 선언해서 부른다.</span>
+unsafe extern "C" {
+    fn abs(input: i32) -&gt; i32;
+}
+
+fn main() {
+    <span class="cm">// 외부 함수 호출은 컴파일러가 안전을 보장할 수 없으므로 unsafe.</span>
+    let value = unsafe { abs(-42) };
+    println!("abs(-42) = {value}");
+}</code></pre>
+
+                <h3 id="a-export"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Rust 함수를 C에 내보내기</h3>
+                <p>반대로 Rust 함수를 C가 부르게 하려면 두 가지가 필요하다. <code>extern "C"</code>로 C 호출 규약을 지정하고, <code>#[no_mangle]</code>로 이름 맹글링을 꺼서 심볼 이름을 그대로 유지한다. 맹글링을 끄지 않으면 링커가 함수를 못 찾는다.</p>
+                <pre class="code"><code><span class="cm">// C에서 add_one(int) 으로 그대로 호출 가능한 심볼을 만든다.</span>
+#[no_mangle]
+pub extern "C" fn add_one(value: i32) -&gt; i32 {
+    value + 1
+}
+
+<span class="cm">// 패닉이 FFI 경계를 넘으면 정의되지 않은 동작이다.</span>
+<span class="cm">// 경계 함수 안에서는 패닉 가능성을 직접 막거나 catch_unwind로 감싼다.</span>
+#[no_mangle]
+pub extern "C" fn safe_divide(a: i32, b: i32) -&gt; i32 {
+    if b == 0 {
+        return 0; <span class="cm">// 패닉 대신 호출자가 약속한 기본값을 돌려준다.</span>
+    }
+    a / b
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>패닉은 경계를 넘으면 안 된다</strong>
+                        Rust 패닉이 <code>extern "C"</code> 경계를 넘어 C 쪽으로 풀려 나가는 것은 정의되지 않은 동작이다. 경계 함수는 패닉할 수 있는 코드를 <code>std::panic::catch_unwind</code>로 감싸거나, 애초에 패닉하지 않도록 작성해 오류를 반환값(예: <code>-1</code>이나 널 포인터)으로 표현한다.
+                    </div>
+                </div>
+
+                <h2 id="repr"><i class="fa-solid fa-cubes"></i> repr(C)와 포인터 — 데이터 전달</h2>
+                <p>함수 시그니처가 정수뿐이면 쉽지만, 구조체나 문자열이 끼면 메모리 레이아웃을 맞춰야 한다. Rust의 기본 구조체 레이아웃은 컴파일러가 자유롭게 재배치할 수 있어 C와 호환되지 않는다. <code>#[repr(C)]</code>를 붙이면 필드 순서와 정렬이 C 규칙을 따라, 양쪽이 같은 바이트 배치를 본다.</p>
+                <pre class="code"><code>use std::os::raw::c_double;
+
+<span class="cm">// repr(C)로 C 구조체와 동일한 메모리 레이아웃을 보장한다.</span>
+#[repr(C)]
+pub struct Point {
+    pub x: c_double,
+    pub y: c_double,
+}
+
+<span class="cm">// 구조체를 값으로 받고 새 값을 돌려준다. 소유권 문제가 없다.</span>
+#[no_mangle]
+pub extern "C" fn point_midpoint(a: Point, b: Point) -&gt; Point {
+    Point {
+        x: (a.x + b.x) / 2.0,
+        y: (a.y + b.y) / 2.0,
+    }
+}</code></pre>
+
+                <h3 id="r-string"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 문자열과 포인터 — 널 종료와 수명</h3>
+                <p>문자열은 가장 까다롭다. Rust의 <code>String</code>/<code>&amp;str</code>은 길이를 따로 갖지만, C 문자열은 널(<code>\0</code>) 종료에 의존한다. 경계에서는 <code>std::ffi::CStr</code>(C→Rust 읽기)와 <code>CString</code>(Rust→C 생성)을 쓴다. C에서 받은 포인터는 반드시 널 검사를 한 뒤 다룬다.</p>
+                <pre class="code"><code>use std::ffi::CStr;
+use std::os::raw::c_char;
+
+<span class="cm">// C가 넘긴 널 종료 문자열의 길이를 센다.</span>
+<span class="cm">// 포인터를 역참조하므로 함수 전체가 unsafe 계약을 진다.</span>
+#[no_mangle]
+pub unsafe extern "C" fn c_strlen(ptr: *const c_char) -&gt; usize {
+    if ptr.is_null() {
+        return 0; <span class="cm">// 널 포인터는 역참조하지 않고 0을 돌려준다.</span>
+    }
+    <span class="cm">// 호출자가 유효한 널 종료 문자열을 줬다고 약속한 경우에만 안전하다.</span>
+    let c_str = CStr::from_ptr(ptr);
+    c_str.to_bytes().len()
+}</code></pre>
+                <p>여기서 빌림 규칙을 위반하지 않는 게 중요하다. <code>CStr::from_ptr</code>가 돌려주는 <code>&amp;CStr</code>은 원본 포인터가 가리키는 메모리를 빌릴 뿐 소유하지 않는다. 따라서 C 쪽이 그 메모리를 해제하기 전까지만 유효하며, Rust 함수가 반환되면 빌림도 끝난다. 반대로 Rust가 <code>CString</code>으로 만든 문자열을 C에 넘겨주면, 그 메모리는 Rust가 소유하므로 나중에 Rust가 다시 회수해 해제해야 한다.</p>
+
+                <table class="compare-table">
+                    <tr><th>전달 대상</th><th>C ABI 표현</th><th>Rust 경계 타입</th><th>소유권</th></tr>
+                    <tr><td>정수·실수</td><td><code>int</code>, <code>double</code></td><td><code>i32</code>, <code>f64</code></td><td>값 복사(문제 없음)</td></tr>
+                    <tr><td>구조체(값)</td><td><code>struct</code></td><td><code>#[repr(C)] struct</code></td><td>값 복사</td></tr>
+                    <tr><td>읽기용 문자열</td><td><code>const char*</code></td><td><code>*const c_char</code> → <code>CStr</code></td><td>빌림(해제 금지)</td></tr>
+                    <tr><td>Rust가 만든 문자열</td><td><code>char*</code></td><td><code>CString::into_raw</code></td><td>Rust 소유(Rust가 회수)</td></tr>
+                    <tr><td>불투명 핸들</td><td><code>void*</code></td><td><code>Box::into_raw</code></td><td>Rust 소유(Rust가 회수)</td></tr>
+                </table>
+
+                <h2 id="bindgen"><i class="fa-solid fa-wand-magic-sparkles"></i> bindgen과 cbindgen — 헤더 자동화</h2>
+                <p>경계가 함수 몇 개면 손으로 선언해도 되지만, 헤더가 수백 줄이면 비현실적이다. 두 도구가 양방향을 자동화한다.</p>
+
+                <div class="layer-card">
+                    <h4><span class="lay-tag">BINDGEN</span> C 헤더 → Rust 선언 자동 생성 <span class="lay-where">build.rs + bindgen</span></h4>
+                    <p>기존 C/C++ 라이브러리의 <code>.h</code> 헤더를 읽어 그에 대응하는 Rust <code>extern "C"</code> 선언과 <code>#[repr(C)]</code> 구조체를 자동으로 뽑아낸다. C 자산을 Rust에서 <strong>소비</strong>할 때 쓴다.</p>
+                    <div class="lay-when"><i class="fa-solid fa-circle-check"></i> 방향: C/C++ → Rust. 큰 외부 라이브러리를 Rust에서 호출할 때.</div>
+                </div>
+
+                <div class="layer-card">
+                    <h4><span class="lay-tag">CBINDGEN</span> Rust 코드 → C 헤더 자동 생성 <span class="lay-where">cbindgen.toml</span></h4>
+                    <p>반대로 <code>#[no_mangle] extern "C"</code> 함수와 <code>#[repr(C)]</code> 타입이 든 Rust 크레이트를 분석해 C/C++가 <code>#include</code>할 <code>.h</code> 헤더를 생성한다. Rust로 짠 라이브러리를 C++에 <strong>제공</strong>할 때 쓴다.</p>
+                    <div class="lay-when"><i class="fa-solid fa-circle-check"></i> 방향: Rust → C/C++. Rust 라이브러리를 기존 C++ 빌드에 노출할 때.</div>
+                </div>
+
+                <p>아래는 <code>build.rs</code>에서 bindgen으로 C 헤더 바인딩을 생성하는 전형적인 골격이다. 빌드 시점에 <code>wrapper.h</code>를 읽어 <code>bindings.rs</code>를 만들고, 본문에서 <code>include!</code>로 끌어 쓴다.</p>
+                <pre class="code"><code><span class="cm">// build.rs — 빌드 스크립트에서 bindgen 실행.</span>
+fn main() {
+    <span class="cm">// 링크할 C 라이브러리를 카고에 알린다.</span>
+    println!("cargo:rustc-link-lib=mylib");
+
+    let bindings = bindgen::Builder::default()
+        .header("wrapper.h")          <span class="cm">// 대상 C 헤더</span>
+        .generate()
+        .expect("failed to generate bindings");
+
+    <span class="cm">// 생성된 Rust 선언을 OUT_DIR에 기록한다.</span>
+    let out = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out.join("bindings.rs"))
+        .expect("failed to write bindings");
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++/CLI 래퍼와 대비</strong>
+                        C++/CLI에서는 네이티브 타입을 관리 타입으로 손으로 마샬링하는 래퍼 클래스를 직접 짰다. bindgen/cbindgen은 그 손작업을 빌드 파이프라인의 코드 생성으로 대체한다. 마샬링 비용이 사라지는 대신, 양쪽 타입이 같은 메모리 레이아웃을 공유한다는 계약을 개발자가 <code>#[repr(C)]</code>로 보증해야 한다.
+                    </div>
+                </div>
+
+                <h2 id="bridge"><i class="fa-solid fa-bridge"></i> 기존 C++ 코드 잇기 — 점진 도입</h2>
+                <p>FFI의 진짜 가치는 전면 재작성 없이 코드베이스 일부만 Rust로 옮길 수 있다는 점이다. C++/CLI가 .NET 경계 하나를 통째로 그어야 했다면, C ABI 기반 FFI는 함수 단위로 야금야금 도입할 수 있다.</p>
+
+                <h3 id="b-opaque"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 불투명 핸들로 객체 수명 넘기기</h3>
+                <p>Rust 객체를 C++가 들고 다니게 하려면, 내부 구조를 노출하지 않고 <code>void*</code> 같은 불투명 핸들로만 넘긴다. Rust는 <code>Box::into_raw</code>로 힙 객체의 소유권을 포인터로 내보내고, 나중에 <code>Box::from_raw</code>로 도로 가져와 해제한다. 생성과 해제를 짝지어 노출하는 게 핵심이다.</p>
+                <pre class="code"><code><span class="cm">// C++가 들고 다닐 카운터 객체. 내부는 숨긴다.</span>
+pub struct Counter {
+    value: i64,
+}
+
+<span class="cm">// 생성: 힙에 만들고 소유권을 raw 포인터로 넘긴다.</span>
+#[no_mangle]
+pub extern "C" fn counter_new() -&gt; *mut Counter {
+    Box::into_raw(Box::new(Counter { value: 0 }))
+}
+
+<span class="cm">// 사용: 핸들을 빌려 값을 1 올린다.</span>
+#[no_mangle]
+pub extern "C" fn counter_increment(handle: *mut Counter) {
+    if handle.is_null() {
+        return;
+    }
+    <span class="cm">// 호출자가 유효한 핸들을 줬다는 계약 아래 가변 참조를 빌린다.</span>
+    let counter = unsafe { &amp;mut *handle };
+    counter.value += 1;
+}
+
+<span class="cm">// 해제: 소유권을 Box로 되찾아 드롭시킨다. 생성과 반드시 짝짓는다.</span>
+#[no_mangle]
+pub extern "C" fn counter_free(handle: *mut Counter) {
+    if handle.is_null() {
+        return;
+    }
+    <span class="cm">// from_raw로 소유권 회수 → 스코프 끝에서 메모리 해제.</span>
+    unsafe { drop(Box::from_raw(handle)); }
+}</code></pre>
+                <p>이 패턴에서 빌림 규칙은 그대로 지켜진다. <code>counter_increment</code>는 핸들을 <em>빌려</em> 가변 참조를 잠깐 만들 뿐 소유권을 가져가지 않으므로, 같은 핸들을 이후에 다시 쓸 수 있다. 소유권을 실제로 회수하는 건 <code>counter_free</code> 하나뿐이고, 그 뒤로 그 핸들을 다시 쓰면 안 된다는 계약을 C++ 쪽이 지켜야 한다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>순수 C ABI가 부담되면 cxx를 고려한다</strong>
+                        손으로 <code>unsafe</code> 경계를 관리하기 부담스러운 C++ 상호운용이라면, <code>cxx</code> 크레이트처럼 안전한 양방향 브리지를 코드 생성으로 제공하는 도구를 검토할 만하다. 이 글은 그 바닥에 깔린 C ABI 메커니즘을 다뤘고, 상위 도구들도 결국 같은 경계 위에서 동작한다.
+                    </div>
+                </div>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 주의</h2>
+                <ul>
+                    <li><strong>C ABI가 공용 바닥</strong> — Rust와 C++는 직접 말하지 않고 평탄한 C ABI 위에서 만난다. <code>extern "C"</code> + <code>#[no_mangle]</code>이 그 입구다.</li>
+                    <li><strong>레이아웃은 명시로 맞춘다</strong> — 구조체는 <code>#[repr(C)]</code>로 C와 동일 배치를 보장하고, 문자열은 <code>CStr</code>/<code>CString</code>으로 널 종료를 다룬다.</li>
+                    <li><strong>소유권 경계를 분명히</strong> — 누가 메모리를 소유하고 누가 해제하는지 함수 쌍(new/free)으로 못 박는다. 빌림은 함수 반환과 함께 끝난다.</li>
+                    <li><strong>패닉을 가두라</strong> — 패닉이 경계를 넘으면 UB다. 오류는 반환값으로 표현하거나 <code>catch_unwind</code>로 감싼다.</li>
+                    <li><strong>자동화로 규모를 감당</strong> — 헤더가 커지면 bindgen(C→Rust)·cbindgen(Rust→C)으로 선언 생성을 맡긴다.</li>
+                    <li><strong>점진 도입이 강점</strong> — C++/CLI식 전면 경계 대신, 함수 단위로 Rust를 끼워 넣어 기존 코드를 살리며 옮길 수 있다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>The Rust Programming Language (The Book), "Unsafe Rust / Using extern Functions" — <a href="https://doc.rust-lang.org/book/" target="_blank" rel="noopener">doc.rust-lang.org/book</a></li>
+                        <li>The Rustonomicon, "FFI" — <a href="https://doc.rust-lang.org/nomicon/ffi.html" target="_blank" rel="noopener">doc.rust-lang.org/nomicon/ffi.html</a></li>
+                        <li>표준 라이브러리 <code>std::ffi</code> (CStr / CString) — <a href="https://doc.rust-lang.org/std/ffi/index.html" target="_blank" rel="noopener">doc.rust-lang.org/std/ffi</a></li>
+                        <li>표준 라이브러리 <code>std::os::raw</code> (c_char 등 C 타입) — <a href="https://doc.rust-lang.org/std/os/raw/index.html" target="_blank" rel="noopener">doc.rust-lang.org/std/os/raw</a></li>
+                        <li>열람일: 2026-06-25. 도구·API 세부는 버전에 따라 바뀔 수 있어 공식 문서 확인 권장.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-rust');
+    renderPostNav('dev-lang-rust');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
