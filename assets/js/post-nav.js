@@ -350,6 +350,7 @@ const POST_NAV_DATA = {
         { file: 'self-hosted-llm-gpu.html', title: '사내에서 LLM 자체 운영? — GPU 현실과 조직 병목' },
         { file: 'claude-code-architecture.html', title: 'Claude Code를 구조로 이해하기 — 6가지 확장 메커니즘' },
         { file: 'claude-code-practical.html', title: 'Claude Code 실전 활용 가이드' },
+        { file: 'claude-code-plugin-picks.html', title: '요즘 뜨는 Claude Code 플러그인 추천 (2026)' },
         { file: 'claude-code-plugins.html', title: 'Claude Code 유용한 플러그인 모음' },
         { file: 'claude-desktop-guide.html', title: 'Claude Desktop 활용 가이드' },
         { file: 'vs2022-productivity.html', title: 'Visual Studio 2022 생산성 팁' },
