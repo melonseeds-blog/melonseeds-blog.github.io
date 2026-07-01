@@ -342,6 +342,7 @@ const POST_NAV_DATA = {
     'tool': [
         { file: 'git-basics.html', title: 'Git 기본 명령어 가이드' },
         { file: 'git-repo-structure.html', title: 'AI 시대의 Git 레포 구성 가이드' },
+        { file: 'rpa-ai-web-automation.html', title: 'RPA로 웹 내용을 긁어 AI에 넘기기' },
         { file: 'claude-code-architecture.html', title: 'Claude Code를 구조로 이해하기 — 6가지 확장 메커니즘' },
         { file: 'claude-code-practical.html', title: 'Claude Code 실전 활용 가이드' },
         { file: 'claude-code-plugins.html', title: 'Claude Code 유용한 플러그인 모음' },
