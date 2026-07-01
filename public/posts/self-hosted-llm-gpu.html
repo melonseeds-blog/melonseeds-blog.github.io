@@ -1,0 +1,320 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사내에서 LLM 자체 운영? — GPU 현실과 조직 병목 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm{ color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why" data-section="why">배경</a><a href="#hardware" data-section="hardware">하드웨어 현실</a><a href="#tco" data-section="tco">총소유비용</a><a href="#org" data-section="org">조직 병목</a><a href="#wrap" data-section="wrap">결론</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">도구/환경 설정</span>
+                </div>
+                <h1>사내에서 LLM 자체 운영? — GPU 현실과 조직 병목</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-solid fa-server"></i> 도구/환경 설정</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 글의 목적</strong>
+                        "우리 데이터를 밖으로 안 내보내려면 사내 GPU 서버에 모델을 직접 올리면 되지 않나"라는 검토가 늘고 있다. 이 글은 그 선택이 실제로 무엇을 요구하는지를 하드웨어 비용·총소유비용·조직 병목 세 축으로 짚는다. 아래의 비용·자원 수치는 구성과 모델 규모에 따라 크게 달라지는 대략적 예시이며, 특정 제품·계약가를 단정하지 않는다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>왜 사내 자체 운영을 검토하게 되는가 — 보안·데이터 통제 동기</li>
+                        <li>상급 상용 모델급을 자체 운영할 때의 하드웨어 현실(대략)</li>
+                        <li>서버 구매 이후에 계속 드는 총소유비용</li>
+                        <li>이종 에이전트 교환 문제와, 데이터가 흩어진 조직의 협의 병목</li>
+                        <li>혼합 전략 — 상용 API + 부분 자체운영이 현실적인 이유</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">왜 자체 운영을 검토하나</a></li>
+                        <li><a href="#hardware">하드웨어 현실 — 얼마나 큰 자원인가</a></li>
+                        <li><a href="#tco">총소유비용 — 서버 값이 전부가 아니다</a></li>
+                        <li><a href="#org">진짜 병목 — 이종 에이전트와 조직 협의</a></li>
+                        <li><a href="#wrap">결론 — 혼합이 현실적이다</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why"><i class="fa-solid fa-shield-halved"></i> 왜 자체 운영을 검토하나</h2>
+                <p>사내에서 LLM을 자체 운영(self-hosting)하려는 검토가 늘고 있다. 동기는 대개 기술적 호기심이 아니라 통제다. 고객 정보·설계 데이터·내부 문서를 외부 API로 보내는 것 자체가 규정상 막혀 있거나, 감사·규제 대응 때문에 "데이터가 우리 경계 밖으로 나가지 않는다"를 증명해야 하는 조직이 많다.</p>
+                <p>그래서 자연스럽게 "그럼 우리 서버에 모델을 직접 올리자"는 결론으로 향한다. 발상 자체는 타당하다. 다만 이 선택을 <strong>기술 구성 문제로만 보면 두 가지를 놓친다</strong> — 하나는 자원 비용의 크기이고, 다른 하나는 그 시스템에 데이터를 채워 넣는 <strong>조직적 협의</strong> 비용이다. 아래에서 순서대로 본다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>범위를 먼저 나눈다</strong>
+                        "자체 운영"이라고 뭉뚱그리면 판단이 흐려진다. (1) 작은 오픈 모델을 보조 용도로 돌리는 것과, (2) 상급 상용 모델에 준하는 품질을 사내에서 재현하려는 것은 자원 요구가 자릿수 단위로 다르다. 이 글이 "매우 크다"고 말하는 대목은 주로 (2)를 가리킨다.
+                    </div>
+                </div>
+
+                <h2 id="hardware"><i class="fa-solid fa-microchip"></i> 하드웨어 현실 — 얼마나 큰 자원인가</h2>
+                <p>상급 상용 모델급의 품질을 사내에서 재현하려면 <strong>매우 큰 자원</strong>이 필요하다. 큰 모델일수록 파라미터를 담을 메모리가 커지고, 실사용 응답 속도를 내려면 여러 장의 고성능 GPU를 묶어야 한다. 대략의 감을 잡기 위한 예시는 다음과 같다 — <strong>다시 강조하지만 이 수치는 구성·모델 규모·환율·시점에 따라 크게 달라진다.</strong></p>
+
+                <table class="compare-table">
+                    <tr><th>구성 성격(대략)</th><th>대략적 자원 감</th><th>대략적 비용 감(예시)</th></tr>
+                    <tr><td>소형 오픈 모델 보조 활용</td><td>GPU 소수, 수십 GB급 메모리</td><td>수백만 ~ 수천만 원대</td></tr>
+                    <tr><td>중형 모델 사내 서비스</td><td>다수 GPU, 수백 GB급 메모리</td><td>수천만 ~ 억 원 안팎</td></tr>
+                    <tr><td>상급 상용급 재현 시도</td><td>대규모 GPU, <strong>테라(TB)급</strong> 메모리</td><td>서버 1대 <strong>수억 ~ 10억 원대</strong>까지</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>이 숫자는 대략일 뿐이다</strong>
+                        위 표의 자원·비용은 방향성을 잡기 위한 대략적 예시이며 특정 제품·견적을 나타내지 않는다. GPU 세대, 장수, 메모리 용량, 네트워크·냉각 구성, 조달 시점과 환율에 따라 실제 값은 크게 달라진다. 도입을 검토한다면 반드시 자사 워크로드로 실측·견적을 받아야 한다.
+                    </div>
+                </div>
+
+                <p>핵심은 절대 금액이 아니라 <strong>스케일의 성격</strong>이다. 상급 모델을 제대로 돌리려면 GPU 몇 장이 아니라 대규모 가속기와 테라급 메모리가 필요하고, 그런 서버 한 대의 도입 비용이 <strong>수억 원에서 10억 원대에 이를 수 있다</strong>. 게다가 사내 서비스는 한 대로 끝나지 않는다. 이중화·부하 분산·장애 대비를 감안하면 대수는 다시 늘어난다.</p>
+
+                <h2 id="tco"><i class="fa-solid fa-coins"></i> 총소유비용 — 서버 값이 전부가 아니다</h2>
+                <p>흔한 오해는 "서버만 사면 끝"이라는 생각이다. 하드웨어 구매가는 <strong>총소유비용(TCO)의 일부일 뿐</strong>이다. 실제로는 구매 이후에도 다음이 계속 든다.</p>
+
+                <div class="layer-card">
+                    <h4><span class="lay-tag">전력·냉각</span> 상시 가동되는 운영 비용</h4>
+                    <p>대규모 GPU는 전력을 많이 먹고 발열도 크다. 전기 요금과 냉각·상면(랙 공간) 비용이 <strong>가동하는 내내</strong> 발생한다. 이건 일회성이 아니라 매달 나가는 고정비에 가깝다.</p>
+                </div>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">서빙 인프라</span> 모델을 실제로 쓰게 만드는 층</h4>
+                    <p>모델 파일만 있다고 서비스가 되지 않는다. 요청을 받아 배치로 묶고 응답을 돌려주는 <strong>서빙 스택</strong>, 큐잉·오토스케일·모니터링, 버전 관리가 필요하다. 이걸 구축·운영할 엔지니어링 공수가 든다.</p>
+                </div>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">보안</span> 자체 운영의 원래 목적을 지키는 비용</h4>
+                    <p>데이터 통제를 위해 자체 운영을 택했으니, 접근 통제·감사 로그·격리·취약점 관리가 오히려 더 엄격해야 한다. 목적을 지키는 데 드는 비용이다.</p>
+                </div>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">유지보수</span> 사람과 시간</h4>
+                    <p>모델 업데이트, 드라이버·프레임워크 호환, 장애 대응, 성능 튜닝이 이어진다. 이 모든 걸 감당할 <strong>인력</strong>이 사실상 가장 큰 지속 비용인 경우가 많다.</p>
+                </div>
+
+                <p>정리하면, 자체 운영의 비용은 "서버 가격 × 대수"가 아니라 <strong>구매가 + 전력/운영 + 서빙 인프라 + 보안 + 유지보수 + 인력</strong>의 합이다. 상용 API의 사용량 기반 요금과 정직하게 비교하려면 이 전체를 같은 표에 올려야 한다.</p>
+
+                <h2 id="org"><i class="fa-solid fa-sitemap"></i> 진짜 병목 — 이종 에이전트와 조직 협의</h2>
+                <p>하드웨어와 비용은 돈과 시간을 들이면 해결되는 축이다. 정작 자체 구축을 지연시키는 건 그 위의 두 가지, <strong>이종 에이전트 교환</strong>과 <strong>조직 협의</strong>다.</p>
+
+                <h3 id="o-agent"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 이종(異種) 에이전트 문제</h3>
+                <p>사내 시스템은 한 벤더로 통일되지 않는다. 어떤 팀은 A 계열 모델·프레임워크로, 다른 팀은 B 계열로 에이전트를 만든다. 이때 서로 다른 벤더·계열의 에이전트를 자유롭게 엮으려 하면 교환이 <strong>제한적</strong>일 수 있다. 예를 들어 Google의 ADK(Agent Development Kit) 같은 프레임워크로 에이전트를 구성했을 때, 다른 계열의 에이전트와 오케스트레이션·프로토콜 수준에서 매끄럽게 맞물리지 않는 경우가 생긴다.</p>
+                <p>표준(에이전트 간 프로토콜, 도구 연결 규격)이 이 간극을 좁히고 있지만, "여러 벤더의 에이전트를 한 판에서 자유롭게 조합한다"는 이상은 아직 구성에 따라 마찰이 남는다. 자체 구축을 설계할 때 이 이종성을 처음부터 전제로 두지 않으면, 나중에 통합 단계에서 발목을 잡힌다.</p>
+
+                <h3 id="o-org"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 데이터가 흩어진 조직의 협의 병목</h3>
+                <p>"중앙에 API와 MCP를 모아 두고, 각 부서 데이터를 여기에 연결하자"는 구성은 그림상 깔끔하다. 문제는 그 데이터와 API가 <strong>이미 여러 부서에 흩어져 있다</strong>는 데 있다. 중앙으로 모으려면 각 부서와 "이 데이터를 어디까지 제공할지, 소유권은 누구에게 있는지, 책임은 누가 지는지"를 협의해야 한다.</p>
+                <p>이 협의는 기술 작업이 아니라 <strong>조직 정치</strong>에 가깝다. 부서마다 민감도·규정·이해관계가 다르고, 결재 라인이 갈린다. 그래서 실제로는 소유권·제공 범위 합의에만 <strong>때로 1년 이상</strong>이 걸리기도 한다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>한 대기업 사례 — 병목은 기술이 아니었다</strong>
+                        여러 부서에 데이터가 분산된 한 대형 조직의 사례에서, 중앙 집중형 에이전트 플랫폼을 만들려 했을 때 실제 지연의 원인은 GPU도, 모델 성능도, 서빙 스택도 아니었다. <strong>부서 간 데이터 소유권·제공 범위 협의</strong>가 가장 오래 걸렸다. 기술 구성은 몇 달이면 세울 수 있었지만, "누가 어떤 데이터를 어디까지 내줄 것인가"를 합의하는 데 훨씬 긴 시간이 들었다. (특정 조직·인물을 지목하지 않은 일반화된 사례다.)
+                    </div>
+                </div>
+
+                <p>이 지점이 자주 과소평가된다. 인프라 예산은 품의로 확보할 수 있어도, 부서 간 데이터 협의는 돈으로 단축되지 않는다. 자체 구축의 실질 일정은 <strong>가장 느린 부서의 협의 속도</strong>에 묶인다.</p>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 결론 — 혼합이 현실적이다</h2>
+                <p>자체 구축은 "GPU를 사서 모델을 올린다"는 기술 구성 문제가 아니다. 최소한 다음 세 가지를 함께 봐야 판단이 선다.</p>
+                <ol class="decision-list">
+                    <li><strong>자원 비용의 스케일</strong> — 상급 모델 재현은 대규모 GPU와 테라급 메모리를 요구하고, 서버 한 대가 수억~10억 원대에 이를 수 있다(대략, 구성에 따라 다름). 게다가 서버 값은 총소유비용의 일부다.</li>
+                    <li><strong>데이터 소유권과 API 제공 범위</strong> — 시스템을 세워도 채울 데이터를 각 부서에서 받아야 한다. 소유권·범위 협의가 실제 일정을 지배한다.</li>
+                    <li><strong>조직 협의 비용</strong> — 이 협의는 기술이 아니라 조직의 문제이고, 때로 1년 이상 걸린다. 계획에 이 시간을 반드시 반영한다.</li>
+                </ol>
+
+                <p>그래서 많은 경우 정답은 "전부 자체 운영" 또는 "전부 상용 API"의 양자택일이 아니라 <strong>혼합</strong>이다. 민감한 데이터·핵심 워크로드는 부분적으로 자체 운영하되, 나머지는 상용 API를 사용량 기반으로 쓰는 구성이 자원과 조직 부담을 함께 줄인다. 무엇을 안으로 들이고 무엇을 밖에 둘지는, 위 세 축을 자사 상황에 대입해 결정하면 된다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>검토를 시작한다면</strong>
+                        먼저 "정말 자체 운영이 필요한 데이터가 무엇인가"를 좁혀 정의한다. 그 다음 그 데이터를 가진 부서들과 협의 일정을 <strong>가장 먼저</strong> 착수한다 — 하드웨어 견적보다 협의가 오래 걸리기 때문이다. 자원 비교표에는 구매가만이 아니라 전력·서빙·보안·유지보수·인력을 모두 올려 상용 API와 나란히 놓는다.
+                    </div>
+                </div>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>공개된 LLM 서빙·GPU 자원 산정 관련 일반 자료(모델 크기별 메모리·서빙 인프라 개요)</li>
+                        <li>에이전트 개발 프레임워크·에이전트 간 프로토콜에 관한 공개 문서(이종 에이전트 상호운용 논의)</li>
+                        <li>열람일: 2026-06-25. 하드웨어·비용·표준 채택 현황은 변동이 크므로 도입 시 최신 자료와 자사 실측으로 재확인 권장.</li>
+                        <li>본문의 조직·비용 사례는 특정 회사·인물을 지목하지 않은 일반화된 예시다.</li>
+                        <li>관련 글: <a href="claude-code-architecture.html">Claude Code를 구조로 이해하기 — 6가지 확장 메커니즘</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tool');
+    renderPostNav('tool');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

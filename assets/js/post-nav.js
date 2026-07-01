@@ -1,4 +1,4 @@
-/* 같은 카테고리 이전/다음 글 네비게이션 */
+﻿/* 같은 카테고리 이전/다음 글 네비게이션 */
 const POST_NAV_DATA = {
     'debug': [
         { file: 'github-pages-404.html', title: 'GitHub Pages 배포 시 404 에러 해결' },
@@ -344,6 +344,10 @@ const POST_NAV_DATA = {
         { file: 'git-repo-structure.html', title: 'AI 시대의 Git 레포 구성 가이드' },
         { file: 'rpa-ai-web-automation.html', title: 'RPA로 웹 내용을 긁어 AI에 넘기기' },
         { file: 'smithery-mcp-connect.html', title: 'Smithery.ai로 MCP 서버를 Claude에 연결하기' },
+        { file: 'claude-md-writing.html', title: 'CLAUDE.md 잘 쓰는 법 — 의도·제약·Do NOT' },
+        { file: 'agent-team-design.html', title: 'Agent Team 설계 — 역할 분리 문서 자동화' },
+        { file: 'rag-korean-search.html', title: '대량 문서에 RAG 붙이기 — 한국어 BM25 검색' },
+        { file: 'self-hosted-llm-gpu.html', title: '사내에서 LLM 자체 운영? — GPU 현실과 조직 병목' },
         { file: 'claude-code-architecture.html', title: 'Claude Code를 구조로 이해하기 — 6가지 확장 메커니즘' },
         { file: 'claude-code-practical.html', title: 'Claude Code 실전 활용 가이드' },
         { file: 'claude-code-plugins.html', title: 'Claude Code 유용한 플러그인 모음' },

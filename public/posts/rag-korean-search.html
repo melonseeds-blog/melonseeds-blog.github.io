@@ -1,0 +1,340 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대량 문서에 RAG 붙이기 — 한국어 BM25 검색과 Agent 연계 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm{ color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#problem" data-section="problem">왜 검색이 필요한가</a><a href="#framework" data-section="framework">검색 프레임워크와 BM25</a><a href="#tokenizer" data-section="tokenizer">한국어 토크나이저</a><a href="#hybrid" data-section="hybrid">하이브리드 검색</a><a href="#agent" data-section="agent">Agent 연계</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">도구/환경 설정</span>
+                </div>
+                <h1>대량 문서에 RAG 붙이기 — 한국어 BM25 검색과 Agent 연계</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 9분 분량</span>
+                    <span><i class="fa-solid fa-magnifying-glass-chart"></i> 도구/환경 설정</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 글의 목적</strong>
+                        문서가 방대한 환경에서 필요한 문서만 골라 AI에 넣는 검색 설계를 한국어 중심으로 정리한다. 검색 프레임워크·BM25·한국어 토크나이저·하이브리드 검색·Agent 연계까지 한 흐름으로 잇는다. 플러그인 이름·설정 문법은 버전에 따라 바뀔 수 있으니 세부는 각 공식 문서를 함께 확인한다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>문서가 방대할 때 전체를 매번 컨텍스트에 넣지 못하는 이유</li>
+                        <li>역색인 기반 검색 프레임워크와 BM25 스코어링</li>
+                        <li>한국어 검색 품질을 가르는 형태소 토크나이저(nori·Kiwi)</li>
+                        <li>2026년 표준인 하이브리드 검색 — BM25 + 임베딩 + RRF</li>
+                        <li>검색기를 먼저 돌려 관련 문서만 Agent에 넘기는 연계 방식</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#problem">왜 검색이 필요한가</a></li>
+                        <li><a href="#framework">검색 프레임워크와 BM25</a></li>
+                        <li><a href="#tokenizer">한국어 토크나이저가 핵심</a></li>
+                        <li><a href="#hybrid">하이브리드 검색과 RRF</a></li>
+                        <li><a href="#agent">Agent 연계와 지식 연결</a></li>
+                        <li><a href="#wrap">정리와 주의</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="problem"><i class="fa-solid fa-circle-question"></i> 왜 검색이 필요한가</h2>
+                <p>RAG(Retrieval-Augmented Generation)는 이름 그대로 <strong>검색으로 찾은 문서를 근거로 삼아 생성</strong>하는 방식이다. 여기서 흔히 뒤의 "생성"에만 눈이 가지만, 실제 품질을 좌우하는 건 앞의 "검색"이다.</p>
+                <p>문서가 방대한 환경 — 이를테면 하루에도 수만 건 규모로 문서가 쌓이는 곳 — 에서는 전체를 매번 모델의 컨텍스트에 통째로 넣는 방식이 성립하지 않는다. 컨텍스트 윈도우에 물리적으로 안 들어갈 뿐 아니라, 들어간다 해도 토큰 비용이 크고 관련 없는 문서가 신호를 흐린다. 그래서 <strong>질문에 관련된 소수의 문서만 골라 넣는 검색 시스템</strong>이 앞단에 필요하다.</p>
+                <p>이 글은 그 검색 시스템을 한국어 문서에 맞게 설계하는 관점을 정리한다. 핵심 순서는 하나다 — 좋은 검색기를 먼저 세우고, 그 결과만 AI가 참고하게 한다.</p>
+
+                <h2 id="framework"><i class="fa-solid fa-database"></i> 검색 프레임워크와 BM25</h2>
+                <p>대량 문서 검색의 표준 도구는 <strong>역색인(inverted index)</strong> 기반 검색 엔진이다. 대표적으로 Elasticsearch나 OpenSearch가 있다. 역색인은 "어떤 단어가 어떤 문서에 들어 있는가"를 미리 뒤집어 색인해 두는 자료구조라, 수만~수억 건 규모에서도 키워드 검색이 빠르다.</p>
+
+                <h3 id="f-bm25"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> BM25 — 키워드 검색의 표준 스코어링</h3>
+                <p>Elasticsearch·OpenSearch가 검색 결과의 순위를 매길 때 기본으로 쓰는 알고리즘이 <strong>BM25</strong>다. 질의어가 문서에 얼마나 자주 나오는지(단어 빈도), 그 단어가 전체 문서에서 얼마나 희귀한지(문서 빈도의 역수), 문서 길이 보정을 종합해 관련도 점수를 낸다. 이런 방식의 키워드 검색을 <strong>sparse(희소) 검색</strong>이라 부른다 — 단어 단위의 일치를 본다는 뜻이다.</p>
+                <p>BM25는 별도 학습이 필요 없고, 질의어가 문서에 실제로 등장하는지를 직접 보기 때문에 <strong>정확한 용어 매칭</strong>에 강하다. 제품 코드·오류 메시지·고유명사처럼 표기가 정확히 일치해야 하는 검색에서 특히 잘 맞는다.</p>
+
+                <h2 id="tokenizer"><i class="fa-solid fa-language"></i> 한국어 토크나이저가 핵심</h2>
+                <p>키워드 검색은 문서와 질의를 <strong>토큰(token)</strong>으로 잘라 비교한다. 그래서 "어떻게 자르느냐"가 검색 품질을 직접 좌우한다. 그리고 이 지점이 한국어에서 가장 중요하다.</p>
+
+                <h3 id="t-why"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 영어의 공백 분리 vs 한국어의 형태소</h3>
+                <p>영어는 단어 사이가 공백으로 나뉘어, 공백만 기준으로 잘라도 대체로 토큰이 맞다. 반면 한국어는 조사·어미가 명사·어간에 붙는 교착어라 공백 기준으로는 제대로 잘리지 않는다. 예를 들어 "검색기를", "검색기가", "검색기로"는 표면 형태가 모두 달라, 공백 기준 토큰화로는 "검색기"라는 같은 핵심어를 하나로 묶지 못한다.</p>
+                <p>그래서 한국어에는 <strong>형태소 분석기(morphological analyzer)</strong>를 토크나이저로 쓴다. 형태소 단위로 잘라 "검색기 + 를", "검색기 + 가"처럼 어근과 조사를 분리하면, 세 표현이 모두 "검색기"로 색인돼 하나로 검색된다.</p>
+
+                <h3 id="t-tools"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> nori와 Kiwi</h3>
+                <p>Elasticsearch·OpenSearch 환경에서 한국어 형태소 분석에 널리 쓰이는 선택지가 있다.</p>
+                <ul>
+                    <li><strong>nori</strong> — Elasticsearch·OpenSearch에 공식 플러그인으로 제공되는 한국어 형태소 분석기다. 엔진에 바로 붙는다는 점에서 도입 문턱이 낮아, 공식 문서에서 한국어 분석기로 안내된다.</li>
+                    <li><strong>Kiwi</strong> — 별도의 한국어 형태소 분석기로, Elasticsearch·OpenSearch용 연동(analyzer 이름 예: <code>ko_kiwi</code>)도 제공된다. 분석 방식·사전 구성이 nori와 달라 결과가 다를 수 있다.</li>
+                </ul>
+                <p>둘 중 무엇이 항상 낫다고 단정하긴 어렵다. 문서 도메인·용어 특성에 따라 결과가 갈리므로, <strong>실제 문서로 검색 품질을 비교해 고르는 것</strong>이 맞다. 분명한 건, 토크나이저 선택이 한국어 검색 품질을 좌우하는 첫 번째 변수라는 점이다.</p>
+
+                <h3 id="t-config"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 설정 스니펫 — nori analyzer</h3>
+                <p>Elasticsearch 인덱스에 nori 분석기를 지정하는 형태는 대략 아래와 같다. 필드에 이 analyzer를 걸면 색인·검색 시 같은 방식으로 토큰화된다.</p>
+                <pre class="code"><code><span class="cm"># nori 플러그인 설치 후 인덱스 생성 시 analyzer 지정</span>
+PUT /docs
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "korean": {
+          "type": "custom",
+          "tokenizer": "nori_tokenizer"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "content": { "type": "text", "analyzer": "korean" }
+    }
+  }
+}</code></pre>
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>설정 문법은 버전을 탄다</strong>
+                        플러그인 설치 방식, analyzer/tokenizer 옵션 이름, 필드 매핑 문법은 엔진 버전에 따라 달라진다. 위 예시는 구조를 보여 주기 위한 뼈대이므로, 실제 적용 전에 사용하는 버전의 공식 문서에서 정확한 옵션을 확인한다.
+                    </div>
+                </div>
+
+                <h2 id="hybrid"><i class="fa-solid fa-layer-group"></i> 하이브리드 검색과 RRF</h2>
+                <p>BM25(키워드) 검색은 정확한 용어 매칭엔 강하지만, 표현이 다른데 의미가 같은 경우("자동차" ↔ "승용차")를 놓치기 쉽다. 반대로 <strong>임베딩(embedding) 기반 검색</strong>은 문장을 벡터로 바꿔 의미 유사도로 찾으므로 표현이 달라도 잡아내지만, 정확히 일치해야 하는 고유명사·코드에는 오히려 약할 수 있다. 이런 벡터 방식을 <strong>dense(밀집) 검색</strong>이라 한다.</p>
+
+                <h3 id="h-compare"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> sparse vs dense</h3>
+                <table class="compare-table">
+                    <tr><th>구분</th><th>BM25 (sparse)</th><th>임베딩 (dense)</th></tr>
+                    <tr><td><strong>찾는 방식</strong></td><td>단어 단위 일치(역색인)</td><td>의미 벡터의 유사도</td></tr>
+                    <tr><td><strong>강점</strong></td><td>정확한 용어·고유명사·코드 매칭</td><td>표현이 달라도 의미로 매칭</td></tr>
+                    <tr><td><strong>약점</strong></td><td>동의어·의미 유사 표현에 약함</td><td>정확한 표기 일치에 약할 수 있음</td></tr>
+                    <tr><td><strong>사전 준비</strong></td><td>토크나이저(한국어는 형태소)</td><td>임베딩 모델로 벡터화</td></tr>
+                    <tr><td><strong>한국어 유의점</strong></td><td>형태소 분석기 선택이 결정적</td><td>한국어에 맞는 임베딩 모델 필요</td></tr>
+                </table>
+
+                <h3 id="h-rrf"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 둘을 합치는 RRF</h3>
+                <p>둘은 서로의 약점을 메운다. 그래서 2026년 시점의 실무 표준은 <strong>하이브리드 검색</strong>이다 — BM25(sparse)와 임베딩(dense)을 함께 돌리고, 각 결과 목록을 하나로 합친다. 합칠 때 널리 쓰이는 방법이 <strong>RRF(Reciprocal Rank Fusion)</strong>다.</p>
+                <p>RRF는 두 검색 결과의 점수 척도를 직접 비교하지 않고 <strong>각 목록에서의 순위(rank)만</strong> 이용한다. 각 문서에 대해 목록별 순위의 역수를 더해 최종 점수를 매기는 방식이라, 서로 스케일이 다른 BM25 점수와 벡터 유사도를 무리 없이 통합한다. 결과적으로 키워드의 정확성과 의미의 유사성을 <strong>동시에</strong> 반영한 순위가 나온다.</p>
+                <pre class="code"><code><span class="cm"># RRF 점수: 문서 d가 각 검색 결과에서 가진 순위 r의 역수 합</span>
+<span class="cm"># k는 순위 편차를 완충하는 상수(구현마다 기본값이 있음)</span>
+score(d) = sum over each result list:  1 / (k + rank(d))
+
+<span class="cm"># 예 — 어떤 문서가 BM25에서 2위, 벡터 검색에서 5위라면</span>
+<span class="cm">#   1/(k+2) + 1/(k+5) 로 합산해 최종 순위를 매긴다</span></code></pre>
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>BM25만으로 시작해도 된다</strong>
+                        하이브리드가 표준이라고 처음부터 임베딩 파이프라인까지 다 세울 필요는 없다. 한국어 문서라면 먼저 형태소 토크나이저 + BM25로 검색 품질의 바닥을 확보하고, 동의어·의미 검색이 부족하다고 느낄 때 dense를 더해 RRF로 합치는 순서가 현실적이다. 검색 개선의 대부분은 토크나이저를 제대로 맞추는 데서 나온다.
+                    </div>
+                </div>
+
+                <h2 id="agent"><i class="fa-solid fa-robot"></i> Agent 연계와 지식 연결</h2>
+                <p>검색기가 준비되면, AI 연계의 핵심 원칙은 단순하다 — <strong>검색기를 먼저 돌려 관련 문서를 찾고, 그 결과만 Agent가 참고하게 한다.</strong> 전체 문서를 넣지 않고, 질문마다 검색으로 좁힌 소수의 문서만 근거로 준다. 이것이 RAG의 실제 동작 방식이다.</p>
+
+                <h3 id="a-instruct"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Agent에 주는 지시 예시</h3>
+                <p>검색기를 도구로 붙였다면, Agent에게는 "검색기를 먼저 쓰라"는 방향을 지시로 못 박아 둔다. 예를 들면 이런 식이다.</p>
+                <pre class="code"><code><span class="cm"># Agent 지시 예시</span>
+질문에 답하기 전에, 한국어 토크나이저를 사용한 BM25 기반
+검색기로 관련 문서를 먼저 찾아 참고해줘.
+검색된 문서에 근거가 없으면 모른다고 답하고,
+근거 문서의 출처를 함께 밝혀줘.</code></pre>
+                <p>이렇게 하면 Agent는 답을 지어내기 전에 검색을 먼저 돌리고, 검색된 문서라는 <strong>확인 가능한 근거</strong> 위에서만 답하게 된다. 근거 출처를 함께 밝히게 두면 사람이 검증하기도 쉬워진다.</p>
+
+                <h3 id="a-graph"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> (선택) 문서 간 관계를 잇는 지식 연결</h3>
+                <p>문서가 서로 참조하거나 상하 관계로 얽혀 있는 대규모 환경에서는, 개별 문서를 따로 검색하는 것만으로는 부족할 때가 있다. 이런 경우 문서·개념 사이의 관계를 <strong>그래프나 온톨로지</strong>로 관리해, "이 문서와 연결된 문서까지" 함께 가져오는 접근을 쓰기도 한다. 이른바 대규모 지식 연결이다.</p>
+                <p>다만 이는 도입·유지 비용이 큰 선택지다. 대부분의 경우는 앞서 다룬 <strong>형태소 토크나이저 + 하이브리드 검색</strong>으로 충분하며, 관계 기반 탐색이 실제로 필요하다고 확인된 뒤에 지식 그래프를 얹는 순서가 안전하다.</p>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 주의</h2>
+                <ul>
+                    <li><strong>문제의 본질</strong> — 방대한 문서를 매번 통째로 넣을 수 없으므로, 질문에 관련된 문서만 골라 넣는 검색이 RAG의 앞단으로 필요하다.</li>
+                    <li><strong>기반</strong> — 역색인 기반 엔진(Elasticsearch·OpenSearch)과 그 기본 스코어링인 BM25가 키워드(sparse) 검색의 표준이다.</li>
+                    <li><strong>한국어의 핵심</strong> — 형태소 토크나이저(nori·Kiwi) 선택이 검색 품질을 좌우한다. 여기에 가장 먼저 투자한다.</li>
+                    <li><strong>2026년 표준</strong> — BM25(sparse) + 임베딩(dense)을 RRF로 합치는 하이브리드가 표준이다. 다만 BM25부터 시작해도 된다.</li>
+                    <li><strong>연계 원칙</strong> — 검색을 먼저 돌려 관련 문서만 Agent에 근거로 준다. 세부 문법·플러그인 사양은 버전에 따라 바뀌니 공식 문서로 확인한다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Elasticsearch 한국어 분석 플러그인(nori) 문서 — <a href="https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-nori.html" target="_blank" rel="noopener">elastic.co/guide · analysis-nori</a></li>
+                        <li>Elasticsearch 관련도 스코어링(BM25 / similarity) 문서 — <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-similarity.html" target="_blank" rel="noopener">elastic.co/guide · similarity</a></li>
+                        <li>Elasticsearch RRF(Reciprocal Rank Fusion) 문서 — <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/rrf.html" target="_blank" rel="noopener">elastic.co/guide · rrf</a></li>
+                        <li>OpenSearch 검색·하이브리드 검색 문서 — <a href="https://opensearch.org/docs/latest/search-plugins/" target="_blank" rel="noopener">opensearch.org/docs · search-plugins</a></li>
+                        <li>열람일: 2026-06-25. 플러그인·설정 문법·표준 현황은 버전에 따라 변동될 수 있어 공식 문서 확인 권장.</li>
+                        <li>함께 보기: <a href="claude-code-architecture.html">Claude Code를 구조로 이해하기 — 6가지 확장 메커니즘과 선택 기준</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tool');
+    renderPostNav('tool');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
