@@ -245,6 +245,7 @@ const POST_NAV_DATA = {
         { file: 'rust-20-test-build.html', title: '테스트와 빌드 — cargo test·워크스페이스' },
         { file: 'rust-21-cpp-ffi.html', title: 'C++/C 연동 — FFI 실전' },
         { file: 'rust-22-project.html', title: '작은 프로젝트 — 이미지 처리 맛보기' },
+        { file: 'rust-23-image-project-extended.html', title: '번외편 — 이미지 처리 프로젝트 확장' },
     ],
     'tech-halcon': [
         { file: 'halcon-sg1-00-overview.html', title: 'HALCON Solution Guide I 개요와 학습법' },

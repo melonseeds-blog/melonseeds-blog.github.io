@@ -1,0 +1,393 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>번외편 — 이미지 처리 프로젝트 확장 (필터·에러 처리·병렬화) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm { color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#intro" data-section="intro">왜 확장하나</a><a href="#filters" data-section="filters">필터 모음</a><a href="#errors" data-section="errors">에러 처리 다듬기</a><a href="#tests" data-section="tests">테스트 작성</a><a href="#rayon" data-section="rayon">rayon 병렬화</a><a href="#wrap" data-section="wrap">마무리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">Rust 시리즈</span>
+                    <span class="post-tag" style="background:var(--border-light); color:var(--text-muted);">번외</span>
+                </div>
+                <h1>번외편 — 이미지 처리 프로젝트 확장</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-08-03</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 12분 분량</span>
+                    <span><i class="fa-brands fa-rust"></i> Rust 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 편에서 하는 것</strong>
+                        22편(작은 프로젝트 — 이미지 처리 맛보기)에서 만든 그레이스케일 변환기를 확장한다. 지난 편 끝에 남겨 둔 숙제 — 필터 추가, 에러 처리 다듬기, 테스트 작성 — 를 실제로 해 보고, 여기에 <code>rayon</code>으로 픽셀 루프를 병렬화하는 것까지 더한다. 22편을 먼저 읽었다면 자연스럽게 이어지고, 안 읽었어도 각 절이 독립적으로 읽히도록 썼다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>반전·밝기 조절·임계값 이진화 필터를 같은 패턴으로 추가</li>
+                        <li><code>main</code>을 <code>Result</code> 기반으로 리팩터링, <code>?</code>로 에러 전파</li>
+                        <li>순수 함수로 뺀 필터에 유닛 테스트 작성</li>
+                        <li><code>rayon</code>으로 픽셀 루프를 스레드 풀에 병렬로 뿌리기</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#intro">왜 확장하나</a></li>
+                        <li><a href="#filters">필터 모음 만들기</a></li>
+                        <li><a href="#errors">에러 처리 다듬기</a></li>
+                        <li><a href="#tests">테스트 작성</a></li>
+                        <li><a href="#rayon">rayon으로 병렬화</a></li>
+                        <li><a href="#wrap">마무리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="intro"><i class="fa-solid fa-layer-group"></i> 왜 확장하나</h2>
+                <p>22편은 "끝까지 도는 작은 프로그램 하나"를 목표로 일부러 짧게 끝냈다. <code>expect</code>로 에러를 단순화했고, 필터는 그레이스케일 하나뿐이었고, 테스트도 없었다. 실무 도구로 다듬으려면 딱 그 세 가지를 손봐야 한다. 이번 편은 그 작업을 그대로 따라가며, 마지막에는 시리즈에서 다루지 않았던 병렬 처리까지 살짝 맛본다.</p>
+                <p>기준이 되는 22편의 <code>to_grayscale</code> 함수를 그대로 가져온다 — 입력을 <code>&amp;RgbImage</code>로 빌리고, 새 <code>GrayImage</code>를 소유권째 반환하는 패턴이다. 이번에 추가하는 필터들도 전부 이 패턴을 그대로 따른다.</p>
+
+                <h2 id="filters"><i class="fa-solid fa-sliders"></i> 필터 모음 만들기</h2>
+                <p>그레이스케일 버퍼(<code>GrayImage</code>)를 입력으로 받아 새 버퍼를 돌려주는 필터 세 개를 추가한다. 반전, 밝기 조절, 임계값 이진화다. 셋 다 픽셀 하나에만 의존하는 <strong>점 연산(point operation)</strong>이라 구조가 거의 같다.</p>
+
+                <pre class="code"><code>use image::{GrayImage, Luma};
+
+<span class="cm">// 반전 — 255에서 빼면 밝고 어두움이 뒤집힌다.</span>
+fn invert(src: &amp;GrayImage) -> GrayImage {
+    let (width, height) = src.dimensions();
+    let mut out = GrayImage::new(width, height);
+    for y in 0..height {
+        for x in 0..width {
+            let v = src.get_pixel(x, y).0[0];
+            out.put_pixel(x, y, Luma([255 - v]));
+        }
+    }
+    out
+}
+
+<span class="cm">// 밝기 조절 — offset을 더하되 0~255를 벗어나지 않게 saturating 연산을 쓴다.</span>
+fn adjust_brightness(src: &amp;GrayImage, offset: i16) -> GrayImage {
+    let (width, height) = src.dimensions();
+    let mut out = GrayImage::new(width, height);
+    for y in 0..height {
+        for x in 0..width {
+            let v = src.get_pixel(x, y).0[0] as i16;
+            let adjusted = (v + offset).clamp(0, 255) as u8;
+            out.put_pixel(x, y, Luma([adjusted]));
+        }
+    }
+    out
+}
+
+<span class="cm">// 임계값 이진화 — cutoff 이상이면 흰색, 아니면 검은색.</span>
+fn threshold(src: &amp;GrayImage, cutoff: u8) -> GrayImage {
+    let (width, height) = src.dimensions();
+    let mut out = GrayImage::new(width, height);
+    for y in 0..height {
+        for x in 0..width {
+            let v = src.get_pixel(x, y).0[0];
+            let bin = if v >= cutoff { 255 } else { 0 };
+            out.put_pixel(x, y, Luma([bin]));
+        }
+    }
+    out
+}</code></pre>
+
+                <p><code>adjust_brightness</code>에서 <code>u8</code> 대신 <code>i16</code>으로 올려 계산한 점이 핵심이다. <code>u8</code>끼리 더하면 255를 넘을 때 패닉(디버그 빌드) 또는 랩어라운드(릴리즈 빌드)가 나므로, 넉넉한 타입으로 계산하고 <code>clamp</code>로 범위를 강제한 뒤 <code>u8</code>로 되돌린다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>C++ 대조 — 오버플로 처리</strong>
+                        C++에서 <code>uchar</code> 연산의 오버플로는 조용히 랩어라운드된다(정의된 동작이지만 원하는 결과는 아닐 때가 많다). OpenCV의 <code>cv::saturate_cast&lt;uchar&gt;</code>가 이 문제를 감춰 준다. Rust는 그 역할을 <code>as</code> 캐스팅과 <code>clamp</code>를 조합해 직접 명시한다 — 자동으로 안전해지진 않지만, 어디서 값이 잘릴 수 있는지 코드에 그대로 드러난다.
+                    </div>
+                </div>
+
+                <h2 id="errors"><i class="fa-solid fa-triangle-exclamation"></i> 에러 처리 다듬기</h2>
+                <p>22편은 <code>expect</code>로 실패 시 그냥 패닉하게 두었다. 도구답게 다듬으려면 <code>main</code>이 <code>Result</code>를 반환하게 하고, 실패를 값으로 전파해야 한다. 12편(에러 처리 심화)에서 다룬 <code>?</code>가 여기서 실전으로 쓰인다.</p>
+
+                <pre class="code"><code>use image::{ImageReader, GrayImage};
+use std::error::Error;
+
+fn main() -> Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    <span class="cm">// 각 단계가 실패하면 즉시 함수를 빠져나가며 에러를 위로 전달한다.</span>
+    let img = ImageReader::open("input.png")?.decode()?;
+    let rgb = img.to_rgb8();
+
+    let gray = to_grayscale(&amp;rgb);       <span class="cm">// 22편 함수</span>
+    let inverted = invert(&amp;gray);
+    let bin = threshold(&amp;gray, 128);
+
+    gray.save("out_gray.png")?;
+    inverted.save("out_invert.png")?;
+    bin.save("out_threshold.png")?;
+
+    println!("3개 파일을 저장했다");
+    Ok(())
+}</code></pre>
+
+                <p><code>Box&lt;dyn Error&gt;</code>는 "<code>Error</code> 트레이트를 구현한 아무 타입이나"를 뜻하는 트레이트 객체다. <code>image</code>의 디코딩 에러, 파일 I/O 에러처럼 서로 다른 에러 타입이 섞여도 <code>?</code> 한 줄로 처리할 수 있다. 다만 호출자 입장에서 "정확히 어떤 에러였는지" 구분하기는 어렵다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>더 다듬고 싶다면</strong>
+                        에러 종류를 구분해서 다뤄야 하는 라이브러리 코드라면 12편에서 본 <code>thiserror</code>로 직접 에러 타입(예: <code>enum ImgToolError { Io(...), Decode(...) }</code>)을 정의하는 편이 낫다. 반대로 최종 실행 파일이라 "실패하면 메시지 찍고 끝"이면 <code>anyhow::Result</code>가 <code>Box&lt;dyn Error&gt;</code>보다 에러 메시지 출력이 편하다. 지금 예제 같은 작은 CLI 도구에는 <code>Box&lt;dyn Error&gt;</code> 정도로 충분하다.
+                    </div>
+                </div>
+
+                <h2 id="tests"><i class="fa-solid fa-vial"></i> 테스트 작성</h2>
+                <p>필터를 <code>&amp;GrayImage -&gt; GrayImage</code> 순수 함수로 뽑아 둔 덕분에, 파일 I/O 없이 작은 이미지를 코드로 만들어 테스트할 수 있다. Rust는 <code>#[test]</code> 속성과 <code>cargo test</code>만으로 별도 프레임워크 없이 테스트가 된다.</p>
+
+                <pre class="code"><code>#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invert_flips_extremes() {
+        let mut img = GrayImage::new(2, 1);
+        img.put_pixel(0, 0, Luma([0]));
+        img.put_pixel(1, 0, Luma([255]));
+
+        let result = invert(&amp;img);
+
+        assert_eq!(result.get_pixel(0, 0).0[0], 255);
+        assert_eq!(result.get_pixel(1, 0).0[0], 0);
+    }
+
+    #[test]
+    fn threshold_splits_at_cutoff() {
+        let mut img = GrayImage::new(2, 1);
+        img.put_pixel(0, 0, Luma([100]));
+        img.put_pixel(1, 0, Luma([200]));
+
+        let result = threshold(&amp;img, 128);
+
+        assert_eq!(result.get_pixel(0, 0).0[0], 0);   <span class="cm">// 100 &lt; 128</span>
+        assert_eq!(result.get_pixel(1, 0).0[0], 255);  <span class="cm">// 200 &gt;= 128</span>
+    }
+}</code></pre>
+
+                <p><code>mod tests</code>를 같은 파일 안에 두고 <code>use super::*;</code>로 바깥 함수를 그대로 끌어다 쓰는 게 Rust의 관례다(13편에서 다룬 모듈 시스템의 연장선이다). <code>cargo test</code>를 실행하면 이 모듈의 테스트만 골라 컴파일·실행한다 — 릴리즈 바이너리에는 포함되지 않는다.</p>
+
+                <h2 id="rayon"><i class="fa-solid fa-diagram-project"></i> rayon으로 병렬화</h2>
+                <p>지금까지의 필터는 픽셀마다 이전 픽셀과 무관하게 독립적으로 계산된다. 이렇게 작업 단위끼리 서로 의존이 없어 병렬화하기 쉬운 경우를 "embarrassingly parallel"이라고 부른다. 이런 작업은 <code>rayon</code> 크레이트로 스레드 풀에 그대로 뿌릴 수 있다. 16편(동시성)에서 다룬 <code>Send</code>/<code>Sync</code>가 여기서 컴파일러의 안전판 역할을 한다.</p>
+
+                <pre class="code"><code><span class="cm"># Cargo.toml에 추가</span>
+cargo add rayon</code></pre>
+
+                <pre class="code"><code>use image::GrayImage;
+use rayon::prelude::*;
+
+<span class="cm">// 원시 픽셀 버퍼(&[u8])를 순회하며 병렬로 매핑한다.</span>
+fn threshold_parallel(src: &amp;GrayImage, cutoff: u8) -> GrayImage {
+    let (width, height) = src.dimensions();
+
+    let out_pixels: Vec&lt;u8&gt; = src
+        .as_raw()                              <span class="cm">// &Vec&lt;u8&gt; — 원시 그레이 버퍼</span>
+        .par_iter()                             <span class="cm">// rayon의 병렬 이터레이터</span>
+        .map(|&amp;v| if v >= cutoff { 255 } else { 0 })
+        .collect();
+
+    GrayImage::from_raw(width, height, out_pixels)
+        .expect("입력과 같은 크기이므로 항상 성공한다")
+}</code></pre>
+
+                <p>바뀐 부분은 <code>.iter()</code>가 <code>.par_iter()</code>로 바뀐 게 전부다. rayon이 내부적으로 코어 수만큼 작업을 나눠 스레드 풀에서 처리하고 결과를 순서대로 모아 준다. 함수 시그니처와 호출부는 순차 버전과 동일하다 — <code>threshold_parallel(&amp;gray, 128)</code>처럼 그대로 쓴다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>왜 이 예제가 안전한가</strong>
+                        각 픽셀 계산이 다른 픽셀의 결과에 의존하지 않고(순수 함수), 클로저가 캡처하는 값(<code>cutoff</code>)도 <code>Copy</code>인 <code>u8</code>이라 데이터 경쟁 소지 자체가 없다. 만약 클로저가 여러 스레드에서 공유 가변 상태를 건드리려 하면, 그 타입이 <code>Send</code>/<code>Sync</code>를 만족하지 않는 한 <strong>컴파일이 거부된다</strong>. "일단 돌려보고 경쟁 조건을 디버거로 잡는" 대신 "컴파일러가 애초에 막는" 쪽이다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++ 대조 — 병렬 루프</strong>
+                        C++에서 같은 걸 하려면 OpenMP <code>#pragma omp parallel for</code>나 <code>std::for_each</code> + <code>std::execution::par</code>를 쓴다. 문법은 비슷하게 간단하지만, 캡처한 변수가 스레드 안전한지는 개발자가 직접 보장해야 한다 — 실수로 공유 변수를 캡처해도 컴파일은 되고, 데이터 경쟁은 런타임에(운이 나쁘면 가끔씩만) 드러난다. rayon은 그 보장을 타입 시스템으로 옮겨 컴파일 타임에 확인한다.
+                    </div>
+                </div>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 마무리</h2>
+                <p>22편의 작은 변환기가 이번 편을 거치며 필터 세 개, <code>Result</code> 기반 에러 처리, 테스트, 그리고 병렬화까지 갖췄다. 각 단계에서 바뀐 코드량은 크지 않았다는 점이 눈여겨볼 만하다 — 순수 함수로 필터를 뽑아 둔 22편의 설계가 테스트와 병렬화를 둘 다 거의 공짜로 만들어 줬다.</p>
+                <ul>
+                    <li><strong>더 해볼 것</strong> — 커맨드라인 인자로 필터 종류·경로를 받고 싶다면 <code>clap</code> 크레이트가 표준적인 선택이다.</li>
+                    <li><strong>더 해볼 것</strong> — 이미지가 커지면 <code>rayon</code> 도입 전후로 <code>std::time::Instant</code>로 직접 시간을 재 보면 병렬화 효과를 체감할 수 있다.</li>
+                    <li><strong>시리즈 전체를 돌아보면</strong> — 입문부터 여기까지, 소유권·빌림이라는 하나의 규칙이 메모리 관리·동시성·에러 처리 전반에 반복해서 등장했다. 처음엔 제약처럼 느껴지던 규칙이, 이 번외편처럼 "그냥 바꿔도 안전하다"는 확신으로 돌아오는 경험이 Rust를 계속 쓰게 만드는 이유다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>rayon 공식 문서 — <a href="https://docs.rs/rayon/" target="_blank" rel="noopener">docs.rs/rayon</a></li>
+                        <li><code>image</code> 크레이트 문서 — <a href="https://docs.rs/image/" target="_blank" rel="noopener">docs.rs/image</a></li>
+                        <li>The Rust Programming Language, 11장(테스트) — <a href="https://doc.rust-lang.org/book/ch11-00-testing.html" target="_blank" rel="noopener">doc.rust-lang.org/book/ch11-00-testing.html</a></li>
+                        <li>열람일: 2026-08-03. 크레이트 API·버전은 변동될 수 있어 공식 문서 확인 권장.</li>
+                        <li>관련 글: <a href="rust-22-project.html">22편 — 작은 프로젝트: 이미지 처리 맛보기</a>, <a href="rust-12-error-handling.html">12편 — 에러 처리 심화</a>, <a href="rust-16-concurrency.html">16편 — 동시성</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-rust');
+    renderPostNav('dev-lang-rust');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
