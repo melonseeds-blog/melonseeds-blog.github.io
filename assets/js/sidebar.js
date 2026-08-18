@@ -35,7 +35,11 @@ function renderSidebar(currentCat) {
               { id: 'trend-monthly', label: '월간 트렌드 브리핑' },
           ]
         },
-        { id: 'tool',   icon: 'fa-solid fa-screwdriver-wrench', label: '도구/환경 설정', color: 'tool',   desc: 'Git, IDE, Claude' },
+        { id: 'tool',   icon: 'fa-solid fa-screwdriver-wrench', label: '도구/환경 설정', color: 'tool',   desc: 'Git, IDE, Claude',
+          subs: [
+              { id: 'tool-obsidian', label: '옵시디언 시리즈' },
+          ]
+        },
         { id: 'debug',  icon: 'fa-solid fa-bug',              label: '트러블슈팅',     color: 'debug',  desc: '문제 해결 기록',
           subs: [
               { id: 'debug-windbg', label: 'Windows 크래시 덤프 분석' },

@@ -358,6 +358,20 @@ const POST_NAV_DATA = {
         { file: 'claude-desktop-guide.html', title: 'Claude Desktop 활용 가이드' },
         { file: 'vs2022-productivity.html', title: 'Visual Studio 2022 생산성 팁' },
     ],
+    'tool-obsidian': [
+        { file: 'obsidian-01-pkm-intro.html', title: 'PKM이란 무엇인가 — 제텔카스텐과 PARA' },
+        { file: 'obsidian-02-why-obsidian.html', title: '왜 옵시디언인가 — 로컬 마크다운이라는 선택' },
+        { file: 'obsidian-03-vault-layout.html', title: '볼트 설계 — PARA에 제텔카스텐을 겹친다' },
+        { file: 'obsidian-04-classify.html', title: 'Project · Area · Knowledge · Source — 어디에 넣을 것인가' },
+        { file: 'obsidian-05-atomize.html', title: '메모가 지식이 되기까지 — 원자화 다섯 단계' },
+        { file: 'obsidian-06-links-moc.html', title: '링크·백링크·그래프 뷰와 MOC 운영' },
+        { file: 'obsidian-07-templates.html', title: '템플릿 5종 — 코어 기능만으로 충분하다' },
+        { file: 'obsidian-08-daily-notes.html', title: '데일리 노트와 캡처 습관 — 통과 지점으로 쓴다' },
+        { file: 'obsidian-09-search-find.html', title: '찾는 방법 — 검색·태그·속성, 그리고 코어의 경계' },
+        { file: 'obsidian-10-sync-backup.html', title: '동기화와 백업 — 같은 문제가 아니다' },
+        { file: 'obsidian-11-claude-context.html', title: '옵시디언 + Claude ① — 볼트를 컨텍스트로 넘기기' },
+        { file: 'obsidian-12-claude-workflow.html', title: '옵시디언 + Claude ② — 반복 작업으로 만들기' },
+    ],
 };
 
 const CAT_LABELS = {
@@ -378,6 +392,7 @@ const CAT_LABELS = {
     'dev-theory': '프로그래밍 이론',
     'book': '책/강의 후기',
     'tool': '도구/환경 설정',
+    'tool-obsidian': '옵시디언 시리즈',
     'growth-cert': '자격증',
     'growth-cert-istqb': 'ISTQB FL',
     'growth-cert-ctai': 'ISTQB CT-AI',

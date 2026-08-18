@@ -1,0 +1,335 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>옵시디언 + Claude ② — 반복 작업으로 만들기 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm{ color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#repeat" data-section="repeat">규칙을 볼트에</a><a href="#flows" data-section="flows">세 흐름</a><a href="#review" data-section="review">검토 지점</a><a href="#dont" data-section="dont">자동화 금지</a><a href="#series" data-section="series">시리즈 정리</a><a href="#wrap" data-section="wrap">마치며</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">옵시디언 시리즈</span>
+                </div>
+                <h1>옵시디언 + Claude ② — 반복 작업으로 만들기</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-08-18</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 5분 분량</span>
+                    <span><i class="fa-solid fa-file-lines"></i> 옵시디언 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 글의 목적</strong>
+                        11편에서 볼트를 붙였다. 그런데 매번 "내 볼트는 이런 구조고, 이 폴더는 원문이고…"를 설명하고 있으면 오래 못 간다. 마지막 편은 이 연동을 <strong>반복 가능한 작업</strong>으로 만드는 방법과, 자동화하면 안 되는 지점을 정리한다. 시리즈 전체 마무리도 겸한다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>매번 설명하지 않으려면 — 규칙을 볼트 안에 둔다</li>
+                        <li>반복할 만한 세 가지 흐름</li>
+                        <li>사람이 반드시 검토해야 하는 지점</li>
+                        <li>자동화하면 안 되는 것</li>
+                        <li>시리즈 전체 정리</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#repeat">매번 설명하지 않으려면</a></li>
+                        <li><a href="#flows">반복할 만한 세 흐름</a></li>
+                        <li><a href="#review">사람이 검토하는 지점</a></li>
+                        <li><a href="#dont">자동화하면 안 되는 것</a></li>
+                        <li><a href="#series">시리즈 전체 정리</a></li>
+                        <li><a href="#wrap">마치며</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="repeat"><i class="fa-solid fa-repeat"></i> 매번 설명하지 않으려면</h2>
+                <p>연동을 붙이고 나서 처음 몇 번은 잘 된다. 그러다 매번 같은 설명을 반복하고 있다는 걸 알게 된다. 어느 폴더가 원문인지, 원자 노트 제목은 어떻게 쓰는지, Sources는 고치면 안 된다는 것.</p>
+                <p>해법은 단순하다. <strong>그 설명을 볼트 안에 파일로 둔다.</strong> 11편에서 안내 문서 이야기를 했는데, 그게 여기서 본격적으로 쓰인다. 규칙이 볼트 안에 있으면 볼트를 읽는 쪽이 그 규칙도 같이 읽는다.</p>
+                <p>담을 내용은 이 시리즈에서 정한 것들 그대로다.</p>
+                <ul>
+                    <li>폴더 일곱 개의 역할과 <strong>Sources는 수정하지 않는다</strong>는 규칙 (3·4편)</li>
+                    <li>노트 종류별 판별 기준과 판별 질문 한 문장 (4편)</li>
+                    <li>원자 노트의 조건 — 아이디어 하나, 주장 문장 제목, 맥락 제거 (5편)</li>
+                    <li>링크를 거는 기준과 MOC 운영 규칙 (6편)</li>
+                    <li>노출해도 되는 폴더와 안 되는 폴더 (11편)</li>
+                </ul>
+                <p>이건 사실 사람에게도 필요한 문서다. 몇 달 뒤의 내가 "Areas에 원본을 두던가 안 두던가?"를 헷갈릴 때 볼 곳이 있어야 한다. <strong>규칙을 머리에 두지 않고 볼트에 두는 것</strong> 자체가 이 시리즈의 주제와 같다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>규칙 문서는 짧게 유지한다</strong>
+                        길어지면 사람도 안 읽고, 읽는 쪽도 핵심을 놓친다. "무엇을 하면 안 되는가"를 앞에 두고, 설명보다 판단 기준을 적는다. 7편에서 템플릿에 긴 안내문을 넣지 말라고 한 것과 같은 이유다.
+                    </div>
+                </div>
+
+                <h2 id="flows"><i class="fa-solid fa-diagram-next"></i> 반복할 만한 세 흐름</h2>
+                <p>실제로 반복해서 쓸 만한 건 이 정도다. 전부 5편의 승격 단계 중 <strong>사람이 가장 미루게 되는 구간</strong>에 붙는다.</p>
+
+                <div class="layer-card">
+                    <h4><span class="lay-tag">1</span> 원문에서 결론 후보 뽑기</h4>
+                    <p>회의록이나 매뉴얼 정리본을 읽고 "맥락을 걷어내도 성립하는 문장"을 목록으로 뽑게 한다. 결과는 <strong>후보 목록</strong>이지 완성된 노트가 아니다.</p>
+                    <p class="lay-when">Literature 템플릿의 "여기서 나온 재사용 가능한 아이디어" 칸을 채우는 작업에 해당한다.</p>
+                </div>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">2</span> 연결 후보 찾기</h4>
+                    <p>새로 만든 노트를 주고 "기존 노트 중 관련 있는데 링크가 없는 것"을 찾게 한다. 링크를 직접 걸게 하지 않고 <strong>후보만 받는다.</strong></p>
+                    <p class="lay-when">6편에서 "애매하면 안 건다"고 했는데, 애매한지 판단하려면 후보가 있어야 한다.</p>
+                </div>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">3</span> 묵은 항목 훑기</h4>
+                    <p>Inbox에 오래 남은 항목을 모아 각각 "버릴 것·원문·작업기록·결론" 중 어디로 보이는지 분류 초안을 받는다.</p>
+                    <p class="lay-when">8편의 비우기가 밀리는 이유는 판단이 귀찮아서다. 초안이 있으면 확인만 하면 된다.</p>
+                </div>
+
+                <p>세 흐름의 공통점이 있다. <strong>전부 결과물이 "후보"나 "초안"이지 최종본이 아니다.</strong> 이게 우연이 아니라 다음 절의 원칙 때문이다.</p>
+
+                <h2 id="review"><i class="fa-solid fa-user-check"></i> 사람이 검토하는 지점</h2>
+                <p>11편에서 "찾고 모으고 대조하는 일은 맡기고 판단하고 결론짓는 일은 직접 한다"고 정했다. 이걸 작업 흐름에 박아 넣으면 <strong>검토 지점</strong>이 된다.</p>
+
+                <div class="key-point"><strong>규칙:</strong> 볼트에 <em>새 파일이 생기거나 기존 파일이 바뀌기 전에</em> 사람이 한 번 본다.</div>
+
+                <p>구체적으로는 이 순서가 된다.</p>
+<pre class="code">읽기        볼트를 훑는다                    → 맡긴다
+후보 생성    결론·링크·분류 후보를 만든다      → 맡긴다
+검토        후보를 고르고 문장을 다듬는다      → 사람이 한다
+쓰기        노트를 만들거나 고친다             → 사람 확인 후</pre>
+
+                <p>세 번째 줄이 빠지면 무슨 일이 생기는지가 중요하다. 노트는 늘어나는데 <strong>그 노트를 내가 이해하고 있지 않은 상태</strong>가 된다. 5편에서 원자화가 어려운 이유로 "전제를 걷어내다 보면 내가 이해 못 했다는 게 드러난다"고 했는데, 그 드러남이 바로 지식이 되는 순간이다. 그 과정을 건너뛰면 볼트는 두꺼워지고 내 이해는 그대로다.</p>
+
+                <h2 id="dont"><i class="fa-solid fa-ban"></i> 자동화하면 안 되는 것</h2>
+                <p>기술적으로 가능하지만 하지 않는 편이 나은 것들이다.</p>
+
+                <ol class="decision-list">
+                    <li><strong>Sources 수정.</strong> 4편부터 계속 반복한 규칙이다. 원문을 다듬는 순간 근거가 사라진다. 자동화 대상에서 아예 제외한다.</li>
+                    <li><strong>결론 문장 작성.</strong> Knowledge 노트의 정의가 "내 언어로 재구성한 것"이다. 대신 써 주면 정의가 깨지고, 나중에 내가 이해한 것인지 받아 적은 것인지 구분이 안 된다.</li>
+                    <li><strong>링크 자동 삽입.</strong> 관련 있어 보이는 노트를 전부 이어 버리면 백링크가 오염된다. 6편에서 "링크는 적고 정확한 쪽이 낫다"고 한 이유다.</li>
+                    <li><strong>일괄 정리.</strong> "볼트를 정리해 달라" 같은 범위가 열린 작업은 하지 않는다. 무엇이 바뀌었는지 추적이 안 되고, 로컬 파일이라 되돌리기도 백업에 의존하게 된다.</li>
+                </ol>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>편해지는 것과 쌓이는 것은 다르다</strong>
+                        자동화를 늘릴수록 노트는 빨리 늘어난다. 그런데 지식 관리의 목표는 노트 개수가 아니라 <strong>나중에 꺼내 쓸 수 있는 이해</strong>였다. 내가 안 거친 노트는 나중에 꺼내도 남의 글처럼 읽힌다. 속도를 올릴 구간과 올리면 안 되는 구간을 나누는 게 결국 이 편의 요지다.
+                    </div>
+                </div>
+
+                <h2 id="series"><i class="fa-solid fa-layer-group"></i> 시리즈 전체 정리</h2>
+                <p>열두 편을 관통한 결정들을 한자리에 모으면 이렇다.</p>
+
+                <table class="compare-table">
+                    <thead>
+                        <tr><th>편</th><th>결정</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>1</td><td>폴더는 상태를, 링크는 의미를 관리한다. 둘 중 하나를 고르지 않는다</td></tr>
+                        <tr><td>2</td><td>노트 앱은 기능이 아니라 저장 방식으로 고른다</td></tr>
+                        <tr><td>3</td><td>PARA의 Resources를 원문과 지식으로 쪼갠다. 폴더 깊이는 두 단계까지</td></tr>
+                        <tr><td>4</td><td>"원래 맥락이 사라져도 유효한가"로 지식과 작업 기록을 가른다</td></tr>
+                        <tr><td>5</td><td>승격은 덜어내는 일이다. 그리고 대부분의 메모는 승격되지 않는다</td></tr>
+                        <tr><td>6</td><td>링크의 값어치는 반대편 백링크에서 나온다</td></tr>
+                        <tr><td>7</td><td>템플릿의 목적은 타이핑을 줄이는 것까지다. 규칙을 강제하지 않는다</td></tr>
+                        <tr><td>8</td><td>캡처 시점에는 판단하지 않는다. 데일리 노트는 통과 지점이다</td></tr>
+                        <tr><td>9</td><td>꺼내는 경로 넷이 서로의 빈틈을 메운다. 필요가 먼저, 도구가 나중</td></tr>
+                        <tr><td>10</td><td>동기화는 삭제까지 퍼뜨린다. 백업은 기기 수와 무관하게 필요하다</td></tr>
+                        <tr><td>11</td><td>연동의 진짜 과제는 기술이 아니라 경계 설정이다</td></tr>
+                        <tr><td>12</td><td>찾고 모으는 일은 맡기고, 판단하고 결론짓는 일은 직접 한다</td></tr>
+                    </tbody>
+                </table>
+
+                <p>다시 보면 상당수가 <strong>"하지 않는다"</strong>는 결정이다. 폴더를 깊게 파지 않고, 전부 원자화하지 않고, 링크를 많이 걸지 않고, 템플릿 항목을 늘리지 않고, 안 쓰는 도구를 미리 붙이지 않는다. 지식 관리가 무너지는 건 대개 부족해서가 아니라 <strong>유지 비용이 커져서</strong>다.</p>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 마치며</h2>
+                <div class="key-point"><strong>핵심:</strong> 반복 작업으로 만들되 검토 지점은 남긴다. 노트가 빨리 느는 것과 내 이해가 느는 것은 다른 일이다.</div>
+                <ul>
+                    <li>규칙을 볼트 안에 문서로 둔다. 읽는 쪽도 사람도 그걸 본다.</li>
+                    <li>반복할 만한 건 결론 후보 뽑기, 연결 후보 찾기, 묵은 항목 훑기 — 전부 결과가 후보다.</li>
+                    <li>파일이 생기거나 바뀌기 전에 사람이 한 번 본다. 이 지점이 빠지면 볼트만 두꺼워진다.</li>
+                    <li>Sources 수정, 결론 대필, 링크 자동 삽입, 범위가 열린 일괄 정리는 하지 않는다.</li>
+                </ul>
+                <p>시리즈를 시작할 때 적었듯 이 구성은 완성형이 아니라 지금의 상태다. 앞으로 필요가 생기면 Bases를 도입하게 될 수도 있고, 기기가 늘면 동기화를 붙이게 될 수도 있다. 다만 순서는 지키려고 한다 — <strong>필요가 먼저 생기고, 도구가 따라온다.</strong></p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Claude Code 공식 문서 — <a href="https://docs.claude.com/en/docs/claude-code" target="_blank" rel="noopener">docs.claude.com/en/docs/claude-code</a></li>
+                        <li>Model Context Protocol 공식 — <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">modelcontextprotocol.io</a></li>
+                        <li>열람일: 2026-08-18.</li>
+                        <li>함께 보기: <a href="claude-md-writing.html">CLAUDE.md 잘 쓰는 법 — 의도·제약·Do NOT와 디렉터리 스코프</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tool-obsidian');
+    renderPostNav('tool-obsidian');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
