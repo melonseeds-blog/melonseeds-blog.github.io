@@ -166,6 +166,7 @@ const POST_NAV_DATA = {
         { file: 'ai-11-onnx-deployment.html', title: 'ONNX와 배포' },
         { file: 'ai-12-opencv-dnn.html', title: 'OpenCV DNN 모듈 실전' },
         { file: 'ai-13-industrial-deep-learning.html', title: '산업 비전에서의 딥러닝 — 하이브리드 전략' },
+        { file: 'ai-14-three-tasks-diverge.html', title: '세 과제는 왜 갈라지는가 — backbone 이후의 구조' },
     ],
     'tech-ai-llm': [
         { file: 'llm-decoding-01-sampling.html', title: 'LLM 디코딩 심화 1 — 샘플링의 내부 동작' },
@@ -341,6 +342,7 @@ const POST_NAV_DATA = {
         { file: 'trend-2026-06.html', title: '월간 트렌드 브리핑 — 2026년 6월호' },
         { file: 'trend-2026-07.html', title: '월간 트렌드 브리핑 — 2026년 7월호' },
         { file: 'trend-2026-08.html', title: '월간 트렌드 브리핑 — 2026년 8월호' },
+        { file: 'trend-2026-09.html', title: '월간 트렌드 브리핑 — 2026년 9월호' },
     ],
     'tool': [
         { file: 'git-basics.html', title: 'Git 기본 명령어 가이드' },
