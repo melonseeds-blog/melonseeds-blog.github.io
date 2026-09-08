@@ -337,6 +337,7 @@ const POST_NAV_DATA = {
     ],
     'read': [
         { file: 'read-recommended-sites.html', title: '개발자가 북마크해둘 추천 사이트 모음' },
+        { file: 'read-ai-watermarking.html', title: 'AI 생성물 워터마킹 — SynthID·Claude·GPT는 각각 어떻게 하고 있나' },
     ],
     'trend-monthly': [
         { file: 'trend-2026-06.html', title: '월간 트렌드 브리핑 — 2026년 6월호' },
