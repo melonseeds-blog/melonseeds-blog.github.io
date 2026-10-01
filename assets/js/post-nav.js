@@ -222,6 +222,7 @@ const POST_NAV_DATA = {
         { file: 'cpp-plugin-architecture.html', title: 'C++ 플러그인 아키텍처' },
         { file: 'cpp-cli-binding.html', title: 'C++/CLI 입문 — C++와 C# 바인딩' },
         { file: 'cpp-cmake-vcpkg.html', title: 'CMake + vcpkg manifest 실전' },
+        { file: 'cpp-mfc-syntax.html', title: 'MFC 문법 한 장 정리' },
     ],
     'dev-lang-rust': [
         { file: 'rust-01-intro.html', title: 'Rust 입문 — 왜 Rust인가, rustup·Cargo·Hello World' },
