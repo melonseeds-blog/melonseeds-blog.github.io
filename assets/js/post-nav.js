@@ -344,6 +344,7 @@ const POST_NAV_DATA = {
         { file: 'trend-2026-07.html', title: '월간 트렌드 브리핑 — 2026년 7월호' },
         { file: 'trend-2026-08.html', title: '월간 트렌드 브리핑 — 2026년 8월호' },
         { file: 'trend-2026-09.html', title: '월간 트렌드 브리핑 — 2026년 9월호' },
+        { file: 'trend-2026-10.html', title: '월간 트렌드 브리핑 — 2026년 10월호' },
     ],
     'tool': [
         { file: 'git-basics.html', title: 'Git 기본 명령어 가이드' },
