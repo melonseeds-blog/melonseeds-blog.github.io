@@ -1,0 +1,375 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소유권(Ownership) — Rust의 핵심 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm { color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why" data-section="why">소유권이란</a><a href="#rules" data-section="rules">3대 규칙</a><a href="#move" data-section="move">move와 drop</a><a href="#copy" data-section="copy">Copy vs Move</a><a href="#fn" data-section="fn">함수와 소유권</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">Rust 시리즈</span>
+                </div>
+                <h1>소유권(Ownership) — Rust의 핵심</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-brands fa-rust"></i> Rust 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 편에서 배우는 것</strong>
+                        Rust가 가비지 컬렉터 없이 메모리 안전을 보장하는 핵심 장치, 소유권(ownership)을 다룬다. 소유권 3대 규칙, 값을 옮기는 move 시맨틱, 스코프가 끝날 때 일어나는 자동 정리(drop), 스택 값에 적용되는 Copy와 힙 값에 적용되는 Move의 차이, 그리고 함수 인자로 값을 넘길 때 소유권이 어떻게 이동하는지를 컴파일 가능한 예제로 익힌다. C++의 move 시맨틱·RAII를 알면 절반은 이미 아는 셈이지만, 결정적 차이는 "컴파일러가 강제한다"는 점이다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>소유권이 왜 필요한가 — GC 없는 메모리 안전</li>
+                        <li>소유권 3대 규칙</li>
+                        <li>move 시맨틱과 스코프 종료 시 drop</li>
+                        <li>Copy 타입과 Move 타입의 갈림길</li>
+                        <li>함수 인자로 소유권을 넘기고 돌려받기</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">소유권이란 무엇인가</a></li>
+                        <li><a href="#rules">소유권 3대 규칙</a></li>
+                        <li><a href="#move">move 시맨틱과 drop</a></li>
+                        <li><a href="#copy">Copy 타입 vs Move 타입</a></li>
+                        <li><a href="#fn">함수와 소유권 이동</a></li>
+                        <li><a href="#wrap">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why"><i class="fa-solid fa-circle-question"></i> 소유권이란 무엇인가</h2>
+                <p>프로그램은 메모리를 빌려 쓴다. 문제는 "언제 돌려주느냐"다. C/C++는 사람이 직접 <code>free</code>/<code>delete</code>를 부르고, 그 결과 누수·이중 해제·해제 후 사용(use-after-free) 같은 버그가 생긴다. Java나 Go는 가비지 컬렉터(GC)가 대신 회수하지만, 런타임에 비용과 멈춤(pause)을 떠안는다.</p>
+                <p>Rust는 제3의 길을 택한다. <strong>소유권(ownership)</strong>은 "이 값을 누가 책임지고 해제할 것인가"를 컴파일 시점에 추적하는 규칙 체계다. 모든 값에는 단 하나의 소유자가 있고, 소유자가 스코프를 벗어나면 값은 자동으로 정리된다. GC도, 수동 해제도 없다. 메모리 관리 비용을 <strong>런타임에서 컴파일 타임으로 옮긴</strong> 것이 소유권의 본질이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-brands fa-cuttlefish"></i>
+                    <div class="callout-body">
+                        <strong>C++ 경험자를 위한 한 줄 다리</strong>
+                        소유권은 새로운 개념이라기보다, C++에서 권장되는 좋은 습관(RAII, <code>std::unique_ptr</code>로 단일 소유, move로 자원 이전)을 <em>언어가 문법으로 못 박은 것</em>에 가깝다. C++에서는 규율로 지키던 것을, Rust에서는 컴파일러가 어기면 빌드를 막는다.
+                    </div>
+                </div>
+
+                <h2 id="rules"><i class="fa-solid fa-list-ol"></i> 소유권 3대 규칙</h2>
+                <p>Rust 공식 The Book이 정리한 소유권의 규칙은 단 세 줄이다.</p>
+                <ol class="decision-list">
+                    <li>Rust의 모든 값에는 <strong>소유자(owner)</strong>라 불리는 변수가 있다.</li>
+                    <li>한 시점에 소유자는 <strong>오직 하나</strong>다.</li>
+                    <li>소유자가 <strong>스코프를 벗어나면</strong> 값은 버려진다(dropped).</li>
+                </ol>
+                <p>이 세 규칙이 전부다. 나머지 동작은 모두 여기서 파생된다. 먼저 세 번째 규칙, 스코프 종료와 정리를 보자.</p>
+
+                <pre class="code"><code>fn main() {
+    <span class="cm">// s는 아직 선언되지 않았다 — 여기서는 유효하지 않다</span>
+    {
+        let s = String::from("hello"); <span class="cm">// 이 지점부터 s가 유효하다</span>
+        println!("{s}");               <span class="cm">// s를 사용한다</span>
+    } <span class="cm">// 이 중괄호에서 스코프가 끝난다 → s.drop()이 자동 호출되어 힙 메모리 해제</span>
+
+    <span class="cm">// 여기서 s를 쓰면 컴파일 에러: s가 스코프 밖이다</span>
+}</code></pre>
+
+                <p><code>String</code>은 힙에 문자열 데이터를 들고 있다. 스코프가 끝나는 <code>}</code> 지점에서 Rust는 자동으로 <code>drop</code>을 호출해 그 힙 메모리를 돌려준다. 개발자가 해제 코드를 한 줄도 쓰지 않았다는 점이 핵심이다. 이것은 C++의 소멸자(destructor)와 정확히 같은 RAII 패턴이다.</p>
+
+                <h2 id="move"><i class="fa-solid fa-arrow-right-arrow-left"></i> move 시맨틱과 drop</h2>
+                <p>규칙 2번 "소유자는 오직 하나"가 흥미로워지는 지점은 값을 다른 변수에 대입할 때다. 힙을 가진 값을 대입하면 Rust는 복사하지 않고 <strong>소유권을 옮긴다(move)</strong>.</p>
+
+                <pre class="code"><code>fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1; <span class="cm">// 소유권이 s1 → s2로 이동(move)한다. 힙 데이터는 복사되지 않는다</span>
+
+    <span class="cm">// 이제 s1은 더 이상 유효하지 않다 (moved-from 상태)</span>
+    println!("{s2}"); <span class="cm">// OK: 새 소유자 s2를 통해 접근</span>
+} <span class="cm">// s2만 drop된다. s1은 이미 무효라 이중 해제가 일어나지 않는다</span></code></pre>
+
+                <p><code>let s2 = s1;</code> 한 줄에서 무슨 일이 일어났는지가 전부다. 힙에 있는 실제 문자열 바이트는 그대로 두고, 그것을 가리키는 포인터·길이·용량(스택에 있는 작은 메타데이터)만 <code>s2</code>로 넘어간다. 동시에 <code>s1</code>은 <strong>무효화</strong>된다. 그래서 두 변수가 같은 힙을 가리켜 둘 다 해제하려 드는 이중 해제(double free) 위험이 원천 차단된다.</p>
+
+                <p>무효화된 <code>s1</code>을 다시 쓰려 하면 어떻게 될까. C++이라면 moved-from 객체에 접근하는 코드가 런타임까지 살아남을 수 있지만, Rust는 그렇지 않다.</p>
+
+                <pre class="code"><code>fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;          <span class="cm">// 여기서 s1의 소유권이 옮겨졌다</span>
+    println!("{s1}");     <span class="cm">// ❌ 컴파일 에러: borrow of moved value: `s1`</span>
+}
+<span class="cm">// 위 코드는 빌드되지 않는다. use-after-move를 컴파일러가 거부한다.</span></code></pre>
+
+                <div class="callout info">
+                    <i class="fa-brands fa-cuttlefish"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — use-after-move</strong>
+                        C++에서 <code>auto s2 = std::move(s1);</code> 이후 <code>s1</code>을 쓰는 것은 합법이다. moved-from 상태는 "유효하지만 미지정 값"이라, 컴파일러는 막지 않고 잘해야 정적 분석 도구가 경고할 뿐이다. Rust는 같은 상황을 <strong>컴파일 에러로 거부</strong>한다. move 이후 원래 변수는 타입 시스템 수준에서 접근 불가가 되므로, "옮긴 뒤 실수로 다시 쓰는" 버그 자체가 존재할 수 없다.
+                    </div>
+                </div>
+
+                <h2 id="copy"><i class="fa-solid fa-clone"></i> Copy 타입 vs Move 타입</h2>
+                <p>그렇다면 모든 대입이 move일까? 아니다. 다음 코드는 멀쩡히 동작한다.</p>
+
+                <pre class="code"><code>fn main() {
+    let x = 5;
+    let y = x;        <span class="cm">// i32는 Copy 타입 — x가 y로 복사된다</span>
+    println!("{x} {y}"); <span class="cm">// OK: x도 여전히 유효하다. 둘 다 5</span>
+}</code></pre>
+
+                <p><code>i32</code> 같은 정수는 크기가 고정돼 있고 전부 스택에 들어간다. 이런 타입은 <code>Copy</code> 트레이트를 구현하며, 대입 시 값을 <strong>그대로 복제</strong>한다. 복제 비용이 작고 힙 자원이 없어 이중 해제 걱정이 없으니, 원본을 무효화할 이유가 없다. 그래서 <code>x</code>는 대입 후에도 살아 있다.</p>
+
+                <p>반대로 <code>String</code>처럼 힙 자원을 가진 타입은 <code>Copy</code>가 아니고, 대입은 move가 된다. 갈림길은 단순하다.</p>
+
+                <table class="compare-table">
+                    <tr><th>구분</th><th>Copy 타입</th><th>Move 타입(비-Copy)</th></tr>
+                    <tr><td>대표 예</td><td><code>i32</code>, <code>f64</code>, <code>bool</code>, <code>char</code>, 이들로만 된 튜플</td><td><code>String</code>, <code>Vec&lt;T&gt;</code>, <code>Box&lt;T&gt;</code></td></tr>
+                    <tr><td>저장 위치</td><td>전적으로 스택</td><td>힙 자원 보유</td></tr>
+                    <tr><td>대입 동작</td><td>비트 단위 복사</td><td>소유권 이동(move)</td></tr>
+                    <tr><td>대입 후 원본</td><td>그대로 유효</td><td>무효화됨</td></tr>
+                </table>
+
+                <p>Move 타입의 데이터를 진짜로 복제하고 싶다면 명시적으로 <code>.clone()</code>을 부른다. 그러면 힙 데이터까지 깊은 복사가 되어 두 변수가 독립적으로 유효해진다.</p>
+
+                <pre class="code"><code>fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1.clone(); <span class="cm">// 힙 데이터를 깊은 복사한다 — 둘은 독립적</span>
+
+    println!("{s1} {s2}"); <span class="cm">// OK: s1, s2 모두 유효하다</span>
+} <span class="cm">// s1, s2 각각의 힙 메모리가 따로 drop된다</span></code></pre>
+
+                <p>C++에 대응시키면, move 타입의 기본 대입은 <code>std::move</code>에, <code>.clone()</code>은 깊은 복사 생성자에 해당한다. 다만 Rust에서는 비용이 큰 복사를 <code>clone()</code>이라는 명시적 호출로만 일어나게 해, "어디서 깊은 복사가 발생하는지"가 코드에 드러난다.</p>
+
+                <h2 id="fn"><i class="fa-solid fa-right-to-bracket"></i> 함수와 소유권 이동</h2>
+                <p>함수에 값을 넘기는 것은 변수에 대입하는 것과 똑같이 동작한다. Move 타입을 인자로 넘기면 소유권이 함수 안으로 <strong>이동</strong>하고, 호출한 쪽에서는 그 변수를 더 못 쓴다.</p>
+
+                <pre class="code"><code>fn takes_ownership(s: String) {
+    println!("받음: {s}");
+} <span class="cm">// s가 여기서 drop된다</span>
+
+fn makes_copy(n: i32) {
+    println!("받음: {n}");
+} <span class="cm">// n은 Copy라 특별한 정리 없음</span>
+
+fn main() {
+    let s = String::from("hello");
+    takes_ownership(s); <span class="cm">// s의 소유권이 함수로 이동한다</span>
+    <span class="cm">// 여기서 s를 쓰면 컴파일 에러 — 소유권이 이미 넘어갔다</span>
+
+    let n = 5;
+    makes_copy(n);      <span class="cm">// i32는 복사되어 넘어간다</span>
+    println!("{n}");    <span class="cm">// OK: n은 여전히 유효하다</span>
+}</code></pre>
+
+                <p>그렇다면 함수에 값을 줬다가 계속 쓰고 싶을 때는 어떻게 할까. 한 방법은 함수가 소유권을 <strong>돌려주는</strong> 것이다. 값을 반환하면 소유권도 함께 호출자에게 이동한다.</p>
+
+                <pre class="code"><code>fn append_world(mut s: String) -&gt; String {
+    s.push_str(", world"); <span class="cm">// 받은 값을 수정한다</span>
+    s                      <span class="cm">// 소유권을 호출자에게 되돌려준다</span>
+}
+
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = append_world(s1); <span class="cm">// s1의 소유권을 넘기고, 결과의 소유권을 s2로 받는다</span>
+
+    println!("{s2}"); <span class="cm">// 출력: hello, world</span>
+} <span class="cm">// s2가 drop된다</span></code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>매번 돌려주는 건 번거롭다 — 그래서 빌림(borrowing)이 있다</strong>
+                        값을 쓸 때마다 소유권을 넘겼다 돌려받는 것은 분명 불편하다. 실무에서는 소유권을 옮기지 않고 잠시 빌려 쓰는 <strong>참조(reference)와 빌림(borrowing)</strong>을 쓴다(<code>&amp;s</code>). 이 글은 소유권의 이동 자체에 집중했고, 빌림 규칙은 시리즈 다음 편에서 다룬다.
+                    </div>
+                </div>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <ul>
+                    <li><strong>소유권은 메모리 관리를 컴파일 타임으로 옮긴다</strong> — GC도, 수동 해제도 없이 메모리 안전을 얻는다.</li>
+                    <li><strong>3대 규칙</strong> — 모든 값엔 소유자가 있고, 소유자는 하나뿐이며, 소유자가 스코프를 벗어나면 값은 drop된다.</li>
+                    <li><strong>move 시맨틱</strong> — 힙 자원을 가진 값의 대입·인자 전달은 소유권을 옮기고 원본을 무효화한다. 이중 해제가 원천 차단된다.</li>
+                    <li><strong>Copy vs Move</strong> — 스택만 쓰는 작은 값은 복사되고 원본도 살아 있다. 힙 자원을 가진 값은 이동되며, 깊은 복사는 명시적 <code>.clone()</code>으로만 일어난다.</li>
+                    <li><strong>C++과의 결정적 차이</strong> — RAII·move라는 개념은 닮았지만, Rust는 use-after-move를 <em>컴파일 에러</em>로 막는다. 규율이 아니라 타입 시스템이 안전을 보장한다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>The Rust Programming Language (공식 The Book) — <a href="https://doc.rust-lang.org/book/" target="_blank" rel="noopener">doc.rust-lang.org/book</a></li>
+                        <li>The Book 4장 "Understanding Ownership" — <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html" target="_blank" rel="noopener">ch04-00-understanding-ownership</a></li>
+                        <li><code>std::string::String</code> 표준 라이브러리 문서 — <a href="https://doc.rust-lang.org/std/string/struct.String.html" target="_blank" rel="noopener">std/string/struct.String</a></li>
+                        <li><code>Copy</code> 트레이트 문서 — <a href="https://doc.rust-lang.org/std/marker/trait.Copy.html" target="_blank" rel="noopener">std/marker/trait.Copy</a></li>
+                        <li>열람일: 2026-06-25.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-rust');
+    renderPostNav('dev-lang-rust');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,299 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smithery.ai로 MCP 서버를 Claude에 연결하기 — MCP·Skill 한눈에 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 4px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        pre.code { background: #1e293b; color: #e2e8f0; border-radius: 10px; padding: 16px 20px; overflow-x: auto; font-family: 'Consolas','D2Coding',monospace; font-size: 0.85rem; line-height: 1.6; margin: 16px 0; }
+        pre.code .cm { color: #94a3b8; }
+        pre.code .pr { color: #5eead4; }
+        .step-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .step-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .step-list li:last-child { border-bottom: none; }
+        .step-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .step-list li strong { color: var(--primary-dark); }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#overview" data-section="overview">왜 Smithery</a><a href="#what" data-section="what">Smithery란</a><a href="#mcp-skill" data-section="mcp-skill">MCP냐 Skill이냐</a><a href="#connect" data-section="connect">연결하는 법</a><a href="#tips" data-section="tips">주의점</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">도구/환경 설정</span>
+                </div>
+                <h1>Smithery.ai로 MCP 서버를 Claude에 연결하기 — MCP·Skill 한눈에</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 9분 분량</span>
+                    <span><i class="fa-solid fa-screwdriver-wrench"></i> 도구/환경 설정</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 글의 맥락</strong>
+                        AI 개발 교육에서 "Agent를 확장하려면 Smithery를 봐라"는 이야기가 자주 나온다. 그런데 막상 들어가면 이게 MCP인지 Skill인지 헷갈린다. 이 글은 <strong>Smithery.ai가 무엇을 제공하는지</strong> 정리하고, 거기서 찾은 것을 <strong>Claude(Code·Desktop)에 연결하는 방법</strong>을 단계로 안내한다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Smithery.ai가 무엇인가 — MCP 서버 레지스트리</li>
+                        <li>Smithery는 MCP를 주는가, Skill을 주는가(헷갈리는 용어 정리)</li>
+                        <li>서버를 찾아 Claude에 연결하는 단계별 방법</li>
+                        <li>키·보안·신뢰 등 붙이기 전 확인할 것</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#overview">왜 Smithery 이야기가 나오나</a></li>
+                        <li><a href="#what">Smithery.ai란 무엇인가</a></li>
+                        <li><a href="#mcp-skill">MCP냐 Skill이냐 — 용어 정리</a></li>
+                        <li><a href="#connect">Claude에 연결하는 법</a></li>
+                        <li><a href="#tips">붙이기 전 확인할 것</a></li>
+                        <li><a href="#wrap">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="overview"><i class="fa-solid fa-circle-question"></i> 왜 Smithery 이야기가 나오나</h2>
+                <p>Claude나 다른 AI 에이전트에 "우리 DB를 읽어라", "Slack에 올려라", "브라우저를 조작해라" 같은 <strong>바깥 능력</strong>을 붙이려면 도구 연결이 필요하다. 그 연결의 표준이 MCP(Model Context Protocol)다. 문제는 이런 MCP 서버를 매번 손으로 찾고 설정하기가 번거롭다는 것이다.</p>
+                <p>Smithery.ai는 이 번거로움을 줄여 준다. <strong>필요한 MCP 서버를 한곳에서 검색해 명령 한 줄로 붙이게</strong> 해 주는 곳이라, 교육이나 실무에서 "에이전트 확장은 Smithery부터"라는 말이 나온다.</p>
+
+                <h2 id="what"><i class="fa-solid fa-warehouse"></i> Smithery.ai란 무엇인가</h2>
+                <p>Smithery.ai는 <strong>MCP 서버 레지스트리</strong>다. 흔히 "MCP 생태계의 Docker Hub"라고 부른다. 수천 개의 MCP 서버를 모아 두고, 검색·설치·호스팅을 한곳에서 할 수 있게 한다.</p>
+                <ul>
+                    <li><strong>검색·설치</strong> — 원하는 기능의 서버를 찾아 CLI로 로컬에 설치한다.</li>
+                    <li><strong>호스팅</strong> — 직접 서버를 돌리지 않고 Smithery가 운영하는 원격 엔드포인트로 바로 쓸 수도 있다.</li>
+                    <li><strong>Toolbox(메타-MCP)</strong> — 하나의 MCP 서버가 레지스트리의 여러 서버를 런타임에 연결해 준다. 서버를 일일이 등록하지 않아도 된다.</li>
+                </ul>
+                <p>레지스트리 탐색과 CLI는 무료이고, 호스팅·고사용량은 유료 구간이 있다.</p>
+
+                <h2 id="mcp-skill"><i class="fa-solid fa-arrows-turn-to-dots"></i> MCP냐 Skill이냐 — 용어 정리</h2>
+                <p>가장 헷갈리는 부분이다. 결론부터: <strong>Smithery는 기본적으로 MCP 서버를 제공한다.</strong> 다만 최근에는 이런 확장을 통칭 "skill"이라 부르는 흐름이 있어, Smithery도 "흩어진 컨텍스트를 AI를 위한 skill로 바꾼다"는 표현을 쓰고, 최근엔 skill 항목까지 다룬다. 그래서 용어가 섞여 보인다.</p>
+                <p>둘의 기술적 차이는 이렇다.</p>
+                <table class="compare-table">
+                    <tr><th>구분</th><th>MCP 서버</th><th>Agent Skill</th></tr>
+                    <tr><td>본질</td><td>외부 도구·데이터에 <strong>연결</strong>하는 프로토콜</td><td>절차·지식을 담은 <strong>패키지</strong>(SKILL.md)</td></tr>
+                    <tr><td>예</td><td>GitHub·Slack·DB·브라우저 접근</td><td>"PR 만들 때 이 절차를 따라라"</td></tr>
+                    <tr><td>실행</td><td>서버가 도구를 제공, 모델이 호출</td><td>모델이 그 자리에서 절차를 따름</td></tr>
+                </table>
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>실무에선 자주 뭉뚱그린다</strong>
+                        엄밀히는 MCP(연결)와 Skill(절차)이 다르지만, 현장에서는 "에이전트에 붙이는 확장"을 통틀어 skill이라 부르곤 한다. Smithery에서 무언가를 붙일 때 대부분은 <strong>MCP 서버 연결</strong>이라고 보면 된다. MCP와 Skill의 구조적 차이는 <a href="claude-code-architecture.html">Claude Code를 구조로 이해하기</a>에서 더 자세히 다룬다.
+                    </div>
+                </div>
+
+                <h2 id="connect"><i class="fa-solid fa-plug"></i> Claude에 연결하는 법</h2>
+                <p>가장 쉬운 길은 <strong>서버 페이지가 만들어 주는 명령을 그대로 복사</strong>하는 것이다. Smithery는 각 서버마다 클라이언트(Claude·Cursor 등)를 고르면 붙일 명령을 자동으로 생성해 준다.</p>
+                <ol class="step-list">
+                    <li><strong>서버 찾기</strong> — <code>smithery.ai/servers</code>에서 원하는 기능(예: github, slack, filesystem)을 검색한다.</li>
+                    <li><strong>클라이언트 선택</strong> — 서버 페이지에서 연결 대상(Claude Code / Claude Desktop 등)을 고르면 설치 명령이 생성된다.</li>
+                    <li><strong>명령 실행</strong> — 생성된 CLI 명령을 터미널에 붙여 실행한다. Smithery CLI가 설정 파일을 대신 수정해 준다.</li>
+                    <li><strong>확인·재시작</strong> — Claude를 재시작하고 연결됐는지 확인한다.</li>
+                </ol>
+
+                <h3 id="c-cli"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 명령 예시</h3>
+                <p>서버 페이지가 주는 명령은 대개 이런 형태다(서버·버전에 따라 다르니 실제 페이지의 명령을 쓴다).</p>
+                <pre class="code"><span class="cm"># Smithery CLI로 서버를 설치하며 Claude에 연결</span>
+npx @smithery/cli install &lt;server-name&gt; --client claude
+
+<span class="cm"># Claude Code에 MCP를 직접 추가하는 방법</span>
+claude mcp add &lt;name&gt; -- npx -y &lt;server-package&gt;
+
+<span class="cm"># 환경변수(API 키 등)가 필요한 서버</span>
+claude mcp add --transport stdio &lt;name&gt; --env API_KEY=여기에_키 -- npx -y &lt;server-package&gt;
+
+<span class="cm"># 연결된 MCP 목록 확인</span>
+claude mcp list</pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>두 갈래를 기억하면 쉽다</strong>
+                        (1) <strong>로컬 설치</strong> — 내 PC에서 <code>npx</code>로 서버를 돌린다. (2) <strong>Smithery 호스팅(원격)</strong> — 설치 없이 Smithery가 운영하는 원격 엔드포인트에 연결한다. 서버를 직접 관리하기 싫으면 호스팅이 편하고, 사내 데이터처럼 밖으로 내보내면 안 되는 건 로컬이 맞다.
+                    </div>
+                </div>
+
+                <h2 id="tips"><i class="fa-solid fa-shield-halved"></i> 붙이기 전 확인할 것</h2>
+                <ul>
+                    <li><strong>신뢰</strong> — MCP 서버는 내 파일·계정에 접근할 수 있다. 게시자·인기도·소스를 확인하고, 출처가 불확실한 서버는 피한다.</li>
+                    <li><strong>키 관리</strong> — API 키·토큰은 설정 파일이나 환경변수로 들어간다. 저장소에 올리지 않도록 주의한다.</li>
+                    <li><strong>사내 데이터</strong> — 회사 데이터를 다루는 서버는 원격 호스팅보다 로컬 실행이 안전할 수 있다. 데이터가 어디로 가는지 확인한다.</li>
+                    <li><strong>버전 변동</strong> — Smithery CLI·명령 문법은 자주 바뀐다. 이 글의 명령은 예시이며, 정확한 건 서버 페이지와 공식 문서를 따른다.</li>
+                </ul>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <ul>
+                    <li><strong>Smithery.ai = MCP 서버 레지스트리</strong> — 필요한 MCP 서버를 검색·설치·호스팅하는 "MCP의 Docker Hub".</li>
+                    <li><strong>MCP냐 Skill이냐</strong> — 기본은 MCP 서버 연결이다. 현장에서 skill이라 불러도 실체는 대부분 MCP다.</li>
+                    <li><strong>연결은 "서버 페이지 명령 복사 → 실행 → 확인"</strong>이 가장 쉽다. 로컬 설치와 원격 호스팅 두 갈래가 있다.</li>
+                    <li><strong>붙이기 전</strong> 신뢰·키·데이터 흐름을 확인한다. 명령 문법은 공식 문서 기준으로.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료 (열람일 2026-06-25)</div>
+                    <ul>
+                        <li>Smithery — <a href="https://smithery.ai" target="_blank" rel="noopener">smithery.ai</a> · 서버 목록 <a href="https://smithery.ai/servers" target="_blank" rel="noopener">smithery.ai/servers</a></li>
+                        <li>Smithery CLI 문서 — <a href="https://smithery.ai/docs/concepts/cli" target="_blank" rel="noopener">smithery.ai/docs</a> · <a href="https://github.com/smithery-ai/cli" target="_blank" rel="noopener">github.com/smithery-ai/cli</a></li>
+                        <li>MCP(Model Context Protocol) — <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">modelcontextprotocol.io</a></li>
+                        <li>MCP 입문서(한국어) — <a href="https://wikidocs.net/book/17905" target="_blank" rel="noopener">wikidocs.net/book/17905</a></li>
+                        <li>도구별 명령·지원은 시점에 따라 달라질 수 있어 각 공식 문서 확인 권장.</li>
+                        <li>관련 글: <a href="claude-code-architecture.html">Claude Code를 구조로 이해하기</a>, <a href="claude-code-plugins.html">유용한 플러그인 모음</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tool');
+    renderPostNav('tool');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

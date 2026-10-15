@@ -1,0 +1,469 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>에러 처리 심화 — ?·thiserror·anyhow - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm { color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#overview" data-section="overview">값으로 다루는 에러</a><a href="#panic-result" data-section="panic-result">panic! vs Result</a><a href="#question" data-section="question">? 연산자</a><a href="#custom" data-section="custom">커스텀 에러 타입</a><a href="#crates" data-section="crates">thiserror·anyhow</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">Rust 시리즈</span>
+                </div>
+                <h1>에러 처리 심화 — ?·thiserror·anyhow</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-brands fa-rust"></i> Rust 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 편에서 배우는 것</strong>
+                        Rust는 에러를 예외가 아니라 <code>Result&lt;T, E&gt;</code>라는 <strong>값</strong>으로 다룬다.
+                        이 글은 회복 불가능한 에러(<code>panic!</code>)와 회복 가능한 에러(<code>Result</code>)를 가르는 기준,
+                        <code>?</code> 연산자로 에러를 위로 전파하는 법, <code>enum</code> 기반 커스텀 에러 타입을 직접 정의하는 법,
+                        그리고 라이브러리에는 <code>thiserror</code>·애플리케이션에는 <code>anyhow</code>를 쓰는 관례까지 다룬다.
+                        C++ 예외에 익숙하다면 "전파가 함수 시그니처에 드러나고 비용이 예측 가능하다"는 차이에 주목한다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Rust가 에러를 값(<code>Result</code>)으로 다루는 이유와 C++ 예외와의 차이</li>
+                        <li><code>panic!</code>과 <code>Result</code>를 가르는 기준</li>
+                        <li><code>?</code> 연산자로 에러를 간결하게 전파하기</li>
+                        <li><code>enum</code> + <code>From</code>으로 커스텀 에러 타입 만들기</li>
+                        <li>라이브러리는 <code>thiserror</code>, 애플리케이션은 <code>anyhow</code></li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#overview">에러를 값으로 다룬다</a></li>
+                        <li><a href="#panic-result">panic! vs Result — 언제 무엇을</a></li>
+                        <li><a href="#question">? 연산자로 전파하기</a></li>
+                        <li><a href="#custom">커스텀 에러 타입 만들기</a></li>
+                        <li><a href="#crates">thiserror와 anyhow</a></li>
+                        <li><a href="#wrap">정리와 주의</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="overview"><i class="fa-solid fa-box-archive"></i> 에러를 값으로 다룬다</h2>
+                <p>Rust에는 검사 예외도, <code>try/catch</code>도 없다. 실패할 수 있는 함수는 결과를 <code>Result&lt;T, E&gt;</code>라는 열거형으로 돌려준다. 성공이면 <code>Ok(T)</code>, 실패면 <code>Err(E)</code>다. 옵션 부재는 <code>Option&lt;T&gt;</code>(<code>Some</code>/<code>None</code>)로 구분한다.</p>
+                <p>핵심은 에러가 <strong>타입 시스템 안의 일반 값</strong>이라는 점이다. 함수가 실패할 수 있다는 사실이 반환 타입에 그대로 드러나고, 호출자는 그 값을 <strong>반드시 처리</strong>해야 한다. 무시하면 컴파일러가 경고하거나, 패턴 매칭을 빠뜨리면 컴파일이 막힌다.</p>
+
+                <pre class="code"><code><span class="cm">// Result는 표준 라이브러리의 enum이다.</span>
+enum Result&lt;T, E&gt; {
+    Ok(T),
+    Err(E),
+}
+
+fn parse_port(text: &amp;str) -&gt; Result&lt;u16, std::num::ParseIntError&gt; {
+    <span class="cm">// 실패하면 Err가, 성공하면 Ok(숫자)가 그대로 반환된다.</span>
+    text.parse::&lt;u16&gt;()
+}
+
+fn main() {
+    match parse_port("8080") {
+        Ok(port) =&gt; println!("port = {port}"),
+        Err(e)   =&gt; println!("parse failed: {e}"),
+    }
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — 던지는 대신 돌려준다</strong>
+                        C++ 예외는 함수 시그니처에 보이지 않는다(<code>noexcept</code>가 없는 한 무엇이든 던질 수 있다). 호출자는 어떤 예외가 날지 추적하기 어렵고, 스택 되감기 비용도 던질 때만 발생한다.
+                        Rust는 반대다. 실패 가능성이 <code>-&gt; Result&lt;T, E&gt;</code>로 <strong>시그니처에 명시</strong>되고, 에러는 일반 값이라 분기 비용이 예측 가능하다. 숨은 제어 흐름이 없어 "이 함수가 실패하면 어디로 가는가"가 코드에 그대로 보인다.
+                    </div>
+                </div>
+
+                <h2 id="panic-result"><i class="fa-solid fa-triangle-exclamation"></i> panic! vs Result — 언제 무엇을</h2>
+                <p>Rust도 즉시 중단하는 길은 있다. <code>panic!</code>은 회복 불가능한 상황을 위한 것으로, 기본 설정에서 스택을 되감으며 스레드를 종료한다. 둘을 가르는 기준은 단순하다 — <strong>호출자가 합리적으로 회복할 수 있나</strong>다.</p>
+
+                <table class="compare-table">
+                    <tr><th>상황</th><th>선택</th><th>이유</th></tr>
+                    <tr><td>파일 없음, 네트워크 끊김, 입력 파싱 실패</td><td><code>Result</code></td><td>호출자가 재시도·대체값·사용자 안내로 회복할 수 있다</td></tr>
+                    <tr><td>깨질 수 없는 불변식이 깨짐(프로그램 버그)</td><td><code>panic!</code></td><td>계속 진행하면 더 위험하다. 빨리 멈추는 게 안전하다</td></tr>
+                    <tr><td>예제·프로토타입·테스트의 빠른 실패</td><td><code>unwrap()</code> / <code>expect()</code></td><td>회복 처리를 미루고 일단 진행. 단 운영 코드에선 지양</td></tr>
+                </table>
+
+                <pre class="code"><code>use std::fs;
+
+fn read_config(path: &amp;str) -&gt; Result&lt;String, std::io::Error&gt; {
+    <span class="cm">// 파일이 없을 수 있다 -- 회복 가능하므로 Result로 돌려준다.</span>
+    fs::read_to_string(path)
+}
+
+fn divide(a: i32, b: i32) -&gt; i32 {
+    if b == 0 {
+        <span class="cm">// 0으로 나누는 호출은 프로그래밍 오류로 본다 -- 즉시 중단.</span>
+        panic!("divide by zero is a bug");
+    }
+    a / b
+}
+
+fn main() {
+    <span class="cm">// expect는 Err일 때 메시지와 함께 panic 한다. 프로토타입에서만 권장.</span>
+    let cfg = read_config("app.toml").expect("config must exist");
+    println!("{} bytes", cfg.len());
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong><code>unwrap()</code>은 빚이다</strong>
+                        <code>unwrap()</code>과 <code>expect()</code>는 <code>Err</code>/<code>None</code>이면 그 자리에서 panic 한다. 빠른 실험에는 편하지만, 운영 코드에 남으면 예기치 못한 중단의 원인이 된다. 정식 코드에서는 <code>?</code>나 명시적 매칭으로 바꾼다.
+                    </div>
+                </div>
+
+                <h2 id="question"><i class="fa-solid fa-angles-right"></i> ? 연산자로 전파하기</h2>
+                <p><code>match</code>로 매번 <code>Ok</code>/<code>Err</code>를 풀어 쓰면 코드가 금세 장황해진다. <code>?</code> 연산자는 이 패턴을 한 글자로 줄인다. <code>Result</code> 뒤에 <code>?</code>를 붙이면 <strong>성공이면 안의 값을 꺼내고, 실패면 그 <code>Err</code>를 즉시 함수에서 반환</strong>한다.</p>
+
+                <pre class="code"><code>use std::fs;
+use std::io;
+
+<span class="cm">// match로 직접 전파 -- 장황하다.</span>
+fn load_verbose(path: &amp;str) -&gt; Result&lt;usize, io::Error&gt; {
+    let text = match fs::read_to_string(path) {
+        Ok(t) =&gt; t,
+        Err(e) =&gt; return Err(e),
+    };
+    Ok(text.len())
+}
+
+<span class="cm">// ? 연산자로 같은 일을 간결하게.</span>
+fn load_concise(path: &amp;str) -&gt; Result&lt;usize, io::Error&gt; {
+    let text = fs::read_to_string(path)?; <span class="cm">// Err면 여기서 바로 반환</span>
+    Ok(text.len())
+}</code></pre>
+
+                <p><code>?</code>는 호출 체인에도 자연스럽게 이어 붙는다. 여러 단계가 모두 같은 에러 타입을 반환하면, 각 단계 뒤에 <code>?</code>만 붙여 한 줄로 흐름을 이을 수 있다.</p>
+
+                <pre class="code"><code>use std::fs;
+use std::io;
+
+<span class="cm">// 두 파일을 읽어 길이 합을 구한다. 어느 한쪽이라도 실패하면 그 Err가 전파된다.</span>
+fn total_len(a: &amp;str, b: &amp;str) -&gt; Result&lt;usize, io::Error&gt; {
+    let first = fs::read_to_string(a)?;
+    let second = fs::read_to_string(b)?;
+    Ok(first.len() + second.len())
+}</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong><code>?</code>는 자동으로 에러를 변환한다</strong>
+                        함수의 에러 타입과 <code>?</code>가 마주친 에러 타입이 다르면, <code>?</code>는 <code>From</code> 트레잇으로 자동 변환을 시도한다. 즉 <code>SourceErr: Into&lt;TargetErr&gt;</code>(혹은 <code>TargetErr: From&lt;SourceErr&gt;</code>)만 성립하면 변환 코드를 직접 쓰지 않아도 된다. 이 성질이 다음 절의 커스텀 에러 타입을 깔끔하게 만든다.
+                    </div>
+                </div>
+
+                <h2 id="custom"><i class="fa-solid fa-cubes"></i> 커스텀 에러 타입 만들기</h2>
+                <p>실무 함수는 보통 여러 종류의 에러를 낸다. 설정을 읽다 보면 입출력 에러도, 파싱 에러도 날 수 있다. 이럴 때 <strong><code>enum</code>으로 에러 종류를 모은 커스텀 타입</strong>을 정의하고, 각 원시 에러에서 <code>From</code> 변환을 구현해 두면 <code>?</code>가 알아서 변환해 준다.</p>
+
+                <pre class="code"><code>use std::fmt;
+use std::fs;
+
+<span class="cm">// 이 모듈이 낼 수 있는 에러를 한 enum에 모은다.</span>
+#[derive(Debug)]
+enum ConfigError {
+    Io(std::io::Error),
+    Parse(std::num::ParseIntError),
+}
+
+<span class="cm">// 사람이 읽을 메시지. Error 트레잇은 Display를 요구한다.</span>
+impl fmt::Display for ConfigError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            ConfigError::Io(e)    =&gt; write!(f, "io error: {e}"),
+            ConfigError::Parse(e) =&gt; write!(f, "parse error: {e}"),
+        }
+    }
+}
+
+<span class="cm">// 표준 Error 트레잇 구현(기본 메서드만으로 충분하다).</span>
+impl std::error::Error for ConfigError {}
+
+<span class="cm">// io::Error -&gt; ConfigError 변환. ?가 이걸 자동으로 쓴다.</span>
+impl From&lt;std::io::Error&gt; for ConfigError {
+    fn from(e: std::io::Error) -&gt; Self {
+        ConfigError::Io(e)
+    }
+}
+
+<span class="cm">// ParseIntError -&gt; ConfigError 변환.</span>
+impl From&lt;std::num::ParseIntError&gt; for ConfigError {
+    fn from(e: std::num::ParseIntError) -&gt; Self {
+        ConfigError::Parse(e)
+    }
+}
+
+<span class="cm">// 두 종류의 에러가 모두 ?로 ConfigError로 변환되어 전파된다.</span>
+fn load_port(path: &amp;str) -&gt; Result&lt;u16, ConfigError&gt; {
+    let text = fs::read_to_string(path)?;   <span class="cm">// io::Error -&gt; ConfigError</span>
+    let port = text.trim().parse::&lt;u16&gt;()?; <span class="cm">// ParseIntError -&gt; ConfigError</span>
+    Ok(port)
+}</code></pre>
+
+                <p>이 패턴은 정확하지만 보일러플레이트가 많다. <code>Display</code> 구현, <code>From</code> 구현이 에러 종류마다 반복된다. 바로 이 반복을 없애 주는 것이 다음 절의 <code>thiserror</code>다.</p>
+
+                <h2 id="crates"><i class="fa-solid fa-boxes-stacked"></i> thiserror와 anyhow</h2>
+                <p>두 크레이트는 목적이 정반대다. 한 문장으로 가르면 — <strong>라이브러리는 <code>thiserror</code>, 애플리케이션은 <code>anyhow</code></strong>다.</p>
+
+                <h3 id="c-thiserror"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> thiserror — 라이브러리의 명시적 에러 타입</h3>
+                <p>라이브러리는 호출자가 에러 종류별로 분기할 수 있도록 <strong>구체적인 에러 타입</strong>을 노출하는 게 좋다. <code>thiserror</code>는 앞 절의 <code>Display</code>·<code>From</code>·<code>Error</code> 구현을 매크로로 자동 생성해, 같은 결과를 훨씬 짧게 만든다.</p>
+
+                <pre class="code"><code><span class="cm">// Cargo.toml: thiserror = "2"</span>
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+enum ConfigError {
+    <span class="cm">// #[from]이 From 구현을, #[error]가 Display 메시지를 만든다.</span>
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("parse error: {0}")]
+    Parse(#[from] std::num::ParseIntError),
+}
+
+<span class="cm">// 본문은 앞과 동일하다. ?가 #[from] 변환을 그대로 쓴다.</span>
+fn load_port(path: &amp;str) -&gt; Result&lt;u16, ConfigError&gt; {
+    let text = std::fs::read_to_string(path)?;
+    let port = text.trim().parse::&lt;u16&gt;()?;
+    Ok(port)
+}</code></pre>
+
+                <p>앞 절의 수십 줄이 enum 정의 몇 줄로 줄었다. <code>Display</code>·<code>Error</code>·두 개의 <code>From</code>이 모두 매크로로 생성되며, 호출자는 여전히 <code>ConfigError::Io</code>인지 <code>ConfigError::Parse</code>인지 패턴 매칭으로 구분할 수 있다.</p>
+
+                <h3 id="c-anyhow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> anyhow — 애플리케이션의 단일 에러 타입</h3>
+                <p>최종 실행 파일(애플리케이션)은 보통 에러 종류별 분기가 필요 없다. "어디서 왜 실패했는지" 메시지를 남기고 종료하면 충분하다. <code>anyhow</code>는 어떤 에러든 담는 <code>anyhow::Error</code> 하나로 통일하고, 맥락(context)을 덧붙이기 쉽게 해 준다.</p>
+
+                <pre class="code"><code><span class="cm">// Cargo.toml: anyhow = "1"</span>
+use anyhow::{Context, Result};
+
+<span class="cm">// 반환 타입이 Result&lt;u16&gt; -- anyhow::Result는 에러 타입이 생략된 별칭이다.</span>
+fn load_port(path: &amp;str) -&gt; Result&lt;u16&gt; {
+    <span class="cm">// 서로 다른 에러들이 ?로 모두 anyhow::Error에 흡수된다.</span>
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read {path}"))?;
+    let port = text.trim().parse::&lt;u16&gt;()
+        .context("port must be a valid u16")?;
+    Ok(port)
+}
+
+fn main() -&gt; Result&lt;()&gt; {
+    let port = load_port("app.toml")?;
+    println!("port = {port}");
+    Ok(())
+}</code></pre>
+
+                <p><code>with_context</code>/<code>context</code>로 덧붙인 설명은 에러가 출력될 때 원인 체인과 함께 나와, 어디서 실패가 시작됐는지 추적을 돕는다. 종류별 처리가 필요 없으니 커스텀 enum을 정의할 필요도 없다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — 맥락은 자동이 아니라 명시적으로 쌓는다</strong>
+                        C++에서 예외에 맥락을 더하려면 잡아서 새 메시지로 다시 던지는 식이 흔하고, 스택 추적은 표준이 아니라 도구·플랫폼에 의존한다.
+                        Rust의 <code>anyhow</code>는 <code>?</code>로 전파하면서 <code>with_context</code>로 <strong>그 지점의 의미</strong>를 한 줄씩 덧붙이고, 이 맥락이 원인 체인으로 함께 출력된다. 무엇을 남길지는 개발자가 명시적으로 고른다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                    <div class="callout-body">
+                        <strong>고르는 한 줄 기준</strong>
+                        호출자가 에러 종류로 <strong>분기</strong>해야 하면(라이브러리 공개 API) <code>thiserror</code>로 구체 타입을 노출한다. 분기 없이 <strong>실패를 보고하고 끝</strong>이면(애플리케이션 <code>main</code> 쪽) <code>anyhow</code>로 통일한다. 둘은 한 프로젝트에서 함께 쓰이기도 한다 — 내부 크레이트는 <code>thiserror</code>, 그것을 묶는 바이너리는 <code>anyhow</code>.
+                    </div>
+                </div>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 주의</h2>
+                <ul>
+                    <li><strong>에러는 값이다</strong> — 실패 가능성은 <code>Result&lt;T, E&gt;</code>로 시그니처에 드러나고, 호출자는 반드시 처리한다. 숨은 제어 흐름이 없다.</li>
+                    <li><strong><code>panic!</code>은 버그용</strong> — 회복 가능하면 <code>Result</code>, 깨질 수 없는 불변식이 깨졌으면 <code>panic!</code>. 운영 코드의 <code>unwrap()</code>은 빚으로 남는다.</li>
+                    <li><strong><code>?</code>는 전파의 기본기</strong> — 성공이면 꺼내고 실패면 반환하며, <code>From</code> 변환까지 자동으로 해 준다.</li>
+                    <li><strong>커스텀 타입은 <code>enum</code> + <code>From</code></strong> — 손으로 짜면 정확하지만 장황하다. <code>thiserror</code>가 그 보일러플레이트를 없앤다.</li>
+                    <li><strong>라이브러리는 thiserror, 애플리케이션은 anyhow</strong> — 분기가 필요하면 구체 타입, 보고만 하면 단일 타입.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>The Rust Programming Language (The Book) — Ch.9 Error Handling — <a href="https://doc.rust-lang.org/book/ch09-00-error-handling.html" target="_blank" rel="noopener">doc.rust-lang.org/book/ch09-00-error-handling.html</a></li>
+                        <li>표준 라이브러리 <code>std::result</code> — <a href="https://doc.rust-lang.org/std/result/" target="_blank" rel="noopener">doc.rust-lang.org/std/result</a></li>
+                        <li>표준 라이브러리 <code>std::error::Error</code> 트레잇 — <a href="https://doc.rust-lang.org/std/error/trait.Error.html" target="_blank" rel="noopener">doc.rust-lang.org/std/error/trait.Error.html</a></li>
+                        <li>열람일: 2026-06-25. 크레이트 버전·세부 API는 변동될 수 있어 최신 문서 확인 권장.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-rust');
+    renderPostNav('dev-lang-rust');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

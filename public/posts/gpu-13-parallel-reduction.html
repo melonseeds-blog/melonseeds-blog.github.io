@@ -1,0 +1,835 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>병렬 리덕션 단계별 최적화 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what" data-section="what">리덕션이란</a>
+        <a href="#structure" data-section="structure">기본 구조</a>
+        <a href="#v1" data-section="v1">버전 1</a>
+        <a href="#v2" data-section="v2">버전 2</a>
+        <a href="#v3" data-section="v3">버전 3</a>
+        <a href="#v4" data-section="v4">버전 4</a>
+        <a href="#v5" data-section="v5">버전 5</a>
+        <a href="#v6" data-section="v6">버전 6</a>
+        <a href="#v7" data-section="v7">버전 7</a>
+        <a href="#compare" data-section="compare">단계별 비교</a>
+        <a href="#combine" data-section="combine">결과 합치기</a>
+        <a href="#other-ops" data-section="other-ops">다른 연산</a>
+        <a href="#library" data-section="library">CUB/Thrust</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / <a href="gpu-01-cuda-intro.html">CUDA</a></span>
+                </div>
+                <h1>병렬 리덕션 단계별 최적화 - 합계를 30배 빠르게</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-13</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 18분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>리덕션을 트리 구조로 바꿔 병렬화하는 원리와 블록 단위 2층 구조</li>
+                        <li>Mark Harris의 7단계 최적화: 분기 제거, 뱅크 충돌 제거, 불러오면서 더하기, 펼치기, 스레드당 여러 원소</li>
+                        <li>Volta 이후 GPU에서 volatile 펼치기 대신 warp shuffle을 쓰는 이유</li>
+                        <li>블록 결과를 합치는 두 방법(두 번 실행, atomicAdd)과 결과 재현성</li>
+                        <li>최댓값, argmax 같은 다른 리덕션과 항등원, 실무용 CUB/Thrust</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what">리덕션이란</a></li>
+                        <li><a href="#structure">블록 단위 리덕션의 기본 구조</a></li>
+                        <li><a href="#v1">버전 1 - 인터리브 주소와 나머지 연산</a></li>
+                        <li><a href="#v2">버전 2 - 분기 없애기와 뱅크 충돌</a></li>
+                        <li><a href="#v3">버전 3 - 순차 주소로 뱅크 충돌 없애기</a></li>
+                        <li><a href="#v4">버전 4 - 불러오면서 한 번 더하기</a></li>
+                        <li><a href="#v5">버전 5 - 마지막 워프 펼치기</a></li>
+                        <li><a href="#v6">버전 6 - 템플릿으로 반복문 모두 펼치기</a></li>
+                        <li><a href="#v7">버전 7 - 스레드 하나가 여러 원소 맡기</a></li>
+                        <li><a href="#compare">단계별 비교</a></li>
+                        <li><a href="#combine">블록 결과 합치기 - 두 번 실행과 atomicAdd</a></li>
+                        <li><a href="#other-ops">합계 말고 다른 리덕션</a></li>
+                        <li><a href="#library">실무에서는 CUB와 Thrust</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 리덕션이란 -->
+                <h2 id="what"><i class="fa-solid fa-filter"></i> 리덕션이란</h2>
+                <p>리덕션(reduction)은 배열 전체를 값 하나로 줄이는 연산이다. 합계, 최댓값, 최솟값, 평균, 내적(dot product)이 모두 리덕션이다. 비전 쪽에서는 영상 평균 밝기, ROI 픽셀 합, 두 영상 차이의 제곱합(SSD) 같은 계산이 여기에 해당한다.</p>
+
+                <p>CPU에서는 반복문 하나로 끝난다. 앞에서부터 하나씩 더하니 <strong>n번 순서대로</strong> 계산한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">float SumCpu(const float* a, int n)
+{
+    float sum = 0.0f;
+    for (int i = 0; i &lt; n; ++i)
+        sum += a[i];       // each step depends on the previous one
+    return sum;
+}</code></pre>
+
+                <p>문제는 매 단계가 바로 앞 단계의 결과를 기다린다는 점이다. 이대로는 스레드 수천 개를 둘 자리가 없다. GPU에서는 덧셈의 결합 법칙을 사용해 계산 순서를 <strong>트리 모양</strong>으로 바꾼다. 짝을 지어 동시에 더하고, 그 결과끼리 다시 짝을 지어 더한다. 원소가 n개면 log<sub>2</sub>n 단계로 끝난다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" font-family="Consolas, monospace">
+                        <g font-size="13" text-anchor="middle">
+                            <!-- level 0 -->
+                            <g fill="#eff6ff" stroke="#1e40af">
+                                <rect x="20" y="20" width="60" height="30" rx="4"/><rect x="95" y="20" width="60" height="30" rx="4"/>
+                                <rect x="170" y="20" width="60" height="30" rx="4"/><rect x="245" y="20" width="60" height="30" rx="4"/>
+                                <rect x="320" y="20" width="60" height="30" rx="4"/><rect x="395" y="20" width="60" height="30" rx="4"/>
+                                <rect x="470" y="20" width="60" height="30" rx="4"/><rect x="545" y="20" width="60" height="30" rx="4"/>
+                            </g>
+                            <g fill="#1e3a5f"><text x="50" y="40">3</text><text x="125" y="40">1</text><text x="200" y="40">7</text><text x="275" y="40">0</text><text x="350" y="40">4</text><text x="425" y="40">1</text><text x="500" y="40">6</text><text x="575" y="40">3</text></g>
+                            <!-- level 1 -->
+                            <g stroke="#94a3b8" stroke-width="1.5"><line x1="50" y1="50" x2="87" y2="90"/><line x1="125" y1="50" x2="88" y2="90"/><line x1="200" y1="50" x2="237" y2="90"/><line x1="275" y1="50" x2="238" y2="90"/><line x1="350" y1="50" x2="387" y2="90"/><line x1="425" y1="50" x2="388" y2="90"/><line x1="500" y1="50" x2="537" y2="90"/><line x1="575" y1="50" x2="538" y2="90"/></g>
+                            <g fill="#fde68a" stroke="#d97706"><rect x="57" y="90" width="60" height="30" rx="4"/><rect x="207" y="90" width="60" height="30" rx="4"/><rect x="357" y="90" width="60" height="30" rx="4"/><rect x="507" y="90" width="60" height="30" rx="4"/></g>
+                            <g fill="#78350f"><text x="87" y="110">4</text><text x="237" y="110">7</text><text x="387" y="110">5</text><text x="537" y="110">9</text></g>
+                            <!-- level 2 -->
+                            <g stroke="#94a3b8" stroke-width="1.5"><line x1="87" y1="120" x2="162" y2="160"/><line x1="237" y1="120" x2="163" y2="160"/><line x1="387" y1="120" x2="462" y2="160"/><line x1="537" y1="120" x2="463" y2="160"/></g>
+                            <g fill="#fdba74" stroke="#c2410c"><rect x="132" y="160" width="60" height="30" rx="4"/><rect x="432" y="160" width="60" height="30" rx="4"/></g>
+                            <g fill="#7c2d12"><text x="162" y="180">11</text><text x="462" y="180">14</text></g>
+                            <!-- level 3 -->
+                            <g stroke="#94a3b8" stroke-width="1.5"><line x1="162" y1="190" x2="312" y2="210"/><line x1="462" y1="190" x2="313" y2="210"/></g>
+                            <rect x="282" y="210" width="60" height="30" rx="4" fill="#a7f3d0" stroke="#059669"/>
+                            <text x="312" y="230" fill="#065f46" font-weight="700">25</text>
+                        </g>
+                        <g font-size="11" fill="#64748b" font-family="Pretendard, sans-serif"><text x="615" y="110" text-anchor="end">1단계</text><text x="615" y="180" text-anchor="end">2단계</text><text x="615" y="230" text-anchor="end">3단계</text></g>
+                    </svg>
+                    <div class="diagram-caption">원소 8개를 3단계(log<sub>2</sub>8)로 더하는 트리 리덕션. 같은 단계의 덧셈은 서로 기다리지 않으므로 동시에 실행할 수 있다</div>
+                </div>
+
+                <p>이 글은 NVIDIA의 Mark Harris가 정리한 유명한 자료 "Optimizing Parallel Reduction in CUDA"의 흐름을 따라간다. 가장 단순한 커널에서 시작해 한 단계씩 고치면서, 각 단계가 6편(shared memory, 뱅크 충돌)과 7편(워프, 메모리 결합)에서 다룬 원리 중 무엇을 적용한 것인지 짚는다. 리덕션 하나를 끝까지 최적화해 보면 CUDA 최적화의 주요 기법을 거의 다 한 번씩 써 보게 된다.</p>
+
+                <!-- 2. 기본 구조 -->
+                <h2 id="structure"><i class="fa-solid fa-sitemap"></i> 블록 단위 리덕션의 기본 구조</h2>
+                <p>스레드 수백만 개가 한 번에 트리 하나를 만들 수는 없다. 블록끼리는 동기화 수단이 없기 때문이다(<code>__syncthreads()</code>는 블록 안에서만 동작한다). 그래서 리덕션은 두 층으로 나눈다.</p>
+
+                <table class="spec-table">
+                    <tr><th>층</th><th>하는 일</th><th>결과</th></tr>
+                    <tr><td>1. 블록 안</td><td>각 블록이 맡은 구간을 shared memory에 올리고 트리로 더함</td><td>블록마다 부분합 1개</td></tr>
+                    <tr><td>2. 블록 사이</td><td>부분합 배열을 다시 리덕션 (커널을 한 번 더 실행하거나 atomicAdd)</td><td>최종 값 1개</td></tr>
+                </table>
+
+                <p>입력이 1,600만 개(2<sup>24</sup>)이고 블록당 256개를 맡으면, 1층이 끝났을 때 부분합이 65,536개 남는다. 이것을 같은 커널로 한 번 더 줄이면 256개, 한 번 더 줄이면 1개가 된다. 아래에서 고치는 것은 모두 1층, 즉 <strong>블록 안 리덕션</strong>이다.</p>
+
+                <!-- 3. 버전 1 -->
+                <h2 id="v1"><i class="fa-solid fa-1"></i> 버전 1 - 인터리브 주소와 나머지 연산</h2>
+                <p>가장 먼저 떠오르는 구현이다. stride를 1, 2, 4, ...로 키우면서, 인덱스가 2×stride의 배수인 스레드만 옆 원소를 더한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void Reduce1(const float* in, float* out, int n)
+{
+    extern __shared__ float s[];
+    unsigned int tid = threadIdx.x;
+    unsigned int i   = blockIdx.x * blockDim.x + threadIdx.x;
+
+    s[tid] = (i &lt; n) ? in[i] : 0.0f;   // pad with 0 outside the array
+    __syncthreads();
+
+    for (unsigned int stride = 1; stride &lt; blockDim.x; stride *= 2)
+    {
+        if (tid % (2 * stride) == 0)   // only every (2*stride)-th thread works
+            s[tid] += s[tid + stride];
+        __syncthreads();
+    }
+
+    if (tid == 0)
+        out[blockIdx.x] = s[0];        // one partial sum per block
+}
+
+// launch: shared memory = blockDim.x floats
+Reduce1&lt;&lt;&lt;numBlocks, 256, 256 * sizeof(float)&gt;&gt;&gt;(d_in, d_partial, n);</code></pre>
+
+                <p>결과는 맞지만 느리다. 원인은 두 가지다.</p>
+
+                <table class="spec-table">
+                    <tr><th>문제</th><th>설명</th></tr>
+                    <tr><td><strong>워프 분기 (divergence)</strong></td><td>첫 단계에서 짝수 스레드만 일한다. 한 워프 32개 중 16개가 놀고, 단계가 지날수록 노는 스레드가 섞인 채로 워프 전체가 계속 실행된다 (7편)</td></tr>
+                    <tr><td><strong>나머지 연산 <code>%</code></strong></td><td>GPU에서 정수 나눗셈과 나머지는 덧셈보다 훨씬 비싸다. 반복문 안에서 매번 실행된다</td></tr>
+                </table>
+
+                <!-- 4. 버전 2 -->
+                <h2 id="v2"><i class="fa-solid fa-2"></i> 버전 2 - 분기 없애기와 뱅크 충돌</h2>
+                <p>일하는 스레드를 앞쪽에 몰아 주면 분기가 줄어든다. 스레드 번호를 그대로 쓰지 않고, 스레드 번호로 일할 위치(index)를 계산한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">for (unsigned int stride = 1; stride &lt; blockDim.x; stride *= 2)
+{
+    unsigned int index = 2 * stride * tid;   // contiguous threads do the work
+    if (index &lt; blockDim.x)
+        s[index] += s[index + stride];
+    __syncthreads();
+}</code></pre>
+
+                <p>이제 첫 단계에서는 스레드 0~127이 일하고 128~255가 쉰다. 워프 단위로 보면 앞쪽 워프 4개는 전부 일하고 뒤쪽 워프 4개는 전부 쉬므로, 한 워프 안에서 갈라지는 일이 크게 줄어든다. <code>%</code>도 사라졌다.</p>
+
+                <p>대신 새 문제가 생긴다. stride가 커질수록 스레드들이 접근하는 주소 간격이 2, 4, 8, ...로 벌어진다. shared memory는 32개 뱅크로 나뉘어 있는데(6편), 간격이 2의 거듭제곱이면 여러 스레드가 같은 뱅크에 몰린다. 이것이 <strong>뱅크 충돌</strong>이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>뱅크 충돌 계산 예</strong>
+                        stride = 16이면 index = 32 × tid. 스레드 0, 1, 2, ...가 s[0], s[32], s[64], ...에 접근한다. 뱅크 번호는 (주소 / 4바이트) % 32이므로 모두 뱅크 0이다. 같은 뱅크 접근은 한 번에 하나씩 처리되므로 이 명령은 여러 번에 나뉘어 실행된다.
+                    </div>
+                </div>
+
+                <!-- 5. 버전 3 -->
+                <h2 id="v3"><i class="fa-solid fa-3"></i> 버전 3 - 순차 주소로 뱅크 충돌 없애기</h2>
+                <p>방향을 뒤집는다. stride를 블록 크기의 절반에서 시작해 반씩 줄이고, 앞쪽 절반의 스레드가 뒤쪽 절반의 값을 더한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">for (unsigned int stride = blockDim.x / 2; stride &gt; 0; stride &gt;&gt;= 1)
+{
+    if (tid &lt; stride)
+        s[tid] += s[tid + stride];   // thread k reads s[k] and s[k + stride]
+    __syncthreads();
+}</code></pre>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" font-family="Consolas, monospace" font-size="12">
+                        <text x="10" y="22" fill="#475569" font-family="Pretendard, sans-serif">stride=4</text>
+                        <g fill="#eff6ff" stroke="#1e40af">
+                            <rect x="90" y="8" width="56" height="24"/><rect x="150" y="8" width="56" height="24"/><rect x="210" y="8" width="56" height="24"/><rect x="270" y="8" width="56" height="24"/>
+                        </g>
+                        <g fill="#f1f5f9" stroke="#94a3b8">
+                            <rect x="330" y="8" width="56" height="24"/><rect x="390" y="8" width="56" height="24"/><rect x="450" y="8" width="56" height="24"/><rect x="510" y="8" width="56" height="24"/>
+                        </g>
+                        <g text-anchor="middle" fill="#1e3a5f"><text x="118" y="25">s0</text><text x="178" y="25">s1</text><text x="238" y="25">s2</text><text x="298" y="25">s3</text><text x="358" y="25">s4</text><text x="418" y="25">s5</text><text x="478" y="25">s6</text><text x="538" y="25">s7</text></g>
+                        <g stroke="#d97706" stroke-width="1.5" fill="none">
+                            <path d="M358 32 Q 238 70 118 32"/><path d="M418 32 Q 298 70 178 32"/><path d="M478 32 Q 358 70 238 32"/><path d="M538 32 Q 418 70 298 32"/>
+                        </g>
+                        <text x="10" y="102" fill="#475569" font-family="Pretendard, sans-serif">stride=2</text>
+                        <g fill="#eff6ff" stroke="#1e40af"><rect x="90" y="88" width="56" height="24"/><rect x="150" y="88" width="56" height="24"/></g>
+                        <g fill="#f1f5f9" stroke="#94a3b8"><rect x="210" y="88" width="56" height="24"/><rect x="270" y="88" width="56" height="24"/></g>
+                        <g text-anchor="middle" fill="#1e3a5f"><text x="118" y="105">s0</text><text x="178" y="105">s1</text><text x="238" y="105">s2</text><text x="298" y="105">s3</text></g>
+                        <g stroke="#d97706" stroke-width="1.5" fill="none"><path d="M238 112 Q 178 140 118 112"/><path d="M298 112 Q 238 140 178 112"/></g>
+                        <text x="350" y="105" fill="#475569" font-family="Pretendard, sans-serif">앞쪽 스레드 k가 s[k] += s[k + stride]</text>
+                        <text x="350" y="125" fill="#475569" font-family="Pretendard, sans-serif">연속 스레드가 연속 주소에 접근 → 뱅크 충돌 없음</text>
+                    </svg>
+                    <div class="diagram-caption">순차 주소 방식. 일하는 스레드도, 읽는 주소도 항상 앞쪽에 연속으로 모인다</div>
+                </div>
+
+                <p>연속한 스레드가 연속한 주소를 읽으므로 32개 스레드가 32개 뱅크에 하나씩 접근한다. 분기 문제도 버전 2처럼 앞쪽 워프에 몰려 있다. 이 버전에서 남은 낭비는 <strong>첫 단계부터 스레드 절반이 논다</strong>는 점이다. 256개 스레드를 띄웠는데 첫 덧셈은 128개만 한다.</p>
+
+                <!-- 6. 버전 4 -->
+                <h2 id="v4"><i class="fa-solid fa-4"></i> 버전 4 - 불러오면서 한 번 더하기</h2>
+                <p>스레드 절반이 노는 첫 단계를 없앤다. 블록 하나가 원소 2×blockDim개를 맡고, 각 스레드가 global memory에서 값 두 개를 읽어 <strong>더한 결과를</strong> shared memory에 넣는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void Reduce4(const float* in, float* out, int n)
+{
+    extern __shared__ float s[];
+    unsigned int tid = threadIdx.x;
+    unsigned int i   = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
+
+    float v = 0.0f;
+    if (i &lt; n)              v  = in[i];
+    if (i + blockDim.x &lt; n) v += in[i + blockDim.x];   // first add happens during load
+    s[tid] = v;
+    __syncthreads();
+
+    for (unsigned int stride = blockDim.x / 2; stride &gt; 0; stride &gt;&gt;= 1)
+    {
+        if (tid &lt; stride)
+            s[tid] += s[tid + stride];
+        __syncthreads();
+    }
+    if (tid == 0) out[blockIdx.x] = s[0];
+}
+
+// half as many blocks as before
+int numBlocks = (n + 256 * 2 - 1) / (256 * 2);
+Reduce4&lt;&lt;&lt;numBlocks, 256, 256 * sizeof(float)&gt;&gt;&gt;(d_in, d_partial, n);</code></pre>
+
+                <p>블록 수가 절반으로 줄고, 모든 스레드가 처음부터 일한다. 두 번의 global 읽기는 각각 연속 주소라서 메모리 결합(coalescing, 7편)도 그대로 유지된다.</p>
+
+                <!-- 7. 버전 5 -->
+                <h2 id="v5"><i class="fa-solid fa-5"></i> 버전 5 - 마지막 워프 펼치기</h2>
+                <p>stride가 32 이하로 내려가면 일하는 스레드가 워프 하나 안에 모두 들어간다. 이때부터는 블록 전체를 세우는 <code>__syncthreads()</code>가 낭비다. 반복문도 단계가 5개로 정해져 있으니 펼쳐 쓰면 된다.</p>
+
+                <p>예전 자료에서는 shared memory를 <code>volatile</code>로 선언하고 동기화 없이 6줄을 이어 쓰는 방식을 소개한다. 그런데 Volta(compute capability 7.0) 이후 GPU는 워프 안의 스레드도 각자 따로 스케줄될 수 있어서, 이 방식은 더 이상 안전하지 않다. 지금은 <strong>warp shuffle</strong>로 레지스터끼리 값을 주고받는 방식을 사용한다. shuffle은 15편에서 자세히 다루고, 여기서는 사용법만 본다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// sum of v across the 32 lanes of a warp; lane 0 ends up with the total
+__device__ __forceinline__ float WarpReduceSum(float v)
+{
+    for (int offset = 16; offset &gt; 0; offset &gt;&gt;= 1)
+        v += __shfl_down_sync(0xffffffff, v, offset);   // read v from lane (laneId + offset)
+    return v;
+}
+
+__global__ void Reduce5(const float* in, float* out, int n)
+{
+    extern __shared__ float s[];
+    unsigned int tid = threadIdx.x;
+    unsigned int i   = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
+
+    float v = 0.0f;
+    if (i &lt; n)              v  = in[i];
+    if (i + blockDim.x &lt; n) v += in[i + blockDim.x];
+    s[tid] = v;
+    __syncthreads();
+
+    // shared-memory tree only down to 64 elements
+    for (unsigned int stride = blockDim.x / 2; stride &gt; 32; stride &gt;&gt;= 1)
+    {
+        if (tid &lt; stride)
+            s[tid] += s[tid + stride];
+        __syncthreads();
+    }
+
+    // last 64 -&gt; 1 inside the first warp, no __syncthreads
+    if (tid &lt; 32)
+    {
+        v = s[tid] + s[tid + 32];
+        v = WarpReduceSum(v);
+        if (tid == 0) out[blockIdx.x] = v;
+    }
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>volatile 펼치기 코드를 그대로 가져오지 않기</strong>
+                        인터넷에 흔한 <code>volatile float* vs = s; vs[tid] += vs[tid + 32]; vs[tid] += vs[tid + 16]; ...</code> 코드는 Volta 이전 GPU의 워프 동작을 전제로 한다. 지금 GPU에서 쓰려면 줄마다 <code>__syncwarp()</code>를 넣어야 하므로, 처음부터 shuffle을 쓰는 편이 간단하고 빠르다.
+                    </div>
+                </div>
+
+                <!-- 8. 버전 6 -->
+                <h2 id="v6"><i class="fa-solid fa-6"></i> 버전 6 - 템플릿으로 반복문 모두 펼치기</h2>
+                <p>블록 크기를 컴파일 시점에 알면 남은 반복문도 모두 펼칠 수 있다. 블록 크기를 템플릿 인자로 넘기면, 컴파일러가 조건이 거짓인 <code>if</code>를 통째로 지운다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">template &lt;unsigned int BLOCK&gt;
+__global__ void Reduce6(const float* in, float* out, int n)
+{
+    extern __shared__ float s[];
+    unsigned int tid = threadIdx.x;
+    unsigned int i   = blockIdx.x * (BLOCK * 2) + threadIdx.x;
+
+    float v = 0.0f;
+    if (i &lt; n)         v  = in[i];
+    if (i + BLOCK &lt; n) v += in[i + BLOCK];
+    s[tid] = v;
+    __syncthreads();
+
+    if (BLOCK &gt;= 1024) { if (tid &lt; 512) s[tid] += s[tid + 512]; __syncthreads(); }
+    if (BLOCK &gt;= 512)  { if (tid &lt; 256) s[tid] += s[tid + 256]; __syncthreads(); }
+    if (BLOCK &gt;= 256)  { if (tid &lt; 128) s[tid] += s[tid + 128]; __syncthreads(); }
+    if (BLOCK &gt;= 128)  { if (tid &lt;  64) s[tid] += s[tid +  64]; __syncthreads(); }
+
+    if (tid &lt; 32)
+    {
+        v = s[tid] + s[tid + 32];
+        v = WarpReduceSum(v);
+        if (tid == 0) out[blockIdx.x] = v;
+    }
+}
+
+// the host picks the instantiation that matches the launch
+switch (threads)
+{
+    case 1024: Reduce6&lt;1024&gt;&lt;&lt;&lt;blocks, 1024, 1024 * sizeof(float)&gt;&gt;&gt;(d_in, d_out, n); break;
+    case 512:  Reduce6&lt;512&gt; &lt;&lt;&lt;blocks, 512,  512  * sizeof(float)&gt;&gt;&gt;(d_in, d_out, n); break;
+    case 256:  Reduce6&lt;256&gt; &lt;&lt;&lt;blocks, 256,  256  * sizeof(float)&gt;&gt;&gt;(d_in, d_out, n); break;
+    case 128:  Reduce6&lt;128&gt; &lt;&lt;&lt;blocks, 128,  128  * sizeof(float)&gt;&gt;&gt;(d_in, d_out, n); break;
+}</code></pre>
+
+                <p>반복문의 비교, 증가, 분기 명령이 사라진다. 이런 명령은 한 번에 보면 작지만, 리덕션처럼 실제 계산(덧셈 1번)이 적은 커널에서는 반복문 관리 비용이 차지하는 비율이 크다.</p>
+
+                <!-- 9. 버전 7 -->
+                <h2 id="v7"><i class="fa-solid fa-7"></i> 버전 7 - 스레드 하나가 여러 원소 맡기</h2>
+                <p>마지막 단계는 발상이 다르다. 지금까지는 스레드 하나가 원소 2개를 맡았다. 이번에는 블록 수를 GPU를 채울 만큼만 띄우고, 각 스레드가 <strong>grid-stride loop</strong>로 배열 전체를 훑으며 레지스터에 합계를 모은다. 트리 리덕션은 그 다음에 한 번만 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__device__ __forceinline__ float BlockReduceSum(float v)
+{
+    __shared__ float warpSums[32];               // one slot per warp (max 1024/32)
+    int lane   = threadIdx.x &amp; 31;
+    int warpId = threadIdx.x &gt;&gt; 5;
+
+    v = WarpReduceSum(v);                        // 1) reduce inside each warp
+    if (lane == 0) warpSums[warpId] = v;         // 2) lane 0 writes the warp total
+    __syncthreads();
+
+    int numWarps = (blockDim.x + 31) / 32;
+    v = (threadIdx.x &lt; numWarps) ? warpSums[lane] : 0.0f;
+    if (warpId == 0) v = WarpReduceSum(v);       // 3) first warp reduces warp totals
+    return v;                                    // valid in thread 0
+}
+
+__global__ void Reduce7(const float* __restrict__ in, float* out, size_t n)
+{
+    float sum = 0.0f;
+    // grid-stride loop: each thread accumulates many elements in a register
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+         i &lt; n;
+         i += (size_t)blockDim.x * gridDim.x)
+    {
+        sum += in[i];
+    }
+
+    sum = BlockReduceSum(sum);
+    if (threadIdx.x == 0)
+        out[blockIdx.x] = sum;
+}
+
+// enough blocks to fill the GPU, not one per 512 elements
+int numSMs;
+cudaDeviceGetAttribute(&amp;numSMs, cudaDevAttrMultiProcessorCount, 0);
+Reduce7&lt;&lt;&lt;numSMs * 4, 256&gt;&gt;&gt;(d_in, d_partial, n);
+Reduce7&lt;&lt;&lt;1, 1024&gt;&gt;&gt;(d_partial, d_out, numSMs * 4);   // second pass: partials -&gt; 1</code></pre>
+
+                <p>이 방식이 빠른 이유는 세 가지다.</p>
+
+                <table class="spec-table">
+                    <tr><th>이유</th><th>설명</th></tr>
+                    <tr><td>트리 단계가 한 번뿐</td><td>shared memory 트리와 <code>__syncthreads()</code>가 블록당 한 번만 일어남. 나머지 덧셈은 모두 레지스터에서 처리</td></tr>
+                    <tr><td>블록 수가 적음</td><td>부분합이 수천 개가 아니라 SM 수의 몇 배 정도. 두 번째 패스가 아주 작아짐</td></tr>
+                    <tr><td>메모리 대역폭에 집중</td><td>반복문 안은 읽기와 덧셈뿐이라, GPU가 global memory 대역폭 한계에 가깝게 읽음</td></tr>
+                </table>
+
+                <p>리덕션은 원소 하나당 덧셈 1번이 전부이므로 계산이 아니라 <strong>메모리 읽기 속도</strong>가 한계를 정한다(memory-bound). 그래서 최적화의 목표는 "GPU 메모리 대역폭에 얼마나 가깝게 읽느냐"다. 8편의 Nsight Compute에서 <code>dram__throughput</code>이 장치 최대치의 80~90%에 가까워지면 더 손댈 곳이 거의 없다고 보면 된다.</p>
+
+                <!-- 10. 단계별 비교 -->
+                <h2 id="compare"><i class="fa-solid fa-chart-column"></i> 단계별 비교</h2>
+                <p>Mark Harris의 원래 자료는 2007년 G80 GPU에서 원소 400만 개(2<sup>22</sup>)를 더한 결과를 싣고 있다. 지금 GPU와 숫자는 다르지만, 단계마다 얼마나 좋아지는지 감을 잡기에는 충분하다.</p>
+
+                <table class="spec-table">
+                    <tr><th>단계</th><th>바꾼 것</th><th>시간 (ms)</th><th>대역폭 (GB/s)</th><th>누적 향상</th></tr>
+                    <tr><td>1</td><td>인터리브 주소, <code>%</code> 사용</td><td>8.054</td><td>2.083</td><td>1배</td></tr>
+                    <tr><td>2</td><td>분기 제거 (뱅크 충돌 생김)</td><td>3.456</td><td>4.854</td><td>2.3배</td></tr>
+                    <tr><td>3</td><td>순차 주소 (뱅크 충돌 제거)</td><td>1.722</td><td>9.741</td><td>4.7배</td></tr>
+                    <tr><td>4</td><td>불러오면서 첫 덧셈</td><td>0.965</td><td>17.377</td><td>8.3배</td></tr>
+                    <tr><td>5</td><td>마지막 워프 펼치기</td><td>0.536</td><td>31.289</td><td>15.0배</td></tr>
+                    <tr><td>6</td><td>반복문 모두 펼치기</td><td>0.381</td><td>43.996</td><td>21.2배</td></tr>
+                    <tr><td>7</td><td>스레드당 여러 원소</td><td>0.268</td><td>62.671</td><td>30.0배</td></tr>
+                </table>
+
+                <p>마지막 단계의 62.7GB/s는 당시 G80의 메모리 대역폭(약 86GB/s)의 70% 이상이다. 같은 덧셈을 하는 커널이 코드 배치만 바꿔서 30배 빨라졌다는 점이 핵심이다. 지금 GPU에서는 5, 6단계에서 썼던 기법을 shuffle이 대신하므로, 실제로 쓸 코드는 버전 7 하나로 충분하다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>직접 측정해 보기</strong>
+                        각 버전을 cudaEvent로 감싸서 시간을 재고 "읽은 바이트 / 시간"으로 대역폭을 계산한다. <code>nvidia-smi -q</code>나 장치 속성으로 구한 최대 대역폭과 비교하면 몇 % 수준인지 바로 보인다. 측정 코드는 8편을 참고한다.
+                    </div>
+                </div>
+
+                <!-- 11. 블록 결과 합치기 -->
+                <h2 id="combine"><i class="fa-solid fa-object-group"></i> 블록 결과 합치기 - 두 번 실행과 atomicAdd</h2>
+                <p>블록마다 나온 부분합을 합치는 방법은 두 가지다.</p>
+
+                <h3 id="combine-two-pass"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 커널을 두 번 실행</h3>
+                <p>버전 7 코드의 마지막 두 줄처럼 같은 커널을 블록 1개로 한 번 더 실행한다. 순서가 항상 같으므로 <strong>매번 같은 결과</strong>가 나온다. 실행 비용이 커널 한 번만큼 늘지만, 부분합이 수백 개라 두 번째 커널은 아주 짧다.</p>
+
+                <h3 id="combine-atomic"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> atomicAdd로 한 번에</h3>
+<pre class="language-cpp"><code class="language-cpp">__global__ void ReduceAtomic(const float* in, float* out, size_t n)
+{
+    float sum = 0.0f;
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i &lt; n; i += (size_t)blockDim.x * gridDim.x)
+        sum += in[i];
+
+    sum = BlockReduceSum(sum);
+    if (threadIdx.x == 0)
+        atomicAdd(out, sum);     // one atomic per block, not per element
+}
+
+cudaMemsetAsync(d_out, 0, sizeof(float), stream);   // must reset before every run
+ReduceAtomic&lt;&lt;&lt;numSMs * 4, 256, 0, stream&gt;&gt;&gt;(d_in, d_out, n);</code></pre>
+
+                <p>커널 한 번으로 끝나고 코드도 짧다. atomic은 블록당 한 번이라 경합도 거의 없다. 다만 블록이 끝나는 순서는 매번 다르고, float 덧셈은 순서에 따라 마지막 자리가 달라지므로 <strong>실행할 때마다 결과가 아주 조금씩 달라질 수 있다</strong>. 회귀 테스트에서 결과를 비트 단위로 비교한다면 두 번 실행 방식을 쓴다. atomic 연산은 14편에서 더 자세히 다룬다.</p>
+
+                <!-- 12. 다른 연산 -->
+                <h2 id="other-ops"><i class="fa-solid fa-shuffle"></i> 합계 말고 다른 리덕션</h2>
+                <p>트리 구조는 그대로 두고 연산만 바꾸면 된다. 조건은 <strong>결합 법칙</strong>이 성립하는 연산이어야 한다는 것이다. (a ⊕ b) ⊕ c = a ⊕ (b ⊕ c)가 성립해야 순서를 바꿔 묶어도 같은 결과가 나온다.</p>
+
+                <table class="spec-table">
+                    <tr><th>리덕션</th><th>연산</th><th>범위 밖 원소에 넣을 값 (항등원)</th></tr>
+                    <tr><td>합계</td><td><code>a + b</code></td><td><code>0</code></td></tr>
+                    <tr><td>곱</td><td><code>a * b</code></td><td><code>1</code></td></tr>
+                    <tr><td>최댓값</td><td><code>fmaxf(a, b)</code></td><td><code>-FLT_MAX</code> 또는 <code>-INFINITY</code></td></tr>
+                    <tr><td>최솟값</td><td><code>fminf(a, b)</code></td><td><code>FLT_MAX</code> 또는 <code>INFINITY</code></td></tr>
+                    <tr><td>최댓값 위치 (argmax)</td><td>(값, 인덱스) 쌍 중 값이 큰 쪽</td><td>(<code>-INFINITY</code>, -1)</td></tr>
+                </table>
+
+                <p>버전 1의 <code>(i &lt; n) ? in[i] : 0.0f</code>에서 0이 바로 이 항등원이다. 최댓값 리덕션에서 0을 넣으면, 값이 모두 음수인 배열의 결과가 0으로 나오는 버그가 생긴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// argmax: carry the index along with the value
+__device__ __forceinline__ void WarpArgMax(float&amp; v, int&amp; idx)
+{
+    for (int offset = 16; offset &gt; 0; offset &gt;&gt;= 1)
+    {
+        float ov = __shfl_down_sync(0xffffffff, v,   offset);
+        int   oi = __shfl_down_sync(0xffffffff, idx, offset);
+        if (ov &gt; v || (ov == v &amp;&amp; oi &lt; idx)) { v = ov; idx = oi; }   // tie -&gt; smaller index
+    }
+}</code></pre>
+
+                <!-- 13. 라이브러리 -->
+                <h2 id="library"><i class="fa-solid fa-box-open"></i> 실무에서는 CUB와 Thrust</h2>
+                <p>원리를 알았다면, 실제 제품 코드에서는 직접 짠 커널보다 NVIDIA가 관리하는 라이브러리를 먼저 검토한다. CUDA Toolkit에 기본으로 들어 있고, GPU 세대마다 튜닝되어 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;cub/cub.cuh&gt;
+
+// CUB: two calls - first asks how much temp memory, second does the work
+void*  dTemp = nullptr;
+size_t tempBytes = 0;
+cub::DeviceReduce::Sum(dTemp, tempBytes, d_in, d_out, n, stream);   // query size
+cudaMallocAsync(&amp;dTemp, tempBytes, stream);
+cub::DeviceReduce::Sum(dTemp, tempBytes, d_in, d_out, n, stream);   // run
+cudaFreeAsync(dTemp, stream);
+
+// Thrust: one line, but synchronous and returns the value to the host
+#include &lt;thrust/reduce.h&gt;
+#include &lt;thrust/execution_policy.h&gt;
+float total = thrust::reduce(thrust::device, d_in, d_in + n, 0.0f);</code></pre>
+
+                <p>CUB는 블록 안 리덕션(<code>cub::BlockReduce</code>)이나 워프 리덕션(<code>cub::WarpReduce</code>) 같은 부품도 제공하므로, 직접 짠 커널 안에서 <code>BlockReduceSum</code> 대신 끼워 쓸 수도 있다. 영상 처리 파이프라인에서는 임시 버퍼를 매 프레임 할당하지 말고, 처음 한 번 크기를 물어서 미리 잡아 둔다(12편의 버퍼 풀).</p>
+
+                <!-- 14. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>분기 안의 __syncthreads()</strong>
+                        <code>if (tid &lt; stride) { s[tid] += ...; __syncthreads(); }</code>처럼 동기화를 if 안에 넣으면, 일부 스레드만 배리어에 도착해서 커널이 멈추거나 결과가 깨진다. 동기화는 항상 블록의 모든 스레드가 지나가는 자리에 둔다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>블록 크기가 2의 거듭제곱이 아님</strong>
+                        <code>stride = blockDim.x / 2</code>로 반씩 줄이는 코드는 블록 크기가 2의 거듭제곱이라고 가정한다. 블록 크기를 192 같은 값으로 바꾸면 일부 원소가 빠진다. 버전 7의 워프 단위 방식은 32의 배수면 동작한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>float 합계의 정밀도</strong>
+                        float는 유효 숫자가 약 7자리다. 값 수백만 개를 더하면 작은 값이 큰 합계에 묻혀 사라진다. 트리 리덕션은 CPU의 순차 합보다 오히려 오차가 작은 편이지만, 정확도가 중요하면 합계 변수만 <code>double</code>로 두거나 Kahan 보정 합을 쓴다. 8비트 영상 픽셀 합처럼 정수인 경우에는 <code>unsigned long long</code>으로 더하면 오차가 없다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>CPU 결과와 비트 단위로 비교</strong>
+                        더하는 순서가 다르므로 GPU 합계와 CPU 합계는 마지막 몇 자리가 다를 수 있다. 테스트에서는 상대 오차(예: 1e-5)로 비교한다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>atomicAdd 결과 변수 초기화</strong>
+                        atomicAdd 방식은 결과 변수를 0으로 만든 뒤 실행해야 한다. 프레임마다 반복 실행하는 파이프라인에서 <code>cudaMemsetAsync</code>를 빠뜨리면 합계가 계속 누적된다.
+                    </div>
+                </div>
+
+                <!-- 15. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table class="spec-table">
+                    <tr><th>기법</th><th>해결한 문제</th><th>관련 편</th></tr>
+                    <tr><td>순차 주소</td><td>워프 분기, 뱅크 충돌</td><td>6편, 7편</td></tr>
+                    <tr><td>불러오면서 더하기</td><td>첫 단계에 노는 스레드</td><td>7편 (점유율)</td></tr>
+                    <tr><td>warp shuffle</td><td>마지막 단계의 동기화 비용</td><td>15편</td></tr>
+                    <tr><td>grid-stride loop</td><td>트리 단계 횟수, 블록 수</td><td>3편</td></tr>
+                    <tr><td>두 번 실행 / atomicAdd</td><td>블록 사이 합치기</td><td>14편</td></tr>
+                </table>
+                <p>다음 편에서는 리덕션과 짝을 이루는 기본 패턴인 <strong>스캔(prefix sum)</strong>과, 히스토그램 계산에 필요한 <strong>atomic 연산</strong>을 다룬다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Mark Harris, "Optimizing Parallel Reduction in CUDA" (NVIDIA, 2007)</li>
+                        <li>NVIDIA CUDA C++ Programming Guide - Warp Shuffle Functions</li>
+                        <li>NVIDIA CUB 문서 - DeviceReduce, BlockReduce, WarpReduce</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

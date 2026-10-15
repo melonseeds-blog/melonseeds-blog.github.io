@@ -1,0 +1,403 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>클로저와 이터레이터 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm { color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#closure-basics" data-section="closure-basics">클로저 기초</a><a href="#capture" data-section="capture">캡처와 Fn 트레이트</a><a href="#iterator" data-section="iterator">Iterator 트레이트</a><a href="#adapters" data-section="adapters">어댑터와 지연 평가</a><a href="#zero-cost" data-section="zero-cost">zero-cost 추상화</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">Rust 시리즈</span>
+                </div>
+                <h1>클로저와 이터레이터</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-brands fa-rust"></i> Rust 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 편에서 배우는 것</strong>
+                        클로저 문법과 환경 캡처 방식, 그리고 캡처 방식에 따라 자동으로 결정되는 세 트레이트 <code>Fn</code>·<code>FnMut</code>·<code>FnOnce</code>를 본다. 이어서 <code>Iterator</code> 트레이트의 핵심인 <code>next</code>, 그리고 <code>map</code>·<code>filter</code>·<code>collect</code> 같은 어댑터를 다룬다. 어댑터 체인이 왜 지연 평가되는지, 그 추상화가 어떻게 zero-cost로 컴파일되는지까지 연결한다. C++의 람다·<code>std::ranges</code>와 자주 대조한다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>클로저 문법 — <code>|x| x + 1</code> 형태와 타입 추론</li>
+                        <li>환경 캡처와 <code>Fn</code>·<code>FnMut</code>·<code>FnOnce</code>의 자동 결정</li>
+                        <li><code>Iterator</code> 트레이트와 <code>next</code>의 의미</li>
+                        <li><code>map</code>·<code>filter</code>·<code>collect</code> 어댑터와 지연 평가</li>
+                        <li>이터레이터 추상화가 zero-cost인 이유</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#closure-basics">클로저 기초 — 문법과 추론</a></li>
+                        <li><a href="#capture">캡처와 Fn 트레이트 삼형제</a></li>
+                        <li><a href="#iterator">Iterator 트레이트의 정체</a></li>
+                        <li><a href="#adapters">어댑터 체인과 지연 평가</a></li>
+                        <li><a href="#zero-cost">zero-cost 추상화</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="closure-basics"><i class="fa-solid fa-code"></i> 클로저 기초 — 문법과 추론</h2>
+                <p>클로저는 주변 환경을 캡처할 수 있는 익명 함수다. 파라미터를 세로 막대 <code>| |</code>로 감싸고 그 뒤에 본문을 둔다. 한 줄이면 중괄호를 생략하고, 여러 줄이면 블록으로 감싼다.</p>
+                <pre class="code"><code><span class="cm">// 한 줄 클로저 — 파라미터와 반환 타입을 컴파일러가 추론한다</span>
+let add_one = |x| x + 1;
+let result = add_one(5); <span class="cm">// 6</span>
+
+<span class="cm">// 타입을 명시할 수도 있다</span>
+let multiply = |a: i32, b: i32| -&gt; i32 { a * b };
+let product = multiply(3, 4); <span class="cm">// 12</span>
+
+<span class="cm">// 여러 줄 본문은 블록으로</span>
+let describe = |n: i32| {
+    let parity = if n % 2 == 0 { "even" } else { "odd" };
+    format!("{n} is {parity}")
+};
+println!("{}", describe(7)); <span class="cm">// "7 is odd"</span></code></pre>
+                <p>함수와 달리 클로저의 파라미터·반환 타입은 보통 추론에 맡긴다. 단, 추론은 <strong>첫 호출에서 한 번 고정</strong>된다. 같은 클로저를 서로 다른 타입으로 두 번 호출하면 컴파일 오류가 난다 — 처음 쓰인 타입으로 시그니처가 못 박히기 때문이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-brands fa-cuttlefish"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — 캡처 목록</strong>
+                        C++ 람다는 <code>[&amp;]</code>·<code>[=]</code>·<code>[x]</code>처럼 <em>캡처 목록을 직접</em> 적어 무엇을 어떻게 가져올지 지정한다. Rust 클로저에는 캡처 목록이 없다. 본문에서 변수를 어떻게 쓰는지(읽기만 / 변경 / 소비)를 보고 컴파일러가 캡처 방식을 <strong>자동으로</strong> 고른다. 소유권을 강제로 넘기고 싶을 때만 <code>move</code> 키워드를 앞에 붙인다.
+                    </div>
+                </div>
+
+                <h2 id="capture"><i class="fa-solid fa-box-archive"></i> 캡처와 Fn 트레이트 삼형제</h2>
+                <p>클로저가 주변 변수를 어떻게 사용하느냐에 따라 캡처 방식이 셋으로 갈린다. 그리고 그 방식에 따라 클로저가 자동으로 구현하는 트레이트가 정해진다.</p>
+
+                <h3 id="cap-borrow"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 불변 빌림 → Fn</h3>
+                <p>변수를 읽기만 하면 불변 참조로 캡처하고, 클로저는 <code>Fn</code>을 구현한다. 여러 번 호출해도 안전하다.</p>
+                <pre class="code"><code>let greeting = String::from("Hello");
+
+<span class="cm">// greeting을 읽기만 하므로 불변 빌림으로 캡처된다 (Fn)</span>
+let say_hello = || println!("{greeting}, world!");
+say_hello();
+say_hello(); <span class="cm">// 여러 번 호출 가능</span>
+
+<span class="cm">// 클로저가 빌리기만 했으므로 원본도 그대로 쓸 수 있다</span>
+println!("original still usable: {greeting}");</code></pre>
+
+                <h3 id="cap-mut"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 가변 빌림 → FnMut</h3>
+                <p>변수를 변경하면 가변 참조로 캡처하고, 클로저는 <code>FnMut</code>을 구현한다. 호출이 상태를 바꾸므로 클로저 변수 자체를 <code>mut</code>으로 선언해야 한다.</p>
+                <pre class="code"><code>let mut count = 0;
+
+<span class="cm">// count를 변경하므로 가변 빌림으로 캡처된다 (FnMut)</span>
+let mut increment = || {
+    count += 1;
+    println!("count = {count}");
+};
+increment(); <span class="cm">// count = 1</span>
+increment(); <span class="cm">// count = 2</span>
+
+<span class="cm">// 클로저 사용이 끝난 뒤에는 원본을 다시 쓸 수 있다</span>
+println!("final: {count}"); <span class="cm">// final: 2</span></code></pre>
+
+                <h3 id="cap-move"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 소유권 이동 → FnOnce</h3>
+                <p>캡처한 값을 본문에서 소비(이동)하면 그 클로저는 <strong>한 번만</strong> 호출할 수 있고 <code>FnOnce</code>만 구현한다. 스레드로 값을 넘길 때처럼 소유권 이동이 필요하면 <code>move</code>를 붙인다.</p>
+                <pre class="code"><code>let data = vec![1, 2, 3];
+
+<span class="cm">// move로 data의 소유권을 클로저로 옮긴다</span>
+let consume = move || {
+    let total: i32 = data.iter().sum();
+    println!("sum = {total}");
+    data <span class="cm">// 캡처한 값을 반환하며 소비 → FnOnce</span>
+};
+let returned = consume(); <span class="cm">// 단 한 번만 호출 가능</span>
+println!("got back {} items", returned.len());</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>세 트레이트는 포함 관계다</strong>
+                        모든 <code>Fn</code>은 <code>FnMut</code>이고, 모든 <code>FnMut</code>은 <code>FnOnce</code>다. 그래서 함수 파라미터를 받을 때는 <strong>필요한 가장 약한 제약</strong>을 고른다. 클로저를 한 번만 호출한다면 <code>FnOnce</code>로 받는 게 가장 많은 클로저를 허용한다. 반복 호출이 필요하면 <code>Fn</code>이나 <code>FnMut</code>으로 받는다.
+                    </div>
+                </div>
+
+                <pre class="code"><code><span class="cm">// 클로저를 인자로 받는 함수 — Fn 바운드</span>
+fn apply_twice&lt;F: Fn(i32) -&gt; i32&gt;(f: F, x: i32) -&gt; i32 {
+    f(f(x)) <span class="cm">// 두 번 호출하므로 Fn이 필요하다</span>
+}
+
+let squared = apply_twice(|n| n * n, 2); <span class="cm">// (2^2)^2 = 16</span>
+println!("{squared}");</code></pre>
+
+                <h2 id="iterator"><i class="fa-solid fa-arrow-right-arrow-left"></i> Iterator 트레이트의 정체</h2>
+                <p><code>Iterator</code>는 "다음 값을 하나 달라"는 한 가지 동작으로 정의된다. 핵심은 연관 타입 <code>Item</code>과 메서드 <code>next</code>다. <code>next</code>는 값이 있으면 <code>Some(item)</code>, 끝났으면 <code>None</code>을 돌려준다.</p>
+                <pre class="code"><code><span class="cm">// 직접 만든 카운터 이터레이터</span>
+struct Counter {
+    current: u32,
+    max: u32,
+}
+
+impl Iterator for Counter {
+    type Item = u32; <span class="cm">// 내보낼 값의 타입</span>
+
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
+        if self.current &lt; self.max {
+            self.current += 1;
+            Some(self.current)
+        } else {
+            None <span class="cm">// 끝에 도달하면 None</span>
+        }
+    }
+}
+
+let counter = Counter { current: 0, max: 3 };
+for n in counter {
+    println!("{n}"); <span class="cm">// 1, 2, 3</span>
+}</code></pre>
+                <p><code>next</code> 하나만 구현하면 <code>map</code>·<code>filter</code>·<code>sum</code>·<code>collect</code> 등 수십 개의 메서드를 <strong>공짜로</strong> 얻는다. 이들은 모두 <code>next</code> 위에 기본 구현으로 얹혀 있기 때문이다. <code>for</code> 루프 역시 내부적으로 <code>next</code>를 반복 호출하는 문법 설탕이다.</p>
+
+                <h3 id="iter-kinds"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> iter · iter_mut · into_iter</h3>
+                <p>컬렉션에서 이터레이터를 얻는 방법은 셋이며, 각각 빌림 방식이 다르다. 소유권 규칙이 여기서도 그대로 적용된다.</p>
+                <table class="compare-table">
+                    <tr><th>메서드</th><th>Item 타입</th><th>원본</th></tr>
+                    <tr><td><code>iter()</code></td><td><code>&amp;T</code></td><td>불변 빌림, 이후에도 사용 가능</td></tr>
+                    <tr><td><code>iter_mut()</code></td><td><code>&amp;mut T</code></td><td>가변 빌림, 원소 수정 가능</td></tr>
+                    <tr><td><code>into_iter()</code></td><td><code>T</code></td><td>소유권 이동, 이후 사용 불가</td></tr>
+                </table>
+
+                <h2 id="adapters"><i class="fa-solid fa-link"></i> 어댑터 체인과 지연 평가</h2>
+                <p><code>map</code>·<code>filter</code>처럼 이터레이터를 받아 새 이터레이터를 돌려주는 메서드를 <strong>어댑터</strong>라 한다. 어댑터는 <strong>지연(lazy)</strong>이다 — 호출만으로는 아무 일도 일어나지 않고, 새 이터레이터 구조를 만들어 둘 뿐이다. <code>collect</code>·<code>sum</code>·<code>for</code> 같은 <strong>소비자(consumer)</strong>가 <code>next</code>를 당겨야 비로소 계산이 흐른다.</p>
+                <pre class="code"><code>let numbers = vec![1, 2, 3, 4, 5, 6];
+
+<span class="cm">// 짝수만 골라 제곱한 뒤 Vec으로 모은다</span>
+let result: Vec&lt;i32&gt; = numbers
+    .iter()                  <span class="cm">// &amp;i32를 내보내는 이터레이터</span>
+    .filter(|&amp;&amp;n| n % 2 == 0) <span class="cm">// 짝수만 통과 (아직 실행 안 됨)</span>
+    .map(|&amp;n| n * n)         <span class="cm">// 제곱 (아직 실행 안 됨)</span>
+    .collect();              <span class="cm">// 여기서 비로소 전체가 흐른다</span>
+
+println!("{:?}", result); <span class="cm">// [4, 16, 36]</span></code></pre>
+                <p>지연 평가의 실질적 이점은 <strong>중간 컬렉션이 생기지 않는다</strong>는 점이다. 위 코드는 짝수만 담은 임시 <code>Vec</code>을 만들고 다시 제곱한 <code>Vec</code>을 만드는 식이 아니다. 원소 하나가 <code>filter</code>를 통과하면 곧바로 <code>map</code>으로 흘러가고, 한 번의 패스로 끝난다.</p>
+
+                <pre class="code"><code><span class="cm">// 무한 이터레이터도 지연 평가 덕분에 안전하다</span>
+let first_five_squares: Vec&lt;u64&gt; = (1u64..)   <span class="cm">// 1, 2, 3, ... 무한 범위</span>
+    .map(|n| n * n)
+    .take(5)        <span class="cm">// 앞에서 5개만 당긴다</span>
+    .collect();
+
+println!("{:?}", first_five_squares); <span class="cm">// [1, 4, 9, 16, 25]</span></code></pre>
+                <p><code>(1u64..)</code>는 끝이 없는 범위지만, <code>take(5)</code>가 다섯 번만 <code>next</code>를 당기므로 무한 루프에 빠지지 않는다. 소비자가 요구하는 만큼만 생산되는 pull 모델이기 때문이다.</p>
+
+                <div class="callout info">
+                    <i class="fa-brands fa-cuttlefish"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — std::ranges와의 대응</strong>
+                        C++20의 <code>std::ranges</code> 뷰는 Rust 이터레이터 어댑터와 발상이 거의 같다. 둘 다 지연 평가되고 체이닝된다. 대응을 보면 한눈에 익힌다 — Rust의 <code>.filter(...)</code>는 C++ <code>std::views::filter(...)</code>, <code>.map(...)</code>은 <code>std::views::transform(...)</code>, <code>.take(n)</code>은 <code>std::views::take(n)</code>에 대응한다. 다만 C++은 파이프 연산자 <code>|</code>로 뷰를 잇고(<code>rng | views::filter(f) | views::transform(g)</code>), Rust는 메서드 체인 <code>.</code>으로 잇는다. 또 Rust 이터레이터는 빌림 검사기가 캡처와 수명을 강제하므로, 댕글링 뷰 같은 함정을 컴파일 단계에서 막는다.
+                    </div>
+                </div>
+
+                <h2 id="zero-cost"><i class="fa-solid fa-feather"></i> zero-cost 추상화</h2>
+                <p>위 어댑터 체인은 읽기 좋지만, 성능을 손해 보지는 않을까? Rust의 답은 "그렇지 않다"이다. 이터레이터 어댑터는 <strong>zero-cost 추상화</strong>를 지향한다 — 고수준으로 쓴 코드가 손으로 쓴 루프와 거의 같은 기계어로 컴파일된다는 뜻이다.</p>
+                <p>비결은 두 가지다. 첫째, 어댑터는 제네릭이라 호출 지점마다 구체 타입으로 <strong>단형화(monomorphization)</strong>된다. 둘째, 클로저 호출과 어댑터의 얇은 래퍼는 인라이닝으로 사라진다. 그 결과 아래 두 코드는 사실상 같은 수준으로 최적화된다.</p>
+                <pre class="code"><code>let values = vec![1, 3, 5, 7, 9];
+
+<span class="cm">// 1) 고수준 이터레이터 체인</span>
+let sum_a: i32 = values.iter().map(|&amp;x| x * 2).sum();
+
+<span class="cm">// 2) 손으로 쓴 루프</span>
+let mut sum_b = 0;
+for &amp;x in &amp;values {
+    sum_b += x * 2;
+}
+
+assert_eq!(sum_a, sum_b); <span class="cm">// 결과 동일, 최적화 후 코드도 사실상 동일</span></code></pre>
+                <p>즉 "추상화를 쓰면 느려진다"는 통념이 여기서는 깨진다. 가독성을 위해 <code>map</code>·<code>filter</code>를 마음껏 체이닝해도, 컴파일러가 그 층을 걷어 내고 단단한 루프로 바꿔 준다. 가독성과 성능 사이에서 타협할 필요가 줄어드는 것이다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"항상 공짜"는 아니다</strong>
+                        zero-cost는 목표이자 일반적 경향이지, 모든 경우의 절대 보장은 아니다. 트레이트 객체(<code>dyn Fn</code>)로 동적 디스패치를 쓰거나 인라이닝이 막히면 호출 오버헤드가 남을 수 있다. 의심스러우면 추측하지 말고 <code>--release</code> 빌드로 벤치마크하고 생성된 어셈블리를 확인하는 게 맞다.
+                    </div>
+                </div>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>The Rust Programming Language (공식 The Book) — <a href="https://doc.rust-lang.org/book/" target="_blank" rel="noopener">doc.rust-lang.org/book</a> (13장 Closures &amp; Iterators)</li>
+                        <li>std::iter::Iterator 트레이트 문서 — <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html" target="_blank" rel="noopener">doc.rust-lang.org/std/iter/trait.Iterator.html</a></li>
+                        <li>std::ops의 Fn / FnMut / FnOnce — <a href="https://doc.rust-lang.org/std/ops/trait.Fn.html" target="_blank" rel="noopener">doc.rust-lang.org/std/ops/trait.Fn.html</a></li>
+                        <li>열람일: 2026-06-25. 표준 라이브러리 세부 사양은 버전에 따라 바뀔 수 있어 공식 문서 확인 권장.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-rust');
+    renderPostNav('dev-lang-rust');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

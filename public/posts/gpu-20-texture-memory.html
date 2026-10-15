@@ -1,0 +1,662 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texture 메모리와 하드웨어 보간 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what" data-section="what">하는 일</a>
+        <a href="#create" data-section="create">만들기</a>
+        <a href="#coords" data-section="coords">좌표와 보간</a>
+        <a href="#options" data-section="options">읽기 옵션</a>
+        <a href="#resize" data-section="resize">리사이즈/회전</a>
+        <a href="#remap" data-section="remap">remap</a>
+        <a href="#surface" data-section="surface">surface</a>
+        <a href="#lut3d" data-section="lut3d">3D LUT</a>
+        <a href="#when" data-section="when">언제 쓰나</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / <a href="gpu-01-cuda-intro.html">CUDA</a></span>
+                </div>
+                <h1>Texture 메모리와 하드웨어 보간</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-13</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 17분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>texture 하드웨어가 해 주는 일: 보간, 경계 처리, 2D 캐시, 형 변환</li>
+                        <li>cudaResourceDesc와 cudaTextureDesc로 texture object 만들기, Pitch2D와 cudaArray</li>
+                        <li>픽셀 중심 +0.5 규칙과 bilinear 계산, 소수부 8비트 보간 정밀도의 한계</li>
+                        <li>리사이즈, 어파인 변환, 렌즈 왜곡 보정(remap), surface 쓰기, 3D LUT</li>
+                        <li>지금 GPU에서 texture가 이득인 경우와 아닌 경우</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what">Texture 하드웨어가 해 주는 일</a></li>
+                        <li><a href="#create">texture object 만들기</a></li>
+                        <li><a href="#coords">좌표 규칙과 보간 계산</a></li>
+                        <li><a href="#options">읽기 옵션 정리</a></li>
+                        <li><a href="#resize">예제 - 리사이즈와 회전</a></li>
+                        <li><a href="#remap">예제 - 렌즈 왜곡 보정 (remap)</a></li>
+                        <li><a href="#surface">surface - cudaArray에 쓰기</a></li>
+                        <li><a href="#lut3d">응용 - 3D texture로 색 보정 LUT</a></li>
+                        <li><a href="#when">texture를 쓸 때와 안 쓸 때</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. texture가 하는 일 -->
+                <h2 id="what"><i class="fa-solid fa-image"></i> Texture 하드웨어가 해 주는 일</h2>
+                <p>GPU는 원래 3D 그래픽을 위해 만들어졌고, 그래픽에서는 물체 표면에 그림(texture)을 입힐 때 "좌표 (12.3, 45.7) 위치의 색"처럼 픽셀 사이 값을 끊임없이 읽는다. 이 일을 빠르게 하려고 GPU에는 <strong>texture unit</strong>이라는 전용 하드웨어가 있다. CUDA에서도 이 하드웨어를 쓸 수 있고, 영상 처리에서는 특히 쓸모가 많다.</p>
+
+                <table class="spec-table">
+                    <tr><th>기능</th><th>설명</th><th>영상 처리에서 쓰는 곳</th></tr>
+                    <tr><td><strong>하드웨어 보간</strong></td><td>소수 좌표를 주면 주변 4픽셀을 bilinear로 섞은 값을 돌려줌. 계산 명령이 거의 들지 않음</td><td>리사이즈, 회전, 왜곡 보정(remap), 서브픽셀 샘플링</td></tr>
+                    <tr><td><strong>경계 처리</strong></td><td>영상 밖 좌표를 읽으면 clamp, wrap, mirror, border 규칙대로 값을 돌려줌</td><td>필터 가장자리 처리를 코드 없이</td></tr>
+                    <tr><td><strong>2D 지역성 캐시</strong></td><td>위아래 이웃처럼 2차원으로 가까운 데이터를 잘 캐시함</td><td>회전처럼 접근 방향이 행과 맞지 않는 처리</td></tr>
+                    <tr><td><strong>자동 형 변환</strong></td><td>8비트 정수 픽셀을 읽으면서 0.0~1.0 float로 바꿔 줌</td><td>정규화 단계를 생략</td></tr>
+                </table>
+
+                <p>요약하면 texture는 "읽기 전용 영상을 소수 좌표로 읽는 일"에 특화된 경로다. 일반 배열 읽기로 같은 일을 하려면 좌표 내림, 이웃 4개 읽기, 가중치 계산, 경계 검사를 모두 직접 써야 한다.</p>
+
+                <!-- 2. texture object 만들기 -->
+                <h2 id="create"><i class="fa-solid fa-hammer"></i> texture object 만들기</h2>
+                <p>CUDA에서 texture는 <code>cudaTextureObject_t</code>라는 핸들로 다룬다. 만들 때 두 가지를 정한다. <strong>무엇을 읽을지</strong>(resource)와 <strong>어떻게 읽을지</strong>(texture description)다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>texture reference는 쓰지 않음</strong>
+                        오래된 자료에는 전역 변수로 <code>texture&lt;float, 2&gt; texRef;</code>를 선언하고 <code>cudaBindTexture</code>로 묶는 방식(texture reference)이 나온다. 이 방식은 오래전에 사용 중단되었고 CUDA 12에서 제거되었다. 지금은 texture object만 쓴다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// source image: 8-bit gray, width x height, stored with a pitch
+unsigned char* d_img;
+size_t pitch;
+cudaMallocPitch(&amp;d_img, &amp;pitch, width, height);
+cudaMemcpy2D(d_img, pitch, h_img, width, width, height, cudaMemcpyHostToDevice);
+
+// 1) WHAT to read: a pitched 2D buffer
+cudaResourceDesc res = {};
+res.resType = cudaResourceTypePitch2D;
+res.res.pitch2D.devPtr       = d_img;
+res.res.pitch2D.desc         = cudaCreateChannelDesc&lt;unsigned char&gt;();
+res.res.pitch2D.width        = width;
+res.res.pitch2D.height       = height;
+res.res.pitch2D.pitchInBytes = pitch;
+
+// 2) HOW to read it
+cudaTextureDesc td = {};
+td.addressMode[0]   = cudaAddressModeClamp;        // x outside -&gt; nearest edge pixel
+td.addressMode[1]   = cudaAddressModeClamp;        // y outside -&gt; nearest edge pixel
+td.filterMode       = cudaFilterModeLinear;        // hardware bilinear interpolation
+td.readMode         = cudaReadModeNormalizedFloat; // uchar 0..255 -&gt; float 0.0..1.0
+td.normalizedCoords = 0;                           // coordinates in pixels, not 0..1
+
+cudaTextureObject_t tex = 0;
+cudaCreateTextureObject(&amp;tex, &amp;res, &amp;td, nullptr);
+
+// ... use tex in kernels ...
+
+cudaDestroyTextureObject(tex);                     // the buffer itself is still yours to free</code></pre>
+
+                <h3 id="resource-type"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 메모리 종류 두 가지</h3>
+                <table class="spec-table">
+                    <tr><th>resource 종류</th><th>메모리</th><th>장점</th><th>단점</th></tr>
+                    <tr><td><code>cudaResourceTypePitch2D</code></td><td><code>cudaMallocPitch</code>로 잡은 일반 메모리</td><td>다른 커널이 쓴 결과를 복사 없이 바로 texture로 읽을 수 있음</td><td>캐시 효율이 cudaArray보다 조금 떨어질 수 있음</td></tr>
+                    <tr><td><code>cudaResourceTypeArray</code></td><td><code>cudaMallocArray</code>로 잡은 cudaArray</td><td>texture 접근에 맞게 내부 배치(타일 형태)가 최적화됨</td><td>일반 포인터로 접근 불가. 채우려면 <code>cudaMemcpy2DToArray</code> 복사가 필요</td></tr>
+                </table>
+
+                <p>카메라 영상을 받아 전처리 커널을 거친 뒤 그 결과를 보간해서 읽는 파이프라인이라면, 중간 결과를 그대로 쓸 수 있는 Pitch2D가 대개 편하다. 보정 맵, LUT처럼 한 번 올려 두고 계속 읽는 데이터는 cudaArray가 맞다.</p>
+
+                <!-- 3. 좌표와 보간 -->
+                <h2 id="coords"><i class="fa-solid fa-crosshairs"></i> 좌표 규칙과 보간 계산</h2>
+                <p>texture를 처음 쓸 때 가장 많이 틀리는 부분이 좌표다. texture에서 픽셀 (i, j)의 <strong>중심</strong>은 정수 좌표가 아니라 <strong>(i + 0.5, j + 0.5)</strong>다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif" font-size="12">
+                        <g stroke="#1e40af" fill="#eff6ff">
+                            <rect x="60" y="30" width="80" height="80"/><rect x="140" y="30" width="80" height="80"/>
+                            <rect x="60" y="110" width="80" height="80"/><rect x="140" y="110" width="80" height="80"/>
+                        </g>
+                        <g fill="#1e40af"><circle cx="100" cy="70" r="4"/><circle cx="180" cy="70" r="4"/><circle cx="100" cy="150" r="4"/><circle cx="180" cy="150" r="4"/></g>
+                        <g fill="#1e3a5f" font-size="11"><text x="80" y="62">T00</text><text x="160" y="62">T10</text><text x="80" y="142">T01</text><text x="160" y="142">T11</text></g>
+                        <g fill="#64748b" font-size="10" font-family="Consolas, monospace"><text x="56" y="24">0</text><text x="136" y="24">1</text><text x="216" y="24">2</text><text x="40" y="34">0</text><text x="40" y="114">1</text><text x="40" y="194">2</text></g>
+                        <circle cx="152" cy="134" r="6" fill="#d97706"/>
+                        <text x="60" y="215" fill="#475569" font-size="11">파란 점 = 픽셀 중심 (0.5, 0.5), (1.5, 0.5) ...</text>
+                        <text x="60" y="228" fill="#d97706" font-size="11">주황 점 = tex2D(tex, 1.15, 1.30)</text>
+
+                        <g font-size="12" fill="#334155">
+                            <text x="290" y="45" font-weight="700" fill="#1e40af">tex2D(tex, x, y)의 계산</text>
+                            <text x="290" y="72" font-family="Consolas, monospace">xB = x - 0.5 = 0.65,  yB = y - 0.5 = 0.80</text>
+                            <text x="290" y="96" font-family="Consolas, monospace">i = floor(xB) = 0,  α = frac(xB) = 0.65</text>
+                            <text x="290" y="120" font-family="Consolas, monospace">j = floor(yB) = 0,  β = frac(yB) = 0.80</text>
+                            <text x="290" y="150" font-family="Consolas, monospace">값 = (1-α)(1-β)·T00 + α(1-β)·T10</text>
+                            <text x="290" y="172" font-family="Consolas, monospace">   + (1-α)β·T01 + αβ·T11</text>
+                            <text x="290" y="200" fill="#475569">α, β는 하드웨어에서 소수부 8비트로 계산됨</text>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">bilinear 보간. 좌표에서 0.5를 뺀 뒤 정수부로 왼쪽 위 픽셀을, 소수부로 가중치를 정한다</div>
+                </div>
+
+                <p>그래서 원본 픽셀 (x, y)를 그대로 읽고 싶으면 <code>tex2D&lt;float&gt;(tex, x + 0.5f, y + 0.5f)</code>로 읽어야 한다. +0.5를 빼먹으면 모든 픽셀이 반 픽셀씩 왼쪽 위로 밀린 값, 즉 이웃과 섞인 값이 나온다. 결과 영상이 살짝 흐리고 반 픽셀 이동한 것처럼 보이면 이 실수를 의심한다.</p>
+
+                <h3 id="precision"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 하드웨어 보간의 정밀도</h3>
+                <p>texture 보간은 빠른 대신 정밀도에 한계가 있다. CUDA 프로그래밍 가이드에 따르면 보간 가중치(α, β)는 <strong>소수부 8비트</strong>의 고정소수점으로 계산된다. 즉 픽셀 사이를 256단계로만 나눈다. 1/256 픽셀보다 작은 위치 차이는 결과에 반영되지 않는다.</p>
+
+                <table class="spec-table">
+                    <tr><th>용도</th><th>하드웨어 보간</th></tr>
+                    <tr><td>표시용 리사이즈, 회전, 일반 전처리</td><td>충분함</td></tr>
+                    <tr><td>렌즈 왜곡 보정 remap</td><td>대부분 충분함. 계측 정확도 요구가 높으면 비교 확인</td></tr>
+                    <tr><td>서브픽셀 정밀 계측 (에지 위치, 정합)</td><td><strong>부족할 수 있음</strong>. 1/100 픽셀 단위 결과가 필요하면 point 모드로 4픽셀을 읽고 float로 직접 보간</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// software bilinear with full float weights (texture in POINT mode, element type float)
+__device__ float BilinearPrecise(cudaTextureObject_t texPoint, float x, float y)
+{
+    float xb = x - 0.5f, yb = y - 0.5f;
+    float fx = floorf(xb), fy = floorf(yb);
+    float a = xb - fx, b = yb - fy;                     // full 24-bit float weights
+    float t00 = tex2D&lt;float&gt;(texPoint, fx + 0.5f, fy + 0.5f);
+    float t10 = tex2D&lt;float&gt;(texPoint, fx + 1.5f, fy + 0.5f);
+    float t01 = tex2D&lt;float&gt;(texPoint, fx + 0.5f, fy + 1.5f);
+    float t11 = tex2D&lt;float&gt;(texPoint, fx + 1.5f, fy + 1.5f);
+    return (1 - a) * (1 - b) * t00 + a * (1 - b) * t10 + (1 - a) * b * t01 + a * b * t11;
+}</code></pre>
+
+                <!-- 4. 옵션 -->
+                <h2 id="options"><i class="fa-solid fa-sliders"></i> 읽기 옵션 정리</h2>
+
+                <h3 id="address-mode"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 경계 처리 (addressMode)</h3>
+                <table class="spec-table">
+                    <tr><th>모드</th><th>영상 밖 좌표를 읽으면</th><th>비슷한 OpenCV 옵션</th></tr>
+                    <tr><td><code>cudaAddressModeClamp</code></td><td>가장 가까운 가장자리 픽셀 값</td><td><code>BORDER_REPLICATE</code></td></tr>
+                    <tr><td><code>cudaAddressModeBorder</code></td><td>0</td><td><code>BORDER_CONSTANT</code> (값 0)</td></tr>
+                    <tr><td><code>cudaAddressModeWrap</code></td><td>반대쪽에서 이어짐 (반복)</td><td><code>BORDER_WRAP</code></td></tr>
+                    <tr><td><code>cudaAddressModeMirror</code></td><td>경계에서 거울처럼 뒤집힘</td><td><code>BORDER_REFLECT</code> 계열</td></tr>
+                </table>
+                <p>Wrap과 Mirror는 정규화 좌표(<code>normalizedCoords = 1</code>, 좌표 범위 0~1)에서만 동작한다. 픽셀 좌표를 쓸 때는 Clamp나 Border를 쓴다.</p>
+
+                <h3 id="read-mode"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 필터와 읽기 모드</h3>
+                <table class="spec-table">
+                    <tr><th>옵션</th><th>값</th><th>결과</th></tr>
+                    <tr><td rowspan="2"><code>filterMode</code></td><td><code>cudaFilterModePoint</code></td><td>가장 가까운 픽셀 하나 (보간 없음)</td></tr>
+                    <tr><td><code>cudaFilterModeLinear</code></td><td>bilinear 보간. <strong>float로 읽을 때만</strong> 가능</td></tr>
+                    <tr><td rowspan="2"><code>readMode</code></td><td><code>cudaReadModeElementType</code></td><td>저장된 타입 그대로 (uchar면 uchar)</td></tr>
+                    <tr><td><code>cudaReadModeNormalizedFloat</code></td><td>8, 16비트 정수를 0.0~1.0 float로 (부호 있으면 -1.0~1.0)</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>8비트 영상에 Linear 필터를 쓰려면</strong>
+                        unsigned char 영상에 <code>cudaFilterModeLinear</code>를 쓰려면 readMode를 <code>cudaReadModeNormalizedFloat</code>로 해야 한다. 결과가 0~1이므로 원래 범위가 필요하면 255를 곱한다. ElementType 모드로 정수 영상을 Linear로 읽으려 하면 texture 생성이 실패한다.
+                    </div>
+                </div>
+
+                <!-- 5. 예제 리사이즈 -->
+                <h2 id="resize"><i class="fa-solid fa-up-right-and-down-left-from-center"></i> 예제 - 리사이즈와 회전</h2>
+                <p>texture를 쓰면 리사이즈 커널은 출력 픽셀마다 원본 좌표를 계산해서 한 번 읽는 것이 전부다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void ResizeBilinear(cudaTextureObject_t src, unsigned char* dst, size_t dstPitch,
+                               int dstW, int dstH, float scaleX, float scaleY)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &gt;= dstW || y &gt;= dstH) return;
+
+    // map the CENTER of the output pixel to the source image (same rule as cv::resize)
+    float sx = (x + 0.5f) * scaleX;          // already includes the +0.5 texel offset
+    float sy = (y + 0.5f) * scaleY;
+
+    float v = tex2D&lt;float&gt;(src, sx, sy);     // 0..1 (normalized float read)
+    dst[y * dstPitch + x] = (unsigned char)(v * 255.0f + 0.5f);
+}
+
+// scale = srcSize / dstSize
+dim3 block(32, 8), grid((dstW + 31) / 32, (dstH + 7) / 8);
+ResizeBilinear&lt;&lt;&lt;grid, block, 0, stream&gt;&gt;&gt;(tex, d_dst, dstPitch, dstW, dstH,
+                                           (float)srcW / dstW, (float)srcH / dstH);</code></pre>
+
+                <p>회전이나 어파인 변환도 같은 구조다. 출력 픽셀 좌표에 역변환 행렬을 곱해 원본 좌표를 얻고 <code>tex2D</code>로 읽는다. 원본 바깥 좌표는 addressMode가 알아서 처리한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// inverse affine: src = M * (dst + 0.5) ; M is 2x3, row-major, passed by value
+struct Affine { float m00, m01, m02, m10, m11, m12; };
+
+__global__ void WarpAffine(cudaTextureObject_t src, float* dst, int w, int h, Affine inv)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &gt;= w || y &gt;= h) return;
+    float px = x + 0.5f, py = y + 0.5f;
+    float sx = inv.m00 * px + inv.m01 * py + inv.m02;
+    float sy = inv.m10 * px + inv.m11 * py + inv.m12;
+    dst[y * w + x] = tex2D&lt;float&gt;(src, sx, sy);   // outside -&gt; Border mode gives 0
+}</code></pre>
+
+                <!-- 6. remap -->
+                <h2 id="remap"><i class="fa-solid fa-map-location-dot"></i> 예제 - 렌즈 왜곡 보정 (remap)</h2>
+                <p>렌즈 왜곡 보정은 미리 계산해 둔 좌표 맵(출력 픽셀마다 원본의 어느 소수 좌표를 읽을지)을 따라 원본을 읽는 처리다. OpenCV의 <code>initUndistortRectifyMap</code>으로 맵을 만들고 <code>remap</code>으로 적용하는 구조와 같다. 맵은 보정이 바뀌지 않는 한 고정이므로 GPU에 한 번 올려 두고, 영상만 texture로 매 프레임 바꿔 읽는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// mapX/mapY: float source coordinates for every output pixel (pixel units, like cv::remap)
+__global__ void Remap(cudaTextureObject_t src, const float* mapX, const float* mapY,
+                      unsigned char* dst, int w, int h)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &gt;= w || y &gt;= h) return;
+    int i = y * w + x;
+    // cv::remap treats integer map values as pixel centers -&gt; add 0.5 for texture space
+    float v = tex2D&lt;float&gt;(src, mapX[i] + 0.5f, mapY[i] + 0.5f);
+    dst[i] = (unsigned char)(v * 255.0f + 0.5f);
+}</code></pre>
+
+                <p>remap은 출력 픽셀마다 원본에서 읽는 위치가 불규칙하게 흩어진다. 왜곡이 큰 가장자리일수록 워프 안 스레드들이 읽는 위치가 행 방향으로 나란하지 않다. 이런 접근에서 texture의 2D 캐시와 하드웨어 보간이 가장 효과를 본다.</p>
+
+                <!-- 7. surface -->
+                <h2 id="surface"><i class="fa-solid fa-pen"></i> surface - cudaArray에 쓰기</h2>
+                <p>texture는 읽기 전용이다. cudaArray에 커널이 직접 써야 하면 <strong>surface object</strong>를 쓴다. cudaArray를 만들 때 <code>cudaArraySurfaceLoadStore</code> 플래그가 필요하다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cudaChannelFormatDesc fmt = cudaCreateChannelDesc&lt;float&gt;();
+cudaArray_t arr;
+cudaMallocArray(&amp;arr, &amp;fmt, width, height, cudaArraySurfaceLoadStore);
+
+cudaResourceDesc res = {};
+res.resType = cudaResourceTypeArray;
+res.res.array.array = arr;
+cudaSurfaceObject_t surf;
+cudaCreateSurfaceObject(&amp;surf, &amp;res);
+
+__global__ void Fill(cudaSurfaceObject_t s, int w, int h)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x &lt; w &amp;&amp; y &lt; h)
+        surf2Dwrite(float(x + y), s, x * sizeof(float), y);   // x is in BYTES
+}</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>surface의 x 좌표는 바이트 단위</strong>
+                        <code>surf2Dwrite</code>, <code>surf2Dread</code>의 x 좌표는 픽셀 번호가 아니라 바이트 오프셋이다. float 영상이면 <code>x * 4</code>를 넘겨야 한다. y는 행 번호 그대로다. 이 비대칭 때문에 자주 틀린다.
+                    </div>
+                </div>
+
+                <!-- 8. 3D LUT -->
+                <h2 id="lut3d"><i class="fa-solid fa-cube"></i> 응용 - 3D texture로 색 보정 LUT</h2>
+                <p>texture는 1D, 2D뿐 아니라 3D도 지원한다. 3D texture에 Linear 필터를 쓰면 하드웨어가 주변 8개 값을 섞는 trilinear 보간을 해 준다. 컬러 카메라의 색 보정에 쓰는 3D LUT(입력 RGB → 출력 RGB 표, 보통 17×17×17이나 33×33×33)에 딱 맞는다. 입력 RGB를 0~1 정규화 좌표로 그대로 넣으면 보정된 색이 나온다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// lut3d: float4 cudaArray of size N x N x N, normalizedCoords = 1, Linear, Clamp
+__global__ void ApplyLut3D(cudaTextureObject_t lut3d, const uchar4* in, uchar4* out, int n, int N)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i &gt;= n) return;
+    uchar4 p = in[i];
+    // map 0..255 onto texel centers of an N-point grid: 0 -&gt; 0.5/N, 255 -&gt; (N-0.5)/N
+    float s = (N - 1) / (255.0f * N), o = 0.5f / N;
+    float4 c = tex3D&lt;float4&gt;(lut3d, p.x * s + o, p.y * s + o, p.z * s + o);
+    out[i] = make_uchar4(__float2int_rn(c.x * 255.f), __float2int_rn(c.y * 255.f),
+                         __float2int_rn(c.z * 255.f), p.w);
+}</code></pre>
+
+                <!-- 9. 언제 쓰나 -->
+                <h2 id="when"><i class="fa-solid fa-scale-balanced"></i> texture를 쓸 때와 안 쓸 때</h2>
+                <p>예전 GPU(Kepler 이전)에서는 일반 global 읽기에 캐시가 약해서, 읽기 전용 데이터는 무조건 texture로 읽는 것이 이득이었다. 지금 GPU는 L1 캐시와 texture 캐시가 같은 하드웨어로 합쳐져 있어서, <strong>단순히 읽기만 하는 경우에는 차이가 거의 없다</strong>. <code>const __restrict__</code> 포인터로 읽으면 컴파일러가 읽기 전용 캐시 경로를 쓴다.</p>
+
+                <table class="spec-table">
+                    <tr><th>상황</th><th>선택</th></tr>
+                    <tr><td>정수 좌표로 행 방향 순서대로 읽음 (필터, 원소별 연산)</td><td>일반 포인터 (<code>const __restrict__</code>)</td></tr>
+                    <tr><td>소수 좌표 보간이 필요함 (리사이즈, 회전, remap)</td><td><strong>texture</strong></td></tr>
+                    <tr><td>영상 밖 좌표가 자주 나오고 경계 처리를 단순하게 하고 싶음</td><td><strong>texture</strong></td></tr>
+                    <tr><td>3D LUT 같은 다차원 표 보간</td><td><strong>3D texture</strong></td></tr>
+                    <tr><td>1/256 픽셀보다 정밀한 보간이 필요함</td><td>texture point 모드 + 직접 보간, 또는 일반 포인터</td></tr>
+                    <tr><td>같은 커널 안에서 읽고 쓰는 데이터</td><td>일반 포인터 (texture는 같은 커널 안에서 쓴 값이 보인다는 보장이 없음)</td></tr>
+                </table>
+
+                <!-- 10. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>+0.5 누락</strong>
+                        픽셀 중심은 (x + 0.5, y + 0.5)다. 빼먹으면 결과가 반 픽셀 밀리고 흐려진다. OpenCV 결과와 비교할 때 전체가 조금씩 다르면 가장 먼저 확인한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>같은 커널에서 쓰고 texture로 읽기</strong>
+                        texture 캐시는 커널 실행 중에 global memory가 바뀌어도 갱신을 보장하지 않는다. 커널 A가 쓴 결과는 커널 A가 끝난 뒤 다음 커널에서 texture로 읽는다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>texture object를 매 프레임 생성, 삭제</strong>
+                        <code>cudaCreateTextureObject</code>는 가벼운 편이지만 매 프레임 호출할 필요는 없다. 입력 버퍼 주소가 고정이면(17편의 설계 원칙) texture object도 처음에 한 번 만들어 재사용한다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>Pitch2D의 정렬 조건</strong>
+                        Pitch2D texture는 시작 주소와 pitch가 장치가 요구하는 정렬(<code>cudaDevAttrTexturePitchAlignment</code>)을 만족해야 한다. <code>cudaMallocPitch</code>로 잡은 메모리는 조건을 만족하지만, 큰 버퍼 중간을 잘라 ROI로 넘기면 정렬이 깨져 생성이 실패할 수 있다.
+                    </div>
+                </div>
+
+                <!-- 11. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table class="spec-table">
+                    <tr><th>요점</th><th>내용</th></tr>
+                    <tr><td>무엇을 해 주나</td><td>하드웨어 bilinear(3D는 trilinear) 보간, 경계 처리, 2D 캐시, 정규화 형 변환</td></tr>
+                    <tr><td>만드는 법</td><td><code>cudaResourceDesc</code>(무엇을) + <code>cudaTextureDesc</code>(어떻게) → <code>cudaCreateTextureObject</code></td></tr>
+                    <tr><td>좌표 규칙</td><td>픽셀 중심은 +0.5. 보간 가중치는 소수부 8비트</td></tr>
+                    <tr><td>잘 맞는 곳</td><td>리사이즈, 회전, 왜곡 보정, 3D LUT</td></tr>
+                    <tr><td>안 맞는 곳</td><td>정수 좌표 순차 읽기(차이 없음), 초정밀 서브픽셀 계측</td></tr>
+                </table>
+                <p>다음 편에서는 GPU의 또 다른 전용 하드웨어인 <strong>Tensor Core</strong>를 다룬다. 딥러닝 추론이 왜 그렇게 빠른지의 핵심이다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA CUDA C++ Programming Guide - Texture and Surface Memory</li>
+                        <li>NVIDIA CUDA C++ Programming Guide - Texture Fetching (Linear Filtering)</li>
+                        <li>NVIDIA CUDA Runtime API 문서 - Texture Object Management</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

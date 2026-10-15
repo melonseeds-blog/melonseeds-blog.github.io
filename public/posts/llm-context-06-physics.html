@@ -1,0 +1,485 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM 컨텍스트 엔지니어링 1 — 컨텍스트의 물리학 (lost in the middle·KV캐시) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 수식 블록 */
+        .formula {
+            background: #f8fafc; border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0;
+            padding: 14px 22px; margin: 16px 0;
+            font-family: 'Consolas', 'D2Coding', 'Cambria Math', serif;
+            font-size: 0.98rem; color: var(--text); text-align: center;
+            overflow-x: auto; line-height: 1.9;
+        }
+        .formula .formula-note {
+            display: block; margin-top: 6px;
+            font-family: 'Pretendard', sans-serif; font-size: 0.78rem;
+            color: var(--text-muted); text-align: center;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+            .formula { font-size: 0.85rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#what" data-section="what">컨텍스트란</a><a href="#lost-middle" data-section="lost-middle">Lost in the middle</a><a href="#attention-sink" data-section="attention-sink">Attention sink</a><a href="#kv-caching" data-section="kv-caching">KV·prompt 캐시</a><a href="#budget" data-section="budget">토큰 예산</a><a href="#long-context" data-section="long-context">긴 컨텍스트의 환상</a><a href="#takeaway" data-section="takeaway">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>LLM 컨텍스트 엔지니어링 1 — 윈도우는 크지만 공짜가 아니다</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-24</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 12분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>"프롬프트 엔지니어링"에서 "컨텍스트 엔지니어링"으로 넘어간 이유</li>
+                        <li>컨텍스트 위치에 따라 성능이 달라지는 "lost in the middle" 현상</li>
+                        <li>attention sink — 모델이 첫 토큰에 주의를 버리는 이유</li>
+                        <li>KV 캐시와 prompt caching이 컨텍스트 설계를 어떻게 바꾸는가</li>
+                        <li>"컨텍스트 윈도우 200K"가 "200K를 다 잘 쓴다"는 뜻이 아닌 이유</li>
+                    </ul>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>왜 "컨텍스트 엔지니어링"인가</strong>
+                        프롬프트 한 문장을 다듬는 건 빙산의 일각이다. 실제 LLM 시스템의 성패는 <strong>모델에게 무엇을, 어떤 순서로, 얼마나 넣을지</strong>를 설계하는 데서 갈린다. few-shot 예시·검색 결과·도구 출력·대화 이력·시스템 지시가 한정된 컨텍스트 윈도우를 두고 경쟁한다. 이 시리즈는 그 설계를 다룬다.
+                    </div>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what">컨텍스트란 무엇인가</a></li>
+                        <li><a href="#lost-middle">Lost in the middle — 위치가 성능을 바꾼다</a></li>
+                        <li><a href="#attention-sink">Attention sink — 첫 토큰의 비밀</a></li>
+                        <li><a href="#kv-caching">KV 캐시와 prompt caching</a></li>
+                        <li><a href="#budget">토큰 예산 배분</a></li>
+                        <li><a href="#long-context">긴 컨텍스트의 환상</a></li>
+                        <li><a href="#takeaway">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="what"><i class="fa-solid fa-window-maximize"></i> 컨텍스트란 무엇인가</h2>
+                <p>LLM에게 "컨텍스트"는 한 번의 추론에서 모델이 보는 <strong>입력 토큰 전체</strong>다. 시스템 프롬프트, 대화 이력, few-shot 예시, 검색해 온 문서, 도구 호출 결과 — 이 모두가 하나의 토큰 시퀀스로 합쳐져 모델에 들어간다. 모델은 이 시퀀스에만 근거해 다음 토큰을 만든다. <strong>컨텍스트에 없는 것은 모델에게 존재하지 않는다.</strong></p>
+                <p>중요한 전제: Transformer의 self-attention은 시퀀스 길이 <code>n</code>에 대해 연산·메모리가 <code>O(n²)</code>로 늘어난다. 그래서 컨텍스트는 공짜가 아니다. 길수록 느리고 비싸며, 뒤에서 보듯 <strong>길다고 다 잘 쓰지도 못한다</strong>. 컨텍스트 엔지니어링은 이 유한한 자원을 어떻게 배분하느냐의 문제다.</p>
+
+                <h2 id="lost-middle"><i class="fa-solid fa-arrows-down-to-line"></i> Lost in the middle — 위치가 성능을 바꾼다</h2>
+                <p>핵심 발견 하나: 같은 정보라도 <strong>컨텍스트의 어디에 놓이느냐</strong>에 따라 모델이 그것을 활용하는 정도가 크게 달라진다. Liu et al.(2023)의 "Lost in the Middle" 연구가 대표적이다.</p>
+                <p>긴 컨텍스트에서 정답 정보를 <strong>맨 앞이나 맨 뒤</strong>에 두면 모델이 잘 찾지만, <strong>가운데</strong>에 두면 성능이 눈에 띄게 떨어진다. 성능을 위치에 따라 그리면 <strong>U자 곡선</strong>이 나온다 — 양 끝은 높고 중간은 파인다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>실무 적용</strong>
+                        가장 중요한 정보(핵심 지시, 결정적 문서, 답에 직결되는 근거)는 컨텍스트의 <strong>맨 앞 또는 맨 끝</strong>에 배치한다. RAG에서 검색 문서를 넣을 때도 가장 관련도 높은 문서를 양 끝에 두는 재배치가 중간에 묻는 것보다 낫다. "중요한 건 가운데 묻지 마라"가 1차 원칙이다.
+                    </div>
+                </div>
+
+                <h2 id="attention-sink"><i class="fa-solid fa-anchor"></i> Attention sink — 첫 토큰의 비밀</h2>
+                <p>왜 맨 앞이 특히 강할까? 부분적 답이 <strong>attention sink</strong> 현상이다(Xiao et al., 2023). 모델은 "딱히 어디에 주목할 필요 없을 때" 남는 attention을 <strong>시퀀스의 첫 토큰들에 버리는(sink)</strong> 경향이 있다. 첫 토큰이 의미상 중요해서가 아니라, softmax attention이 어딘가에는 가중치를 둬야 하기 때문이다.</p>
+                <p>이 발견은 실용적 함의가 크다. 긴 대화에서 오래된 토큰을 잘라낼 때(sliding window) <strong>맨 앞 몇 토큰만은 남겨두면</strong> 성능이 유지된다(StreamingLLM). 첫 토큰을 함부로 버리면 sink가 사라져 모델이 불안정해진다. 시스템 프롬프트가 맨 앞에 오는 게 우연이 아니라 구조적으로도 유리한 셈이다.</p>
+
+                <h2 id="kv-caching"><i class="fa-solid fa-database"></i> KV 캐시와 prompt caching</h2>
+                <p>4편에서 봤듯 KV 캐시는 이미 계산한 토큰의 key/value를 저장해 재계산을 피한다. 이게 컨텍스트 <strong>설계</strong>에 직접 영향을 준다.</p>
+                <p><strong>Prompt caching</strong>은 한 발 더 나아가, 자주 쓰는 <strong>컨텍스트 앞부분(prefix)</strong>의 KV를 저장해 두고 재사용한다. 같은 시스템 프롬프트·few-shot·문서를 매번 다시 처리하지 않으므로 지연과 비용이 크게 준다.</p>
+                <pre><code>[고정 prefix: 시스템 프롬프트 + few-shot + 문서]  ← 캐시 (재사용)
+[가변 suffix: 이번 사용자 질문]                  ← 매번 새로 처리</code></pre>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>캐시가 컨텍스트 순서를 강제한다</strong>
+                        prompt caching은 <strong>prefix가 토큰 단위로 정확히 일치</strong>해야 적중한다. 그래서 "고정된 것을 앞, 변하는 것을 뒤"로 배치해야 한다. 자주 바뀌는 타임스탬프나 사용자 이름을 시스템 프롬프트 앞쪽에 끼우면 캐시가 매번 깨진다. <strong>컨텍스트 설계 = 무엇을 prefix로 고정할지 설계</strong>이기도 하다.</div>
+                </div>
+
+                <h2 id="budget"><i class="fa-solid fa-scale-balanced"></i> 토큰 예산 배분</h2>
+                <p>컨텍스트 윈도우는 한정된 예산이다. 그 안에서 여러 요소가 경쟁한다.</p>
+                <table>
+                    <tr><th>요소</th><th>배분 고려</th></tr>
+                    <tr><td>시스템 지시</td><td>맨 앞 고정(캐시·sink 유리). 간결하되 핵심 규칙은 빠짐없이</td></tr>
+                    <tr><td>few-shot 예시</td><td>많을수록 좋지 않다 — 3~5개가 효율적인 경우 많음(7편)</td></tr>
+                    <tr><td>검색 문서(RAG)</td><td>관련도 순 재배치, 과다 주입은 오히려 distraction</td></tr>
+                    <tr><td>대화 이력</td><td>오래된 것은 요약·압축. 단 맨 앞 sink는 보존</td></tr>
+                    <tr><td>출력 여유</td><td>max_tokens만큼 윈도우에서 미리 빼둬야 함</td></tr>
+                </table>
+                <p>핵심: <strong>"넣을 수 있다"와 "넣어야 한다"는 다르다.</strong> 윈도우가 남는다고 다 채우면, lost-in-the-middle과 distraction(7·8편)으로 오히려 성능이 떨어진다.</p>
+
+                <h2 id="long-context"><i class="fa-solid fa-ruler-horizontal"></i> 긴 컨텍스트의 환상</h2>
+                <p>"이 모델은 200K(또는 1M) 토큰을 지원한다"는 광고는 <strong>"그만큼 넣을 수 있다"</strong>는 뜻이지 <strong>"그만큼 다 잘 쓴다"</strong>는 뜻이 아니다. 이를 검증하는 게 needle-in-a-haystack(건초더미 속 바늘) 테스트다 — 긴 문맥 곳곳에 사실 하나를 숨기고 찾게 한다.</p>
+                <ul>
+                    <li>대부분의 모델은 길이가 늘수록, 특히 중간 위치에서 회수율이 떨어진다(lost in the middle).</li>
+                    <li>여러 바늘을 동시에 찾거나, 찾은 정보로 <strong>추론</strong>까지 해야 하면 더 어려워진다.</li>
+                    <li>그래서 "다 넣고 모델이 알아서"보다, <strong>관련된 것만 골라 잘 배치</strong>하는 RAG·압축이 여전히 유효하다.</li>
+                </ul>
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>원칙</strong>
+                        긴 컨텍스트는 "검색·정리를 안 해도 되는 면죄부"가 아니다. <strong>적게, 관련 있게, 잘 배치하라</strong>(less but relevant). 컨텍스트 윈도우가 커질수록 오히려 "무엇을 뺄지"가 중요한 설계 결정이 된다.
+                    </div>
+                </div>
+
+                <h2 id="takeaway"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>핵심 요약</strong>
+                        ① 컨텍스트에 없는 것은 모델에게 없다 — 그리고 attention은 O(n²)라 공짜가 아니다. ② 위치가 성능을 바꾼다(lost in the middle, U자) — 중요한 건 앞이나 끝에. ③ attention sink 때문에 맨 앞 토큰은 보존 가치가 크다. ④ prompt caching은 "고정 앞, 가변 뒤" 배치를 강제한다. ⑤ 긴 윈도우 ≠ 잘 활용 — less but relevant.
+                    </div>
+                </div>
+                <p>다음 글에서는 컨텍스트 안의 요소들을 실제로 <strong>어떻게 구성</strong>하는지 — few-shot 설계, 지시 위치, 구조화, CoT, 압축, RAG 청킹·리랭킹 — 를 다룬다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고</div>
+                    <ul>
+                        <li>Liu et al., "Lost in the Middle: How Language Models Use Long Contexts" (2023)</li>
+                        <li>Xiao et al., "Efficient Streaming Language Models with Attention Sinks" (StreamingLLM, 2023)</li>
+                        <li>Anthropic / OpenAI prompt caching 문서</li>
+                        <li>관련: <a href="llm-decoding-04-acceleration.html">디코딩 심화 4 — 추론 가속(KV 캐시)</a>, <a href="llm-context-07-construction.html">컨텍스트 7 — 구성 기법</a></li>
+                    </ul>
+                </div>
+</div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai-llm-context');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai-llm-context');
+</script>
+
+</body>
+</html>

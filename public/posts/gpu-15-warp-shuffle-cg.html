@@ -1,0 +1,719 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warp shuffle과 Cooperative Groups - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#warp-recap" data-section="warp-recap">워프 복습</a>
+        <a href="#shuffle" data-section="shuffle">shuffle 4종</a>
+        <a href="#mask" data-section="mask">mask</a>
+        <a href="#reduce" data-section="reduce">워프 리덕션</a>
+        <a href="#neighbor" data-section="neighbor">방송/이웃</a>
+        <a href="#vote" data-section="vote">투표</a>
+        <a href="#cg" data-section="cg">Cooperative Groups</a>
+        <a href="#grid-sync" data-section="grid-sync">그리드 동기화</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / <a href="gpu-01-cuda-intro.html">CUDA</a></span>
+                </div>
+                <h1>Warp shuffle과 Cooperative Groups</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-13</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 18분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>shuffle 함수 4종(shfl, up, down, xor)이 각각 어느 lane의 값을 읽는지</li>
+                        <li>mask의 의미와 분기 안에서 shuffle을 안전하게 쓰는 방법</li>
+                        <li>ballot, popc로 워프 집계 atomic과 워프 compaction 만들기, __match_any_sync</li>
+                        <li>Cooperative Groups로 워프, 타일, 분기 안 묶음을 객체로 다루기</li>
+                        <li>그리드 전체 동기화(grid.sync)와 cooperative 실행 조건</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#warp-recap">워프 복습과 lane 번호</a></li>
+                        <li><a href="#shuffle">shuffle 함수 4종</a></li>
+                        <li><a href="#mask">mask의 의미와 분기 안에서 쓰기</a></li>
+                        <li><a href="#reduce">워프 리덕션 두 가지 - down과 xor</a></li>
+                        <li><a href="#neighbor">방송과 이웃 값 읽기</a></li>
+                        <li><a href="#vote">투표 함수 - ballot, any, all</a></li>
+                        <li><a href="#cg">Cooperative Groups 기본</a></li>
+                        <li><a href="#grid-sync">그리드 전체 동기화</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 워프 복습 -->
+                <h2 id="warp-recap"><i class="fa-solid fa-rotate-left"></i> 워프 복습과 lane 번호</h2>
+                <p>7편에서 본 것처럼 GPU는 스레드 32개를 묶은 <strong>워프(warp)</strong> 단위로 명령을 실행한다. 워프 안에서 각 스레드의 위치를 lane이라고 부르며, 0~31 값을 갖는다. 1차원 블록에서는 다음처럼 계산한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int lane   = threadIdx.x &amp; 31;   // same as threadIdx.x % 32
+int warpId = threadIdx.x &gt;&gt; 5;   // same as threadIdx.x / 32
+
+// 2D block: flatten first
+int linear = threadIdx.y * blockDim.x + threadIdx.x;
+int lane2d = linear &amp; 31;</code></pre>
+
+                <p>13편과 14편에서 리덕션과 스캔의 마지막 단계를 shuffle로 처리했다. shuffle은 워프 안의 스레드끼리 <strong>레지스터 값을 직접 주고받는</strong> 명령이다. shared memory를 거치지 않으므로 다음 장점이 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>shared memory로 교환</th><th>shuffle로 교환</th></tr>
+                    <tr><td>명령 수</td><td>쓰기 + 동기화 + 읽기</td><td>명령 1개</td></tr>
+                    <tr><td>동기화</td><td><code>__syncthreads()</code> 또는 <code>__syncwarp()</code> 필요</td><td>명령 자체에 포함 (<code>_sync</code>)</td></tr>
+                    <tr><td>shared memory 사용량</td><td>배열 크기만큼</td><td>0 (점유율에 유리)</td></tr>
+                    <tr><td>뱅크 충돌</td><td>접근 방식에 따라 생김</td><td>없음</td></tr>
+                    <tr><td>교환 범위</td><td>블록 전체</td><td>워프 안 (32개)</td></tr>
+                </table>
+
+                <!-- 2. shuffle 4종 -->
+                <h2 id="shuffle"><i class="fa-solid fa-shuffle"></i> shuffle 함수 4종</h2>
+                <p>모든 shuffle 함수는 "각 lane이 <strong>어느 lane의 값을 읽을지</strong>"만 다르다. 값을 보내는 쪽이 아니라 받는 쪽 기준으로 생각하면 헷갈리지 않는다.</p>
+
+                <table class="spec-table">
+                    <tr><th>함수</th><th>lane i가 읽는 값</th><th>주로 쓰는 곳</th></tr>
+                    <tr><td><code>__shfl_sync(mask, v, src)</code></td><td>lane <code>src</code>의 v</td><td>방송(broadcast), 임의 순서 교환</td></tr>
+                    <tr><td><code>__shfl_up_sync(mask, v, d)</code></td><td>lane <code>i - d</code>의 v (i &lt; d면 자기 값 그대로)</td><td>스캔, 왼쪽 이웃 읽기</td></tr>
+                    <tr><td><code>__shfl_down_sync(mask, v, d)</code></td><td>lane <code>i + d</code>의 v (범위를 넘으면 자기 값 그대로)</td><td>리덕션, 오른쪽 이웃 읽기</td></tr>
+                    <tr><td><code>__shfl_xor_sync(mask, v, m)</code></td><td>lane <code>i ^ m</code>의 v</td><td>모든 lane이 결과를 갖는 리덕션 (butterfly)</td></tr>
+                </table>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" font-family="Consolas, monospace" font-size="11">
+                        <text x="10" y="18" font-family="Pretendard, sans-serif" font-size="12" font-weight="700" fill="#1e40af">__shfl_down_sync(v, 2) - lane 8개로 줄여 그림</text>
+                        <g fill="#eff6ff" stroke="#1e40af"><rect x="40" y="30" width="60" height="24"/><rect x="110" y="30" width="60" height="24"/><rect x="180" y="30" width="60" height="24"/><rect x="250" y="30" width="60" height="24"/><rect x="320" y="30" width="60" height="24"/><rect x="390" y="30" width="60" height="24"/><rect x="460" y="30" width="60" height="24"/><rect x="530" y="30" width="60" height="24"/></g>
+                        <g text-anchor="middle" fill="#1e3a5f"><text x="70" y="46">a0</text><text x="140" y="46">a1</text><text x="210" y="46">a2</text><text x="280" y="46">a3</text><text x="350" y="46">a4</text><text x="420" y="46">a5</text><text x="490" y="46">a6</text><text x="560" y="46">a7</text></g>
+                        <g stroke="#d97706" stroke-width="1.3"><line x1="210" y1="54" x2="72" y2="86"/><line x1="280" y1="54" x2="142" y2="86"/><line x1="350" y1="54" x2="212" y2="86"/><line x1="420" y1="54" x2="282" y2="86"/><line x1="490" y1="54" x2="352" y2="86"/><line x1="560" y1="54" x2="422" y2="86"/></g>
+                        <g fill="#fde68a" stroke="#d97706"><rect x="40" y="86" width="60" height="24"/><rect x="110" y="86" width="60" height="24"/><rect x="180" y="86" width="60" height="24"/><rect x="250" y="86" width="60" height="24"/><rect x="320" y="86" width="60" height="24"/><rect x="390" y="86" width="60" height="24"/></g>
+                        <g fill="#f1f5f9" stroke="#94a3b8"><rect x="460" y="86" width="60" height="24"/><rect x="530" y="86" width="60" height="24"/></g>
+                        <g text-anchor="middle" fill="#78350f"><text x="70" y="102">a2</text><text x="140" y="102">a3</text><text x="210" y="102">a4</text><text x="280" y="102">a5</text><text x="350" y="102">a6</text><text x="420" y="102">a7</text></g>
+                        <g text-anchor="middle" fill="#64748b"><text x="490" y="102">a6</text><text x="560" y="102">a7</text></g>
+
+                        <text x="10" y="140" font-family="Pretendard, sans-serif" font-size="12" font-weight="700" fill="#1e40af">__shfl_xor_sync(v, 1) - 짝끼리 맞바꿈</text>
+                        <g fill="#eff6ff" stroke="#1e40af"><rect x="40" y="150" width="60" height="24"/><rect x="110" y="150" width="60" height="24"/><rect x="180" y="150" width="60" height="24"/><rect x="250" y="150" width="60" height="24"/><rect x="320" y="150" width="60" height="24"/><rect x="390" y="150" width="60" height="24"/><rect x="460" y="150" width="60" height="24"/><rect x="530" y="150" width="60" height="24"/></g>
+                        <g text-anchor="middle" fill="#1e3a5f"><text x="70" y="166">a1</text><text x="140" y="166">a0</text><text x="210" y="166">a3</text><text x="280" y="166">a2</text><text x="350" y="166">a5</text><text x="420" y="166">a4</text><text x="490" y="166">a7</text><text x="560" y="166">a6</text></g>
+                        <g stroke="#059669" stroke-width="1.3" fill="none"><path d="M70 178 Q105 198 140 178"/><path d="M210 178 Q245 198 280 178"/><path d="M350 178 Q385 198 420 178"/><path d="M490 178 Q525 198 560 178"/></g>
+                        <text x="320" y="214" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="11" fill="#475569">회색 칸: 읽을 lane이 범위를 벗어나 자기 값을 그대로 가짐</text>
+                    </svg>
+                    <div class="diagram-caption">shuffle은 받는 쪽 기준으로 "누구의 값을 읽는가"가 다르다</div>
+                </div>
+
+                <h3 id="shuffle-args"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 인자 정리</h3>
+                <table class="spec-table">
+                    <tr><th>인자</th><th>의미</th></tr>
+                    <tr><td><code>mask</code></td><td>이 명령에 참여하는 lane의 비트 마스크. 워프 전체면 <code>0xffffffff</code></td></tr>
+                    <tr><td><code>v</code></td><td>주고받을 값. int, unsigned, long long, float, double, half 등. 구조체는 멤버마다 따로 shuffle</td></tr>
+                    <tr><td><code>src / d / m</code></td><td>읽을 lane 번호, 거리, XOR 마스크</td></tr>
+                    <tr><td><code>width</code> (선택)</td><td>워프를 width개씩 나눠 그 안에서만 교환. 2의 거듭제곱, 기본값 32</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>_sync 없는 옛 함수</strong>
+                        CUDA 9 이전 자료에는 <code>__shfl_down(v, d)</code>처럼 mask가 없는 함수가 나온다. 이 함수들은 CUDA 9에서 사용 중단되었고 Volta(compute capability 7.0) 이상에서는 쓸 수 없다. 옛 코드를 가져올 때는 반드시 <code>_sync</code> 버전으로 바꾼다.
+                    </div>
+                </div>
+
+                <!-- 3. mask -->
+                <h2 id="mask"><i class="fa-solid fa-mask"></i> mask의 의미와 분기 안에서 쓰기</h2>
+                <p>mask는 "이 명령을 <strong>함께 실행하는</strong> lane 목록"이다. Volta 이후 GPU는 워프 안의 스레드도 분기마다 따로 진행할 수 있어서(independent thread scheduling), shuffle을 실행하기 전에 mask에 적힌 lane들이 모두 그 지점에 도착할 때까지 맞춰 준다. mask에 적힌 lane이 실제로 그 명령에 도착하지 않으면 결과가 정의되지 않는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// OK: every lane of the warp reaches this line
+float total = WarpReduceSum(v);            // uses 0xffffffff inside
+
+// WRONG: only some lanes enter the branch but mask says "all 32"
+if (v &gt; 0.0f)
+    v += __shfl_down_sync(0xffffffff, v, 1);   // undefined result
+
+// OK: compute the mask of lanes that take the branch, before branching
+unsigned m = __ballot_sync(0xffffffff, v &gt; 0.0f);
+if (v &gt; 0.0f)
+    v += __shfl_down_sync(m, v, 1);        // only participating lanes in the mask
+                                           // (source lane must also be in m)</code></pre>
+
+                <p>가장 안전한 방법은 shuffle을 <strong>분기 밖에서</strong> 모든 lane이 실행하게 하고, 결과를 쓸지 말지만 분기로 정하는 것이다. 배열 끝을 넘는 스레드도 return하지 말고 0 같은 항등원을 들고 shuffle에 참여시킨다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void SumKernel(const float* in, float* out, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    // do NOT "if (i &gt;= n) return;" here - those lanes are needed by the shuffle
+    float v = (i &lt; n) ? in[i] : 0.0f;
+    v = WarpReduceSum(v);
+    if ((threadIdx.x &amp; 31) == 0) atomicAdd(out, v);
+}</code></pre>
+
+                <!-- 4. 리덕션 -->
+                <h2 id="reduce"><i class="fa-solid fa-compress"></i> 워프 리덕션 두 가지 - down과 xor</h2>
+                <p>13편에서 쓴 <code>__shfl_down_sync</code> 리덕션은 결과가 lane 0에만 남는다. 모든 lane이 결과를 알아야 하면(예: 평균을 구한 뒤 각자 자기 값에서 빼기) <code>__shfl_xor_sync</code>를 쓴다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// result only in lane 0
+__device__ __forceinline__ float WarpSumToLane0(float v)
+{
+    for (int o = 16; o &gt; 0; o &gt;&gt;= 1)
+        v += __shfl_down_sync(0xffffffff, v, o);
+    return v;
+}
+
+// result in all 32 lanes (butterfly / all-reduce)
+__device__ __forceinline__ float WarpSumAll(float v)
+{
+    for (int m = 16; m &gt; 0; m &gt;&gt;= 1)
+        v += __shfl_xor_sync(0xffffffff, v, m);
+    return v;
+}
+
+// example: subtract the warp mean from each value, no shared memory at all
+__global__ void CenterPerWarp(float* data)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    float v = data[i];
+    float mean = WarpSumAll(v) / 32.0f;
+    data[i] = v - mean;
+}</code></pre>
+
+                <p>xor 방식에서 lane 0의 값 변화를 따라가 보면, m=16일 때 lane 16의 값을, m=8일 때 lane 8(이 시점에 lane 8+24 합을 가진)의 값을 더하는 식으로 5단계 만에 32개 전체 합을 갖게 된다. 모든 lane이 대칭으로 같은 일을 하므로 마지막에 모두 같은 값을 갖는다.</p>
+
+                <!-- 5. 방송과 이웃 -->
+                <h2 id="neighbor"><i class="fa-solid fa-people-arrows"></i> 방송과 이웃 값 읽기</h2>
+
+                <h3 id="broadcast"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 방송 (broadcast)</h3>
+                <p>한 lane만 계산한 값을 워프 전체에 나눠 줄 때 쓴다. 대표 lane 하나가 atomicAdd로 출력 위치를 받아 오고 나머지에게 알려 주는 경우가 대표적이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int lane = threadIdx.x &amp; 31;
+int base = 0;
+if (lane == 0)
+    base = atomicAdd(&amp;globalCounter, 32);        // reserve 32 slots for the whole warp
+base = __shfl_sync(0xffffffff, base, 0);         // everyone gets lane 0's value
+output[base + lane] = myValue;</code></pre>
+
+                <h3 id="stencil"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 1차원 필터 - shared memory 없이 이웃 읽기</h3>
+                <p>가로 방향 3탭 필터처럼 바로 옆 픽셀만 필요하면 shuffle로 이웃 값을 받아 올 수 있다. 워프 경계에 있는 lane 0과 lane 31은 이웃이 다른 워프에 있으므로 global memory에서 직접 읽는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// out[x] = 0.25*in[x-1] + 0.5*in[x] + 0.25*in[x+1]   (one row, clamp at borders)
+__global__ void Blur3Row(const float* in, float* out, int width)
+{
+    int x    = blockIdx.x * blockDim.x + threadIdx.x;
+    int lane = threadIdx.x &amp; 31;
+    int xc   = min(x, width - 1);                     // keep all lanes alive for shuffles
+
+    float c = in[xc];
+    float l = __shfl_up_sync(0xffffffff, c, 1);       // value of lane-1
+    float r = __shfl_down_sync(0xffffffff, c, 1);     // value of lane+1
+
+    if (lane == 0)  l = in[max(xc - 1, 0)];           // neighbour lives in another warp
+    if (lane == 31) r = in[min(xc + 1, width - 1)];
+    if (x == 0)         l = c;                        // image borders
+    if (x == width - 1) r = c;
+
+    if (x &lt; width)
+        out[x] = 0.25f * l + 0.5f * c + 0.25f * r;
+}</code></pre>
+
+                <p>이 방식은 32개 중 2개 lane만 global 메모리를 추가로 읽고, 나머지 이웃은 레지스터 교환으로 끝난다. 필터 반경이 커지면 경계 처리가 복잡해지므로, 반경이 2~3을 넘으면 6편의 shared memory 타일 방식이 더 깔끔하다.</p>
+
+                <!-- 6. 투표 -->
+                <h2 id="vote"><i class="fa-solid fa-check-to-slot"></i> 투표 함수 - ballot, any, all</h2>
+                <p>투표 함수는 워프의 각 lane이 낸 참/거짓을 모아 준다. shuffle이 값을 주고받는다면, 투표는 조건 결과를 32비트로 압축해서 돌려준다.</p>
+
+                <table class="spec-table">
+                    <tr><th>함수</th><th>반환값</th></tr>
+                    <tr><td><code>__ballot_sync(mask, pred)</code></td><td>pred가 참인 lane의 비트가 1인 32비트 정수</td></tr>
+                    <tr><td><code>__any_sync(mask, pred)</code></td><td>하나라도 참이면 1</td></tr>
+                    <tr><td><code>__all_sync(mask, pred)</code></td><td>모두 참이면 1</td></tr>
+                    <tr><td><code>__activemask()</code></td><td>지금 이 코드를 실행 중인 lane의 마스크 (동기화는 하지 않음)</td></tr>
+                    <tr><td><code>__popc(x)</code></td><td>x에서 1인 비트 수</td></tr>
+                    <tr><td><code>__ffs(x)</code></td><td>가장 낮은 1 비트의 위치 + 1 (없으면 0)</td></tr>
+                </table>
+
+                <h3 id="warp-aggregated"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 워프 집계 atomic</h3>
+                <p>임계값을 넘는 픽셀 수를 세는 커널을 생각해 보자. 픽셀마다 <code>atomicAdd(&amp;count, 1)</code>을 하면 카운터 하나에 경합이 몰린다(14편). ballot으로 워프 안에서 먼저 세면 atomic이 워프당 1번으로 줄어든다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void CountBright(const unsigned char* img, int n, unsigned char th, unsigned int* count)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    bool bright = (i &lt; n) &amp;&amp; (img[i] &gt; th);
+
+    unsigned int votes = __ballot_sync(0xffffffff, bright);   // bit k = lane k is bright
+    if ((threadIdx.x &amp; 31) == 0 &amp;&amp; votes != 0)
+        atomicAdd(count, __popc(votes));                       // one atomic per warp
+}</code></pre>
+
+                <p>compaction에도 쓸 수 있다. 각 lane은 "나보다 낮은 번호 lane 중 조건을 만족한 수"를 알면 워프 안에서 자기 출력 위치를 정할 수 있다. 이것은 ballot 결과에서 자기보다 아래 비트만 남기고 세면 된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">unsigned int votes = __ballot_sync(0xffffffff, keep);
+int lane = threadIdx.x &amp; 31;
+unsigned int lowerMask = (1u &lt;&lt; lane) - 1u;          // bits of lanes below me
+int myOffset = __popc(votes &amp; lowerMask);            // warp-level exclusive scan of flags
+int warpCount = __popc(votes);
+
+int base = 0;
+if (lane == 0 &amp;&amp; warpCount &gt; 0) base = atomicAdd(&amp;outCount, warpCount);
+base = __shfl_sync(0xffffffff, base, 0);
+if (keep) out[base + myOffset] = value;</code></pre>
+
+                <h3 id="match"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 같은 값끼리 묶기 - __match_any_sync</h3>
+                <p>compute capability 7.0 이상에서는 <code>__match_any_sync(mask, value)</code>가 "나와 같은 값을 가진 lane들의 마스크"를 돌려준다. 히스토그램에서 같은 bin을 가진 lane끼리 묶고 대표 lane 하나만 atomic을 실행하면 경합이 크게 준다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">unsigned int bin    = img[i];
+unsigned int peers  = __match_any_sync(0xffffffff, bin);   // lanes with the same bin
+int leader = __ffs(peers) - 1;                              // lowest lane in the group
+if ((threadIdx.x &amp; 31) == leader)
+    atomicAdd(&amp;localHist[bin], __popc(peers));              // one atomic per distinct bin</code></pre>
+
+                <!-- 7. Cooperative Groups -->
+                <h2 id="cg"><i class="fa-solid fa-users-rectangle"></i> Cooperative Groups 기본</h2>
+                <p>지금까지는 "워프는 32개", "lane은 threadIdx.x &amp; 31", "mask는 0xffffffff"를 손으로 계산했다. <strong>Cooperative Groups</strong>(CUDA 9부터)는 스레드 묶음을 객체로 다루게 해서, 이런 계산과 동기화를 명시적으로 쓰게 해 준다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;cooperative_groups.h&gt;
+#include &lt;cooperative_groups/reduce.h&gt;     // cg::reduce (CUDA 11+)
+namespace cg = cooperative_groups;
+
+__global__ void SumCg(const float* in, float* out, int n)
+{
+    cg::thread_block block = cg::this_thread_block();             // whole block
+    cg::thread_block_tile&lt;32&gt; warp = cg::tiled_partition&lt;32&gt;(block); // one warp
+
+    int i = block.group_index().x * block.size() + block.thread_rank();
+    float v = (i &lt; n) ? in[i] : 0.0f;
+
+    v = cg::reduce(warp, v, cg::plus&lt;float&gt;());   // warp reduction in one call
+    if (warp.thread_rank() == 0)
+        atomicAdd(out, v);
+}</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>Cooperative Groups</th><th>예전 방식</th></tr>
+                    <tr><td><code>block.sync()</code></td><td><code>__syncthreads()</code></td></tr>
+                    <tr><td><code>block.thread_rank()</code></td><td>threadIdx를 1차원으로 편 값</td></tr>
+                    <tr><td><code>warp.thread_rank()</code></td><td><code>threadIdx.x &amp; 31</code></td></tr>
+                    <tr><td><code>warp.meta_group_rank()</code></td><td><code>threadIdx.x &gt;&gt; 5</code> (블록 안 워프 번호)</td></tr>
+                    <tr><td><code>warp.shfl_down(v, o)</code></td><td><code>__shfl_down_sync(0xffffffff, v, o)</code></td></tr>
+                    <tr><td><code>warp.ballot(p)</code>, <code>warp.any(p)</code></td><td><code>__ballot_sync</code>, <code>__any_sync</code></td></tr>
+                    <tr><td><code>cg::reduce(warp, v, op)</code></td><td>shuffle 반복문</td></tr>
+                    <tr><td><code>cg::inclusive_scan(warp, v)</code> (<code>cooperative_groups/scan.h</code>)</td><td>14편의 <code>WarpInclusiveScan</code></td></tr>
+                </table>
+
+                <h3 id="cg-tile"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 워프보다 작은 묶음</h3>
+                <p><code>tiled_partition&lt;16&gt;</code>, <code>&lt;8&gt;</code>, <code>&lt;4&gt;</code>처럼 워프를 더 작게 나눌 수 있다. 예를 들어 픽셀 하나의 RGBA 4채널을 lane 4개가 나눠 처리하거나, 3×3 같은 작은 단위 계산에 lane 8~16개를 묶을 때 유용하다. 타일 안에서의 shuffle, 리덕션이 그 타일 범위로 자동 제한된다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">auto tile4 = cg::tiled_partition&lt;4&gt;(cg::this_thread_block());
+float channelSum = cg::reduce(tile4, myChannelValue, cg::plus&lt;float&gt;());  // sum over 4 lanes</code></pre>
+
+                <h3 id="cg-coalesced"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 분기 안의 묶음 - coalesced_threads</h3>
+                <p>분기 안에서 지금 함께 실행 중인 스레드만 묶고 싶으면 <code>cg::coalesced_threads()</code>를 쓴다. mask를 직접 계산하지 않아도 되므로 앞의 "분기 안 shuffle" 문제를 깔끔하게 풀 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">if (bright)
+{
+    cg::coalesced_group active = cg::coalesced_threads();   // lanes that took this branch
+    unsigned int base = 0;
+    if (active.thread_rank() == 0)
+        base = atomicAdd(&amp;outCount, active.size());          // reserve slots for the group
+    base = active.shfl(base, 0);                             // broadcast inside the group
+    out[base + active.thread_rank()] = i;
+}</code></pre>
+
+                <!-- 8. grid sync -->
+                <h2 id="grid-sync"><i class="fa-solid fa-globe"></i> 그리드 전체 동기화</h2>
+                <p>Cooperative Groups의 가장 큰 기능은 <strong>그리드 전체 동기화</strong>다. 원래 CUDA에서 블록끼리 맞추는 유일한 방법은 커널을 끝내고 새로 실행하는 것이었다. <code>cg::this_grid().sync()</code>를 쓰면 커널 하나 안에서 "모든 블록이 여기까지 왔다"를 보장할 수 있다. 13편의 두 번 실행 리덕션을 커널 하나로 만들 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void ReduceOneKernel(const float* in, float* partial, float* out, int n)
+{
+    cg::grid_group grid = cg::this_grid();
+
+    float sum = 0.0f;
+    for (int i = grid.thread_rank(); i &lt; n; i += grid.size())
+        sum += in[i];
+    sum = BlockReduceSum(sum);                     // from part 13
+    if (threadIdx.x == 0) partial[blockIdx.x] = sum;
+
+    grid.sync();                                   // every block has written its partial
+
+    if (blockIdx.x == 0)
+    {
+        float v = 0.0f;
+        for (int b = threadIdx.x; b &lt; gridDim.x; b += blockDim.x)
+            v += partial[b];
+        v = BlockReduceSum(v);
+        if (threadIdx.x == 0) *out = v;
+    }
+}</code></pre>
+
+                <p>대신 실행 방법과 조건이 까다롭다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// 1) the device must support cooperative launch
+int supported = 0;
+cudaDeviceGetAttribute(&amp;supported, cudaDevAttrCooperativeLaunch, dev);
+
+// 2) all blocks must be resident at the same time -&gt; limit the grid size
+int blocksPerSM = 0, numSMs = 0;
+cudaOccupancyMaxActiveBlocksPerMultiprocessor(&amp;blocksPerSM, ReduceOneKernel, 256, 0);
+cudaDeviceGetAttribute(&amp;numSMs, cudaDevAttrMultiProcessorCount, dev);
+dim3 grid(blocksPerSM * numSMs), block(256);
+
+// 3) launch with the cooperative API, not &lt;&lt;&lt; &gt;&gt;&gt;
+void* args[] = { &amp;d_in, &amp;d_partial, &amp;d_out, &amp;n };
+cudaLaunchCooperativeKernel((void*)ReduceOneKernel, grid, block, args, 0, stream);</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>조건</th><th>이유</th></tr>
+                    <tr><td>모든 블록이 동시에 GPU에 올라가 있어야 함</td><td>먼저 끝난 블록이 아직 시작도 못 한 블록을 기다리면 영원히 멈춤. 그래서 그리드 크기를 점유율 계산으로 제한</td></tr>
+                    <tr><td><code>cudaLaunchCooperativeKernel</code>로 실행</td><td><code>&lt;&lt;&lt; &gt;&gt;&gt;</code>로 실행하면 grid.sync()가 동작하지 않음 (오류 또는 멈춤)</td></tr>
+                    <tr><td>장치가 지원해야 함</td><td>Pascal 이후 GPU 대부분이 지원하지만 드라이버 모드나 환경에 따라 다를 수 있으므로 위 속성 값으로 확인</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>언제 쓰는가</strong>
+                        반복 계산(예: 반복 솔버, 여러 단계를 거치는 작은 그래프 알고리즘)처럼 단계마다 커널을 다시 실행하는 비용이 계산보다 클 때 효과가 있다. 일반 영상 처리처럼 커널 하나가 충분히 큰 일을 하면 커널을 나눠 실행해도 손해가 적고 코드가 단순하다. 오래된 CUDA 버전에서는 grid.sync()에 <code>-rdc=true</code> 빌드 옵션이 필요했으므로, 예전 자료를 볼 때 참고한다.
+                    </div>
+                </div>
+
+                <!-- 9. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>shuffle 전에 return</strong>
+                        <code>if (i &gt;= n) return;</code> 뒤에 0xffffffff mask로 shuffle을 하면, 마지막 워프에서 빠진 lane 때문에 결과가 정의되지 않는다. 범위 밖 스레드도 항등원을 들고 shuffle에 참여시킨다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>블록 크기가 32의 배수가 아님</strong>
+                        블록 크기가 100이면 마지막 워프는 lane 4개뿐이다. 이 워프에서 0xffffffff mask를 쓰면 없는 lane을 기다리게 된다. 블록 크기는 항상 32의 배수로 잡는다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>source lane이 mask에 없음</strong>
+                        부분 mask를 쓸 때, 값을 읽어 올 lane도 mask에 포함되어 있어야 한다. 읽어 올 lane이 빠져 있으면 그 값은 정의되지 않는다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>grid.sync()를 일반 실행으로 호출</strong>
+                        <code>&lt;&lt;&lt;grid, block&gt;&gt;&gt;</code>로 실행한 커널에서 grid.sync()를 부르면 동작하지 않는다. 또 그리드 크기를 점유율 한도보다 크게 잡으면 cooperative 실행 자체가 실패한다(<code>cudaErrorCooperativeLaunchTooLarge</code>). 반환값을 반드시 확인한다.
+                    </div>
+                </div>
+
+                <!-- 10. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table class="spec-table">
+                    <tr><th>하고 싶은 일</th><th>쓸 함수</th></tr>
+                    <tr><td>워프 합계 (lane 0에만)</td><td><code>__shfl_down_sync</code> 반복, 또는 <code>cg::reduce</code></td></tr>
+                    <tr><td>워프 합계 (모든 lane에)</td><td><code>__shfl_xor_sync</code> 반복</td></tr>
+                    <tr><td>워프 스캔</td><td><code>__shfl_up_sync</code> 반복, 또는 <code>cg::inclusive_scan</code></td></tr>
+                    <tr><td>한 lane 값을 모두에게</td><td><code>__shfl_sync(mask, v, src)</code></td></tr>
+                    <tr><td>조건 만족 개수, 위치</td><td><code>__ballot_sync</code> + <code>__popc</code></td></tr>
+                    <tr><td>같은 값끼리 묶기</td><td><code>__match_any_sync</code> (cc 7.0+)</td></tr>
+                    <tr><td>분기 안 협력</td><td><code>cg::coalesced_threads()</code></td></tr>
+                    <tr><td>블록 사이 동기화</td><td><code>cg::this_grid().sync()</code> + cooperative 실행</td></tr>
+                </table>
+                <p>13~15편은 커널 안의 계산 패턴을 다뤘다. 다음 편부터는 커널 바깥, 즉 메모리 관리와 실행 방식으로 넘어간다. 16편은 CPU와 GPU가 포인터 하나를 같이 쓰는 <strong>Unified Memory</strong>를 깊이 본다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA Developer Blog, "Using CUDA Warp-Level Primitives"</li>
+                        <li>NVIDIA Developer Blog, "Cooperative Groups: Flexible CUDA Thread Programming"</li>
+                        <li>NVIDIA CUDA C++ Programming Guide - Warp Shuffle, Warp Vote, Cooperative Groups</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

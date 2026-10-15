@@ -1,0 +1,314 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>링크·백링크·그래프 뷰와 MOC 운영 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm{ color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#wikilink" data-section="wikilink">위키링크</a><a href="#backlink" data-section="backlink">백링크</a><a href="#graph" data-section="graph">그래프 뷰</a><a href="#moc" data-section="moc">MOC</a><a href="#howmany" data-section="howmany">링크 기준</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">옵시디언 시리즈</span>
+                </div>
+                <h1>링크·백링크·그래프 뷰와 MOC 운영</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-08-18</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 5분 분량</span>
+                    <span><i class="fa-solid fa-file-lines"></i> 옵시디언 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 글의 목적</strong>
+                        5편의 4·5단계, 연결이다. 위키링크가 실제로 어떻게 동작하는지, 백링크가 왜 링크보다 중요한지, 그래프 뷰는 어디까지 쓸모가 있는지, 그리고 링크가 늘어나면 반드시 필요해지는 허브 노트(MOC)를 어떻게 운영하는지를 정리한다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>위키링크의 동작 — 파일명 기준이라는 것의 의미</li>
+                        <li>백링크가 링크보다 중요한 이유</li>
+                        <li>그래프 뷰의 실제 쓸모와 한계</li>
+                        <li>MOC(허브 노트) — 언제 만들고 무엇을 담나</li>
+                        <li>링크를 언제, 얼마나 걸어야 하나</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#wikilink">위키링크의 동작</a></li>
+                        <li><a href="#backlink">백링크가 더 중요하다</a></li>
+                        <li><a href="#graph">그래프 뷰의 쓸모와 한계</a></li>
+                        <li><a href="#moc">MOC — 허브 노트</a></li>
+                        <li><a href="#howmany">언제 얼마나 거나</a></li>
+                        <li><a href="#wrap">정리와 다음 편</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="wikilink"><i class="fa-solid fa-link"></i> 위키링크의 동작</h2>
+                <p>옵시디언의 링크는 <code>[[노트 제목]]</code> 형태로 쓴다. 핵심은 이게 <strong>경로가 아니라 파일명을 가리킨다</strong>는 점이다. 여기서 몇 가지 실용적인 성질이 따라 나온다.</p>
+
+                <div class="layer-card">
+                    <h4><span class="lay-tag">1</span> 폴더를 옮겨도 안 깨진다</h4>
+                    <p>노트를 다른 폴더로 이동해도 링크는 그대로 작동한다. 4편에서 "분류를 잘못해도 비용이 거의 없다"고 한 근거가 이것이다.</p>
+                </div>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">2</span> 이름을 바꾸면 링크가 따라 바뀐다</h4>
+                    <p>노트 제목을 고치면 그 노트를 가리키던 모든 링크가 자동으로 갱신된다. 그래서 제목을 다듬는 데 부담이 없다 — 5편에서 제목을 주장 문장으로 쓰라고 한 게 실행 가능한 이유다.</p>
+                </div>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">3</span> 없는 노트에도 링크할 수 있다</h4>
+                    <p>아직 만들지 않은 노트 이름으로 링크를 걸면 링크가 걸린 상태로 남고, 클릭하면 그 자리에서 만들어진다. "나중에 쓸 것"을 표시하는 수단이 된다.</p>
+                </div>
+
+                <p>3번이 실제로는 꽤 유용하다. 글을 쓰다가 "여기서 이 개념을 따로 정리해야겠다" 싶을 때 흐름을 끊지 않고 링크만 걸어 두면 된다. 나중에 <strong>연결은 있는데 실체가 없는 노트</strong> 목록을 보면 그게 자연스럽게 할 일 목록이 된다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>파일명 기준의 대가</strong>
+                        볼트 전체에서 파일명이 유일해야 한다. 같은 이름의 노트가 두 폴더에 있으면 링크가 어느 쪽을 가리키는지 모호해진다. 제목을 주장 문장으로 쓰면 이 문제는 거의 저절로 해결된다 — 문장이 우연히 겹칠 일은 드물다.
+                    </div>
+                </div>
+
+                <h2 id="backlink"><i class="fa-solid fa-arrow-turn-up"></i> 백링크가 더 중요하다</h2>
+                <p>링크를 걸면 반대편 노트에는 <strong>백링크</strong>가 생긴다. A에서 B로 링크를 걸면, B를 열었을 때 "A가 나를 가리키고 있다"가 보인다. 자동이라 따로 할 일은 없다.</p>
+                <p>그런데 실제로 지식을 다시 찾아 쓸 때 도움이 되는 건 링크보다 백링크 쪽이다. 이유는 방향에 있다.</p>
+                <p>링크는 <strong>내가 이미 아는 곳으로 간다.</strong> A를 쓰면서 B를 떠올렸으니 건 것이라, A를 열면 B가 있다는 걸 이미 안다. 반면 백링크는 <strong>내가 잊은 곳에서 온다.</strong> B를 열었더니 반년 전에 쓴 A가, 그때는 관련 있다고 생각해서 링크를 걸어 둔 A가 거기 있다.</p>
+
+                <div class="key-point"><strong>핵심:</strong> 1편에서 "검색은 검색어를 알 때만 작동한다"고 했다. 백링크는 검색어 없이 도달하는 통로다. 링크를 걸 때의 나는 미래의 나에게 통로를 놓는 셈이다.</div>
+
+                <p>그래서 링크를 걸 때의 판단 기준도 달라진다. "지금 이 링크가 유용한가"가 아니라 <strong>"나중에 저쪽에서 이쪽이 보이면 유용한가"</strong>를 묻는 게 맞다. 이렇게 물으면 링크를 거는 위치가 자연스럽게 바뀐다 — 큰 개념에서 작은 개념으로 내려가는 링크보다, 구체적인 사례에서 일반 원칙으로 올라가는 링크가 더 값어치 있다.</p>
+
+                <h2 id="graph"><i class="fa-solid fa-circle-nodes"></i> 그래프 뷰의 쓸모와 한계</h2>
+                <p>옵시디언 하면 떠오르는 그 화면, 노트들이 점으로 이어진 그래프 뷰다. 솔직하게 정리하면 <strong>쓸모가 있긴 한데 기대만큼은 아니다.</strong></p>
+                <p>노트가 수백 장을 넘어가면 전체 그래프는 그냥 털뭉치가 된다. 예쁘지만 정보가 없다. 실제로 쓸모 있는 건 <strong>지역 그래프</strong>, 즉 특정 노트 하나를 중심으로 1~2단계 이웃만 보는 화면이다.</p>
+                <p>지역 그래프가 실제로 답해 주는 질문은 두 개다.</p>
+                <ul>
+                    <li><strong>이 노트가 고립돼 있나?</strong> 이웃이 없으면 링크를 안 건 것이고, 그러면 나중에 못 찾는다.</li>
+                    <li><strong>이 주변에 허브가 필요한가?</strong> 한 영역에 노트가 뭉쳐 있는데 서로 직접 연결만 얽혀 있으면, 그때가 MOC를 만들 시점이다.</li>
+                </ul>
+                <p>전체 그래프의 쓸모는 하나로 좁혀진다. <strong>덩어리가 몇 개인지 보는 것.</strong> 내 관심사가 서로 안 이어진 섬으로 나뉘어 있다면, 그 사이를 잇는 노트가 없다는 뜻이다. 그건 종종 새로 쓸 노트의 힌트가 된다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>그래프를 예쁘게 만들려고 링크를 걸지 않는다</strong>
+                        연결이 많으면 뿌듯하지만, 의미 없는 링크는 백링크를 오염시킨다. 나중에 B를 열었을 때 백링크가 30개인데 그중 유의미한 게 3개면, 결국 30개를 다 훑어야 한다. 링크는 적고 정확한 쪽이 낫다.
+                    </div>
+                </div>
+
+                <h2 id="moc"><i class="fa-solid fa-map"></i> MOC — 허브 노트</h2>
+                <p>노트가 쌓이면 링크만으로는 부족해진다. 개별 연결은 있는데 <strong>"이 주제에 내가 뭘 갖고 있지"</strong>를 한눈에 볼 방법이 없다. 이때 만드는 게 MOC(Map of Content), 허브 노트다.</p>
+                <p>MOC는 특별한 기능이 아니라 그냥 <strong>링크 목록을 담은 평범한 노트</strong>다. 형식이 정해져 있지도 않다. 다만 몇 가지 운영 규칙을 두면 쓸모가 유지된다.</p>
+
+                <ol class="decision-list">
+                    <li><strong>내용을 담지 않는다.</strong> MOC에 설명을 쓰기 시작하면 그건 또 하나의 긴 노트가 된다. 링크와 한 줄 안내만 둔다.</li>
+                    <li><strong>주제가 생겼을 때 만든다.</strong> 미리 만들어 두지 않는다. 관련 노트가 대여섯 장 쌓여서 "이거 모아 둬야겠다" 싶을 때가 적기다.</li>
+                    <li><strong>3편의 규칙대로 Areas나 Knowledge에 둔다.</strong> Areas의 MOC는 담당 영역 단위, Knowledge의 MOC는 개념 묶음 단위다.</li>
+                    <li><strong>분류가 아니라 안내로 쓴다.</strong> 노트를 MOC에 등록한다고 그 노트가 MOC에 속하는 건 아니다. 한 노트가 여러 MOC에 올라가도 된다. 폴더와 다른 점이 이거다.</li>
+                </ol>
+
+                <p>MOC가 생기면 진입 경로가 하나 더 생긴다. 검색으로 들어가거나, 백링크로 들어가거나, MOC에서 훑어 들어가거나. <strong>세 경로가 서로를 보완한다.</strong></p>
+
+                <h2 id="howmany"><i class="fa-solid fa-gauge"></i> 언제 얼마나 거나</h2>
+                <p>실전 규칙을 정리하면 이렇다.</p>
+                <ul>
+                    <li><strong>노트를 만들 때 최소 하나는 건다.</strong> 링크가 하나도 없는 노트는 사실상 없는 노트다. 어디에도 안 걸리면 나중에 못 찾는다.</li>
+                    <li><strong>글을 쓰는 도중에 건다.</strong> 다 쓰고 나서 "이제 링크를 걸어야지" 하면 안 하게 된다. 문장 안에서 개념이 나올 때 그 자리에 건다.</li>
+                    <li><strong>일반 원칙 쪽으로 올려 건다.</strong> 구체 사례 → 일반 원칙 방향의 링크가 백링크로 봤을 때 값어치가 크다.</li>
+                    <li><strong>연결이 애매하면 안 건다.</strong> "관련은 있는 것 같은데"는 걸지 않는다. 나중에 백링크를 훑을 때 잡음이 된다.</li>
+                </ul>
+                <p>고아 노트가 생기는 걸 완전히 막을 수는 없다. 주기적으로 확인해서 링크를 붙이거나, 정말 쓸 데가 없으면 보관으로 보낸다. 다만 이걸 매일 할 일로 만들 필요는 없다 — <strong>노트를 새로 쓸 때 하나씩 거는 습관</strong>이 있으면 고아는 거의 안 생긴다.</p>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 다음 편</h2>
+                <div class="key-point"><strong>핵심:</strong> 링크의 값어치는 반대편의 백링크에서 나온다. 검색어 없이 도달하는 통로를 미리 놓는 일이라, "나중에 저쪽에서 이쪽이 보이면 유용한가"를 기준으로 건다.</div>
+                <ul>
+                    <li>위키링크는 파일명 기준이라 폴더 이동에 견디고, 제목을 바꾸면 링크가 따라 갱신된다.</li>
+                    <li>없는 노트로도 링크할 수 있다. 그 목록이 자연스럽게 할 일 목록이 된다.</li>
+                    <li>전체 그래프는 덩어리 개수를 보는 용도, 실무는 지역 그래프. 예쁘게 만들려고 링크를 걸지 않는다.</li>
+                    <li>MOC는 링크 목록만 담는 평범한 노트다. 관련 노트가 대여섯 장 쌓였을 때 만든다.</li>
+                    <li>노트를 만들 때 최소 하나는 걸고, 글 쓰는 도중에 걸고, 애매하면 안 건다.</li>
+                </ul>
+                <p>여기까지가 개념과 구조다. 다음 편부터는 옵시디언 기능으로 들어간다. 7편은 템플릿이다 — 커뮤니티 플러그인 없이 코어 템플릿 기능만으로 노트 5종을 어떻게 찍어 내는지, 그리고 템플릿에 무엇을 넣고 무엇을 빼야 하는지를 다룬다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Obsidian 도움말(내부 링크·백링크·그래프 뷰) — <a href="https://help.obsidian.md/" target="_blank" rel="noopener">help.obsidian.md</a></li>
+                        <li>Zettelkasten 개론 — <a href="https://zettelkasten.de/introduction/" target="_blank" rel="noopener">zettelkasten.de/introduction</a></li>
+                        <li>열람일: 2026-08-18.</li>
+                        <li>함께 보기: <a href="obsidian-05-atomize.html">메모가 지식이 되기까지 — 원자화 다섯 단계</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tool-obsidian');
+    renderPostNav('tool-obsidian');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Team 설계 — 역할 분리로 문서 자동화 (Release Assistant 예시) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm{ color:#94a3b8; }
+        .flow{ list-style:none; padding:0; margin:20px 0 30px; }
+        .flow li{ position:relative; padding:12px 16px; background:var(--card-bg); border:1px solid var(--border); border-left:4px solid var(--melon); border-radius:8px; margin-bottom:28px; font-size:0.9rem; line-height:1.6; }
+        .flow li:not(:last-child)::after{ content:'\25BC'; position:absolute; left:24px; bottom:-22px; color:var(--melon); font-size:0.8rem; }
+        .flow .step{ display:inline-block; background:var(--melon); color:white; font-weight:700; font-size:0.75rem; padding:1px 8px; border-radius:6px; margin-right:8px; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why" data-section="why">왜 "팀"인가</a><a href="#release" data-section="release">Release Assistant</a><a href="#principles" data-section="principles">Agent 설계 원칙</a><a href="#orchestration" data-section="orchestration">오케스트레이션</a><a href="#others" data-section="others">다른 팀 구성</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">도구/환경 설정</span>
+                </div>
+                <h1>Agent Team 설계 — 역할 분리로 문서 자동화 (Release Assistant 예시)</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-solid fa-people-group"></i> 도구/환경 설정</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 글의 목적</strong>
+                        하나의 에이전트에게 큰 업무를 통째로 맡기는 대신, 역할이 분명한 여러 서브에이전트를 "팀"처럼 조합해 복합 업무를 처리하는 설계를 다룬다. 릴리스 문서 자동화(Release Assistant)를 구체 예시로 삼아, 어떻게 나누고·병렬로 돌리고·서로 검토하게 만드는지 본다. 명령어·파일 경로는 버전에 따라 바뀔 수 있으니 세부는 공식 문서를 함께 확인한다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>왜 하나가 아니라 "팀"으로 나누는가 — 병렬·상호검토·컨텍스트 분리</li>
+                        <li>Release Assistant 흐름 — 분석 → 문서 병렬 작성 → 코드 기준 리뷰</li>
+                        <li>좋은 Agent 설계 원칙 — 좁은 책임·명확한 출력·실패 보고</li>
+                        <li>오케스트레이션 — 코드를 단일 기준으로 둔 교차 검증</li>
+                        <li>다른 팀 구성으로의 일반화</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">왜 하나가 아니라 "팀"인가</a></li>
+                        <li><a href="#release">Release Assistant 예시</a></li>
+                        <li><a href="#principles">좋은 Agent 설계 원칙</a></li>
+                        <li><a href="#orchestration">오케스트레이션 — 단일 기준과 교차 검증</a></li>
+                        <li><a href="#others">다른 팀 구성으로 일반화</a></li>
+                        <li><a href="#wrap">정리와 주의</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why"><i class="fa-solid fa-circle-question"></i> 왜 하나가 아니라 "팀"인가</h2>
+                <p>복합 업무를 에이전트 하나에 통째로 맡기면 세 가지가 걸린다. 컨텍스트 윈도우가 빠르게 차고, 서로 다른 성격의 작업(분석·작성·검토)이 한 흐름에 뒤섞이며, 스스로 쓴 것을 스스로 검토하는 자기 채점의 한계가 남는다.</p>
+                <p>역할을 나눈 "팀" 설계는 이 셋을 각각 푼다. <strong>병렬 처리</strong>로 서로 독립적인 작업을 동시에 돌려 속도를 올리고, <strong>상호 검토</strong>로 작성자와 검토자를 분리해 품질을 높이며, <strong>컨텍스트 분리</strong>로 각 에이전트가 자기 일에 필요한 것만 들고 있게 한다. 핵심은 사람 조직과 같다 — 한 사람이 다 하는 것보다, 좁은 역할을 잘하는 사람들이 나눠 맡고 서로 확인할 때 결과가 좋아진다.</p>
+                <p>여기서 각 역할은 별도 컨텍스트를 가진 서브에이전트로 구현한다. 메인 에이전트는 팀을 지휘하는 오케스트레이터가 되고, 각 서브에이전트는 자기 몫만 처리한 뒤 <strong>요약 결과만</strong> 돌려준다.</p>
+
+                <h2 id="release"><i class="fa-solid fa-diagram-project"></i> Release Assistant 예시</h2>
+                <p>릴리스마다 사람이 손으로 쓰던 문서 묶음을 자동화하는 팀을 생각해 본다. 릴리스 한 번에 보통 릴리스 노트, API 문서 갱신, 마이그레이션 가이드, QA 체크리스트가 함께 필요하다. 이걸 한 에이전트가 순차로 쓰면 느리고, 뒤로 갈수록 앞의 맥락이 흐려진다. 대신 아래 흐름으로 나눈다.</p>
+
+                <ul class="flow">
+                    <li><span class="step">1</span> <strong>코드 분석 Agent</strong> — 이번 릴리스의 변경(커밋·diff·이슈)을 읽어, 무엇이 추가·변경·제거됐는지 구조화된 요약을 만든다. 이 요약이 이후 모든 문서의 <strong>공통 입력</strong>이 된다.</li>
+                    <li><span class="step">2</span> <strong>분배</strong> — 오케스트레이터가 그 분석 결과를 각 문서 작성 Agent에 나눠 전달한다. 각 작성 Agent는 자기 문서에 필요한 부분만 받는다.</li>
+                    <li><span class="step">3</span> <strong>문서 작성 Agent들 (병렬)</strong> — Release Note / API 문서 / Migration Guide / QA Checklist를 각각 담당하는 네 Agent가 동시에 작성한다. 서로 독립적이라 병렬로 돌아가 시간이 크게 줄어든다.</li>
+                    <li><span class="step">4</span> <strong>문서 리뷰 Agent</strong> — 완성된 문서들을 다시 <strong>코드를 기준</strong>으로 대조해, 실제 변경과 어긋나거나 빠진 항목이 없는지 정합성을 검토한다. 작성자와 검토자가 분리돼 자기 채점의 한계를 넘는다.</li>
+                </ul>
+
+                <p>흐름을 개념적으로만 옮기면 다음과 같다. 실제 API·명령은 버전에 따라 다르니 형태만 참고한다.</p>
+                <pre class="code"><code><span class="cm"># 오케스트레이터의 개념적 흐름 (의사코드)</span>
+analysis = run_agent("code-analyzer", input=diff_of_release)
+
+<span class="cm"># 분석 하나를 여러 작성 Agent에 병렬로 분배</span>
+docs = run_parallel([
+    ("release-note-writer",   analysis),
+    ("api-doc-writer",        analysis),
+    ("migration-guide-writer",analysis),
+    ("qa-checklist-writer",   analysis),
+])
+
+<span class="cm"># 코드(analysis)를 기준으로 문서 정합성 검토</span>
+report = run_agent("doc-reviewer", input={
+    "source_of_truth": analysis,
+    "documents": docs,
+})</code></pre>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>왜 분석을 먼저 한 번만 하나</strong>
+                        네 작성 Agent가 각자 코드를 처음부터 다시 읽으면, 같은 일을 네 번 하고 해석이 조금씩 어긋난다. 분석 Agent가 한 번 만든 구조화 요약을 공유 입력으로 두면, 모든 문서가 <strong>같은 사실</strong>에서 출발해 서로 모순되지 않는다.
+                    </div>
+                </div>
+
+                <h2 id="principles"><i class="fa-solid fa-ruler-combined"></i> 좋은 Agent 설계 원칙</h2>
+                <p>팀이 잘 굴러가려면 각 구성원의 정의가 좋아야 한다. 반복해서 효과를 본 원칙은 아래 세 가지다.</p>
+
+                <table class="compare-table">
+                    <tr><th>원칙</th><th>뜻</th><th>왜 중요한가</th></tr>
+                    <tr><td><strong>좁은 책임</strong></td><td>한 Agent는 한 가지만 잘하게 한다. "문서 다 써"가 아니라 "릴리스 노트만 쓴다".</td><td>역할이 좁을수록 프롬프트가 명확해지고, 병렬·교체·재사용이 쉬워진다.</td></tr>
+                    <tr><td><strong>명확한 출력 형식</strong></td><td>결과의 구조를 미리 못박는다(정해진 섹션·필드·Markdown 틀).</td><td>다음 Agent가 그 출력을 입력으로 받으므로, 형식이 흔들리면 파이프라인이 깨진다.</td></tr>
+                    <tr><td><strong>실패 보고</strong></td><td>못 하겠으면 지어내지 말고 "무엇이 부족한지"를 보고하게 한다.</td><td>조용한 환각보다 명시적 실패가 낫다. 오케스트레이터가 재시도·보완을 판단할 수 있다.</td></tr>
+                </table>
+
+                <p>이 원칙들은 서로 맞물린다. 책임이 좁아야 출력 형식을 못박기 쉽고, 출력이 정형화돼야 실패도 정형화된 형태로 보고된다. 정리하면 다음과 같다.</p>
+                <ul>
+                    <li><strong>한 가지만</strong> — 역할·도구·권한을 그 일에 필요한 최소로 좁힌다.</li>
+                    <li><strong>계약을 정한다</strong> — 입력이 무엇이고 출력이 어떤 형태인지를 에이전트 정의에 명시한다.</li>
+                    <li><strong>모르면 모른다고</strong> — 근거가 부족하면 채워 넣지 말고 부족분을 되돌려준다.</li>
+                    <li><strong>부작용을 격리한다</strong> — 파일 쓰기·외부 호출은 담당 Agent에만 허용해 예측 가능성을 지킨다.</li>
+                </ul>
+
+                <h2 id="orchestration"><i class="fa-solid fa-sitemap"></i> 오케스트레이션 — 단일 기준과 교차 검증</h2>
+                <p>여러 문서가 병렬로 나오면 필연적으로 "서로 안 맞는" 위험이 생긴다. 릴리스 노트는 새 파라미터를 언급하는데 API 문서엔 빠지는 식이다. 이를 막는 설계 원칙이 <strong>단일 기준(source of truth)</strong>이다.</p>
+                <p>이 파이프라인에서 단일 기준은 문서가 아니라 <strong>코드(그리고 코드에서 뽑은 분석 결과)</strong>다. 모든 문서는 코드에서 파생되고, 마지막 리뷰 Agent는 문서끼리 비교하는 게 아니라 <strong>문서를 코드에 대조</strong>한다. 기준이 하나이므로, 세 문서가 서로를 참조하며 오차가 누적되는 상황을 피한다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                    <div class="callout-body">
+                        <strong>교차 검증의 방향</strong>
+                        검토를 "문서 A vs 문서 B"로 하면 둘 다 틀렸을 때 통과해 버린다. "각 문서 vs 코드"로 하면 기준이 흔들리지 않는다. 리뷰 Agent에는 항상 <strong>기준이 되는 사실(분석 결과)</strong>과 <strong>검증 대상(문서)</strong>을 함께 넘겨, 어긋난 지점을 목록으로 되돌려받는다.
+                    </div>
+                </div>
+
+                <p>오케스트레이터의 역할도 정리된다. 스스로 문서를 쓰지 않고, (1) 분석을 한 번 돌리고, (2) 결과를 분배해 병렬 작성을 띄우고, (3) 리뷰 결과를 받아 통과·재작성을 판단한다. 지휘에 집중하므로 메인 컨텍스트가 문서 초안으로 가득 차지 않는다.</p>
+
+                <h2 id="others"><i class="fa-solid fa-users-gear"></i> 다른 팀 구성으로 일반화</h2>
+                <p>같은 골격 — <strong>분석 → 병렬 실행 → 기준 대비 검토</strong> — 은 릴리스 문서에만 쓰이지 않는다. 역할 이름만 바꾸면 여러 업무에 그대로 옮겨 간다.</p>
+
+                <table class="compare-table">
+                    <tr><th>팀 구성 예시</th><th>분석/입력 역할</th><th>병렬 실행 역할</th><th>검토 기준(단일 기준)</th></tr>
+                    <tr><td><strong>기술 지원팀</strong></td><td>문의·로그 분류 Agent</td><td>답변 초안 · 재현 절차 · 관련 문서 검색 Agent</td><td>제품 사양·실제 코드 동작</td></tr>
+                    <tr><td><strong>문서 기반 개발팀</strong></td><td>요구/스펙 분석 Agent</td><td>구현 · 테스트 작성 · 예제 작성 Agent</td><td>스펙 문서</td></tr>
+                    <tr><td><strong>알고리즘 개발팀</strong></td><td>문제·데이터 분석 Agent</td><td>후보 구현 · 벤치마크 · 시각화 Agent</td><td>정답 기준·성능 지표</td></tr>
+                </table>
+
+                <p>공통점은 뚜렷하다. 먼저 흩어진 입력을 한 번 정제해 <strong>공통 입력</strong>을 만들고, 서로 독립적인 산출물을 <strong>병렬</strong>로 뽑고, 마지막에 <strong>흔들리지 않는 기준</strong>에 대조한다. 도메인이 달라도 이 세 박자는 유지된다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>팀이 항상 정답은 아니다</strong>
+                        작은 일까지 여러 Agent로 쪼개면 위임·조율 오버헤드가 이득을 넘어선다. 산출물이 서로 독립적이지 않거나, 단일 기준을 정의하기 어렵거나, 그냥 한 흐름에서 끝나는 일이라면 굳이 팀으로 만들 필요가 없다. 팀 설계는 "병렬로 나눌 만하고, 검토가 품질을 실제로 끌어올릴 때" 값을 한다.
+                    </div>
+                </div>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 주의</h2>
+                <ul>
+                    <li><strong>한 문장 요약</strong> — 복합 업무는 좁은 역할의 서브에이전트로 나눠, 병렬로 처리하고 코드 같은 단일 기준에 대조하면 품질과 속도가 함께 오른다.</li>
+                    <li><strong>세 박자</strong> — 분석으로 공통 입력을 만들고 → 독립 산출물을 병렬로 뽑고 → 흔들리지 않는 기준에 교차 검증한다.</li>
+                    <li><strong>구성원 원칙</strong> — 좁은 책임, 명확한 출력 형식, 실패 보고. 이 셋이 파이프라인의 안정성을 만든다.</li>
+                    <li><strong>과설계 경계</strong> — 병렬로 나눌 만하고 검토가 실제로 값을 할 때만 팀으로 만든다. 작은 일엔 하나가 낫다.</li>
+                    <li><strong>세부는 공식 문서로</strong> — 서브에이전트 정의·호출 방식은 버전에 따라 바뀐다. 구조를 뼈대로 두고 정확한 사양은 문서에서 확인한다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Claude Code Subagents 공식 문서 — <a href="https://docs.claude.com/en/docs/claude-code/sub-agents" target="_blank" rel="noopener">docs.claude.com/en/docs/claude-code/sub-agents</a></li>
+                        <li>열람일: 2026-06-25. 세부 사양·호출 방식은 변동될 수 있어 공식 문서 확인 권장.</li>
+                        <li>함께 보기: <a href="claude-code-architecture.html">Claude Code를 구조로 이해하기 — 6가지 확장 메커니즘과 선택 기준</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tool');
+    renderPostNav('tool');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

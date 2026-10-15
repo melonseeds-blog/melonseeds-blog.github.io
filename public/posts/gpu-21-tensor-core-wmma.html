@@ -1,0 +1,642 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tensor Core와 WMMA - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#what" data-section="what">Tensor Core란</a>
+        <a href="#precision" data-section="precision">정밀도</a>
+        <a href="#wmma" data-section="wmma">WMMA</a>
+        <a href="#gemm" data-section="gemm">행렬 곱</a>
+        <a href="#libraries" data-section="libraries">라이브러리</a>
+        <a href="#conv" data-section="conv">컨볼루션</a>
+        <a href="#verify" data-section="verify">사용 확인</a>
+        <a href="#lower-level" data-section="lower-level">낮은 수준</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / <a href="gpu-01-cuda-intro.html">CUDA</a></span>
+                </div>
+                <h1>Tensor Core와 WMMA - 행렬 곱 전용 하드웨어</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-13</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 17분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Tensor Core가 CUDA core와 다른 점과 세대별 지원 형식</li>
+                        <li>FP16, BF16, TF32, INT8과 mixed precision이 동작하는 이유</li>
+                        <li>WMMA API(fragment, load, mma, store)와 행렬 곱 커널</li>
+                        <li>cuBLAS, cuDNN, TensorRT, CUTLASS가 Tensor Core를 쓰게 하는 조건</li>
+                        <li>컨볼루션이 im2col로 행렬 곱이 되는 원리와 프로파일러로 사용 여부 확인</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#what">Tensor Core란</a></li>
+                        <li><a href="#precision">낮은 정밀도로 계산해도 되는 이유</a></li>
+                        <li><a href="#wmma">WMMA API</a></li>
+                        <li><a href="#gemm">WMMA로 행렬 곱 전체 계산하기</a></li>
+                        <li><a href="#libraries">실무에서는 라이브러리가 Tensor Core를 쓴다</a></li>
+                        <li><a href="#conv">컨볼루션이 행렬 곱이 되는 원리</a></li>
+                        <li><a href="#verify">Tensor Core를 실제로 쓰는지 확인</a></li>
+                        <li><a href="#lower-level">WMMA 아래의 단계</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. Tensor Core란 -->
+                <h2 id="what"><i class="fa-solid fa-microchip"></i> Tensor Core란</h2>
+                <p>지금까지 짠 커널의 덧셈, 곱셈은 모두 <strong>CUDA core</strong>가 처리했다. CUDA core는 스레드 하나가 명령 하나로 값 하나를 계산한다(FMA라면 a × b + c 하나). <strong>Tensor Core</strong>는 행렬 곱만 전문으로 하는 별도 연산기로, 명령 하나로 <strong>작은 행렬 곱 전체</strong>를 계산한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>CUDA core</th><th>Tensor Core</th></tr>
+                    <tr><td>한 번에 하는 일</td><td>스칼라 FMA 1개: d = a × b + c</td><td>작은 행렬 곱 누적: D = A × B + C</td></tr>
+                    <tr><td>실행 단위</td><td>스레드</td><td>워프 (32개 스레드가 함께 한 행렬 곱을 맡음)</td></tr>
+                    <tr><td>주 데이터 형식</td><td>FP32, FP64, INT32</td><td>FP16, BF16, TF32, INT8, FP8 등 낮은 정밀도 입력 + 높은 정밀도 누적</td></tr>
+                    <tr><td>처리량</td><td>기준</td><td>같은 GPU에서 행렬 곱 처리량이 수 배에서 수십 배</td></tr>
+                    <tr><td>할 수 있는 일</td><td>모든 계산</td><td>행렬 곱(과 행렬 곱으로 바꿀 수 있는 계산)뿐</td></tr>
+                </table>
+
+                <p>딥러닝 신경망의 계산은 대부분이 행렬 곱이다. 완전 연결 층은 그 자체로 행렬 곱이고, 컨볼루션 층도 행렬 곱으로 바꿔서 계산한다(아래 im2col). 그래서 TensorRT(11편)로 FP16, INT8 추론을 하면 속도가 크게 오르는 이유의 대부분이 Tensor Core다.</p>
+
+                <h3 id="generations"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 세대별 지원 형식</h3>
+                <table class="spec-table">
+                    <tr><th>아키텍처</th><th>대표 GPU</th><th>compute capability</th><th>추가된 형식</th></tr>
+                    <tr><td>Volta</td><td>V100, Titan V</td><td>7.0</td><td>FP16 입력, FP16/FP32 누적 (1세대)</td></tr>
+                    <tr><td>Turing</td><td>RTX 20xx, T4</td><td>7.5</td><td>INT8, INT4</td></tr>
+                    <tr><td>Ampere</td><td>A100, RTX 30xx, Jetson Orin</td><td>8.0, 8.6, 8.7</td><td>TF32, BF16, FP64(A100), 2:4 구조적 희소성</td></tr>
+                    <tr><td>Ada / Hopper</td><td>RTX 40xx, L4 / H100</td><td>8.9 / 9.0</td><td>FP8</td></tr>
+                    <tr><td>Blackwell</td><td>B200, RTX 50xx</td><td>10.x, 12.x</td><td>FP4, FP6 등 더 낮은 정밀도</td></tr>
+                </table>
+                <p>GTX 10xx(Pascal) 이전 GPU에는 Tensor Core가 없다. 사용하는 GPU의 compute capability는 <code>deviceQuery</code>나 <code>cudaGetDeviceProperties</code>로 확인한다(1편).</p>
+
+                <!-- 2. 낮은 정밀도 -->
+                <h2 id="precision"><i class="fa-solid fa-ruler"></i> 낮은 정밀도로 계산해도 되는 이유</h2>
+                <p>Tensor Core는 입력을 FP16이나 INT8처럼 낮은 정밀도로 받는다. 그런데 결과를 더해 나가는 누적(accumulate)은 FP32 같은 높은 정밀도로 할 수 있다. 이것이 핵심이다.</p>
+
+                <table class="spec-table">
+                    <tr><th>형식</th><th>비트 (부호/지수/가수)</th><th>표현 범위</th><th>특징</th></tr>
+                    <tr><td>FP32</td><td>1 / 8 / 23</td><td>약 ±3.4×10<sup>38</sup></td><td>기준</td></tr>
+                    <tr><td>TF32</td><td>1 / 8 / 10 (19비트만 사용)</td><td>FP32와 같음</td><td>FP32 데이터를 그대로 넣으면 가수만 줄여 계산. 코드 변경 없이 Ampere+ Tensor Core 사용</td></tr>
+                    <tr><td>FP16</td><td>1 / 5 / 10</td><td>약 ±65504</td><td>범위가 좁아서 큰 값은 넘침(overflow) 주의</td></tr>
+                    <tr><td>BF16</td><td>1 / 8 / 7</td><td>FP32와 같음</td><td>정밀도는 낮지만 범위가 넓어 학습에서 안정적</td></tr>
+                    <tr><td>INT8</td><td>정수 8비트</td><td>-128 ~ 127</td><td>스케일 값과 함께 사용(양자화). 보정(calibration) 필요</td></tr>
+                </table>
+
+                <p>신경망 가중치와 활성값은 원래 잡음이 섞인 근사값이라, 곱하는 입력의 정밀도를 낮춰도 최종 정확도가 거의 변하지 않는 경우가 많다. 반면 수천 개를 더하는 누적 단계는 오차가 쌓이므로 FP32로 한다. 이 조합이 "mixed precision"이다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>영상 계측 계산에 무조건 쓰지 않기</strong>
+                        신경망과 달리 캘리브레이션, 정밀 계측처럼 값 자체가 결과인 계산은 FP16이나 TF32로 바꾸면 정밀도 손실이 그대로 결과 오차가 된다. Tensor Core는 정확도 영향을 측정해서 허용 범위일 때만 쓴다.
+                    </div>
+                </div>
+
+                <!-- 3. WMMA API -->
+                <h2 id="wmma"><i class="fa-solid fa-code"></i> WMMA API</h2>
+                <p>CUDA C++에서 Tensor Core를 직접 쓰는 가장 쉬운 방법이 <strong>WMMA</strong>(Warp Matrix Multiply-Accumulate) API다. 이름 그대로 <strong>워프 단위</strong>로 동작한다. 워프의 32개 스레드가 함께 16×16 같은 작은 행렬 조각(fragment)을 나눠 들고, 함께 곱한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;mma.h&gt;
+using namespace nvcuda;
+
+// one warp computes one 16x16 tile:  C = A(16x16) * B(16x16) + C
+__global__ void WmmaTile(const half* A, const half* B, float* C)
+{
+    // fragments: the warp holds the tiles in registers, spread over 32 threads
+    wmma::fragment&lt;wmma::matrix_a,    16, 16, 16, half, wmma::row_major&gt; a;
+    wmma::fragment&lt;wmma::matrix_b,    16, 16, 16, half, wmma::col_major&gt; b;
+    wmma::fragment&lt;wmma::accumulator, 16, 16, 16, float&gt;                 c;
+
+    wmma::fill_fragment(c, 0.0f);
+    wmma::load_matrix_sync(a, A, 16);          // leading dimension = 16
+    wmma::load_matrix_sync(b, B, 16);
+    wmma::mma_sync(c, a, b, c);                // Tensor Core instruction(s)
+    wmma::store_matrix_sync(C, c, 16, wmma::mem_row_major);
+}
+
+WmmaTile&lt;&lt;&lt;1, 32&gt;&gt;&gt;(d_A, d_B, d_C);           // exactly one warp; compile with -arch=sm_70 or newer</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>요소</th><th>의미</th></tr>
+                    <tr><td><code>fragment&lt;역할, M, N, K, 타입, 배치&gt;</code></td><td>워프가 레지스터에 나눠 든 행렬 조각. 역할은 matrix_a, matrix_b, accumulator</td></tr>
+                    <tr><td>M, N, K</td><td>A는 M×K, B는 K×N, C는 M×N. FP16은 16×16×16이 기본</td></tr>
+                    <tr><td><code>row_major</code> / <code>col_major</code></td><td>메모리에 행 순서로 저장됐는지 열 순서로 저장됐는지</td></tr>
+                    <tr><td><code>load_matrix_sync(frag, ptr, ldm)</code></td><td>메모리에서 조각을 읽음. ldm은 한 행(또는 열)의 원소 간격</td></tr>
+                    <tr><td><code>mma_sync(d, a, b, c)</code></td><td>d = a × b + c</td></tr>
+                    <tr><td><code>_sync</code></td><td>워프의 32개 스레드가 모두 같이 호출해야 함 (15편의 shuffle과 같은 규칙)</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>fragment 안의 원소 배치는 알 수 없음</strong>
+                        fragment의 어느 원소가 어느 스레드의 레지스터에 있는지는 공개된 규칙이 아니고 아키텍처마다 다를 수 있다. 원소별로 같은 연산(예: 모든 원소에 스케일 곱하기, ReLU)은 <code>for (int i = 0; i &lt; c.num_elements; ++i) c.x[i] *= s;</code>처럼 할 수 있지만, 특정 행렬 위치의 값을 꺼내려면 메모리에 store한 뒤 읽는다.
+                    </div>
+                </div>
+
+                <!-- 4. 행렬 곱 커널 -->
+                <h2 id="gemm"><i class="fa-solid fa-table-cells-large"></i> WMMA로 행렬 곱 전체 계산하기</h2>
+                <p>큰 행렬 곱 C(M×N) = A(M×K) × B(K×N)는 출력을 16×16 타일로 나누고, 워프 하나가 타일 하나를 맡는다. 각 워프는 K 방향으로 16씩 이동하며 A의 행 조각과 B의 열 조각을 곱해 누적한다. 6편 타일링 행렬 곱과 같은 구조이고, 안쪽 곱셈만 Tensor Core가 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// C (M x N, float, row-major) = A (M x K, half, row-major) * B (K x N, half, col-major)
+// M, N, K must be multiples of 16 in this simple version.
+__global__ void WmmaGemm(const half* A, const half* B, float* C, int M, int N, int K)
+{
+    // which 16x16 tile of C does this warp own?
+    int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / 32;   // tile row
+    int warpN =  blockIdx.y * blockDim.y + threadIdx.y;         // tile column
+    if (warpM * 16 &gt;= M || warpN * 16 &gt;= N) return;             // whole warp exits together
+
+    wmma::fragment&lt;wmma::matrix_a, 16, 16, 16, half, wmma::row_major&gt; a;
+    wmma::fragment&lt;wmma::matrix_b, 16, 16, 16, half, wmma::col_major&gt; b;
+    wmma::fragment&lt;wmma::accumulator, 16, 16, 16, float&gt; acc;
+    wmma::fill_fragment(acc, 0.0f);
+
+    for (int k = 0; k &lt; K; k += 16)
+    {
+        const half* tileA = A + (warpM * 16) * K + k;     // row-major: row * K + col
+        const half* tileB = B + (warpN * 16) * K + k;     // col-major: col * K + row
+        wmma::load_matrix_sync(a, tileA, K);
+        wmma::load_matrix_sync(b, tileB, K);
+        wmma::mma_sync(acc, a, b, acc);                   // accumulate in FP32
+    }
+
+    float* tileC = C + (warpM * 16) * N + warpN * 16;
+    wmma::store_matrix_sync(tileC, acc, N, wmma::mem_row_major);
+}
+
+// 128 threads in x = 4 warps -&gt; 4 tile rows per block; 4 tile columns per block in y
+dim3 block(128, 4);
+dim3 grid((M / 16 + 3) / 4, (N / 16 + 3) / 4);
+WmmaGemm&lt;&lt;&lt;grid, block&gt;&gt;&gt;(d_A, d_B, d_C, M, N, K);</code></pre>
+
+                <p>이 커널은 원리를 보여 주는 최소 형태다. 실제로 빠른 GEMM은 여기에 다음을 더한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>추가 기법</th><th>효과</th></tr>
+                    <tr><td>shared memory에 A, B 블록 타일을 올려 여러 워프가 공유 (6편)</td><td>global 읽기 횟수 감소</td></tr>
+                    <tr><td>워프 하나가 타일 여러 개(예: 2×4) 계산</td><td>읽은 조각 재사용, 레지스터 활용</td></tr>
+                    <tr><td>다음 K 조각을 미리 비동기로 읽기 (<code>cp.async</code>, Hopper TMA)</td><td>메모리 대기 시간 숨기기</td></tr>
+                    <tr><td>shared memory 배치 조정</td><td>뱅크 충돌 제거</td></tr>
+                </table>
+                <p>이것들을 모두 직접 하기는 어렵다. 그래서 실무에서는 다음 절의 라이브러리를 쓴다.</p>
+
+                <h3 id="shapes"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> WMMA가 지원하는 크기와 형식</h3>
+                <table class="spec-table">
+                    <tr><th>입력 형식</th><th>누적 형식</th><th>M×N×K</th><th>최소 아키텍처</th></tr>
+                    <tr><td><code>half</code></td><td><code>float</code> 또는 <code>half</code></td><td>16×16×16, 32×8×16, 8×32×16</td><td>sm_70</td></tr>
+                    <tr><td><code>signed char</code>, <code>unsigned char</code></td><td><code>int</code></td><td>16×16×16, 32×8×16, 8×32×16</td><td>sm_72</td></tr>
+                    <tr><td><code>__nv_bfloat16</code></td><td><code>float</code></td><td>16×16×16, 32×8×16, 8×32×16</td><td>sm_80</td></tr>
+                    <tr><td><code>precision::tf32</code></td><td><code>float</code></td><td>16×16×8</td><td>sm_80</td></tr>
+                    <tr><td><code>double</code></td><td><code>double</code></td><td>8×8×4</td><td>sm_80</td></tr>
+                </table>
+
+                <!-- 5. 라이브러리 -->
+                <h2 id="libraries"><i class="fa-solid fa-book"></i> 실무에서는 라이브러리가 Tensor Core를 쓴다</h2>
+                <p>WMMA를 직접 쓰는 경우는 많지 않다. 대부분은 아래 라이브러리가 알아서 Tensor Core 커널을 고른다. 개발자가 할 일은 <strong>Tensor Core를 쓸 수 있는 조건을 맞춰 주는 것</strong>이다.</p>
+
+                <table class="spec-table">
+                    <tr><th>라이브러리</th><th>역할</th></tr>
+                    <tr><td><strong>cuBLAS</strong>, cuBLASLt</td><td>행렬 곱. <code>cublasGemmEx</code>로 입력, 출력, 계산 형식을 지정</td></tr>
+                    <tr><td><strong>cuDNN</strong></td><td>컨볼루션, 정규화 등 신경망 연산</td></tr>
+                    <tr><td><strong>TensorRT</strong></td><td>추론 엔진. FP16, INT8 모드에서 Tensor Core 커널을 자동 선택 (11편)</td></tr>
+                    <tr><td><strong>CUTLASS</strong></td><td>NVIDIA의 오픈소스 C++ 템플릿 라이브러리. 직접 GEMM, 컨볼루션 커널을 조립할 때. 최신 기능(Hopper wgmma, TMA)까지 다룸</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// cuBLAS: FP16 inputs, FP32 accumulate and output -&gt; Tensor Core path
+// cuBLAS is column-major; this computes C(MxN) = A(MxK) * B(KxN)
+float alpha = 1.0f, beta = 0.0f;
+cublasGemmEx(handle, CUBLAS_OP_N, CUBLAS_OP_N, M, N, K,
+             &amp;alpha,
+             d_A, CUDA_R_16F, M,
+             d_B, CUDA_R_16F, K,
+             &amp;beta,
+             d_C, CUDA_R_32F, M,
+             CUBLAS_COMPUTE_32F,             // accumulate in FP32
+             CUBLAS_GEMM_DEFAULT);
+
+// FP32 data, allow TF32 Tensor Cores (Ampere+): faster, ~10-bit mantissa products
+cublasSetMathMode(handle, CUBLAS_TF32_TENSOR_OP_MATH);</code></pre>
+
+                <h3 id="conditions"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Tensor Core를 쓰게 하는 조건</h3>
+                <table class="spec-table">
+                    <tr><th>조건</th><th>설명</th></tr>
+                    <tr><td>형식</td><td>FP16, BF16, INT8 등 Tensor Core 형식이거나, FP32라면 TF32 허용 설정</td></tr>
+                    <tr><td>차원이 배수</td><td>NVIDIA 성능 가이드는 행렬 차원(신경망이면 채널 수, 배치 크기)을 FP16은 8의 배수, INT8은 16의 배수로 맞추길 권장. 어긋나면 덧붙이기(padding)나 다른 커널을 써서 효율이 떨어짐</td></tr>
+                    <tr><td>메모리 정렬</td><td>포인터와 leading dimension이 정렬되어 있어야 벡터 단위로 읽을 수 있음</td></tr>
+                    <tr><td>TensorRT 설정</td><td>빌드할 때 FP16 또는 INT8 플래그를 켜야 해당 정밀도 커널을 후보에 넣음</td></tr>
+                </table>
+
+                <!-- 6. 컨볼루션 -->
+                <h2 id="conv"><i class="fa-solid fa-border-all"></i> 컨볼루션이 행렬 곱이 되는 원리</h2>
+                <p>비전 신경망의 대부분은 컨볼루션 층인데, 어떻게 행렬 곱 전용 하드웨어를 쓸 수 있을까. 컨볼루션을 행렬 곱 형태로 펼치는 <strong>im2col</strong> 변환 덕분이다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif" font-size="12">
+                        <text x="20" y="22" font-weight="700" fill="#1e40af">입력 (C 채널, H×W)</text>
+                        <g fill="#eff6ff" stroke="#1e40af"><rect x="30" y="35" width="90" height="90"/></g>
+                        <rect x="40" y="45" width="30" height="30" fill="#fde68a" stroke="#d97706" stroke-width="2"/>
+                        <rect x="55" y="45" width="30" height="30" fill="none" stroke="#059669" stroke-width="2" stroke-dasharray="3 2"/>
+                        <text x="30" y="145" fill="#475569" font-size="11">3×3 창이 이동하며 읽는 영역</text>
+
+                        <path d="M130 80 L 180 80" stroke="#64748b" stroke-width="1.5" marker-end="url(#c-arr)"/>
+                        <text x="140" y="70" fill="#64748b" font-size="11">im2col</text>
+
+                        <text x="190" y="22" font-weight="700" fill="#1e40af">펼친 입력 행렬</text>
+                        <g stroke="#1e40af"><rect x="190" y="35" width="40" height="150" fill="#fde68a"/><rect x="230" y="35" width="40" height="150" fill="#d1fae5"/><rect x="270" y="35" width="70" height="150" fill="#eff6ff"/></g>
+                        <text x="190" y="200" fill="#475569" font-size="11">열 1개 = 창 1개 (C×3×3 값)</text>
+                        <text x="190" y="214" fill="#475569" font-size="11">열 수 = 출력 픽셀 수</text>
+
+                        <text x="360" y="110" font-size="20" fill="#334155">×</text>
+
+                        <text x="385" y="22" font-weight="700" fill="#1e40af">필터 행렬</text>
+                        <rect x="385" y="60" width="110" height="50" fill="#fdba74" stroke="#c2410c"/>
+                        <text x="385" y="130" fill="#475569" font-size="11">행 1개 = 출력 채널 1개</text>
+                        <text x="385" y="144" fill="#475569" font-size="11">(C×3×3 가중치)</text>
+
+                        <text x="510" y="110" font-size="20" fill="#334155">=</text>
+                        <text x="535" y="22" font-weight="700" fill="#059669">출력</text>
+                        <rect x="535" y="60" width="90" height="50" fill="#a7f3d0" stroke="#059669"/>
+                        <text x="535" y="130" fill="#475569" font-size="11">출력 채널 × 픽셀</text>
+                        <defs><marker id="c-arr" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker></defs>
+                    </svg>
+                    <div class="diagram-caption">im2col. 컨볼루션 창마다 값을 한 열로 펼치면, 컨볼루션 전체가 (필터 행렬) × (펼친 입력 행렬)이라는 행렬 곱 하나가 된다</div>
+                </div>
+
+                <p>입력 채널 64, 출력 채널 128, 3×3 필터, 출력 크기 160×160이면 행렬 곱 크기는 (128 × 576) × (576 × 25,600)이다. Tensor Core가 좋아하는 크고 규칙적인 행렬 곱이다. 실제 cuDNN과 TensorRT는 펼친 행렬을 메모리에 다 만들지 않고, 행렬 곱 커널이 타일을 읽을 때 그 자리에서 펼치는 방식(implicit GEMM)을 쓴다. 채널 수를 8의 배수로 맞추라는 권장이 여기서 나온다. 채널 수가 행렬의 K 차원이 되기 때문이다.</p>
+
+                <!-- 7. 확인 -->
+                <h2 id="verify"><i class="fa-solid fa-magnifying-glass-chart"></i> Tensor Core를 실제로 쓰는지 확인</h2>
+                <p>설정을 맞췄다고 해서 항상 Tensor Core 커널이 선택되는 것은 아니다. 프로파일러로 확인한다(8편).</p>
+
+                <table class="spec-table">
+                    <tr><th>도구</th><th>보는 곳</th></tr>
+                    <tr><td>Nsight Systems</td><td>커널 이름. cuBLAS, cuDNN, TensorRT의 Tensor Core 커널은 이름에 <code>hmma</code>, <code>imma</code>, <code>xmma</code>, <code>s16816</code>, <code>i8816</code> 같은 말이 들어가는 경우가 많음</td></tr>
+                    <tr><td>Nsight Compute</td><td>Compute Workload Analysis 섹션의 Tensor 파이프 사용률. 0%면 Tensor Core를 쓰지 않는 커널</td></tr>
+                    <tr><td>TensorRT 빌드 로그</td><td>상세 로그(verbose)에서 층마다 선택된 커널과 정밀도 확인</td></tr>
+                </table>
+
+<pre class="language-bash"><code class="language-bash"># list kernels and look at their names
+nsys profile -o infer ./my_infer
+nsys stats --report cuda_gpu_kern_sum infer.nsys-rep
+
+# tensor pipe utilization of one kernel
+ncu --section ComputeWorkloadAnalysis -k regex:gemm ./my_app</code></pre>
+
+                <!-- 8. 더 낮은 수준 -->
+                <h2 id="lower-level"><i class="fa-solid fa-layer-group"></i> WMMA 아래의 단계</h2>
+                <p>WMMA는 쓰기 쉬운 대신, 최신 GPU의 성능을 끝까지 끌어내지는 못한다. 그 아래에는 더 낮은 수준의 방법이 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>수준</th><th>내용</th></tr>
+                    <tr><td>WMMA (C++ API)</td><td>워프 단위, fragment 배치 숨김. 쉬움</td></tr>
+                    <tr><td>PTX <code>mma.sync</code></td><td>워프 단위, 레지스터 배치가 공개됨. 더 다양한 크기, 형식. 인라인 어셈블리로 사용</td></tr>
+                    <tr><td>PTX <code>wgmma</code> (Hopper)</td><td>워프 4개(warpgroup) 단위, shared memory에서 바로 읽음, 비동기 실행</td></tr>
+                    <tr><td>CUTLASS / CuTe</td><td>위 명령들을 C++ 템플릿으로 감싼 라이브러리. 직접 작성 대신 이것을 쓰는 것이 일반적</td></tr>
+                </table>
+
+                <!-- 9. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>FP16 넘침</strong>
+                        FP16 최댓값은 65504다. 0~255 픽셀 값을 정규화 없이 FP16으로 바꾸고 큰 필터로 곱해 더하면 중간값이 쉽게 넘쳐 inf가 된다. 누적은 FP32로 하고, 입력은 0~1이나 평균 0 근처로 정규화한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>WMMA의 크기, 정렬 조건</strong>
+                        <code>load_matrix_sync</code>의 포인터는 256비트(32바이트) 정렬이어야 하고, leading dimension은 half라면 8의 배수, float라면 4의 배수여야 한다. 위 단순 커널은 M, N, K가 16의 배수라고 가정하므로, 그렇지 않으면 0으로 덧붙여 크기를 맞춘다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>워프 일부만 WMMA 호출</strong>
+                        WMMA 함수는 워프의 32개 스레드가 모두 같이 호출해야 한다. 범위 검사로 일부 스레드만 return하면 결과가 정의되지 않는다. 위 커널처럼 워프 단위로 판단해서 워프 전체가 함께 빠지게 한다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>아키텍처 플래그</strong>
+                        WMMA 코드는 <code>-arch=sm_70</code> 이상으로 컴파일해야 한다. 기본값이 더 낮은 아키텍처로 잡혀 있는 프로젝트에서는 <code>mma.h</code>의 기능이 비활성화되어 컴파일 오류가 난다. Visual Studio에서는 CUDA C/C++ → Device → Code Generation에서 설정한다.
+                    </div>
+                </div>
+
+                <!-- 10. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table class="spec-table">
+                    <tr><th>요점</th><th>내용</th></tr>
+                    <tr><td>Tensor Core</td><td>워프 단위로 작은 행렬 곱 D = A×B + C를 한 번에 계산하는 전용 연산기</td></tr>
+                    <tr><td>정밀도</td><td>낮은 정밀도 입력(FP16, BF16, TF32, INT8, FP8) + 높은 정밀도 누적</td></tr>
+                    <tr><td>직접 쓰기</td><td>WMMA: fragment, load_matrix_sync, mma_sync, store_matrix_sync</td></tr>
+                    <tr><td>실무</td><td>cuBLAS, cuDNN, TensorRT, CUTLASS가 사용. 형식, 차원 배수, 정렬 조건을 맞춰 주는 것이 개발자 몫</td></tr>
+                    <tr><td>비전과의 연결</td><td>컨볼루션은 im2col(implicit GEMM)로 행렬 곱이 되어 Tensor Core를 씀</td></tr>
+                </table>
+                <p>13~21편으로 병렬 알고리즘 패턴(리덕션, 스캔, 워프 프로그래밍), 메모리와 실행 관리(Unified Memory, CUDA Graphs), 라이브러리와 디버깅, 전용 하드웨어(Texture, Tensor Core)까지 다뤘다. 1~12편과 합치면 영상 처리용 CUDA 프로그램을 설계하고, 최적화하고, 디버깅하는 데 필요한 내용을 대부분 갖춘 셈이다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA CUDA C++ Programming Guide - Warp Matrix Functions</li>
+                        <li>NVIDIA Deep Learning Performance Guide - Matrix Multiplication, Convolutional Layers</li>
+                        <li>NVIDIA CUTLASS 문서</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

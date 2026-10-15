@@ -1,0 +1,472 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM 디코딩 심화 3 — 탐색과 제어 (beam·best-of-n·구조적 디코딩) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 수식 블록 */
+        .formula {
+            background: #f8fafc; border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0;
+            padding: 14px 22px; margin: 16px 0;
+            font-family: 'Consolas', 'D2Coding', 'Cambria Math', serif;
+            font-size: 0.98rem; color: var(--text); text-align: center;
+            overflow-x: auto; line-height: 1.9;
+        }
+        .formula .formula-note {
+            display: block; margin-top: 6px;
+            font-family: 'Pretendard', sans-serif; font-size: 0.78rem;
+            color: var(--text-muted); text-align: center;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+            .formula { font-size: 0.85rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#beam" data-section="beam">Beam search의 함정</a><a href="#best-of-n" data-section="best-of-n">Best-of-n</a><a href="#logit-bias" data-section="logit-bias">Logit bias</a><a href="#structured" data-section="structured">구조적 디코딩</a><a href="#recipes" data-section="recipes">태스크별 레시피</a><a href="#takeaway" data-section="takeaway">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>LLM 디코딩 심화 3 — beam의 함정부터 구조적 디코딩까지</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-24</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 12분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>beam search가 번역엔 좋고 창작엔 나쁜 이유 (likelihood trap)</li>
+                        <li>best-of-n / n 다중 생성의 비용 구조와 올바른 사용처</li>
+                        <li>logit bias로 특정 토큰을 강제·금지하는 실전 기법</li>
+                        <li>구조적 디코딩(constrained/grammar)으로 JSON을 100% 보장하는 원리</li>
+                        <li>태스크별 디코딩 파라미터 튜닝 레시피</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#beam">Beam search — likelihood의 함정</a></li>
+                        <li><a href="#best-of-n">Best-of-n과 다중 생성</a></li>
+                        <li><a href="#logit-bias">Logit bias — 토큰 강제와 금지</a></li>
+                        <li><a href="#structured">구조적 디코딩</a></li>
+                        <li><a href="#recipes">태스크별 튜닝 레시피</a></li>
+                        <li><a href="#takeaway">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="beam"><i class="fa-solid fa-magnifying-glass"></i> Beam search — likelihood의 함정</h2>
+                <p>beam search는 매 스텝 상위 <code>b</code>개 후보 시퀀스를 동시에 유지하며 <strong>전체 확률(likelihood)이 가장 높은 시퀀스</strong>를 찾는 탐색이다. 기계번역·요약처럼 "정답이 대체로 하나"인 태스크에서는 강력하다.</p>
+                <p>그런데 자유 창작·대화에서는 오히려 품질을 떨어뜨린다. 이유는 <strong>"가장 그럴듯한(likely) 텍스트"가 "가장 좋은 텍스트"가 아니기 때문</strong>이다. likelihood를 극대화하면 모델은 안전하고 반복적이며 김빠진 문장으로 수렴한다 — 같은 구절을 되풀이하거나, 뻔한 결말로 빠진다. 이를 "likelihood trap" 또는 neural text degeneration이라 부른다(1편에서 언급한 nucleus sampling 논문의 출발점이기도 하다).</p>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>핵심 직관</strong>
+                        사람이 쓴 글은 의외로 "확률이 들쭉날쭉한" 토큰의 연속이다. 늘 최고 확률만 이으면 사람 글의 자연스러운 변동성이 사라진다. 그래서 <strong>창작·대화에는 beam search 대신 sampling(top-p/min-p)</strong>이, <strong>번역·요약처럼 정답이 좁은 태스크에는 beam</strong>이 어울린다.
+                    </div>
+                </div>
+
+                <h2 id="best-of-n"><i class="fa-solid fa-dice"></i> Best-of-n과 다중 생성</h2>
+                <p><code>n</code>은 한 번의 요청으로 여러 개를 독립 샘플링하는 것이고, <strong>best-of-n</strong>은 n개를 생성한 뒤 <strong>점수가 가장 높은 하나만</strong> 고르는 것이다. 차이가 중요하다 — best-of-n은 n개를 다 생성하므로 <strong>비용·지연이 n배</strong>인데 결과는 1개만 받는다.</p>
+                <ul>
+                    <li><strong>잘 쓰는 곳</strong>: 검증 가능한 태스크(코드 → 테스트 통과 여부, 수학 → 정답 일치)에서 n개 뽑아 자동 채점 후 최고를 고르면 정확도가 크게 오른다. self-consistency도 같은 계열.</li>
+                    <li><strong>오해</strong>: best-of-n은 "더 좋은 모델"이 아니라 "더 많이 시도"다. 좋은 답이 분포 안에 있을 때만 효과가 있다. 분포 자체가 틀리면 n을 늘려도 소용없다.</li>
+                </ul>
+
+                <h2 id="logit-bias"><i class="fa-solid fa-sliders"></i> Logit bias — 토큰 강제와 금지</h2>
+                <p>logit bias는 특정 토큰의 logit에 <strong>상수를 더하거나 빼서</strong> 등장 확률을 직접 조작한다. 디코딩 파라미터 중 가장 외과적인 도구다.</p>
+                <pre><code>z_token ← z_token + bias      # bias: -100 ~ +100 (구현마다)
+bias = -100  → 사실상 완전 금지
+bias = +5    → 강하게 선호</code></pre>
+                <ul>
+                    <li><strong>금지 용도</strong>: 특정 단어·기호가 절대 나오면 안 될 때 해당 토큰에 큰 음수. 단, 토큰 단위라 "단어"가 여러 토큰으로 쪼개지면 일부만 막혀 우회된다 — 토크나이저를 확인해야 한다.</li>
+                    <li><strong>강제 용도</strong>: 분류기처럼 답을 " Yes"/" No" 토큰으로만 받고 싶을 때, 그 토큰들에 +bias를 주고 나머지를 억제하면 출력 공간을 좁힐 수 있다.</li>
+                    <li><strong>함정</strong>: bias는 logit 절대값에 더해지므로, 모델이 원래 강하게 확신하는 자리에서는 작은 bias가 무력하고, 애매한 자리에서는 같은 bias가 과하게 작동한다. 맥락마다 효과가 다르다.</li>
+                </ul>
+
+                <h2 id="structured"><i class="fa-solid fa-code"></i> 구조적 디코딩 (constrained decoding)</h2>
+                <p>"JSON으로 답해줘"라고 프롬프트로 부탁하는 것과, <strong>디코딩 단계에서 문법을 강제</strong>하는 것은 차원이 다르다. 구조적 디코딩은 매 스텝 <strong>문법(grammar)·스키마에 맞지 않는 토큰의 logit을 −∞로</strong> 만들어 애초에 뽑힐 수 없게 한다.</p>
+                <pre><code>매 스텝:
+  허용 토큰 집합 = 문법상 지금 올 수 있는 토큰들
+  그 외 모든 토큰 logit ← -inf
+  → 남은 것 중에서만 샘플링</code></pre>
+                <p>그래서 JSON 스키마·정규식·문맥자유문법(CFG)을 100% 보장할 수 있다(GBNF, JSON mode, structured output 등). 프롬프트로 "제발 JSON만"이라고 비는 것과 달리 <strong>형식 위반이 구조적으로 불가능</strong>해진다.</p>
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>알아둘 트레이드오프</strong>
+                        구조적 디코딩은 형식은 보장하지만, 강한 제약이 모델을 "부자연스러운 경로"로 밀어 <strong>내용 품질이 떨어질 수</strong> 있다. 스키마를 너무 빡빡하게 잡으면 모델이 좋은 답을 못 내는 자리로 몰린다. 형식 보장과 내용 자유 사이의 균형이 필요하다.
+                    </div>
+                </div>
+
+                <h2 id="recipes"><i class="fa-solid fa-book"></i> 태스크별 튜닝 레시피</h2>
+                <p>위 도구들을 종합한 실전 출발점이다. 절대값이 아니라 "어디서 시작해 어느 방향으로 움직일지"의 지도로 쓰면 된다.</p>
+                <table>
+                    <tr><th>태스크</th><th>권장 출발점</th><th>이유</th></tr>
+                    <tr><td>코드 생성</td><td>T 0.0~0.2, penalty 0, 구조적 디코딩(가능하면)</td><td>정답이 좁고 반복이 정상 — penalty가 독</td></tr>
+                    <tr><td>사실 QA / 추출</td><td>T 0~0.3, top-p 1.0</td><td>일관성·재현성 우선</td></tr>
+                    <tr><td>창작 / 브레인스토밍</td><td>T 0.9~1.2 + min-p 0.05~0.1</td><td>다양성 확보, min-p로 붕괴 방지</td></tr>
+                    <tr><td>대화 / 어시스턴트</td><td>T 0.6~0.8, top-p 0.9</td><td>자연스러움과 안정성의 균형</td></tr>
+                    <tr><td>번역 / 요약</td><td>beam search(b=4~8) 또는 낮은 T</td><td>정답이 좁아 likelihood 탐색이 유효</td></tr>
+                    <tr><td>JSON / 구조 출력</td><td>구조적 디코딩 + 낮은 T</td><td>형식 보장이 최우선</td></tr>
+                </table>
+
+                <h2 id="takeaway"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>핵심 요약</strong>
+                        ① beam search는 정답이 좁은 태스크용 — 창작에선 likelihood trap. ② best-of-n은 "더 많이 시도", 검증 가능한 태스크에서 강력하지만 비용 n배. ③ logit bias는 외과적이지만 토큰 단위·맥락 의존. ④ 구조적 디코딩은 형식을 100% 보장하되 내용 품질과 트레이드오프. ⑤ 파라미터엔 절대 정답이 없다 — 태스크의 "정답 폭"에 맞춘다.
+                    </div>
+                </div>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고</div>
+                    <ul>
+                        <li>Holtzman et al. (2020) — likelihood trap / degeneration</li>
+                        <li>Wang et al., "Self-Consistency Improves Chain of Thought Reasoning" (2022)</li>
+                        <li>GBNF(llama.cpp), JSON mode / structured output 문서 — 구조적 디코딩 구현</li>
+                        <li>관련: <a href="llm-decoding-01-sampling.html">디코딩 심화 1</a>, <a href="llm-decoding-02-penalties.html">디코딩 심화 2</a></li>
+                    </ul>
+                </div>
+</div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai-llm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai-llm');
+</script>
+
+</body>
+</html>

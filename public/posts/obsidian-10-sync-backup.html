@@ -1,0 +1,309 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동기화와 백업 — 같은 문제가 아니다 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm{ color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#diff" data-section="diff">동기화≠백업</a><a href="#options" data-section="options">세 선택지</a><a href="#risk" data-section="risk">취약점</a><a href="#config" data-section="config">설정 폴더</a><a href="#single" data-section="single">기기 한 대</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">옵시디언 시리즈</span>
+                </div>
+                <h1>동기화와 백업 — 같은 문제가 아니다</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-08-18</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 4분 분량</span>
+                    <span><i class="fa-solid fa-file-lines"></i> 옵시디언 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>먼저 밝혀 둘 것</strong>
+                        나는 지금 PC 한 대에서만 볼트를 쓰고 있어서 기기 간 동기화를 하지 않는다. 그래서 이 글은 실사용기가 아니라 <strong>선택지 정리</strong>다. 대신 동기화를 안 쓰는 사람에게도 반드시 필요한 게 하나 있는데, 그게 백업이다. 이 둘이 왜 다른 문제인지부터 짚는다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>동기화와 백업은 다른 문제다</li>
+                        <li>세 가지 선택지 — 공식 Sync·클라우드 드라이브·Git</li>
+                        <li>각각 어떤 사고에 취약한가</li>
+                        <li><code>.obsidian</code> 폴더를 같이 옮길 것인가</li>
+                        <li>기기가 한 대일 때 최소한으로 해야 할 것</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#diff">동기화 ≠ 백업</a></li>
+                        <li><a href="#options">세 가지 선택지</a></li>
+                        <li><a href="#risk">각각의 취약점</a></li>
+                        <li><a href="#config">설정 폴더를 같이 옮길까</a></li>
+                        <li><a href="#single">기기가 한 대라면</a></li>
+                        <li><a href="#wrap">정리와 다음 편</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="diff"><i class="fa-solid fa-code-compare"></i> 동기화 ≠ 백업</h2>
+                <p>둘을 같은 것으로 여기다가 낭패를 보는 경우가 흔하다. 정확히는 이렇다.</p>
+
+                <div class="layer-card">
+                    <h4><span class="lay-tag">동기화</span> 여러 기기의 상태를 같게 만든다</h4>
+                    <p>노트북에서 고친 게 데스크톱에도 반영된다. <strong>최신 상태를 퍼뜨리는 것</strong>이 목적이다.</p>
+                </div>
+                <div class="layer-card">
+                    <h4><span class="lay-tag">백업</span> 과거 상태를 보존한다</h4>
+                    <p>어제의 노트를 다시 꺼낼 수 있다. <strong>이전 상태를 남겨 두는 것</strong>이 목적이다.</p>
+                </div>
+
+                <p>차이가 드러나는 건 사고가 났을 때다. 노트를 실수로 지우거나 통째로 덮어썼다고 하자. 동기화는 그 <strong>삭제까지 성실하게 퍼뜨린다.</strong> 모든 기기에서 똑같이 사라진다. 이때 필요한 건 동기화가 아니라 "지우기 전 상태"이고, 그건 백업의 몫이다.</p>
+
+                <div class="key-point"><strong>정리:</strong> 동기화는 기기가 여럿일 때 필요하고, 백업은 기기가 몇 대든 필요하다.</div>
+
+                <p>옵시디언에는 코어로 파일 복구(file recovery) 기능이 있어서 최근 편집 이력을 어느 정도 되돌릴 수 있다. 다만 이건 <strong>같은 PC 안의 안전장치</strong>라 디스크가 망가지거나 폴더째 날아가는 경우는 못 막는다. 별도 백업이 필요한 이유다.</p>
+
+                <h2 id="options"><i class="fa-solid fa-code-branch"></i> 세 가지 선택지</h2>
+                <p>기기 간 동기화가 필요해졌을 때 고를 수 있는 길은 대략 셋이다.</p>
+
+                <table class="compare-table">
+                    <thead>
+                        <tr><th>구분</th><th>공식 Sync</th><th>클라우드 드라이브</th><th>Git</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>비용</td><td>유료 구독</td><td>대개 기존 구독 활용</td><td>무료(호스팅에 따라)</td></tr>
+                        <tr><td>설정 난이도</td><td>낮음</td><td>낮음</td><td>높음</td></tr>
+                        <tr><td>모바일</td><td>공식 지원</td><td>앱에 따라 제약</td><td>번거로움</td></tr>
+                        <tr><td>버전 이력</td><td>일정 기간 보관</td><td>서비스가 제공하는 만큼</td><td>전부 남음</td></tr>
+                        <tr><td>충돌 처리</td><td>앱이 인지하고 처리</td><td>앱이 모름 — 파일 단위 충돌</td><td>수동 병합</td></tr>
+                        <tr><td>성격</td><td>동기화</td><td>동기화(+얕은 백업)</td><td>백업·이력(+동기화 겸용)</td></tr>
+                    </tbody>
+                </table>
+
+                <p>마지막 줄이 핵심이다. <strong>Git만 성격이 다르다.</strong> 앞의 둘은 최신 상태를 맞추는 도구고, Git은 이력을 쌓는 도구인데 그 부산물로 동기화가 된다. 그래서 Git은 백업 요구까지 한 번에 해결하지만 그만큼 손이 많이 간다.</p>
+
+                <h2 id="risk"><i class="fa-solid fa-triangle-exclamation"></i> 각각의 취약점</h2>
+                <p>선택은 "무엇이 좋은가"보다 <strong>"무엇이 망가질 때 견딜 수 있는가"</strong>로 하는 편이 낫다.</p>
+
+                <ol class="decision-list">
+                    <li><strong>공식 Sync</strong> — 가장 편하지만 서비스 의존이다. 구독이 끊기면 동기화가 멈춘다. 다만 원본이 로컬에 그대로 남으므로 <strong>노트를 잃지는 않는다.</strong> 2편에서 본 로컬 파일의 성질이 여기서 안전망이 된다.</li>
+                    <li><strong>클라우드 드라이브</strong> — 가장 위험한 조합이 여기 있다. 드라이브 동기화는 <strong>옵시디언이 파일을 쓰고 있는 중인지 모른다.</strong> 두 기기에서 같은 노트를 만지면 "충돌 사본"이 생기고, 최악의 경우 한쪽이 조용히 덮인다. 여러 기기에서 동시에 열어 두지 않는 게 필수 조건이다.</li>
+                    <li><strong>Git</strong> — 안전하지만 <strong>사람이 커밋을 해야 한다.</strong> 커밋을 안 한 구간은 이력에 없다. 노트를 쓰는 리듬과 커밋하는 리듬이 다르다는 게 실질적인 부담이다. 충돌이 나면 병합도 직접 해야 한다.</li>
+                </ol>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>가장 흔한 사고는 "동시에 열어 둠"이다</strong>
+                        어느 방식이든 두 기기에서 같은 볼트를 동시에 편집하면 충돌이 난다. 공식 Sync는 이걸 인지하고 처리하지만, 클라우드 드라이브는 파일 두 개를 만들어 놓고 끝낸다. 그러면 어느 쪽이 최신인지 사람이 판단해야 하는데, 노트가 수천 장이면 그 판단 자체가 안 된다.
+                    </div>
+                </div>
+
+                <h2 id="config"><i class="fa-solid fa-gear"></i> 설정 폴더를 같이 옮길까</h2>
+                <p>볼트 안에는 <code>.obsidian</code>이라는 숨은 폴더가 있다. 코어 플러그인 활성 상태, 템플릿 폴더 지정, 그래프 설정, 열려 있던 창 배치 같은 게 들어 있다. 동기화 대상에 포함할지 말지를 정해야 한다.</p>
+                <ul>
+                    <li><strong>포함하면</strong> — 기기가 바뀌어도 설정이 같다. 3편에서 지정한 템플릿 폴더 같은 게 자동으로 따라온다.</li>
+                    <li><strong>제외하면</strong> — 기기마다 다른 설정을 쓸 수 있다. 창 배치처럼 기기별로 달라야 자연스러운 것도 있다.</li>
+                </ul>
+                <p>절충안은 <strong>설정은 포함하되 작업 공간 상태는 제외</strong>하는 것이다. 어느 쪽이든 한 가지는 기억해 둘 만하다. <code>.obsidian</code>이 동기화되지 않으면 새 기기에서 볼트를 열었을 때 템플릿 폴더 지정이 빠져 있어 <strong>템플릿이 안 뜬다.</strong> 볼트가 망가진 것처럼 보이지만 설정만 없는 상태다.</p>
+
+                <h2 id="single"><i class="fa-solid fa-desktop"></i> 기기가 한 대라면</h2>
+                <p>내 경우가 여기 해당한다. 동기화는 필요 없지만 그렇다고 아무것도 안 해도 되는 건 아니다. <strong>백업은 기기 수와 무관하게 필요하다.</strong></p>
+                <p>기기가 한 대일 때 최소한으로 갖춰야 할 건 이 정도다.</p>
+                <ol class="decision-list">
+                    <li><strong>볼트 폴더가 통째로 백업되는지 확인한다.</strong> 볼트는 그냥 폴더라 특별할 게 없다. 이미 쓰는 백업 수단이 있으면 그 대상에 이 폴더가 들어 있는지만 보면 된다.</li>
+                    <li><strong>파일 복구 기능이 켜져 있는지 본다.</strong> 실수로 지운 직후에 되살리는 데는 이게 가장 빠르다. 다만 디스크 고장은 못 막는다.</li>
+                    <li><strong>백업본을 한 번은 열어 본다.</strong> 백업이 돌고 있다는 것과 복구가 된다는 건 다른 얘기다. 텍스트 파일이라 확인도 쉽다.</li>
+                </ol>
+                <p>기기가 늘어나면 그때 위의 세 선택지를 보면 된다. 9편의 Bases와 같은 순서다 — <strong>필요가 먼저 생기고 도구가 따라온다.</strong> 지금 안 쓰는 동기화를 미리 붙여 두면 관리할 게 하나 늘 뿐이다.</p>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 다음 편</h2>
+                <div class="key-point"><strong>핵심:</strong> 동기화는 최신 상태를 퍼뜨리고 백업은 과거 상태를 남긴다. 삭제까지 성실하게 퍼뜨리는 게 동기화라, 기기가 한 대여도 백업은 따로 필요하다.</div>
+                <ul>
+                    <li>공식 Sync는 편하고 서비스 의존이지만 원본이 로컬에 남아 노트를 잃지는 않는다.</li>
+                    <li>클라우드 드라이브는 앱이 파일을 쓰는 중인지 모른다. 동시에 열어 두지 않는 게 조건이다.</li>
+                    <li>Git은 이력이 전부 남지만 사람이 커밋해야 하고, 커밋 안 한 구간은 없는 셈이다.</li>
+                    <li><code>.obsidian</code>을 동기화에서 빼면 새 기기에서 템플릿 지정이 사라져 볼트가 망가진 것처럼 보인다.</li>
+                    <li>기기가 한 대면 백업 대상에 볼트 폴더가 들어 있는지 확인하고, 복구가 실제로 되는지 한 번 열어 본다.</li>
+                </ul>
+                <p>다음 편부터 이 시리즈의 마지막 두 편, Claude 연동이다. 2편에서 "로컬 텍스트 파일이라 외부 프로그램이 폴더만 알면 읽는다"고 한 성질이 여기서 회수된다. 11편은 볼트를 컨텍스트로 넘기는 방법과, 그때 반드시 정해야 할 경계를 다룬다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>Obsidian 도움말(동기화·파일 복구) — <a href="https://help.obsidian.md/" target="_blank" rel="noopener">help.obsidian.md</a></li>
+                        <li>열람일: 2026-08-18. 요금·보관 기간 등 서비스 정책은 변동될 수 있어 공식 문서 확인 권장.</li>
+                        <li>함께 보기: <a href="obsidian-02-why-obsidian.html">왜 옵시디언인가 — 로컬 마크다운이라는 선택</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tool-obsidian');
+    renderPostNav('tool-obsidian');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

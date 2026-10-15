@@ -1,0 +1,684 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUDA Graphs - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#problem" data-section="problem">실행 비용</a>
+        <a href="#concept" data-section="concept">구성 요소</a>
+        <a href="#capture" data-section="capture">스트림 캡처</a>
+        <a href="#fork-join" data-section="fork-join">병렬 캡처</a>
+        <a href="#explicit" data-section="explicit">노드 직접 추가</a>
+        <a href="#update" data-section="update">갱신</a>
+        <a href="#forbidden" data-section="forbidden">캡처 중 금지</a>
+        <a href="#measure" data-section="measure">효과 측정</a>
+        <a href="#when" data-section="when">언제 쓰나</a>
+        <a href="#advanced" data-section="advanced">새 기능</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / <a href="gpu-01-cuda-intro.html">CUDA</a></span>
+                </div>
+                <h1>CUDA Graphs - 커널 실행 비용 줄이기</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-13</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 17분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>커널 실행 비용이 문제가 되는 경우(launch-bound)와 그래프가 푸는 방식</li>
+                        <li>정의, 인스턴스화, 실행 3단계와 CUDA 11, 12의 함수 모양 차이</li>
+                        <li>스트림 캡처, 여러 스트림 fork/join 캡처, 노드 직접 추가</li>
+                        <li>버퍼 주소 고정 설계와 인스턴스화한 그래프의 인자 갱신</li>
+                        <li>캡처 중 금지 호출, 효과 측정 방법, 메모리 노드와 conditional 노드</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#problem">커널 실행 비용 문제</a></li>
+                        <li><a href="#concept">그래프의 구성 요소</a></li>
+                        <li><a href="#capture">방법 1 - 스트림 캡처</a></li>
+                        <li><a href="#fork-join">여러 스트림을 한 그래프로 캡처</a></li>
+                        <li><a href="#explicit">방법 2 - 노드를 직접 추가</a></li>
+                        <li><a href="#update">인스턴스화한 그래프 고치기</a></li>
+                        <li><a href="#forbidden">캡처 중에 하면 안 되는 일</a></li>
+                        <li><a href="#measure">효과 측정하기</a></li>
+                        <li><a href="#when">언제 효과가 있나</a></li>
+                        <li><a href="#advanced">더 나아가기 - 새 기능들</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 문제 -->
+                <h2 id="problem"><i class="fa-solid fa-hourglass-half"></i> 커널 실행 비용 문제</h2>
+                <p>커널을 하나 실행할 때마다 CPU 쪽에서 할 일이 있다. 인자를 정리하고, 실행 명령을 만들어 드라이버를 거쳐 GPU의 명령 큐에 넣는다. 이 비용은 커널 하나당 <strong>수 µs</strong> 정도다. 커널이 수 ms씩 걸리는 일을 한다면 무시해도 되지만, 영상 처리 파이프라인처럼 짧은 커널을 프레임마다 수십 개 실행하면 이야기가 달라진다.</p>
+
+                <table class="spec-table">
+                    <tr><th>상황</th><th>커널 시간</th><th>실행 비용 비율</th></tr>
+                    <tr><td>큰 행렬 곱 1개</td><td>5 ms</td><td>실행 비용 수 µs → 0.1% 미만</td></tr>
+                    <tr><td>작은 영상 처리 커널 30개 (각 20 µs)</td><td>합계 0.6 ms</td><td>실행 비용 30 × 수 µs → 수십 % 수준까지 커질 수 있음</td></tr>
+                </table>
+
+                <p>두 번째 경우에는 GPU가 커널 하나를 금방 끝내고 다음 명령을 기다리며 노는 시간이 생긴다. Nsight Systems 타임라인(8편)에서 GPU 줄의 커널들 사이에 빈틈이 보이고, CPU 줄은 실행 API 호출로 꽉 차 있다면 이 상황이다. 이것을 <strong>launch-bound</strong>라고 부른다.</p>
+
+                <p><strong>CUDA Graph</strong>는 이 문제를 이렇게 푼다. 커널 실행, 복사, 메모리 설정 같은 작업 묶음과 그 사이의 의존 관계를 <strong>한 번 정의</strong>해 두고, 매 프레임에는 그 묶음 전체를 <strong>호출 한 번</strong>으로 실행한다. 드라이버는 정의 단계에서 미리 검사하고 준비해 두므로, 실행할 때 할 일이 크게 줄어든다.</p>
+
+                <!-- 2. 구성 요소 -->
+                <h2 id="concept"><i class="fa-solid fa-diagram-project"></i> 그래프의 구성 요소</h2>
+                <p>그래프는 노드(node)와 간선(edge)으로 이루어진다. 노드는 작업 하나, 간선은 "A가 끝나야 B를 시작"이라는 의존 관계다. 의존 관계가 없는 노드끼리는 GPU가 동시에 실행할 수 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>노드 종류</th><th>하는 일</th></tr>
+                    <tr><td>kernel</td><td>커널 실행</td></tr>
+                    <tr><td>memcpy</td><td>메모리 복사 (CPU↔GPU, GPU↔GPU)</td></tr>
+                    <tr><td>memset</td><td>메모리를 값으로 채움</td></tr>
+                    <tr><td>host</td><td>CPU 함수 호출 (그 안에서 CUDA API는 호출 불가)</td></tr>
+                    <tr><td>event record / wait</td><td>그래프 밖 스트림과 맞추기</td></tr>
+                    <tr><td>mem alloc / free</td><td>그래프 안에서 메모리 할당과 해제 (CUDA 11.4+, <code>cudaMallocAsync</code>를 캡처하면 생김)</td></tr>
+                    <tr><td>child graph</td><td>다른 그래프를 노드 하나로 넣음</td></tr>
+                    <tr><td>conditional</td><td>조건에 따라 실행 여부나 반복을 GPU에서 결정 (CUDA 12.3+)</td></tr>
+                </table>
+
+                <p>그래프를 쓰는 과정은 세 단계로 나뉜다. 이름이 비슷해서 헷갈리기 쉬우므로 타입 이름과 함께 익혀 둔다.</p>
+
+                <table class="spec-table">
+                    <tr><th>단계</th><th>타입</th><th>함수</th><th>비용</th></tr>
+                    <tr><td>1. 정의</td><td><code>cudaGraph_t</code></td><td>스트림 캡처 또는 노드 직접 추가</td><td>작음</td></tr>
+                    <tr><td>2. 인스턴스화</td><td><code>cudaGraphExec_t</code></td><td><code>cudaGraphInstantiate</code></td><td><strong>큼</strong> (검사, 준비). 한 번만</td></tr>
+                    <tr><td>3. 실행</td><td>-</td><td><code>cudaGraphLaunch(exec, stream)</code></td><td>작음. 매 프레임 반복</td></tr>
+                </table>
+
+                <!-- 3. 스트림 캡처 -->
+                <h2 id="capture"><i class="fa-solid fa-video"></i> 방법 1 - 스트림 캡처</h2>
+                <p>가장 쉬운 방법이다. 평소처럼 스트림에 작업을 넣되, 앞뒤를 <code>cudaStreamBeginCapture</code>와 <code>cudaStreamEndCapture</code>로 감싼다. 캡처 중에는 작업이 실제로 실행되지 않고 그래프에 기록만 된다. 이미 스트림 기반으로 짠 코드(5편, 12편)를 거의 그대로 그래프로 바꿀 수 있다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// one frame of a small vision pipeline, written the usual way
+void EnqueueFrame(cudaStream_t s, const Buffers&amp; b)
+{
+    cudaMemcpyAsync(b.dRaw, b.hRaw, b.rawBytes, cudaMemcpyHostToDevice, s);
+    Normalize &lt;&lt;&lt;b.grid, b.block, 0, s&gt;&gt;&gt;(b.dRaw, b.dNorm, b.w, b.h);
+    Blur3x3   &lt;&lt;&lt;b.grid, b.block, 0, s&gt;&gt;&gt;(b.dNorm, b.dBlur, b.w, b.h);
+    Threshold &lt;&lt;&lt;b.grid, b.block, 0, s&gt;&gt;&gt;(b.dBlur, b.dMask, b.w, b.h, b.th);
+    cudaMemsetAsync(b.dCount, 0, sizeof(unsigned int), s);
+    CountMask &lt;&lt;&lt;b.grid, b.block, 0, s&gt;&gt;&gt;(b.dMask, b.dCount, b.w * b.h);
+    cudaMemcpyAsync(b.hCount, b.dCount, sizeof(unsigned int), cudaMemcpyDeviceToHost, s);
+}
+
+// --- build the graph once ---
+cudaGraph_t     graph;
+cudaGraphExec_t graphExec;
+
+cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+EnqueueFrame(stream, buffers);                    // recorded, not executed
+cudaStreamEndCapture(stream, &amp;graph);
+
+cudaGraphInstantiate(&amp;graphExec, graph, 0);       // CUDA 12 signature
+cudaGraphDestroy(graph);                          // the exec keeps its own copy
+
+// --- every frame ---
+while (running)
+{
+    GrabFrameInto(buffers.hRaw);                  // camera writes into the same pinned buffer
+    cudaGraphLaunch(graphExec, stream);           // whole pipeline, one call
+    cudaStreamSynchronize(stream);
+    Report(*buffers.hCount);
+}
+
+cudaGraphExecDestroy(graphExec);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>cudaGraphInstantiate 함수 모양은 버전마다 다름</strong>
+                        CUDA 11까지는 <code>cudaGraphInstantiate(&amp;exec, graph, nullptr, nullptr, 0)</code>처럼 오류 노드와 로그 버퍼를 받는 5인자 형태였다. CUDA 12부터는 <code>cudaGraphInstantiate(&amp;exec, graph, flags)</code> 3인자 형태다. 예제를 가져올 때 사용하는 Toolkit 버전과 맞는지 확인한다.
+                    </div>
+                </div>
+
+                <h3 id="capture-pointer"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 캡처된 값은 고정된다</h3>
+                <p>캡처할 때 넘긴 <strong>포인터와 인자 값이 그래프 안에 그대로 저장</strong>된다. 위 코드가 매 프레임 동작하는 이유는 카메라가 항상 같은 핀드 버퍼(<code>hRaw</code>)에 쓰고, 그래프는 그 고정된 주소에서 읽기 때문이다. 만약 프레임마다 다른 버퍼 주소를 넘기는 구조라면, 그래프는 여전히 캡처 당시 주소를 읽는다. 그래서 그래프를 쓸 때는 다음 원칙으로 설계한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>원칙</th><th>방법</th></tr>
+                    <tr><td>버퍼 주소 고정</td><td>입출력 버퍼를 처음에 한 번 할당하고 계속 재사용 (12편 버퍼 풀)</td></tr>
+                    <tr><td>입력이 매번 다른 곳에 오면</td><td>고정 버퍼로 복사하는 노드를 그래프 앞에 둠</td></tr>
+                    <tr><td>링 버퍼 N개를 돌려 쓰면</td><td>버퍼마다 그래프를 하나씩 미리 만들어 두고 번갈아 실행</td></tr>
+                    <tr><td>임계값 같은 작은 인자가 바뀌면</td><td>값 대신 GPU 메모리의 주소를 넘기고, 그 메모리 값을 바꿈. 또는 노드 인자 갱신 (아래)</td></tr>
+                </table>
+
+                <!-- 4. 병렬 캡처 -->
+                <h2 id="fork-join"><i class="fa-solid fa-code-fork"></i> 여러 스트림을 한 그래프로 캡처</h2>
+                <p>서로 상관없는 작업을 동시에 돌리려면 캡처 중에도 여러 스트림을 쓸 수 있다. 캡처 중인 스트림에서 이벤트를 기록하고, 다른 스트림이 그 이벤트를 기다리게 하면 그 스트림도 같은 캡처에 합류한다. 마지막에는 원래 스트림이 다른 스트림을 기다리게 해서 다시 합친다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cudaEvent_t forkEv, joinEv;
+cudaEventCreateWithFlags(&amp;forkEv, cudaEventDisableTiming);
+cudaEventCreateWithFlags(&amp;joinEv, cudaEventDisableTiming);
+
+cudaStreamBeginCapture(s0, cudaStreamCaptureModeGlobal);
+
+Normalize&lt;&lt;&lt;g, b, 0, s0&gt;&gt;&gt;(dRaw, dNorm, w, h);
+
+cudaEventRecord(forkEv, s0);            // fork: s1 joins the capture here
+cudaStreamWaitEvent(s1, forkEv, 0);
+
+EdgeDetect&lt;&lt;&lt;g, b, 0, s0&gt;&gt;&gt;(dNorm, dEdge, w, h);      // branch A on s0
+Histogram &lt;&lt;&lt;g, b, 0, s1&gt;&gt;&gt;(dNorm, dHist, w * h);     // branch B on s1 (runs in parallel)
+
+cudaEventRecord(joinEv, s1);            // join: s0 waits for s1
+cudaStreamWaitEvent(s0, joinEv, 0);
+
+Combine&lt;&lt;&lt;g, b, 0, s0&gt;&gt;&gt;(dEdge, dHist, dOut, w, h);
+
+cudaStreamEndCapture(s0, &amp;graph);       // end on the stream that began the capture</code></pre>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif" font-size="12">
+                        <g fill="#eff6ff" stroke="#1e40af"><rect x="30" y="65" width="110" height="34" rx="6"/><rect x="500" y="65" width="110" height="34" rx="6"/></g>
+                        <g fill="#fde68a" stroke="#d97706"><rect x="265" y="20" width="110" height="34" rx="6"/></g>
+                        <g fill="#a7f3d0" stroke="#059669"><rect x="265" y="110" width="110" height="34" rx="6"/></g>
+                        <g text-anchor="middle"><text x="85" y="87" fill="#1e3a5f">Normalize</text><text x="320" y="42" fill="#78350f">EdgeDetect</text><text x="320" y="132" fill="#065f46">Histogram</text><text x="555" y="87" fill="#1e3a5f">Combine</text></g>
+                        <g stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#g-arr)"><path d="M140 75 L 262 40"/><path d="M140 90 L 262 125"/><path d="M375 40 L 497 75"/><path d="M375 125 L 497 90"/></g>
+                        <text x="320" y="165" text-anchor="middle" fill="#475569" font-size="11">EdgeDetect와 Histogram은 의존 관계가 없으므로 GPU가 동시에 실행할 수 있다</text>
+                        <defs><marker id="g-arr" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker></defs>
+                    </svg>
+                    <div class="diagram-caption">fork와 join으로 캡처한 그래프. 이벤트 대기가 간선이 된다</div>
+                </div>
+
+                <!-- 5. 명시적 API -->
+                <h2 id="explicit"><i class="fa-solid fa-screwdriver-wrench"></i> 방법 2 - 노드를 직접 추가</h2>
+                <p>스트림 캡처 대신 노드와 의존 관계를 API로 하나씩 만들 수도 있다. 코드는 길어지지만 그래프 구조를 정확히 통제할 수 있고, 나중에 특정 노드의 인자만 바꾸기 위해 노드 핸들을 들고 있기 좋다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cudaGraph_t graph;
+cudaGraphCreate(&amp;graph, 0);
+
+// kernel node: Normalize(dRaw, dNorm, w, h)
+void* normArgs[] = { &amp;dRaw, &amp;dNorm, &amp;w, &amp;h };
+cudaKernelNodeParams np = {};
+np.func           = (void*)Normalize;
+np.gridDim        = grid;
+np.blockDim       = block;
+np.sharedMemBytes = 0;
+np.kernelParams   = normArgs;
+cudaGraphNode_t normNode;
+cudaGraphAddKernelNode(&amp;normNode, graph, nullptr, 0, &amp;np);        // no dependencies
+
+// kernel node: Threshold(dNorm, dMask, w, h, th) depends on normNode
+void* thArgs[] = { &amp;dNorm, &amp;dMask, &amp;w, &amp;h, &amp;th };
+cudaKernelNodeParams tp = np;
+tp.func         = (void*)Threshold;
+tp.kernelParams = thArgs;
+cudaGraphNode_t thNode;
+cudaGraphAddKernelNode(&amp;thNode, graph, &amp;normNode, 1, &amp;tp);        // edge: norm -&gt; threshold
+
+cudaGraphExec_t exec;
+cudaGraphInstantiate(&amp;exec, graph, 0);</code></pre>
+
+                <p><code>kernelParams</code>에는 인자 값 자체가 아니라 <strong>인자 변수의 주소</strong> 배열을 넘긴다. 드라이버가 노드를 만들 때 그 주소에서 값을 복사해 가므로, 노드를 추가한 뒤에는 원래 변수가 사라져도 된다.</p>
+
+                <!-- 6. 갱신 -->
+                <h2 id="update"><i class="fa-solid fa-pen-to-square"></i> 인스턴스화한 그래프 고치기</h2>
+                <p>인스턴스화는 비싸므로, 인자가 조금 바뀔 때마다 다시 하면 그래프를 쓰는 의미가 줄어든다. 구조(노드와 간선)가 그대로이고 인자만 바뀐다면 이미 만든 실행 그래프를 고칠 수 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방법</th><th>쓰는 때</th></tr>
+                    <tr><td><code>cudaGraphExecKernelNodeSetParams(exec, node, &amp;params)</code></td><td>노드 핸들을 들고 있고, 특정 커널의 인자만 바꿀 때 (명시적 API 방식에 잘 맞음)</td></tr>
+                    <tr><td><code>cudaGraphExecMemcpyNodeSetParams1D</code> 등</td><td>복사 노드의 주소, 크기를 바꿀 때</td></tr>
+                    <tr><td><code>cudaGraphExecUpdate(exec, newGraph, &amp;info)</code></td><td>스트림 캡처를 다시 해서 새 그래프를 만들고, 구조가 같으면 기존 실행 그래프에 반영 (재인스턴스화보다 쌈)</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// re-capture with new arguments, then try to update in place (CUDA 12 signature)
+cudaGraph_t newGraph;
+cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+EnqueueFrame(stream, buffersWithNewThreshold);
+cudaStreamEndCapture(stream, &amp;newGraph);
+
+cudaGraphExecUpdateResultInfo info;
+if (cudaGraphExecUpdate(graphExec, newGraph, &amp;info) != cudaSuccess)
+{
+    // topology changed: fall back to a fresh instantiation
+    cudaGetLastError();                    // clear the error state
+    cudaGraphExecDestroy(graphExec);
+    cudaGraphInstantiate(&amp;graphExec, newGraph, 0);
+}
+cudaGraphDestroy(newGraph);</code></pre>
+
+                <p>그래도 가장 좋은 설계는 갱신이 필요 없게 만드는 것이다. 임계값처럼 자주 바뀌는 작은 값은 GPU 메모리(또는 핀드 메모리)에 두고 커널이 포인터로 읽게 하면, 그 값만 바꿔도 그래프는 손댈 필요가 없다.</p>
+
+                <!-- 7. 캡처 중 금지 -->
+                <h2 id="forbidden"><i class="fa-solid fa-ban"></i> 캡처 중에 하면 안 되는 일</h2>
+                <p>캡처 중인 스트림의 작업은 실제로 실행되지 않으므로, 실행 결과를 기다리거나 확인하는 호출은 의미가 없거나 오류가 난다.</p>
+
+                <table class="spec-table">
+                    <tr><th>호출</th><th>결과</th><th>대신</th></tr>
+                    <tr><td><code>cudaStreamSynchronize(capturingStream)</code>, <code>cudaDeviceSynchronize()</code></td><td>오류, 캡처가 무효가 됨</td><td>동기화는 그래프 실행 뒤에</td></tr>
+                    <tr><td><code>cudaMemcpy</code> (동기 복사)</td><td>오류</td><td><code>cudaMemcpyAsync</code></td></tr>
+                    <tr><td><code>cudaMalloc</code>, <code>cudaFree</code></td><td>기본(Global) 모드에서 오류</td><td>캡처 전에 할당, 또는 <code>cudaMallocAsync</code>/<code>cudaFreeAsync</code></td></tr>
+                    <tr><td>기본 스트림(0번, legacy)에서 캡처</td><td>지원 안 함</td><td><code>cudaStreamCreate</code>로 만든 스트림 사용</td></tr>
+                    <tr><td>캡처 중인 스트림에 <code>cudaStreamQuery</code>, <code>cudaEventQuery</code></td><td>오류</td><td>그래프 실행 뒤 확인</td></tr>
+                    <tr><td>라이브러리가 내부에서 동기화하는 함수</td><td>캡처 실패</td><td>라이브러리 문서에서 "graph capture safe" 여부 확인</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>캡처 모드 세 가지</strong>
+                        <code>cudaStreamCaptureModeGlobal</code>은 캡처 중에 다른 스레드까지 포함해 위험한 호출을 막는다. <code>ThreadLocal</code>은 현재 스레드만, <code>Relaxed</code>는 막지 않는다. 처음에는 Global로 두고, 다른 스레드에서 정상적으로 <code>cudaMalloc</code>을 해야 하는 등의 이유가 있을 때만 완화한다.
+                    </div>
+                </div>
+
+                <!-- 8. 효과 측정 -->
+                <h2 id="measure"><i class="fa-solid fa-stopwatch"></i> 효과 측정하기</h2>
+                <p>그래프가 실제로 도움이 되는지는 직접 재 봐야 한다. 아주 짧은 커널을 여러 개 이어 실행하는 경우로 비교해 보자.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void Tiny(float* d, int n) { int i = blockIdx.x * blockDim.x + threadIdx.x; if (i &lt; n) d[i] += 1.0f; }
+
+const int KERNELS = 20, ITERS = 1000, N = 1 &lt;&lt; 14;   // tiny kernels: launch cost dominates
+
+// A) plain launches
+cudaEventRecord(t0, s);
+for (int it = 0; it &lt; ITERS; ++it)
+    for (int k = 0; k &lt; KERNELS; ++k)
+        Tiny&lt;&lt;&lt;N / 256, 256, 0, s&gt;&gt;&gt;(d, N);
+cudaEventRecord(t1, s);
+
+// B) the same 20 kernels captured once, launched as a graph
+cudaStreamBeginCapture(s, cudaStreamCaptureModeGlobal);
+for (int k = 0; k &lt; KERNELS; ++k)
+    Tiny&lt;&lt;&lt;N / 256, 256, 0, s&gt;&gt;&gt;(d, N);
+cudaStreamEndCapture(s, &amp;g);
+cudaGraphInstantiate(&amp;ge, g, 0);
+
+cudaEventRecord(t2, s);
+for (int it = 0; it &lt; ITERS; ++it)
+    cudaGraphLaunch(ge, s);
+cudaEventRecord(t3, s);
+cudaEventSynchronize(t3);
+
+float msPlain, msGraph;
+cudaEventElapsedTime(&amp;msPlain, t0, t1);
+cudaEventElapsedTime(&amp;msGraph, t2, t3);
+printf("plain %.3f ms, graph %.3f ms, per kernel %.2f us vs %.2f us\n",
+       msPlain, msGraph, msPlain * 1000 / (ITERS * KERNELS), msGraph * 1000 / (ITERS * KERNELS));</code></pre>
+
+                <p>커널이 짧을수록 그래프 쪽이 확실히 빨라진다. 반대로 커널 하나가 수백 µs 이상 걸리는 큰 일을 한다면 차이가 거의 없다. 결과를 해석할 때는 다음을 같이 본다.</p>
+
+                <table class="spec-table">
+                    <tr><th>확인할 것</th><th>이유</th></tr>
+                    <tr><td>인스턴스화 시간은 따로 잰다</td><td>한 번만 드는 비용이므로 프레임당 시간에 섞으면 안 됨. 대신 프로그램 시작 시간에는 영향</td></tr>
+                    <tr><td>CPU 사용률도 본다</td><td>그래프의 이득은 GPU 시간보다 CPU 시간에서 더 크게 나타나기도 함. CPU가 다른 일(카메라 수신, UI)을 할 여유가 생김</td></tr>
+                    <tr><td>Nsight Systems 타임라인</td><td>커널 사이 빈틈이 줄었는지 눈으로 확인</td></tr>
+                </table>
+
+                <!-- 9. 언제 쓰나 -->
+                <h2 id="when"><i class="fa-solid fa-scale-balanced"></i> 언제 효과가 있나</h2>
+                <table class="spec-table">
+                    <tr><th>상황</th><th>효과</th><th>설명</th></tr>
+                    <tr><td>프레임마다 같은 순서로 도는 영상 파이프라인</td><td><strong>큼</strong></td><td>구조가 매번 같고 커널이 작고 많음. 그래프에 가장 잘 맞는 경우</td></tr>
+                    <tr><td>딥러닝 추론 (고정 입력 크기)</td><td><strong>큼</strong></td><td>TensorRT의 <code>enqueueV3</code>를 캡처하거나 PyTorch의 CUDA Graph 기능으로 레이어 수백 개를 한 번에 실행</td></tr>
+                    <tr><td>반복 솔버 (같은 단계 반복)</td><td>큼</td><td>CUDA 12.3+ conditional 노드로 반복 조건까지 GPU에서 판단 가능</td></tr>
+                    <tr><td>큰 커널 몇 개</td><td>작음</td><td>실행 비용이 원래 작은 비율</td></tr>
+                    <tr><td>프레임마다 영상 크기, 처리 순서가 바뀜</td><td>작거나 손해</td><td>매번 다시 캡처하고 인스턴스화하면 오히려 느림. 크기별 그래프를 몇 개 미리 만들어 두는 방법은 가능</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>14편 히스토그램 평활화를 그래프로</strong>
+                        memset(히스토그램 0으로) → 히스토그램 커널 → LUT 커널 → 적용 커널 → 결과 복사, 이 다섯 작업을 한 번 캡처해 두면 프레임마다 <code>cudaGraphLaunch</code> 한 줄로 끝난다. 버퍼 주소만 고정해 두면 된다.
+                    </div>
+                </div>
+
+                <!-- 10. 더 나아가기 -->
+                <h2 id="advanced"><i class="fa-solid fa-rocket"></i> 더 나아가기 - 새 기능들</h2>
+                <table class="spec-table">
+                    <tr><th>기능</th><th>버전</th><th>내용</th></tr>
+                    <tr><td>메모리 노드</td><td>CUDA 11.4+</td><td>그래프 안에서 <code>cudaMallocAsync</code>/<code>cudaFreeAsync</code>. 임시 버퍼를 그래프가 직접 관리하고 재사용</td></tr>
+                    <tr><td>장치에서 그래프 실행</td><td>CUDA 12.0+</td><td>커널 안에서 다른 그래프를 실행 (device graph launch). CPU를 거치지 않고 다음 작업을 결정</td></tr>
+                    <tr><td>conditional 노드</td><td>CUDA 12.3+</td><td>IF, WHILE 노드. GPU가 계산한 값에 따라 하위 그래프를 실행하거나 반복. 이후 버전에서 종류가 늘어남</td></tr>
+                    <tr><td>그래프 디버그 출력</td><td>CUDA 11.3+</td><td><code>cudaGraphDebugDotPrint(graph, "g.dot", flags)</code>로 Graphviz 그림을 만들어 구조 확인</td></tr>
+                </table>
+
+                <p>캡처가 의도대로 됐는지 확인할 때는 <code>cudaGraphDebugDotPrint</code>가 유용하다. fork/join이 생각한 대로 병렬 가지를 만들었는지, 빠진 노드는 없는지 그림으로 바로 보인다.</p>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>매 프레임 인스턴스화</strong>
+                        루프 안에서 캡처와 <code>cudaGraphInstantiate</code>를 반복하면 일반 실행보다 느려진다. 인스턴스화는 시작할 때 한 번 하고, 루프에서는 <code>cudaGraphLaunch</code>만 호출한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>프레임마다 바뀌는 포인터</strong>
+                        캡처할 때의 포인터가 그래프에 저장된다. 프레임마다 다른 버퍼를 쓰는 코드를 그대로 캡처하면, 그래프는 계속 첫 프레임 버퍼를 처리한다. 오류도 나지 않으므로 찾기 어렵다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>캡처 오류를 확인하지 않음</strong>
+                        캡처 중 금지된 호출이 있으면 <code>cudaStreamEndCapture</code>가 오류를 돌려주고 그래프가 만들어지지 않는다. 이후 <code>cudaGraphInstantiate</code>나 <code>cudaGraphLaunch</code>에서 엉뚱한 오류로 보일 수 있으므로, 캡처 단계마다 반환값을 확인한다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>host 노드 안에서 CUDA 호출</strong>
+                        <code>cudaLaunchHostFunc</code>로 넣은 CPU 함수(host 노드)는 그래프 실행 흐름 안에서 호출되므로, 그 안에서 CUDA API를 부르면 안 된다. 결과 알림이나 로그 기록처럼 가벼운 일만 넣고, 무거운 후처리는 다른 스레드에 넘긴다.
+                    </div>
+                </div>
+
+                <!-- 12. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table class="spec-table">
+                    <tr><th>요점</th><th>내용</th></tr>
+                    <tr><td>푸는 문제</td><td>작은 커널을 많이 실행할 때의 CPU 쪽 실행 비용 (launch-bound)</td></tr>
+                    <tr><td>만드는 법</td><td>스트림 캡처 (쉬움) 또는 노드 직접 추가 (세밀함)</td></tr>
+                    <tr><td>순서</td><td>정의 → 인스턴스화 (한 번) → 실행 (반복)</td></tr>
+                    <tr><td>설계 원칙</td><td>버퍼 주소 고정, 자주 바뀌는 값은 메모리로 전달</td></tr>
+                    <tr><td>잘 맞는 곳</td><td>매 프레임 같은 구조의 영상 파이프라인, 고정 크기 추론</td></tr>
+                </table>
+                <p>다음 편에서는 13, 14편에서 직접 짠 리덕션, 스캔, 정렬 같은 기본 알고리즘을 라이브러리로 처리하는 <strong>Thrust와 CUB</strong>를 다룬다. CUB 장치 알고리즘은 이 편의 Graph 캡처와도 잘 맞는다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA Developer Blog, "Getting Started with CUDA Graphs"</li>
+                        <li>NVIDIA CUDA C++ Programming Guide - CUDA Graphs</li>
+                        <li>NVIDIA CUDA Runtime API 문서 - Graph Management, Stream Capture</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

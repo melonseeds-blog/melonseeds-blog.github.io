@@ -1,0 +1,467 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM 디코딩 심화 2 — 반복 억제와 고급 샘플러 (penalty·min-p) - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 수식 블록 */
+        .formula {
+            background: #f8fafc; border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0;
+            padding: 14px 22px; margin: 16px 0;
+            font-family: 'Consolas', 'D2Coding', 'Cambria Math', serif;
+            font-size: 0.98rem; color: var(--text); text-align: center;
+            overflow-x: auto; line-height: 1.9;
+        }
+        .formula .formula-note {
+            display: block; margin-top: 6px;
+            font-family: 'Pretendard', sans-serif; font-size: 0.78rem;
+            color: var(--text-muted); text-align: center;
+        }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+            .formula { font-size: 0.85rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#three-penalties" data-section="three-penalties">penalty 3종</a><a href="#how-applied" data-section="how-applied">logit 적용 방식</a><a href="#side-effects" data-section="side-effects">부작용</a><a href="#min-p" data-section="min-p">Min-p</a><a href="#others" data-section="others">덜 알려진 샘플러</a><a href="#takeaway" data-section="takeaway">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>LLM 디코딩 심화 2 — penalty 3종과 min-p, 그 부작용까지</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-24</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 11분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>repetition / frequency / presence penalty가 logit에 거는 연산의 차이</li>
+                        <li>곱셈형 penalty와 덧셈형 penalty가 만드는 서로 다른 부작용</li>
+                        <li>top-p의 약점을 보완하는 min-p 샘플링의 발상</li>
+                        <li>typical / tail-free / η-sampling 등 덜 알려진 샘플러</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#three-penalties">반복 penalty 3종의 차이</a></li>
+                        <li><a href="#how-applied">logit에 어떻게 적용되나</a></li>
+                        <li><a href="#side-effects">잘 모르는 부작용</a></li>
+                        <li><a href="#min-p">Min-p — 동적 절단의 다른 답</a></li>
+                        <li><a href="#others">덜 알려진 샘플러들</a></li>
+                        <li><a href="#takeaway">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="three-penalties"><i class="fa-solid fa-ban"></i> 반복 penalty 3종의 차이</h2>
+                <p>반복을 줄이는 파라미터는 이름이 비슷해 자주 혼동된다. 세 개는 <strong>"무엇을 세느냐"와 "어떻게 거느냐"</strong>가 다르다.</p>
+                <table>
+                    <tr><th>파라미터</th><th>세는 대상</th><th>적용 방식</th></tr>
+                    <tr><td>Repetition penalty</td><td>이미 등장한 토큰 (등장 여부)</td><td>곱셈/나눗셈 (logit 스케일)</td></tr>
+                    <tr><td>Frequency penalty</td><td>등장한 <strong>횟수</strong>에 비례</td><td>덧셈 (횟수 × 계수만큼 logit 차감)</td></tr>
+                    <tr><td>Presence penalty</td><td>등장 <strong>여부</strong>(1회 이상이면 동일)</td><td>덧셈 (등장했으면 상수 차감)</td></tr>
+                </table>
+                <p>핵심 차이: frequency penalty는 같은 토큰이 많이 나올수록 점점 더 세게 누른다(누적). presence penalty는 한 번이라도 나왔으면 그 뒤로는 똑같은 크기로 누른다(이진적). 그래서 <strong>frequency는 "같은 단어 도배"를, presence는 "이미 쓴 주제로 다시 안 돌아가게"를</strong> 막는 데 가깝다.</p>
+
+                <h2 id="how-applied"><i class="fa-solid fa-code"></i> logit에 어떻게 적용되나</h2>
+                <p>OpenAI 계열의 frequency/presence penalty는 <strong>덧셈형</strong>이다.</p>
+                <pre><code>z_i ← z_i - (count_i × frequency_penalty) - (1[count_i &gt; 0] × presence_penalty)</code></pre>
+                <p>반면 전통적 repetition penalty(CTRL 논문 유래)는 <strong>곱셈/나눗셈형</strong>이다.</p>
+                <pre><code>z_i ← z_i / penalty      (z_i &gt; 0 일 때)
+z_i ← z_i × penalty      (z_i &lt; 0 일 때)   # penalty &gt; 1</code></pre>
+                <div class="callout warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>곱셈형 penalty의 부호 함정</strong>
+                        곱셈형은 logit의 <strong>부호</strong>에 따라 방향이 갈린다. 양수 logit은 나눠서 줄이고, 음수 logit은 곱해서 더 음수로 만든다. 그런데 logit 절대값이 큰 음수 토큰은 곱셈으로 <strong>과도하게</strong> 눌려 사실상 영구 배제된다. penalty를 1.3 이상으로 키우면 갑자기 출력이 망가지는 게 이 때문이다 — 덧셈형보다 훨씬 비선형적이다.
+                    </div>
+                </div>
+
+                <h2 id="side-effects"><i class="fa-solid fa-triangle-exclamation"></i> 잘 모르는 부작용</h2>
+                <ul>
+                    <li><strong>고빈도 기능어까지 누른다</strong> — penalty는 토큰을 의미로 구분하지 않는다. "the", "은/는", 쉼표 같은 필수 기능어도 "이미 나온 토큰"이라 똑같이 눌린다. penalty를 세게 걸면 문장이 비문법적으로 변하는 1차 원인이다.</li>
+                    <li><strong>코드·표에 치명적</strong> — 코드는 같은 토큰(들여쓰기, 괄호, 변수명)이 반복되는 게 정상이다. 반복 penalty를 코드 생성에 걸면 들여쓰기가 깨지거나 변수명을 멋대로 바꾼다. <strong>코드·구조적 출력에는 penalty 0이 기본</strong>이어야 한다.</li>
+                    <li><strong>긴 출력에서 누적</strong> — frequency penalty는 길이가 길어질수록 누적 차감이 커져, 후반부로 갈수록 모델이 "안 쓴 단어"를 억지로 찾게 된다. 장문에서 뒤로 갈수록 어휘가 어색해지면 의심할 지점이다.</li>
+                </ul>
+
+                <h2 id="min-p"><i class="fa-solid fa-filter"></i> Min-p — 동적 절단의 다른 답</h2>
+                <p>top-p가 "누적 확률"로 자른다면, <strong>min-p</strong>는 "<strong>1등 토큰 대비 상대 확률</strong>"로 자른다. 1등 토큰 확률에 <code>min_p</code>(예: 0.1)를 곱한 값을 문턱으로 삼아, 그보다 낮은 토큰을 전부 버린다.</p>
+                <pre><code>threshold = min_p × max_i(p_i)
+keep token i  iff  p_i ≥ threshold</code></pre>
+                <p>발상의 차이가 핵심이다. top-p는 "전체의 90%를 채울 때까지"라 1등이 압도적으로 강할 때도 꼬리를 일부 남길 수 있다. min-p는 "1등에 비해 터무니없이 약한 후보는 다 버린다"는 쪽이라, <strong>모델이 확신할 땐 과감히 좁히고 애매할 땐 넓게</strong> 연다. 높은 temperature와 함께 써도 분포가 무너지지 않아, 창의적 생성에서 top-p보다 안정적이라는 평가가 늘고 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>min-p가 빛나는 조합</strong>
+                        "높은 temperature(1.0~1.5) + min-p(0.05~0.1)"는 top-p로는 만들기 힘든 조합이다. T로 분포를 풍부하게 펼친 뒤, min-p가 "1등 대비 말도 안 되게 약한 토큰"만 잘라내 붕괴를 막는다. 다양성은 살리면서 헛소리는 거르는 셋업이다.
+                    </div>
+                </div>
+
+                <h2 id="others"><i class="fa-solid fa-flask"></i> 덜 알려진 샘플러들</h2>
+                <ul>
+                    <li><strong>Typical sampling</strong> — 확률이 높은 토큰이 아니라 "그 분포의 <strong>정보량(엔트로피)에 전형적인</strong>" 토큰을 고른다. 너무 뻔한 토큰(초고확률)과 너무 의외인 토큰을 동시에 피해, 사람 글의 정보 분포에 가깝게 만든다는 아이디어다.</li>
+                    <li><strong>Tail-free sampling (TFS)</strong> — 확률을 정렬한 곡선의 <strong>2차 미분</strong>으로 "꼬리가 시작되는 지점"을 찾아 자른다. top-p가 못 잡는 "분포의 무릎(knee)"을 수학적으로 탐지하려는 시도다.</li>
+                    <li><strong>η(eta) sampling</strong> — 엔트로피에 따라 절단 문턱을 적응적으로 정한다. 분포가 불확실할 때와 확실할 때 다른 기준을 적용한다.</li>
+                </ul>
+                <p>이들은 대형 상용 API엔 노출이 적지만, 로컬 추론(llama.cpp, vLLM, text-generation-webui 등)에서는 노출되는 경우가 많다. "top-p/top-k밖에 없다"고 생각하면 이 도구들을 놓친다.</p>
+
+                <h2 id="takeaway"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <div class="callout tip">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="callout-body">
+                        <strong>핵심 요약</strong>
+                        ① frequency=횟수 비례 덧셈, presence=등장 여부 덧셈, repetition=부호 의존 곱셈(비선형, 과하면 붕괴). ② penalty는 기능어·코드를 구분 못 한다 — 코드 생성엔 0. ③ min-p는 "1등 대비 상대 문턱"으로 자르며 고온 생성에 강하다. ④ typical·TFS·η 같은 샘플러는 로컬 추론에서 쓸 수 있다.
+                    </div>
+                </div>
+                <p>다음 글에서는 beam search가 왜 창작에는 나쁜 선택인지, best-of-n·logit bias·구조적 디코딩(structured/constrained) 같은 제어 기법, 그리고 태스크별 튜닝 레시피를 다룬다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고</div>
+                    <ul>
+                        <li>Keskar et al., "CTRL" (2019) — repetition penalty(곱셈형) 출처</li>
+                        <li>Meister et al., "Typical Decoding for Natural Language Generation" (2022)</li>
+                        <li>관련: <a href="llm-decoding-01-sampling.html">디코딩 심화 1 — 샘플링의 내부 동작</a>, <a href="llm-decoding-03-search-control.html">디코딩 심화 3 — 탐색과 제어</a></li>
+                    </ul>
+                </div>
+</div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai-llm');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai-llm');
+</script>
+
+</body>
+</html>

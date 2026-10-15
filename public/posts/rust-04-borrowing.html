@@ -1,0 +1,397 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>참조와 빌림(Borrowing) — borrow checker - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .floating-toc { position: fixed; top: 58px; left: 0; right: 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); z-index: 90; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .floating-toc.visible { display: block; }
+        .toc-row1 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a { padding: 9px 14px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 { max-width: 1280px; margin: 0 auto; padding: 0 40px 0 calc(var(--sidebar-w) + 40px); display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border-light); }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a { padding: 7px 14px; font-size: 0.73rem; font-weight: 500; color: var(--text-light); text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+        .toc { background: var(--primary-50); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+        .toc-title { font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+        .summary-box { background: linear-gradient(135deg, var(--primary-50), var(--seed-light)); border: 1px solid var(--melon-light); border-left: 4px solid var(--melon); border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px; }
+        .summary-box .summary-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+        .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem; line-height: 1.7; }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+        .callout.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .post-detail-body h2 { font-family: 'Pretendard', sans-serif; font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px; padding: 12px 0 12px 16px; border-left: 4px solid var(--melon); border-bottom: none; background: var(--primary-50); border-radius: 0 8px 8px 0; display: flex; align-items: center; gap: 10px; scroll-margin-top: 100px; }
+        .post-detail-body h3 { font-family: 'Pretendard', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); color: var(--text); display: flex; align-items: center; gap: 8px; scroll-margin-top: 120px; }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+        .references { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 40px; }
+        .references .ref-title { font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+        .layer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .layer-card .lay-tag { display: inline-block; background: var(--melon); color: white; font-weight: 700; font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; margin-right: 8px; letter-spacing: 0.02em; }
+        .layer-card .lay-where { color: var(--text-muted); font-size: 0.8rem; font-family: 'Consolas', 'Monaco', monospace; margin-left: 4px; }
+        .layer-card h4 { font-family: 'Pretendard', sans-serif; font-size: 1.02rem; font-weight: 700; margin: 0 0 8px; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .layer-card p { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; }
+        .layer-card .lay-when { font-size: 0.86rem; color: var(--primary-dark); background: var(--primary-50); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+        .compare-table th, .compare-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .compare-table th { background: var(--primary-50); font-weight: 700; }
+        .compare-table code { font-size: 0.82rem; }
+        .decision-list { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+        .decision-list li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--border-light); font-size: 0.92rem; line-height: 1.7; }
+        .decision-list li:last-child { border-bottom: none; }
+        .decision-list li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; background: var(--melon); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .decision-list li strong { color: var(--primary-dark); }
+        pre.code { background:#1e293b; color:#e2e8f0; border-radius:10px; padding:16px 20px; overflow-x:auto; font-family:'Consolas','D2Coding',monospace; font-size:0.85rem; line-height:1.6; margin:16px 0; }
+        pre.code .cm { color:#94a3b8; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo"><span class="nav-logo-title">Melon Seeds</span></a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1"><a href="#why" data-section="why">왜 빌림인가</a><a href="#shared" data-section="shared">공유 참조 &amp;</a><a href="#mutable" data-section="mutable">가변 참조 &amp;mut</a><a href="#rules" data-section="rules">빌림 규칙</a><a href="#slice" data-section="slice">슬라이스</a><a href="#wrap" data-section="wrap">정리</a></div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <article class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">Rust 시리즈</span>
+                </div>
+                <h1>참조와 빌림(Borrowing) — borrow checker</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-06-25</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                    <span><i class="fa-brands fa-rust"></i> Rust 시리즈</span>
+                </div>
+            </div>
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>이 편에서 배우는 것</strong>
+                        값을 옮기지(move) 않고도 빌려 쓰는 방법, 즉 참조를 다룬다. 읽기 전용 공유 참조 <code>&amp;T</code>와 쓰기 가능한 가변 참조 <code>&amp;mut T</code>의 차이를 본다. borrow checker가 컴파일 타임에 강제하는 핵심 규칙 — "가변 참조 1개 또는 공유 참조 여럿, 둘은 동시에 불가" — 이 어떻게 데이터 경쟁을 원천 차단하는지 이해한다. 마지막으로 같은 규칙 위에 서는 슬라이스를 다룬다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>왜 소유권을 옮기지 않고 빌리는가 — 참조의 동기</li>
+                        <li>공유 참조 <code>&amp;T</code> — 읽기 전용으로 여럿이 동시에</li>
+                        <li>가변 참조 <code>&amp;mut T</code> — 단독으로만 허용되는 쓰기 권한</li>
+                        <li>빌림 규칙과 borrow checker가 막는 데이터 경쟁</li>
+                        <li>슬라이스 — 빌림 위에 세운 부분 참조</li>
+                    </ul>
+                </div>
+
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">왜 옮기지 않고 빌리나</a></li>
+                        <li><a href="#shared">공유 참조 &amp;T</a></li>
+                        <li><a href="#mutable">가변 참조 &amp;mut T</a></li>
+                        <li><a href="#rules">빌림 규칙과 borrow checker</a></li>
+                        <li><a href="#slice">슬라이스</a></li>
+                        <li><a href="#wrap">정리와 주의</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="why"><i class="fa-solid fa-circle-question"></i> 왜 옮기지 않고 빌리나</h2>
+                <p>앞 편에서 소유권을 봤다. <code>String</code> 같은 힙 데이터를 함수에 넘기면 소유권이 그쪽으로 <strong>이동(move)</strong>하고, 호출한 쪽에서는 더 이상 그 값을 쓸 수 없다. 그런데 함수에 "잠깐 읽기만" 시키고 싶을 때마다 소유권을 넘겼다 돌려받는 건 번거롭다.</p>
+                <p>그래서 Rust는 값을 옮기지 않고 <strong>빌려 쓰는</strong> 길을 둔다. 참조(<code>&amp;</code>)를 넘기면 소유권은 그대로 둔 채 접근 권한만 빌려준다. 아래는 소유권을 넘기지 않고 길이만 읽는 예다.</p>
+                <pre class="code"><code>fn main() {
+    let s = String::from("hello");
+    let len = calculate_length(&amp;s); <span class="cm">// 참조를 넘긴다. s의 소유권은 그대로다</span>
+    println!("'{}' 의 길이는 {}", s, len); <span class="cm">// s를 계속 쓸 수 있다</span>
+}
+
+fn calculate_length(s: &amp;String) -&gt; usize {
+    s.len() <span class="cm">// 빌린 값을 읽기만 한다</span>
+} <span class="cm">// s는 참조일 뿐이라, 여기서 값이 버려지지 않는다</span></code></pre>
+                <p><code>&amp;s</code>가 만드는 참조를 두고 "<code>s</code>를 빌렸다(borrow)"고 한다. 참조는 빌린 값을 가리킬 뿐 소유하지 않으므로, 참조가 스코프를 벗어나도 가리키던 값은 해제되지 않는다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — dangling 참조를 컴파일이 막는다</strong>
+                        C++에서 지역 변수의 참조나 포인터를 반환하면 댕글링이 되지만, 컴파일러는 대개 경고에 그치고 런타임에 미정의 동작으로 터진다. Rust에서는 빌린 값보다 참조가 더 오래 살아남으려 하면 borrow checker가 <strong>컴파일 자체를 거부</strong>한다. "참조는 가리키는 값보다 오래 살 수 없다"가 타입 시스템 규칙이라, 댕글링 참조를 만들 방법이 없다.
+                    </div>
+                </div>
+
+                <h2 id="shared"><i class="fa-solid fa-share-nodes"></i> 공유 참조 &amp;T</h2>
+                <p><code>&amp;T</code>는 <strong>공유 참조(불변 참조)</strong>다. 빌린 값을 읽을 수만 있고 바꿀 수는 없다. 핵심 성질은 "여럿이 동시에 가능"이다 — 같은 값을 가리키는 공유 참조는 몇 개든 함께 존재할 수 있다. 아무도 쓰지 않으니 서로 방해하지 않기 때문이다.</p>
+                <pre class="code"><code>fn main() {
+    let v = vec![10, 20, 30];
+
+    let a = &amp;v; <span class="cm">// 공유 참조 1</span>
+    let b = &amp;v; <span class="cm">// 공유 참조 2 — 동시에 여럿 OK</span>
+
+    println!("{}", a[0]); <span class="cm">// 10</span>
+    println!("{}", b[2]); <span class="cm">// 30</span>
+    println!("합계 = {}", sum(&amp;v)); <span class="cm">// 또 빌려서 읽어도 된다</span>
+}
+
+fn sum(nums: &amp;Vec&lt;i32&gt;) -&gt; i32 {
+    let mut total = 0;
+    for n in nums { <span class="cm">// &amp;Vec를 순회하면 각 원소는 &amp;i32로 빌려진다</span>
+        total += n;
+    }
+    total
+}</code></pre>
+                <p>공유 참조를 통해서는 값을 수정할 수 없다. 예컨대 <code>nums.push(40)</code> 같은 변경 메서드는 <code>&amp;Vec&lt;i32&gt;</code>로는 호출되지 않는다. 읽기 전용이라는 점이 타입에 박혀 있어서, 실수로 변경하는 코드는 컴파일되지 않는다.</p>
+
+                <h2 id="mutable"><i class="fa-solid fa-pen"></i> 가변 참조 &amp;mut T</h2>
+                <p>값을 빌려서 <strong>바꾸고</strong> 싶으면 가변 참조 <code>&amp;mut T</code>를 쓴다. 단, 원본이 <code>mut</code>로 선언돼 있어야 가변으로 빌릴 수 있다.</p>
+                <pre class="code"><code>fn main() {
+    let mut s = String::from("hello"); <span class="cm">// 원본이 mut여야 한다</span>
+    append_world(&amp;mut s); <span class="cm">// 가변으로 빌려준다</span>
+    println!("{}", s); <span class="cm">// hello world</span>
+}
+
+fn append_world(s: &amp;mut String) {
+    s.push_str(" world"); <span class="cm">// 빌린 값을 직접 수정한다</span>
+}</code></pre>
+                <p>가변 참조에는 강한 제약이 하나 붙는다. <strong>어떤 값에 대한 가변 참조는 한 시점에 단 하나만</strong> 존재할 수 있고, 그 동안에는 공유 참조도 함께 둘 수 없다. 즉 "쓰는 사람이 있으면 그 사람만 접근"이다. 아래는 컴파일되는 올바른 패턴 — 가변 참조의 사용이 끝난 뒤에 다시 빌린다.</p>
+                <pre class="code"><code>fn main() {
+    let mut n = 1;
+
+    {
+        let r = &amp;mut n; <span class="cm">// 가변 참조 — 이 블록 안에서만 산다</span>
+        *r += 10; <span class="cm">// 역참조로 값을 바꾼다</span>
+    } <span class="cm">// 여기서 r의 빌림이 끝난다</span>
+
+    let s = &amp;n; <span class="cm">// 가변 빌림이 끝났으니 이제 공유 참조 OK</span>
+    println!("{}", s); <span class="cm">// 11</span>
+}</code></pre>
+                <p><code>*r</code>처럼 <code>*</code>로 참조를 따라가 값에 접근하는 것을 역참조(dereference)라 한다. 가변 참조의 빌림 범위가 블록으로 끝나기 때문에, 그 뒤의 공유 참조는 규칙을 어기지 않는다.</p>
+
+                <h2 id="rules"><i class="fa-solid fa-scale-balanced"></i> 빌림 규칙과 borrow checker</h2>
+                <p>지금까지 본 것을 한 문장으로 모으면 빌림 규칙이 된다. 컴파일러의 borrow checker가 이 규칙을 강제한다.</p>
+                <ol class="decision-list">
+                    <li>한 값에 대해 <strong>가변 참조 1개</strong>를 두거나, <strong>공유 참조 여럿</strong>을 둘 수 있다 — 그러나 둘을 <strong>동시에</strong>는 안 된다.</li>
+                    <li>모든 참조는 가리키는 값보다 <strong>오래 살 수 없다</strong> (댕글링 금지).</li>
+                </ol>
+                <p>이 규칙의 효과가 데이터 경쟁(data race)의 원천 차단이다. 데이터 경쟁은 (1) 둘 이상이 같은 데이터에 접근하고, (2) 그중 적어도 하나가 쓰기이며, (3) 동기화가 없을 때 생긴다. "쓰기가 있으면 단독 접근"이라는 빌림 규칙은 이 조건을 구조적으로 불가능하게 만든다. 아래는 규칙 위반이라 <strong>컴파일되지 않는</strong> 예다.</p>
+                <pre class="code"><code>fn main() {
+    let mut v = vec![1, 2, 3];
+
+    let r = &amp;v;        <span class="cm">// 공유 참조</span>
+    v.push(4);          <span class="cm">// 컴파일 에러: 공유 빌림이 살아 있는데 가변 접근(push)</span>
+    println!("{:?}", r);
+}</code></pre>
+                <p><code>push</code>는 내부적으로 <code>&amp;mut v</code>를 필요로 하는데, 그 시점에 <code>r</code>이라는 공유 빌림이 아직 살아 있어 규칙 1을 어긴다. 컴파일러는 이를 거부한다. 순서를 바꿔, 공유 참조를 다 쓴 뒤에 변경하면 통과한다.</p>
+                <pre class="code"><code>fn main() {
+    let mut v = vec![1, 2, 3];
+
+    let r = &amp;v;
+    println!("{:?}", r); <span class="cm">// 여기서 r의 마지막 사용 — 빌림이 끝난다</span>
+
+    v.push(4); <span class="cm">// 이제 가변 접근 OK</span>
+    println!("{:?}", v); <span class="cm">// [1, 2, 3, 4]</span>
+}</code></pre>
+                <p>참조의 빌림은 선언 지점부터 <strong>마지막 사용 지점까지만</strong> 살아 있다(non-lexical lifetimes). 그래서 <code>r</code>을 마지막으로 쓴 줄 이후에는 가변 접근이 자유롭다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <div class="callout-body">
+                        <strong>C++과 이렇게 다르다 — aliasing과 const correctness를 컴파일이 강제</strong>
+                        C++의 <code>const T&amp;</code>는 "이 참조로는 못 바꾼다"는 약속이지만, 같은 객체를 다른 비-const 경로가 동시에 바꾸는 것(aliasing)을 막지 못한다. 그래서 한 스레드가 읽는 도중 다른 스레드가 쓰는 데이터 경쟁이 컴파일을 통과해 버린다. Rust의 <code>&amp;T</code>/<code>&amp;mut T</code>는 단순한 약속이 아니라 borrow checker가 강제하는 <strong>배타성 규칙</strong>이다. 가변 접근이 있으면 그 경로만 유일하므로, 같은 데이터에 대한 읽기-쓰기 동시 접근 자체가 컴파일되지 않는다. const correctness가 "지키면 좋은 관례"가 아니라 타입 시스템의 일부인 셈이다.
+                    </div>
+                </div>
+
+                <h2 id="slice"><i class="fa-solid fa-scissors"></i> 슬라이스</h2>
+                <p>슬라이스(slice)는 컬렉션 <strong>전체가 아닌 연속된 일부</strong>를 빌리는 참조다. 소유하지 않고 "어디부터 어디까지"를 가리키므로, 앞서 본 빌림 규칙을 그대로 따른다. 문자열 슬라이스의 타입은 <code>&amp;str</code>, 배열·벡터 슬라이스의 타입은 <code>&amp;[T]</code>다.</p>
+                <pre class="code"><code>fn main() {
+    let s = String::from("hello world");
+
+    let hello = &amp;s[0..5];  <span class="cm">// "hello" — 0번부터 5번 직전까지</span>
+    let world = &amp;s[6..11]; <span class="cm">// "world"</span>
+
+    println!("{} / {}", hello, world);
+    println!("첫 단어: {}", first_word(&amp;s)); <span class="cm">// hello</span>
+}
+
+<span class="cm">// &amp;str을 받으면 String과 문자열 리터럴 둘 다 받을 수 있다</span>
+fn first_word(s: &amp;str) -&gt; &amp;str {
+    let bytes = s.as_bytes();
+    for (i, &amp;b) in bytes.iter().enumerate() {
+        if b == b' ' {
+            return &amp;s[0..i]; <span class="cm">// 공백 직전까지를 빌려서 반환</span>
+        }
+    }
+    &amp;s[..] <span class="cm">// 공백이 없으면 전체</span>
+}</code></pre>
+                <p>슬라이스가 빌림이라는 점은 안전성으로 이어진다. 슬라이스가 원본을 공유 참조로 빌리고 있는 동안에는, 원본을 가변으로 바꾸려는 시도가 빌림 규칙에 걸려 컴파일되지 않는다.</p>
+                <pre class="code"><code>fn main() {
+    let mut s = String::from("hello world");
+    let word = first_word(&amp;s); <span class="cm">// s를 공유 참조로 빌리는 슬라이스</span>
+    <span class="cm">// s.clear(); // 만약 여기서 s를 비우려 하면 컴파일 에러: word가 아직 s를 빌리는 중</span>
+    println!("{}", word); <span class="cm">// word의 마지막 사용</span>
+    s.clear(); <span class="cm">// word를 다 썼으니 이제 변경 OK</span>
+    println!("len = {}", s.len()); <span class="cm">// 0</span>
+}
+
+fn first_word(s: &amp;str) -&gt; &amp;str {
+    match s.find(' ') {
+        Some(i) =&gt; &amp;s[..i],
+        None =&gt; s,
+    }
+}</code></pre>
+                <p>배열·벡터도 같다. <code>&amp;v[1..3]</code>은 <code>&amp;[T]</code> 타입의 슬라이스이고, 함수 인자를 <code>&amp;[i32]</code>로 받으면 배열이든 벡터든 그 일부든 모두 받아들일 수 있어 더 일반적인 API가 된다.</p>
+                <pre class="code"><code>fn sum_slice(nums: &amp;[i32]) -&gt; i32 {
+    let mut total = 0;
+    for &amp;n in nums { <span class="cm">// &amp;n으로 패턴 매칭해 i32 값을 꺼낸다</span>
+        total += n;
+    }
+    total
+}
+
+fn main() {
+    let arr = [1, 2, 3, 4, 5];
+    let v = vec![10, 20, 30];
+
+    println!("{}", sum_slice(&amp;arr));      <span class="cm">// 15 — 배열 전체</span>
+    println!("{}", sum_slice(&amp;arr[1..4])); <span class="cm">// 9 — 부분 슬라이스</span>
+    println!("{}", sum_slice(&amp;v));        <span class="cm">// 60 — 벡터도 같은 함수로</span>
+}</code></pre>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리와 주의</h2>
+                <ul>
+                    <li><strong>빌림은 소유권을 옮기지 않는다</strong> — <code>&amp;</code>로 접근만 빌려주고 원본은 호출한 쪽에 남는다.</li>
+                    <li><strong>두 종류의 참조</strong> — <code>&amp;T</code>는 읽기 전용·여럿 동시 가능, <code>&amp;mut T</code>는 쓰기 가능·단독으로만.</li>
+                    <li><strong>핵심 규칙</strong> — 한 값에 가변 참조 1개 또는 공유 참조 여럿, 둘은 동시에 불가. 이 배타성이 데이터 경쟁을 컴파일 타임에 차단한다.</li>
+                    <li><strong>슬라이스</strong>는 컬렉션의 일부를 빌리는 참조(<code>&amp;str</code>, <code>&amp;[T]</code>)이고, 같은 빌림 규칙을 따른다.</li>
+                    <li><strong>주의</strong> — 빌림은 마지막 사용 지점까지만 산다. 에러 메시지가 가리키는 "빌림이 살아 있는 지점"을 보면 원인이 보인다. C++ 경험으로 생긴 aliasing 습관은 Rust에서 컴파일러가 먼저 잡아 준다.</li>
+                </ul>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>The Rust Programming Language (공식 The Book) — <a href="https://doc.rust-lang.org/book/" target="_blank" rel="noopener">doc.rust-lang.org/book</a></li>
+                        <li>References and Borrowing — <a href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html" target="_blank" rel="noopener">The Book ch04-02</a></li>
+                        <li>The Slice Type — <a href="https://doc.rust-lang.org/book/ch04-03-slices.html" target="_blank" rel="noopener">The Book ch04-03</a></li>
+                        <li>std::slice 모듈 문서 — <a href="https://doc.rust-lang.org/std/slice/" target="_blank" rel="noopener">doc.rust-lang.org/std/slice</a></li>
+                        <li>std::primitive.str 문서 — <a href="https://doc.rust-lang.org/std/primitive.str.html" target="_blank" rel="noopener">doc.rust-lang.org/std/primitive.str</a></li>
+                        <li>열람일: 2026-06-25. 표준 라이브러리 API·문서 위치는 버전에 따라 바뀔 수 있어 공식 문서 확인 권장.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="post-nav-bottom" id="post-nav-bottom">
+                <a href="../index.html"><i class="fa-solid fa-arrow-left"></i> 목록으로</a>
+            </div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds &mdash; Powered by GitHub Pages &mdash; Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-rust');
+    renderPostNav('dev-lang-rust');
+
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') { currentH2Key = el.id; h2h3Map[currentH2Key] = []; }
+        else if (el.tagName === 'H3' && currentH2Key) { h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() }); }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) { floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58); }
+        let curH2 = ''; allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = ''; allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s => `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            });
+        } else { row2.classList.add('hidden'); }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

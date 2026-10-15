@@ -1,0 +1,604 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Memory 깊이 보기 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#concept" data-section="concept">개념</a>
+        <a href="#basic" data-section="basic">기본 사용법</a>
+        <a href="#modes" data-section="modes">동작 방식</a>
+        <a href="#page-fault" data-section="page-fault">페이지 이동</a>
+        <a href="#prefetch" data-section="prefetch">prefetch</a>
+        <a href="#advise" data-section="advise">advise</a>
+        <a href="#oversub" data-section="oversub">큰 데이터</a>
+        <a href="#when" data-section="when">언제 쓰나</a>
+        <a href="#profile" data-section="profile">프로파일링</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / <a href="gpu-01-cuda-intro.html">CUDA</a></span>
+                </div>
+                <h1>Unified Memory 깊이 보기 - 페이지 이동과 prefetch</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-13</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 16분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>Unified Memory가 해 주는 일과 해 주지 않는 일 (물리 메모리는 그대로)</li>
+                        <li>Windows(기본 방식)와 리눅스 Pascal 이후(완전 지원 방식)의 동작 차이</li>
+                        <li>page fault로 페이지를 옮기는 원리와 성능에 미치는 영향</li>
+                        <li>cudaMemPrefetchAsync, cudaMemAdvise로 이동을 직접 통제하기</li>
+                        <li>실시간 영상 파이프라인에서 피해야 하는 이유와 Nsight Systems로 이동 확인</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#concept">Unified Memory란</a></li>
+                        <li><a href="#basic">기본 사용법</a></li>
+                        <li><a href="#modes">동작 방식 두 가지 - Windows에서 특히 중요</a></li>
+                        <li><a href="#page-fault">완전 지원 방식의 페이지 이동 원리</a></li>
+                        <li><a href="#prefetch">prefetch - 미리 옮겨 두기</a></li>
+                        <li><a href="#advise">cudaMemAdvise - 드라이버에 힌트 주기</a></li>
+                        <li><a href="#oversub">GPU 메모리보다 큰 데이터 다루기</a></li>
+                        <li><a href="#when">언제 쓰고 언제 피하나</a></li>
+                        <li><a href="#profile">페이지 이동 확인하기</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 개념 -->
+                <h2 id="concept"><i class="fa-solid fa-link"></i> Unified Memory란</h2>
+                <p>4편에서는 CPU 메모리와 GPU 메모리를 따로 할당하고 <code>cudaMemcpy</code>로 직접 옮겼다. 포인터가 두 개(<code>h_data</code>, <code>d_data</code>)이고, 어느 쪽이 최신인지 프로그래머가 관리해야 했다. <strong>Unified Memory</strong>(관리 메모리, managed memory)는 포인터 <strong>하나</strong>를 CPU와 GPU가 같이 쓰게 해 준다. 데이터를 언제 어느 쪽으로 옮길지는 CUDA 드라이버가 정한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>명시적 복사 (4편)</th><th>Unified Memory</th></tr>
+                    <tr><td>할당</td><td><code>malloc</code> + <code>cudaMalloc</code></td><td><code>cudaMallocManaged</code> 한 번</td></tr>
+                    <tr><td>포인터</td><td>CPU용, GPU용 따로</td><td>하나를 양쪽에서 사용</td></tr>
+                    <tr><td>데이터 이동</td><td><code>cudaMemcpy</code>를 직접 호출</td><td>드라이버가 필요할 때 자동으로 옮김</td></tr>
+                    <tr><td>성능 예측</td><td>쉬움 (복사 시점이 코드에 보임)</td><td>어려움 (언제 옮기는지 안 보임)</td></tr>
+                    <tr><td>코드 양</td><td>많음</td><td>적음</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>물리 메모리가 하나가 되는 것은 아님</strong>
+                        일반 PC의 독립 GPU는 CPU 메모리(DDR)와 GPU 메모리(GDDR)가 물리적으로 따로 있고 PCIe로 연결되어 있다. Unified Memory는 이 구조를 바꾸지 않는다. 주소 공간을 하나로 보여 주고, 실제 데이터는 뒤에서 PCIe로 옮긴다. 옮기는 비용은 그대로 있다. 다만 누가 언제 옮기느냐가 바뀔 뿐이다.
+                    </div>
+                </div>
+
+                <!-- 2. 기본 코드 -->
+                <h2 id="basic"><i class="fa-solid fa-code"></i> 기본 사용법</h2>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void Scale(float* data, int n, float k)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i &lt; n) data[i] *= k;
+}
+
+int main()
+{
+    const int n = 1 &lt;&lt; 24;
+    float* data = nullptr;
+    cudaMallocManaged(&amp;data, n * sizeof(float));   // one pointer for CPU and GPU
+
+    for (int i = 0; i &lt; n; ++i)                     // CPU writes directly
+        data[i] = 1.0f;
+
+    Scale&lt;&lt;&lt;(n + 255) / 256, 256&gt;&gt;&gt;(data, n, 2.0f); // GPU uses the same pointer
+
+    cudaDeviceSynchronize();                        // REQUIRED before the CPU reads
+    printf("%f\n", data[0]);                        // 2.0
+
+    cudaFree(data);                                 // same free function as cudaMalloc
+}</code></pre>
+
+                <p>복사 코드가 사라졌다. 반드시 지켜야 할 규칙은 하나다. <strong>커널이 끝나기 전에 CPU가 그 메모리를 만지면 안 된다.</strong> 커널 실행은 비동기이므로(5편), CPU에서 읽기 전에 <code>cudaDeviceSynchronize()</code>나 해당 스트림 동기화가 필요하다. 이 동기화를 빠뜨렸을 때 어떤 일이 생기는지는 아래 "동작 방식 두 가지"에 따라 다르다.</p>
+
+                <!-- 3. 동작 방식 -->
+                <h2 id="modes"><i class="fa-solid fa-code-branch"></i> 동작 방식 두 가지 - Windows에서 특히 중요</h2>
+                <p>Unified Memory는 GPU 세대와 운영체제에 따라 동작이 크게 다르다. 같은 코드가 리눅스에서는 잘 돌고 Windows에서는 접근 위반으로 죽는 일이 생기므로, 먼저 내 환경이 어느 쪽인지 알아야 한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>기본 방식</th><th>완전 지원 방식</th></tr>
+                    <tr><td>해당 환경</td><td><strong>Windows (WDDM)</strong>, Pascal 이전 GPU (Kepler, Maxwell)</td><td><strong>리눅스</strong> + Pascal(GTX 10xx) 이후 GPU</td></tr>
+                    <tr><td>데이터 이동 시점</td><td>커널을 실행할 때 관리 메모리를 GPU로 한꺼번에 옮김</td><td>GPU가 실제로 접근한 페이지만 그때그때 옮김 (page fault)</td></tr>
+                    <tr><td>커널 실행 중 CPU 접근</td><td><strong>불가</strong>. GPU가 일하는 동안 CPU가 관리 메모리를 만지면 접근 위반</td><td>가능 (성능은 나빠짐)</td></tr>
+                    <tr><td>GPU 메모리보다 큰 할당</td><td>불가</td><td>가능 (oversubscription)</td></tr>
+                    <tr><td><code>cudaMemPrefetchAsync</code></td><td>GPU 쪽으로는 사용 불가</td><td>사용 가능</td></tr>
+                    <tr><td><code>cudaDevAttrConcurrentManagedAccess</code></td><td>0</td><td>1</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">int dev = 0, concurrent = 0, pageable = 0;
+cudaDeviceGetAttribute(&amp;concurrent, cudaDevAttrConcurrentManagedAccess, dev);
+cudaDeviceGetAttribute(&amp;pageable,   cudaDevAttrPageableMemoryAccess,   dev);
+printf("concurrentManagedAccess = %d\n", concurrent);   // 0 on Windows (WDDM)
+printf("pageableMemoryAccess    = %d\n", pageable);     // 1 only with HMM or hardware coherence</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>Windows에서 흔한 사고</strong>
+                        Windows에서는 "커널 실행 중 CPU 접근 불가"가 <strong>그 장치에서 실행 중인 어떤 커널이든</strong> 해당된다. 스트림 A에서 커널을 돌리는 동안 CPU가 스트림 B용 관리 메모리를 읽어도 접근 위반이 날 수 있다. 여러 스트림을 쓰는 영상 파이프라인(12편)에서는 <code>cudaStreamAttachMemAsync</code>로 메모리를 특정 스트림에 묶어, 그 스트림만 끝나면 CPU가 접근할 수 있게 해야 한다.
+                    </div>
+                </div>
+
+<pre class="language-cpp"><code class="language-cpp">// attach a managed buffer to one stream (basic mode / Windows)
+cudaStreamAttachMemAsync(streamA, bufA, 0, cudaMemAttachSingle);
+cudaStreamSynchronize(streamA);     // after this, CPU may touch bufA
+                                    // even if kernels are running in other streams</code></pre>
+
+                <!-- 4. 페이지 이동 원리 -->
+                <h2 id="page-fault"><i class="fa-solid fa-file-export"></i> 완전 지원 방식의 페이지 이동 원리</h2>
+                <p>리눅스 + Pascal 이후 환경에서는 운영체제의 가상 메모리와 같은 방식으로 동작한다. 관리 메모리는 페이지 단위로 나뉘고, 각 페이지는 어느 순간 CPU 쪽이나 GPU 쪽 중 한 곳에 있다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif" font-size="12">
+                        <rect x="20" y="20" width="250" height="150" rx="10" fill="#eff6ff" stroke="#1e40af"/>
+                        <text x="145" y="42" text-anchor="middle" font-weight="700" fill="#1e40af">CPU 메모리 (DDR)</text>
+                        <rect x="370" y="20" width="250" height="150" rx="10" fill="#ecfdf5" stroke="#059669"/>
+                        <text x="495" y="42" text-anchor="middle" font-weight="700" fill="#059669">GPU 메모리 (GDDR)</text>
+                        <g fill="#bfdbfe" stroke="#1e40af"><rect x="40" y="60" width="50" height="30"/><rect x="100" y="60" width="50" height="30"/><rect x="160" y="60" width="50" height="30"/></g>
+                        <g fill="#f1f5f9" stroke="#cbd5e1" stroke-dasharray="3 3"><rect x="220" y="60" width="40" height="30"/></g>
+                        <g fill="#a7f3d0" stroke="#059669"><rect x="390" y="60" width="50" height="30"/></g>
+                        <g text-anchor="middle" font-size="11"><text x="65" y="80">p0</text><text x="125" y="80">p1</text><text x="185" y="80">p2</text><text x="240" y="80" fill="#94a3b8">p3</text><text x="415" y="80">p3</text></g>
+                        <path d="M260 75 L 388 75" stroke="#d97706" stroke-width="2" marker-end="url(#um-arr)"/>
+                        <text x="324" y="68" text-anchor="middle" fill="#d97706" font-size="11">이동</text>
+                        <g font-size="11" fill="#334155">
+                            <text x="40" y="118">① GPU 스레드가 p3을 읽으려 함</text>
+                            <text x="40" y="136">② p3이 GPU에 없음 → GPU page fault</text>
+                            <text x="40" y="154">③ 드라이버가 p3을 PCIe로 옮기고 매핑을 고침</text>
+                            <text x="390" y="118">④ 스레드가 다시 실행되어 읽기 성공</text>
+                            <text x="390" y="136">CPU가 p3을 다시 읽으면</text>
+                            <text x="390" y="154">반대 방향으로 같은 일이 생김</text>
+                        </g>
+                        <text x="320" y="205" text-anchor="middle" fill="#475569">page fault 처리는 한 번에 수 µs에서 수십 µs가 걸리므로, 많이 생기면 커널이 크게 느려진다</text>
+                        <defs><marker id="um-arr" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#d97706"/></marker></defs>
+                    </svg>
+                    <div class="diagram-caption">요청 시 페이지 이동 (on-demand page migration). 접근하는 쪽에 페이지가 없으면 그때 옮긴다</div>
+                </div>
+
+                <p>세부 동작은 대략 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>동작</th></tr>
+                    <tr><td>처음 할당</td><td><code>cudaMallocManaged</code> 직후에는 물리 메모리가 아직 없다. 처음 접근하는 쪽(CPU 또는 GPU)에 그때 페이지가 생긴다 (first touch)</td></tr>
+                    <tr><td>이동 단위</td><td>오류는 작은 페이지 단위로 나지만, 드라이버가 근처 페이지를 묶어 더 큰 덩어리로 옮긴다. 순차 접근이면 묶음이 커져서 효율이 좋아진다</td></tr>
+                    <tr><td>오류 처리 비용</td><td>GPU는 page fault가 나면 해당 워프를 멈추고 드라이버에 처리를 맡긴다. 수많은 워프가 동시에 오류를 내므로 드라이버가 묶어서 처리하지만, 그래도 명시적 복사보다 대역폭이 낮다</td></tr>
+                    <tr><td>양쪽이 번갈아 접근</td><td>CPU와 GPU가 같은 페이지를 번갈아 쓰면 페이지가 계속 왔다 갔다 한다 (thrashing). 가장 나쁜 경우</td></tr>
+                </table>
+
+                <p>그래서 Unified Memory 코드를 처음 짜고 프로파일러로 보면, 첫 커널이 비정상적으로 오래 걸리는 경우가 많다. 커널 계산 시간이 아니라 페이지를 옮기는 시간이다.</p>
+
+                <!-- 5. prefetch -->
+                <h2 id="prefetch"><i class="fa-solid fa-forward-fast"></i> prefetch - 미리 옮겨 두기</h2>
+                <p>page fault를 피하는 가장 효과적인 방법은 커널 실행 전에 <strong>미리 옮겨 두는 것</strong>이다. <code>cudaMemPrefetchAsync</code>는 지정한 범위를 지정한 장치로 한꺼번에 옮긴다. 오류를 하나씩 처리하는 대신 큰 덩어리로 복사하므로 명시적 <code>cudaMemcpyAsync</code>에 가까운 속도가 나온다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int dev = 0;
+size_t bytes = n * sizeof(float);
+cudaMallocManaged(&amp;data, bytes);
+FillOnCpu(data, n);
+
+cudaMemPrefetchAsync(data, bytes, dev, stream);              // CPU -&gt; GPU, before the kernel
+Scale&lt;&lt;&lt;grid, block, 0, stream&gt;&gt;&gt;(data, n, 2.0f);
+cudaMemPrefetchAsync(data, bytes, cudaCpuDeviceId, stream);  // GPU -&gt; CPU, before CPU reads
+cudaStreamSynchronize(stream);
+UseOnCpu(data, n);</code></pre>
+
+                <p>prefetch도 스트림에 들어가는 비동기 작업이라, 5편에서 본 것처럼 다른 스트림의 커널과 겹쳐서 실행할 수 있다. 결국 "언제 옮길지"를 다시 프로그래머가 정하는 셈이지만, 포인터가 하나라는 장점은 그대로 남는다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>새 버전 API</strong>
+                        CUDA 12.2부터는 장치 번호 대신 <code>cudaMemLocation</code> 구조체로 위치를 지정하는 새 버전 함수가 추가되었다. 장치 번호를 받는 위 형태는 많은 자료와 예제가 쓰는 기본형이다. 사용하는 CUDA 버전의 헤더에서 어떤 형태를 제공하는지 확인한다.
+                    </div>
+                </div>
+
+                <!-- 6. advise -->
+                <h2 id="advise"><i class="fa-solid fa-signs-post"></i> cudaMemAdvise - 드라이버에 힌트 주기</h2>
+                <p>prefetch가 "지금 옮겨라"라면, advise는 "이 메모리는 이렇게 쓸 것이다"라고 미리 알려 주는 힌트다. 드라이버는 이 힌트에 맞춰 페이지를 어디에 둘지, 복사본을 만들지 정한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>힌트</th><th>의미</th><th>어울리는 데이터</th></tr>
+                    <tr><td><code>cudaMemAdviseSetReadMostly</code></td><td>대부분 읽기만 한다. 접근하는 장치마다 읽기 전용 복사본을 둠. 누가 쓰면 다른 복사본은 무효가 됨</td><td>보정 테이블, LUT, 신경망 가중치</td></tr>
+                    <tr><td><code>cudaMemAdviseSetPreferredLocation</code></td><td>이 장치에 두는 것을 우선한다. 다른 쪽이 접근해도 가능하면 옮기지 않고 원격으로 읽게 함</td><td>GPU가 주로 쓰고 CPU가 가끔 들여다보는 버퍼</td></tr>
+                    <tr><td><code>cudaMemAdviseSetAccessedBy</code></td><td>이 장치가 접근할 것이다. 미리 매핑해 두어 접근할 때 page fault 없이 원격으로 읽게 함</td><td>여러 GPU가 나눠 읽는 데이터</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// lookup table: written once on the CPU, read by many kernels
+cudaMallocManaged(&amp;lut, 256 * sizeof(float));
+BuildLutOnCpu(lut);
+cudaMemAdvise(lut, 256 * sizeof(float), cudaMemAdviseSetReadMostly, dev);
+cudaMemPrefetchAsync(lut, 256 * sizeof(float), dev, stream);   // GPU gets a read-only copy
+// CPU can still read lut without pulling it back from the GPU</code></pre>
+
+                <!-- 7. oversubscription -->
+                <h2 id="oversub"><i class="fa-solid fa-maximize"></i> GPU 메모리보다 큰 데이터 다루기</h2>
+                <p>완전 지원 방식에서는 GPU 메모리보다 큰 관리 메모리를 할당할 수 있다(oversubscription). 8GB GPU에서 12GB 배열을 할당하고 커널을 돌리면, 드라이버가 필요한 페이지를 GPU로 올리고 오래 안 쓴 페이지를 CPU로 내보내며 처리한다.</p>
+
+                <p>편리하지만 속도는 접근 방식에 크게 좌우된다. 앞에서부터 순서대로 한 번 훑는 처리는 그럭저럭 동작하지만, 무작위 접근이나 같은 데이터를 여러 번 반복해서 읽는 처리는 페이지가 계속 들락날락해서 매우 느려진다. 큰 데이터를 다뤄야 한다면 처음부터 데이터를 GPU에 맞는 크기의 덩어리로 나눠서 스트림 파이프라인(5편)으로 흘리는 설계가 대부분 더 빠르고 예측 가능하다.</p>
+
+                <!-- 8. 언제 쓰나 -->
+                <h2 id="when"><i class="fa-solid fa-scale-balanced"></i> 언제 쓰고 언제 피하나</h2>
+
+                <table class="spec-table">
+                    <tr><th>상황</th><th>판단</th><th>이유</th></tr>
+                    <tr><td>알고리즘 시험, 빠른 시제품</td><td><strong>쓴다</strong></td><td>복사 코드 없이 커널 정확성부터 확인. 나중에 명시적 복사로 바꾸기 쉬움</td></tr>
+                    <tr><td>포인터로 얽힌 자료구조 (트리, 그래프, 연결 리스트)</td><td><strong>쓴다</strong></td><td>명시적 복사로는 포인터마다 깊은 복사(deep copy)가 필요. 관리 메모리는 포인터를 그대로 사용 가능</td></tr>
+                    <tr><td>설정값, LUT처럼 작고 자주 안 바뀌는 데이터</td><td>쓸 만함</td><td>ReadMostly 힌트와 함께 쓰면 관리가 편함</td></tr>
+                    <tr><td>GPU 메모리보다 큰 데이터 (리눅스)</td><td>상황에 따라</td><td>순차 접근이면 동작. 성능이 중요하면 직접 나누는 편이 나음</td></tr>
+                    <tr><td><strong>실시간 영상 파이프라인</strong> (택트 타임 보장)</td><td><strong>피한다</strong></td><td>page fault 시점과 비용을 예측할 수 없어서 최악 처리 시간이 흔들림. 핀드 메모리 + 명시적 비동기 복사(4편, 12편)가 맞음</td></tr>
+                    <tr><td>여러 스트림이 동시에 도는 Windows 프로그램</td><td><strong>피한다</strong></td><td>기본 방식이라 실행 중 CPU 접근 제약이 많음</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>Jetson 같은 통합 GPU는 사정이 다름</strong>
+                        Jetson처럼 CPU와 GPU가 같은 물리 DRAM을 쓰는 장치에서는 관리 메모리가 데이터를 실제로 옮기지 않는다. 대신 캐시 일관성을 맞추는 비용이 생긴다. 이런 장치에서는 관리 메모리나 mapped pinned memory(<code>cudaHostAlloc</code> + <code>cudaHostAllocMapped</code>)로 복사 없이 쓰는 방식이 흔하다. 독립 GPU 기준으로 배운 "복사 비용" 감각이 그대로 맞지 않으므로 장치별로 측정한다.
+                    </div>
+                </div>
+
+                <!-- 9. 프로파일링 -->
+                <h2 id="profile"><i class="fa-solid fa-magnifying-glass-chart"></i> 페이지 이동 확인하기</h2>
+                <p>Unified Memory 성능 문제는 대부분 "보이지 않는 이동"이다. Nsight Systems로 이동을 눈으로 확인한다(8편).</p>
+
+<pre class="language-bash"><code class="language-bash">nsys profile --trace=cuda,nvtx \
+     --cuda-um-cpu-page-faults=true \
+     --cuda-um-gpu-page-faults=true \
+     -o um_report ./my_app</code></pre>
+
+                <p>타임라인에 "Unified Memory" 줄이 생기고, CPU에서 GPU로(HtoD), GPU에서 CPU로(DtoH) 옮긴 양과 page fault 위치가 표시된다. 확인할 점은 다음과 같다.</p>
+
+                <table class="spec-table">
+                    <tr><th>보이는 것</th><th>뜻</th><th>조치</th></tr>
+                    <tr><td>커널 시작 직후 GPU page fault가 몰림</td><td>데이터를 미리 안 옮김</td><td>커널 전에 <code>cudaMemPrefetchAsync</code></td></tr>
+                    <tr><td>같은 구간에서 HtoD, DtoH가 반복</td><td>CPU와 GPU가 같은 페이지를 번갈아 사용 (thrashing)</td><td>CPU 접근을 모아서 한 번에 처리하거나 SetPreferredLocation</td></tr>
+                    <tr><td>CPU page fault가 많음</td><td>커널 뒤에 CPU가 결과를 조금씩 읽어 감</td><td>CPU 쪽으로 prefetch 후 읽기</td></tr>
+                </table>
+
+                <!-- 10. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>동기화 없이 CPU에서 읽기</strong>
+                        Windows에서는 접근 위반으로 프로그램이 죽고, 리눅스에서는 죽지 않는 대신 커널이 아직 덜 쓴 값을 읽는다. 둘 다 버그다. 커널 뒤 CPU 접근 전에는 항상 동기화한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>리눅스에서 개발하고 Windows에 배포</strong>
+                        리눅스에서는 커널 실행 중 CPU 접근이 허용되므로 버그가 드러나지 않는다. 같은 코드를 Windows에 올리면 그때서야 접근 위반이 난다. 대상 환경에서 반드시 테스트한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>구조체 안의 일반 포인터</strong>
+                        관리 메모리에 구조체를 두어도, 그 안의 멤버 포인터가 <code>new</code>나 <code>malloc</code>으로 할당한 CPU 메모리를 가리키면 GPU에서 접근할 수 없다(HMM이 없는 환경). 구조체가 가리키는 메모리도 모두 관리 메모리로 할당한다. <code>std::vector</code>를 쓰려면 <code>cudaMallocManaged</code>를 사용하는 사용자 정의 할당자가 필요하다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>첫 실행 시간을 성능으로 착각</strong>
+                        관리 메모리 코드의 첫 커널 시간에는 페이지 이동이 포함된다. 성능을 비교할 때는 prefetch를 한 상태에서, 몇 번 돌린 뒤의 시간을 잰다.
+                    </div>
+                </div>
+
+                <!-- 11. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table class="spec-table">
+                    <tr><th>요점</th><th>내용</th></tr>
+                    <tr><td>무엇을 해 주나</td><td>포인터 하나로 CPU, GPU 공유. 이동은 드라이버가 담당</td></tr>
+                    <tr><td>먼저 확인할 것</td><td><code>cudaDevAttrConcurrentManagedAccess</code>. Windows는 0 (기본 방식)</td></tr>
+                    <tr><td>성능 핵심</td><td>page fault를 줄이는 것. <code>cudaMemPrefetchAsync</code>와 <code>cudaMemAdvise</code></td></tr>
+                    <tr><td>잘 맞는 곳</td><td>시제품, 포인터 자료구조, 작은 읽기 전용 테이블</td></tr>
+                    <tr><td>피할 곳</td><td>최악 처리 시간을 보장해야 하는 실시간 파이프라인</td></tr>
+                </table>
+                <p>다음 편에서는 실행 쪽 오버헤드를 줄이는 <strong>CUDA Graphs</strong>를 다룬다. 작은 커널을 프레임마다 수십 번 실행하는 영상 파이프라인에서 CPU 쪽 실행 비용을 크게 줄일 수 있다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA CUDA C++ Programming Guide - Unified Memory Programming</li>
+                        <li>NVIDIA Developer Blog, "Unified Memory for CUDA Beginners"</li>
+                        <li>NVIDIA Developer Blog, "Maximizing Unified Memory Performance in CUDA"</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

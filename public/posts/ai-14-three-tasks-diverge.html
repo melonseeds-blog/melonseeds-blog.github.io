@@ -1,0 +1,546 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>세 과제는 왜 갈라지는가 — backbone 이후의 구조 — Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 인라인 코드 */
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+
+        /* 코드 블록 */
+        pre {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px;
+            padding: 20px 24px; margin: 16px 0; overflow-x: auto;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem;
+            line-height: 1.7;
+        }
+        pre .comment { color: #64748b; }
+        pre .keyword { color: #7dd3fc; }
+        pre .string { color: #86efac; }
+        pre .func { color: #fbbf24; }
+        pre .type { color: #c4b5fd; }
+
+        /* 개념 설명 카드 */
+        .concept-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .concept-card .concept-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            color: var(--primary-dark); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .concept-card .concept-title i { color: var(--melon); }
+
+        /* 비교 카드 (2열) */
+        .compare-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .compare-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px;
+        }
+        .compare-card h4 {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .compare-card p { font-size: 0.9rem; color: var(--text-sub); margin: 0; }
+        .compare-card ul { font-size: 0.9rem; color: var(--text-sub); margin: 8px 0 0; padding-left: 18px; }
+        .compare-card li { margin-bottom: 2px; }
+
+        /* 용어 정의 */
+        .term-list { margin: 16px 0; }
+        .term-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .term-item:last-child { border-bottom: none; }
+        .term-item .term-name {
+            font-weight: 700; color: var(--primary-dark); min-width: 120px; flex-shrink: 0;
+            font-size: 0.92rem;
+        }
+        .term-item .term-desc { font-size: 0.9rem; color: var(--text-sub); }
+
+        /* 스펙 비교 테이블 */
+        .spec-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
+            font-size: 0.88rem;
+        }
+        .spec-table th {
+            background: var(--primary); color: white; padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 0.82rem;
+        }
+        .spec-table th:first-child { border-radius: 8px 0 0 0; }
+        .spec-table th:last-child { border-radius: 0 8px 0 0; }
+        .spec-table td {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+        .spec-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .spec-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .spec-table tr:hover td { background: var(--primary-50); }
+        .spec-table .highlight { font-weight: 700; color: var(--primary-dark); }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+        @media (max-width: 640px) {
+            .compare-grid { grid-template-columns: 1fr; }
+            .spec-table { font-size: 0.8rem; }
+            .spec-table th, .spec-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#problem" data-section="problem">출력만 다른 게 아니다</a>
+        <a href="#backbone" data-section="backbone">backbone</a>
+        <a href="#axis" data-section="axis">갈림의 기준</a>
+        <a href="#three" data-section="three">세 갈래</a>
+        <a href="#cost" data-section="cost">선택의 비용</a>
+        <a href="#choose" data-section="choose">무엇을 고를까</a>
+        <a href="#wrap" data-section="wrap">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">AI / OpenAI</span>
+                </div>
+                <h1>세 과제는 왜 갈라지는가 — backbone 이후의 구조</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-08-18</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 8분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>2부를 시작하며</strong>
+                        1~13편은 딥러닝 비전의 개념을 훑었다. 여기서부터는 <strong>실제로 적용할 때 걸리는 것들</strong>만 다룬다. 교과서에 잘 안 나오지만 현장에서 매번 부딪히는 것들 — 데이터가 부족할 때, 검증셋은 통과하는데 실촬영에서 무너질 때, 모델을 장비에 올려야 할 때의 이야기다. 첫 편은 세 과제를 하나의 축으로 다시 세우는 데서 시작한다.
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>분류·검출·세그멘테이션은 출력 형식만 다른 게 아니다</li>
+                        <li>세 과제가 공유하는 부분 — backbone과 사전학습 가중치</li>
+                        <li>갈림의 기준은 하나다 — 공간 해상도를 어떻게 다루는가</li>
+                        <li>버린다 / 유지한다 / 복원한다 — 세 갈래와 각각의 대가</li>
+                        <li>"세그멘테이션이 상위 호환"이 아닌 이유</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#problem">출력만 다른 게 아니다</a></li>
+                        <li><a href="#backbone">앞부분은 같다 — backbone</a></li>
+                        <li><a href="#axis">갈림의 기준 — 공간 해상도</a></li>
+                        <li><a href="#three">세 갈래를 조금 더 들여다보면</a></li>
+                        <li><a href="#cost">선택이 치르는 비용</a></li>
+                        <li><a href="#choose">그래서 무엇을 고를 것인가</a></li>
+                        <li><a href="#wrap">정리</a></li>
+                    </ol>
+                </div>
+
+                <h2 id="problem"><i class="fa-solid fa-circle-question"></i> 출력만 다른 게 아니다</h2>
+                <p>세 과제는 보통 이렇게 소개된다. 분류는 이미지에 라벨 하나, 검출은 박스 여러 개, 세그멘테이션은 픽셀마다 라벨. 틀린 설명은 아니지만, 여기서 멈추면 <strong>출력 형식만 갈아 끼우면 되는 것</strong>처럼 읽힌다.</p>
+                <p>그렇게 이해하면 실무에서 이런 판단이 나온다. "세그멘테이션이 픽셀 단위로 가장 정밀하니까 그걸로 하면 분류·검출은 자동으로 되는 것 아닌가?" 논리적으로는 맞다. 픽셀 마스크가 있으면 면적을 세서 분류할 수도, 연결 요소를 묶어 박스를 만들 수도 있다.</p>
+                <p>그런데 실제로 해 보면 잘 안 된다. 라벨을 만드는 데 몇 배의 시간이 들고, 같은 데이터 양으로 학습했을 때 오히려 성능이 안 나오는 경우가 생긴다. 이유는 출력단이 아니라 <strong>그 앞의 구조</strong>에 있다.</p>
+
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-lightbulb"></i> 이 편의 주장</div>
+                    <p>세 과제는 backbone까지는 같고 그 뒤부터 갈라진다. 갈림의 기준은 <strong>공간 해상도를 버리느냐, 유지하느냐, 복원하느냐</strong> 하나다. 그리고 그 선택이 라벨 비용·연산량·작은 대상에서의 성능을 한꺼번에 결정한다.</p>
+                </div>
+
+                <h2 id="backbone"><i class="fa-solid fa-layer-group"></i> 앞부분은 같다 — backbone</h2>
+                <p>세 과제 모두 입력 이미지에서 특징을 뽑는 데서 시작한다. 이 부분을 backbone 또는 특징 추출기라고 부르고, 여기에는 같은 신경망을 쓴다. 분류용으로 학습된 가중치를 검출이나 세그멘테이션에 그대로 가져다 쓸 수 있는 것도 이 때문이다. 전이학습이 성립하는 근거이기도 한데, 이건 16편에서 따로 다룬다.</p>
+                <p>backbone이 하는 일을 해상도 관점에서 보면 이렇다. 합성곱과 풀링(또는 stride 합성곱)을 거치면서 <strong>공간 크기는 줄고 채널 수는 늘어난다.</strong> 잘 알려진 예로 ResNet 계열은 전체 stride가 32라서, 224×224 입력이 backbone 끝에서 7×7 격자가 된다. 대신 채널은 수백에서 2,048까지 늘어난다.</p>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>줄어드는 게 손해만은 아니다</strong>
+                        해상도를 줄이면 같은 크기의 커널이 원본 이미지에서 더 넓은 영역을 보게 된다. 이걸 수용 영역(receptive field)이 넓어진다고 한다(3편). 넓게 봐야 "이게 무엇인지"를 알 수 있으므로 분류에는 유리하다. 문제는 넓게 보는 대신 <strong>어디였는지가 뭉개진다</strong>는 점이다.
+                    </div>
+                </div>
+
+                <p>7×7 격자에서 한 칸은 원본의 32×32 픽셀 영역에 대략 대응한다. 이 시점에서 이미 "이 근처 어딘가"보다 정밀한 위치는 표현할 수 없다. 세 과제의 갈림은 정확히 여기서 시작된다.</p>
+
+                <h2 id="axis"><i class="fa-solid fa-arrows-split-up-and-left"></i> 갈림의 기준 — 공간 해상도</h2>
+                <p>backbone이 만든 저해상도·고채널 특징을 놓고 세 과제는 서로 다른 선택을 한다.</p>
+
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <h4>버린다 — 분류</h4>
+                        <p>7×7 격자를 통째로 평균 내어 1×1로 만든다(Global Average Pooling). 위치 정보는 사라지고 "무엇이 있었나"만 남는다. 그 벡터를 완전연결층에 넣어 클래스 확률을 낸다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4>유지한다 — 검출</h4>
+                        <p>격자를 그대로 두고 각 칸에서 "여기에 대상이 있나, 있다면 박스가 얼마나 어긋나 있나"를 예측한다. 격자 해상도가 곧 위치 정밀도의 한계가 된다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4>복원한다 — 세그멘테이션</h4>
+                        <p>줄어든 해상도를 업샘플링으로 입력 크기까지 되돌린다. 되돌리는 과정에서 잃어버린 세부를 어떻게 회복하느냐가 이 계열의 핵심 문제다.</p>
+                    </div>
+                    <div class="compare-card">
+                        <h4>그래서 갈린다</h4>
+                        <p>세 선택은 출력 형식을 맞추기 위한 장식이 아니라 <strong>구조 자체의 분기</strong>다. 뒤에 붙는 층의 종류와 개수, 필요한 라벨의 형태, 연산량이 전부 여기서 결정된다.</p>
+                    </div>
+                </div>
+
+                <h2 id="three"><i class="fa-solid fa-diagram-project"></i> 세 갈래를 조금 더 들여다보면</h2>
+
+                <h3><i class="fa-solid fa-tag h3-icon"></i> 버린다 — 위치를 포기하고 얻는 것</h3>
+                <p>분류의 구조가 가장 단순하다. backbone 뒤에 평균 풀링과 완전연결층 하나면 끝난다. 덧붙는 파라미터가 적으니 <strong>학습이 가장 빨리 수렴하고 데이터도 가장 적게 든다.</strong></p>
+                <p>대신 "어디"를 물어볼 수 없다. 대상이 이미지 안에 하나만 있고 위치가 대체로 고정된 조건이라면 이 제약이 문제가 안 된다. 정렬 지그로 대상을 같은 자리에 놓고 찍는 검사라면 분류만으로 충분한 경우가 많다.</p>
+                <p>반대로 한 장에 대상이 여러 개 나오거나 개수를 세야 하면 분류는 맞지 않는다. 여러 개를 하나의 라벨로 뭉뚱그리게 되고, 모델은 "가장 두드러진 것"에만 반응하도록 학습되기 쉽다.</p>
+
+                <h3><i class="fa-solid fa-vector-square h3-icon"></i> 유지한다 — 격자 해상도가 한계다</h3>
+                <p>검출은 격자의 각 칸을 하나의 예측 단위로 쓴다. 그래서 격자가 성길수록 작은 대상을 놓친다. 7×7 격자 하나로는 이미지 전체에서 몇 픽셀짜리 대상을 잡아내기 어렵다.</p>
+                <p>이 문제 때문에 검출기들은 <strong>여러 해상도의 특징을 동시에 쓴다.</strong> Feature Pyramid Network 계열이 대표적인데, 얕은 층의 고해상도 특징은 작은 대상에, 깊은 층의 저해상도·고의미 특징은 큰 대상에 대응시킨다. 최근 검출기 대부분이 이 다중 스케일 구조를 기본으로 깔고 있다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>작은 대상이 안 잡힐 때 먼저 볼 것</strong>
+                        모델을 더 큰 것으로 바꾸기 전에 <strong>입력 해상도와 사용 중인 특징 층</strong>을 본다. 대상이 입력 이미지에서 몇 픽셀인지, 그 크기가 어느 스케일의 격자에 대응하는지 계산해 보면 원인이 대체로 드러난다. 대상이 격자 한 칸보다 작으면 모델 용량 문제가 아니다. 이 이야기는 15편에서 분해능 관점으로 이어진다.
+                    </div>
+                </div>
+
+                <p>또 하나, 검출은 <strong>후처리가 결과의 일부</strong>다. 한 대상에 여러 박스가 겹쳐 나오므로 중복을 제거해야 하고(NMS), 신뢰도 임계값을 어디에 두느냐에 따라 검출 수가 크게 달라진다. 모델을 바꾸지 않아도 이 값만으로 지표가 움직인다는 점은 실무에서 자주 혼란을 만든다.</p>
+
+                <h3><i class="fa-solid fa-brush h3-icon"></i> 복원한다 — 잃은 것을 어떻게 되찾나</h3>
+                <p>세그멘테이션은 픽셀마다 답을 내야 하므로 줄어든 해상도를 다시 올려야 한다. 그런데 단순히 업샘플링만 하면 경계가 뭉개진다. 32배로 줄인 것을 32배로 늘리면 잃어버린 세부가 돌아오지 않는다.</p>
+                <p>그래서 이 계열은 <strong>인코더-디코더</strong> 구조를 쓰고, 인코더의 고해상도 특징을 디코더의 같은 단계로 직접 건네준다. U-Net이 제안한 스킵 연결이 이 역할이다. 깊은 층은 "무엇인지"를 알고 얕은 층은 "어디까지인지"를 아는데, 둘을 합쳐야 경계가 선다.</p>
+                <p>구조가 커지는 만큼 대가가 있다. 디코더가 통째로 붙으니 파라미터와 메모리가 늘고, 라벨은 픽셀 단위로 칠해야 한다. 학습 이미지 한 장을 준비하는 비용이 셋 중 가장 크다.</p>
+
+                <h2 id="cost"><i class="fa-solid fa-scale-balanced"></i> 선택이 치르는 비용</h2>
+                <p>구조 차이는 곧 비용 차이로 나타난다. 정리하면 이렇다.</p>
+
+                <table class="spec-table">
+                    <thead>
+                        <tr><th>항목</th><th>분류</th><th>검출</th><th>세그멘테이션</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>공간 해상도</td><td>버린다</td><td>격자로 유지</td><td>입력 크기로 복원</td></tr>
+                        <tr><td>backbone 뒤 구조</td><td>풀링 + FC</td><td>다중 스케일 헤드</td><td>디코더 + 스킵 연결</td></tr>
+                        <tr><td>라벨 형태</td><td>이미지당 클래스 1개</td><td>박스 좌표 + 클래스</td><td>픽셀 단위 마스크</td></tr>
+                        <tr><td>라벨 작업량</td><td>가장 낮음</td><td>중간</td><td>가장 높음</td></tr>
+                        <tr><td>후처리</td><td>거의 없음</td><td>NMS·임계값 필수</td><td>연결 요소 정리 정도</td></tr>
+                        <tr><td>답할 수 있는 질문</td><td>무엇이 있나</td><td>어디에 몇 개 있나</td><td>어디까지가 대상인가</td></tr>
+                    </tbody>
+                </table>
+
+                <p>표에서 눈여겨볼 줄은 라벨 작업량이다. 같은 인력과 기간이 주어졌을 때 <strong>세그멘테이션 라벨 한 장을 칠하는 시간에 분류 라벨은 훨씬 많이 붙일 수 있다.</strong> 데이터가 부족한 상황에서는 이 차이가 모델 구조의 우열보다 결과를 크게 좌우한다. 정밀한 구조를 적은 데이터로 학습시키는 것보다, 단순한 구조를 충분한 데이터로 학습시키는 편이 나은 경우가 흔하다.</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>"세그멘테이션이 상위 호환"이 아니다</strong>
+                        픽셀 마스크에서 박스나 클래스를 유도할 수 있다는 건 맞다. 하지만 그건 <strong>마스크가 정확할 때</strong>의 이야기다. 라벨 비용이 몇 배로 뛰는 만큼 확보할 수 있는 데이터 양은 줄고, 데이터가 줄면 마스크 품질이 떨어지고, 품질이 떨어진 마스크에서 유도한 박스는 검출기가 직접 낸 박스보다 나쁠 수 있다. 필요한 출력이 클래스뿐이라면 분류로 시작하는 편이 대체로 빠르다.
+                    </div>
+                </div>
+
+                <h2 id="choose"><i class="fa-solid fa-signs-post"></i> 그래서 무엇을 고를 것인가</h2>
+                <p>결정은 모델 성능 비교가 아니라 <strong>필요한 출력이 무엇인가</strong>에서 시작한다. 순서대로 물으면 대체로 정리된다.</p>
+
+                <div class="term-list">
+                    <div class="term-item">
+                        <div class="term-name">위치가 필요한가</div>
+                        <div class="term-desc">필요 없으면 분류로 끝난다. "이 이미지가 정상인가 아닌가"만 답하면 되는 경우가 생각보다 많다. 대상 위치가 고정된 촬영 조건이라면 특히 그렇다.</div>
+                    </div>
+                    <div class="term-item">
+                        <div class="term-name">개수를 세야 하나</div>
+                        <div class="term-desc">세야 하면 검출이다. 분류는 개수를 못 세고, 세그멘테이션은 붙어 있는 두 대상을 하나로 묶어 버리는 문제가 있다(인스턴스 구분은 별도 구조가 필요하다).</div>
+                    </div>
+                    <div class="term-item">
+                        <div class="term-name">면적·형상이 필요한가</div>
+                        <div class="term-desc">치수를 재거나 형상을 판정해야 하면 세그멘테이션이다. 박스는 기울어진 대상이나 불규칙한 형상을 제대로 표현하지 못한다.</div>
+                    </div>
+                    <div class="term-item">
+                        <div class="term-name">경계가 얼마나 정확해야 하나</div>
+                        <div class="term-desc">경계 자체가 판정 기준이면 세그멘테이션 외에 선택지가 없다. 반대로 "있다/없다"가 기준이면 경계 정밀도에 비용을 쓸 이유가 없다.</div>
+                    </div>
+                </div>
+
+                <p>실무에서 자주 나오는 답은 <strong>둘을 조합하는 것</strong>이다. 검출로 대상 위치를 먼저 잡고, 잘라낸 영역을 분류기에 넘겨 세부 판정을 시킨다. 한 모델로 다 하려 할 때보다 데이터 효율과 디버깅 난이도가 좋아지는 경우가 있는데, 이 구성이 왜 유리한지는 19편에서 따로 다룬다.</p>
+
+                <h2 id="wrap"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <div class="concept-card">
+                    <div class="concept-title"><i class="fa-solid fa-check"></i> 이 편의 결론</div>
+                    <p>세 과제는 backbone까지 같고 그 뒤부터 갈라진다. 갈림의 기준은 공간 해상도를 <strong>버리느냐·유지하느냐·복원하느냐</strong>이고, 그 선택이 라벨 비용·연산량·작은 대상에서의 성능을 함께 결정한다. 출력 형식을 먼저 고르지 말고 필요한 출력을 먼저 정의한다.</p>
+                </div>
+                <ul>
+                    <li>backbone은 해상도를 줄이고 채널을 늘린다. 넓게 보는 대신 위치가 뭉개진다.</li>
+                    <li>분류는 격자를 평균 내어 위치를 버리고, 그 대가로 가장 적은 데이터로 학습된다.</li>
+                    <li>검출은 격자를 유지하므로 격자 해상도가 위치 정밀도의 한계다. 작은 대상 문제는 다중 스케일과 입력 해상도로 접근한다.</li>
+                    <li>세그멘테이션은 디코더와 스킵 연결로 해상도를 복원하지만 라벨 비용이 가장 크다.</li>
+                    <li>세그멘테이션은 상위 호환이 아니다. 라벨 비용이 데이터 양을 줄이고, 줄어든 데이터가 품질을 떨어뜨린다.</li>
+                </ul>
+                <p>다음 편은 모델을 고르기 전에 확인해야 할 것을 다룬다. 대상이 이미지에서 몇 픽셀에 맺히는가 — 이 값이 어떤 모델을 쓸지보다 먼저 결정되고, 여기서 이미 안 보이면 어떤 구조로도 찾을 수 없다.</p>
+
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>He et al., <em>Deep Residual Learning for Image Recognition</em> (ResNet), CVPR 2016 — backbone 구조와 stride</li>
+                        <li>Ronneberger et al., <em>U-Net: Convolutional Networks for Biomedical Image Segmentation</em>, MICCAI 2015 — 인코더-디코더와 스킵 연결</li>
+                        <li>Lin et al., <em>Feature Pyramid Networks for Object Detection</em>, CVPR 2017 — 다중 스케일 특징</li>
+                        <li>함께 보기: <a href="ai-03-cnn-architecture.html">CNN 구조 — 합성곱·풀링·수용 영역</a>, <a href="ai-08-segmentation.html">세그멘테이션 — U-Net·Mask R-CNN</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer">
+    <span class="melon-icon"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon"></span></div>
+        <h3>비공개 콘텐츠 인증</h3>
+        <p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-ai');
+
+    document.querySelector('.auth-btn').onclick = handleLogin;
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const tocRow1 = document.getElementById('toc-row1');
+    const tocRow2 = document.getElementById('toc-row2');
+    const h2s = document.querySelectorAll('.post-detail-body h2');
+    const h3Map = {};
+
+    h2s.forEach(h2 => {
+        const h3s = [];
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== 'H2') {
+            if (next.tagName === 'H3' && next.id) h3s.push(next);
+            next = next.nextElementSibling;
+        }
+        if (h3s.length) h3Map[h2.id] = h3s;
+    });
+
+    function updateFloatingToc() {
+        const scrollY = window.scrollY;
+        const tocBottom = tocBlock.getBoundingClientRect().bottom + scrollY;
+
+        if (scrollY > tocBottom - 58) {
+            floatingToc.classList.add('visible');
+        } else {
+            floatingToc.classList.remove('visible');
+        }
+
+        let activeH2 = null;
+        h2s.forEach(h2 => {
+            if (h2.getBoundingClientRect().top < 140) activeH2 = h2;
+        });
+
+        tocRow1.querySelectorAll('a').forEach(a => {
+            a.classList.toggle('active', activeH2 && a.dataset.section === activeH2.id);
+        });
+
+        if (activeH2 && h3Map[activeH2.id]) {
+            tocRow2.classList.remove('hidden');
+            tocRow2.innerHTML = '';
+            h3Map[activeH2.id].forEach(h3 => {
+                const a = document.createElement('a');
+                a.href = '#' + h3.id;
+                a.textContent = h3.textContent.replace(/[▶︎]/g, '').trim();
+                if (h3.getBoundingClientRect().top < 160) a.classList.add('active');
+                tocRow2.appendChild(a);
+            });
+        } else {
+            tocRow2.classList.add('hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFloatingToc);
+    updateFloatingToc();
+
+    // 검색
+    const searchInput = document.querySelector('.nav-search input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    }
+renderPostNav('tech-ai');
+</script>
+
+</body>
+</html>

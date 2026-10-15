@@ -1,0 +1,636 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUDA 디버깅 도구 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why-hard" data-section="why-hard">어려운 이유</a>
+        <a href="#error-check" data-section="error-check">오류 검사</a>
+        <a href="#sanitizer" data-section="sanitizer">compute-sanitizer</a>
+        <a href="#printf" data-section="printf">printf/assert</a>
+        <a href="#debugger" data-section="debugger">디버거</a>
+        <a href="#tdr" data-section="tdr">Windows TDR</a>
+        <a href="#reference" data-section="reference">기준 비교</a>
+        <a href="#symptom" data-section="symptom">증상별 도구</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / <a href="gpu-01-cuda-intro.html">CUDA</a></span>
+                </div>
+                <h1>CUDA 디버깅 도구 - compute-sanitizer와 디버거</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-13</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 16분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>GPU 버그가 찾기 어려운 이유와 디버깅 순서</li>
+                        <li>CUDA_CHECK 매크로, 되돌릴 수 없는 오류(sticky error), CUDA_LAUNCH_BLOCKING</li>
+                        <li>compute-sanitizer의 memcheck, racecheck, initcheck, synccheck와 출력 읽는 법</li>
+                        <li>장치 printf, assert, Nsight Visual Studio Edition과 cuda-gdb 사용법</li>
+                        <li>Windows TDR 대처와 CPU 기준 구현 비교, 증상별 도구 선택표</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why-hard">GPU 버그가 찾기 어려운 이유</a></li>
+                        <li><a href="#error-check">1단계 - 모든 호출의 오류 검사</a></li>
+                        <li><a href="#sanitizer">2단계 - compute-sanitizer</a></li>
+                        <li><a href="#printf">3단계 - 커널 안의 printf와 assert</a></li>
+                        <li><a href="#debugger">4단계 - 디버거로 한 줄씩 보기</a></li>
+                        <li><a href="#tdr">Windows의 TDR - 커널이 2초를 넘으면</a></li>
+                        <li><a href="#reference">CPU 기준 구현과 비교하기</a></li>
+                        <li><a href="#symptom">증상별 도구 선택</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. GPU 버그가 어려운 이유 -->
+                <h2 id="why-hard"><i class="fa-solid fa-circle-question"></i> GPU 버그가 찾기 어려운 이유</h2>
+                <p>CPU 프로그램의 버그는 대개 디버거로 멈춰서 변수를 보면 찾을 수 있다. GPU 커널은 사정이 다르다.</p>
+
+                <table class="spec-table">
+                    <tr><th>특징</th><th>디버깅에 미치는 영향</th></tr>
+                    <tr><td>스레드 수만 개가 동시에 실행</td><td>"어느 스레드"에서 문제가 났는지부터 찾아야 함</td></tr>
+                    <tr><td>커널 실행은 비동기</td><td>오류가 실제로 난 곳이 아니라 한참 뒤의 API 호출에서 보고됨</td></tr>
+                    <tr><td>배열 범위를 넘어도 바로 죽지 않음</td><td>다른 버퍼를 조용히 덮어써서 엉뚱한 곳에서 증상이 나타남</td></tr>
+                    <tr><td>실행 순서가 매번 다름</td><td>race condition은 가끔만 틀리고, 디버거를 붙이면 사라지기도 함</td></tr>
+                    <tr><td>디버그 빌드는 최적화가 꺼짐</td><td>릴리스에서만 나는 버그가 디버그 빌드에서는 재현되지 않음</td></tr>
+                </table>
+
+                <p>그래서 GPU 디버깅은 "디버거로 한 줄씩 보기"보다 <strong>오류 검사 습관 + 자동 검사 도구 + CPU 기준 결과와 비교</strong>를 먼저 쓴다. 디버거는 원인 범위를 좁힌 뒤에 꺼낸다.</p>
+
+                <!-- 2. 오류 검사 -->
+                <h2 id="error-check"><i class="fa-solid fa-shield-halved"></i> 1단계 - 모든 호출의 오류 검사</h2>
+                <p>가장 기본이면서 가장 자주 빠뜨리는 단계다. CUDA API는 오류를 예외가 아니라 반환값으로 알린다. 반환값을 버리면 오류가 조용히 묻힌다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">#define CUDA_CHECK(call)                                                        \
+    do {                                                                        \
+        cudaError_t err__ = (call);                                             \
+        if (err__ != cudaSuccess) {                                             \
+            fprintf(stderr, "CUDA error %s (%d) at %s:%d\n  %s\n",              \
+                    cudaGetErrorName(err__), (int)err__, __FILE__, __LINE__,    \
+                    cudaGetErrorString(err__));                                 \
+            std::abort();                                                       \
+        }                                                                       \
+    } while (0)
+
+// kernel launches return nothing: check in two steps
+#define KERNEL_CHECK()                                                          \
+    do {                                                                        \
+        CUDA_CHECK(cudaGetLastError());            /* bad launch config */      \
+        if (g_debugSync) CUDA_CHECK(cudaDeviceSynchronize()); /* errors inside the kernel */ \
+    } while (0)
+
+CUDA_CHECK(cudaMalloc(&amp;d_buf, bytes));
+MyKernel&lt;&lt;&lt;grid, block, 0, stream&gt;&gt;&gt;(d_buf, n);
+KERNEL_CHECK();</code></pre>
+
+                <p>커널 오류는 두 종류다.</p>
+
+                <table class="spec-table">
+                    <tr><th>종류</th><th>예</th><th>잡는 방법</th></tr>
+                    <tr><td>실행 설정 오류</td><td>블록당 스레드 1025개, shared memory 한도 초과</td><td>실행 직후 <code>cudaGetLastError()</code></td></tr>
+                    <tr><td>실행 중 오류</td><td>범위 밖 접근(illegal address), 장치 assert 실패</td><td>동기화 후에야 보임. 그 전까지는 다음 API 호출이 대신 오류를 받음</td></tr>
+                </table>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>되돌릴 수 없는 오류 (sticky error)</strong>
+                        <code>cudaErrorIllegalAddress</code>, <code>cudaErrorLaunchFailure</code>, <code>cudaErrorAssert</code> 같은 실행 중 오류가 나면 CUDA context 전체가 망가진다. 이후 모든 CUDA 호출이 같은 오류를 돌려주며, 복구하려면 <code>cudaDeviceReset()</code>이나 프로세스 재시작이 필요하다. 12편의 디바이스 복구 설계가 필요한 이유다. "아무 API나 계속 실패한다"면 그보다 앞에서 난 첫 오류를 찾아야 한다.
+                    </div>
+                </div>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>CUDA_LAUNCH_BLOCKING=1</strong>
+                        환경 변수 <code>CUDA_LAUNCH_BLOCKING=1</code>을 설정하고 실행하면 모든 커널 실행이 동기로 바뀐다. 오류가 실제로 난 커널 바로 다음 호출에서 보고되므로 "어느 커널이 문제인지"를 빠르게 좁힐 수 있다. 성능은 떨어지므로 디버깅할 때만 쓴다.
+                    </div>
+                </div>
+
+                <!-- 3. compute-sanitizer -->
+                <h2 id="sanitizer"><i class="fa-solid fa-stethoscope"></i> 2단계 - compute-sanitizer</h2>
+                <p><code>compute-sanitizer</code>는 CUDA Toolkit에 들어 있는 자동 검사 도구다. 프로그램을 다시 빌드하지 않고 실행 파일 앞에 붙여서 돌리면 된다. 예전의 <code>cuda-memcheck</code>를 대신하는 도구로, <code>cuda-memcheck</code>는 CUDA 12에서 제거되었다.</p>
+
+<pre class="language-bash"><code class="language-bash"># default tool = memcheck
+compute-sanitizer ./my_app
+
+# choose a tool explicitly
+compute-sanitizer --tool memcheck  --leak-check full ./my_app
+compute-sanitizer --tool racecheck ./my_app
+compute-sanitizer --tool initcheck ./my_app
+compute-sanitizer --tool synccheck ./my_app
+
+# Windows
+compute-sanitizer.exe --tool memcheck my_app.exe</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>도구</th><th>찾는 버그</th><th>대표 증상</th></tr>
+                    <tr><td><strong>memcheck</strong></td><td>global, shared, local 메모리 범위 밖 접근, 정렬 오류, 메모리 누수(<code>--leak-check full</code>), API 오류</td><td>illegal address, 다른 버퍼 값이 깨짐</td></tr>
+                    <tr><td><strong>racecheck</strong></td><td>shared memory의 race condition (동기화 없이 같은 주소를 읽고 쓰기)</td><td>결과가 실행마다 가끔 다름</td></tr>
+                    <tr><td><strong>initcheck</strong></td><td>초기화하지 않은 global memory 읽기</td><td>첫 프레임만 이상하거나, 실행마다 다른 쓰레기 값</td></tr>
+                    <tr><td><strong>synccheck</strong></td><td>잘못된 동기화 (분기 안의 <code>__syncthreads()</code>, 잘못된 mask의 <code>__syncwarp</code>)</td><td>커널 멈춤, 정의되지 않은 결과</td></tr>
+                </table>
+
+                <h3 id="sanitizer-output"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 출력 읽는 법</h3>
+                <p>13편 리덕션 커널에서 범위 검사를 빠뜨렸다고 하자. memcheck는 대략 다음과 같은 보고를 낸다.</p>
+
+<pre class="language-bash"><code class="language-bash">========= Invalid __global__ read of size 4 bytes
+=========     at Reduce4(const float *, float *, int)+0x1b0 in reduce.cu:42
+=========     by thread (255,0,0) in block (4095,0,0)
+=========     Address 0x7f3a2c400000 is out of bounds
+=========     and is 1 bytes after the nearest allocation at 0x7f3a2bc00000 of size 8388608 bytes</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>줄</th><th>알려 주는 것</th></tr>
+                    <tr><td>Invalid __global__ read of size 4</td><td>global memory에서 4바이트(float 하나) 읽기가 잘못됨</td></tr>
+                    <tr><td>at ... reduce.cu:42</td><td>커널 이름과 소스 줄 번호 (아래 <code>-lineinfo</code> 필요)</td></tr>
+                    <tr><td>by thread (255,0,0) in block (4095,0,0)</td><td>문제를 일으킨 스레드와 블록 좌표. 마지막 블록의 마지막 스레드이므로 경계 처리 문제임을 짐작</td></tr>
+                    <tr><td>1 bytes after the nearest allocation</td><td>할당 영역 바로 뒤를 읽음. 전형적인 "끝 하나 넘김" (off-by-one)</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>줄 번호를 보려면 -lineinfo</strong>
+                        nvcc에 <code>-lineinfo</code>를 주면 최적화는 그대로 두고 소스 줄 정보만 넣는다. 릴리스 빌드에 넣어도 성능 영향이 거의 없으므로, sanitizer와 Nsight Compute(8편)를 위해 기본으로 켜 두는 것이 좋다. 디버거로 한 줄씩 실행하려면 <code>-G</code>가 필요한데, 이것은 최적화를 끈다.
+                    </div>
+                </div>
+
+                <h3 id="sanitizer-tips"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 실행 팁</h3>
+                <table class="spec-table">
+                    <tr><th>상황</th><th>방법</th></tr>
+                    <tr><td>너무 느림 (수십 배 이상 느려짐)</td><td>작은 입력(작은 영상, 프레임 몇 장)으로 실행. 문제가 되는 커널만 검사하려면 <code>--kernel-name kns=Reduce</code>처럼 커널 이름으로 걸러냄</td></tr>
+                    <tr><td>오류가 너무 많이 나옴</td><td>첫 오류만 보고 고친 뒤 다시 실행. 첫 오류가 뒤의 오류를 연쇄로 만드는 경우가 많음</td></tr>
+                    <tr><td>CI에서 자동 검사</td><td><code>--error-exitcode 1</code>로 오류가 있으면 실패 코드를 돌려주게 해서 테스트 단계에 넣음</td></tr>
+                    <tr><td>라이브러리 내부 경고가 섞임</td><td>내 코드의 커널만 필터링해서 실행</td></tr>
+                </table>
+
+                <!-- 4. 장치 printf, assert -->
+                <h2 id="printf"><i class="fa-solid fa-terminal"></i> 3단계 - 커널 안의 printf와 assert</h2>
+                <p>커널 안에서도 <code>printf</code>를 쓸 수 있다. 수만 스레드가 모두 찍으면 읽을 수 없으므로 조건으로 대상을 좁힌다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">__global__ void Debayer(const unsigned short* raw, float3* rgb, int w, int h)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    // only one suspicious pixel
+    if (x == 1023 &amp;&amp; y == 767)
+        printf("raw=%u at (%d,%d), block (%d,%d) thread (%d,%d)\n",
+               raw[y * w + x], x, y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y);
+
+    // device assert: stops the kernel with cudaErrorAssert (removed when NDEBUG is defined)
+    assert(x &lt; w + 32 &amp;&amp; y &lt; h + 32);
+    ...
+}</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>내용</th></tr>
+                    <tr><td>출력 시점</td><td>커널 안에서 바로 찍히지 않고 버퍼에 모였다가 동기화 시점(<code>cudaDeviceSynchronize</code> 등)에 출력됨</td></tr>
+                    <tr><td>버퍼 크기</td><td>기본 1MB 정도. 넘치면 뒤쪽 출력이 사라짐. <code>cudaDeviceSetLimit(cudaLimitPrintfFifoSize, bytes)</code>로 키움</td></tr>
+                    <tr><td>출력 순서</td><td>스레드 사이 순서는 보장되지 않음</td></tr>
+                    <tr><td>성능</td><td>printf가 있으면 커널이 느려지고 레지스터 사용도 늘어남. 확인 후 반드시 제거</td></tr>
+                    <tr><td>assert</td><td><code>#include &lt;cassert&gt;</code> 후 사용. 실패하면 파일, 줄, 스레드 좌표를 출력하고 context가 망가짐(sticky)</td></tr>
+                </table>
+
+                <!-- 5. 디버거 -->
+                <h2 id="debugger"><i class="fa-solid fa-bug-slash"></i> 4단계 - 디버거로 한 줄씩 보기</h2>
+                <p>범위가 좁혀졌는데도 원인이 안 보이면 디버거를 쓴다. GPU 디버거는 <strong>스레드 하나를 골라서</strong> 그 스레드 시점으로 변수를 보는 방식이다.</p>
+
+                <h3 id="nsight-vse"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> Windows - Nsight Visual Studio Edition</h3>
+                <p>Windows에서 Visual Studio를 쓴다면 Nsight Visual Studio Edition이 CUDA Toolkit 설치 시 함께 들어간다.</p>
+
+                <table class="spec-table">
+                    <tr><th>순서</th><th>할 일</th></tr>
+                    <tr><td>1</td><td>CUDA 프로젝트 속성에서 Device → Generate GPU Debug Information을 "예"로 (<code>-G</code>)</td></tr>
+                    <tr><td>2</td><td>커널 코드 줄에 중단점 설정</td></tr>
+                    <tr><td>3</td><td>메뉴 Extensions → Nsight → Start CUDA Debugging (Next-Gen)으로 실행 (일반 F5 디버깅은 CPU 코드만 멈춤)</td></tr>
+                    <tr><td>4</td><td>중단점에서 멈추면 Locals 창에 현재 스레드의 변수, Warp Info 창에 워프와 lane 상태가 나옴</td></tr>
+                    <tr><td>5</td><td>특정 스레드를 보려면 Warp Info에서 lane을 선택하거나 조건부 중단점 사용</td></tr>
+                </table>
+
+                <h3 id="cuda-gdb"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 리눅스 - cuda-gdb</h3>
+                <p>리눅스에서는 gdb를 확장한 <code>cuda-gdb</code>를 쓴다. gdb 명령은 그대로 쓰고, GPU 스레드를 고르는 <code>cuda</code> 명령이 추가된다.</p>
+
+<pre class="language-bash"><code class="language-bash">nvcc -g -G -o app app.cu          # host and device debug info
+cuda-gdb ./app
+
+(cuda-gdb) break Reduce4           # stop when the kernel starts
+(cuda-gdb) run
+(cuda-gdb) info cuda kernels       # running kernels
+(cuda-gdb) cuda block (4095,0,0) thread (255,0,0)   # switch focus to one thread
+(cuda-gdb) print i                 # variables as seen by that thread
+(cuda-gdb) print s[0]@8            # 8 elements of a shared array
+(cuda-gdb) next                    # step (the whole warp moves together)
+(cuda-gdb) info cuda threads       # where every thread is</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>-G로 빌드하면 버그가 사라질 수 있음</strong>
+                        <code>-G</code>는 장치 코드 최적화를 끄고 레지스터 사용, 명령 순서가 크게 바뀐다. race condition이나 경계 조건 버그는 타이밍이 달라져서 디버그 빌드에서 재현되지 않을 수 있다. 이런 경우에는 디버거 대신 racecheck와 printf, CPU 기준 비교로 좁혀 간다.
+                    </div>
+                </div>
+
+                <!-- 6. Windows TDR -->
+                <h2 id="tdr"><i class="fa-solid fa-display"></i> Windows의 TDR - 커널이 2초를 넘으면</h2>
+                <p>Windows에서 화면 출력에 쓰이는 GPU(WDDM 모드)는 커널 하나가 오래(기본 약 2초) 응답하지 않으면 운영체제가 GPU가 멈췄다고 보고 드라이버를 재시작한다. 이것을 <strong>TDR</strong>(Timeout Detection and Recovery)이라고 한다. 화면이 잠깐 깜빡이고 "디스플레이 드라이버가 응답을 중지했다가 복구되었습니다" 알림이 뜨며, 프로그램은 <code>cudaErrorLaunchTimeout</code> 같은 오류를 받는다.</p>
+
+                <table class="spec-table">
+                    <tr><th>원인</th><th>대책</th></tr>
+                    <tr><td>디버그 빌드(<code>-G</code>)나 sanitizer로 커널이 수십 배 느려짐</td><td>디버깅할 때는 입력을 작게. 디버깅 전용 PC라면 TDR 시간 연장 (레지스트리 <code>TdrDelay</code>, Nsight Monitor 설정)</td></tr>
+                    <tr><td>커널 하나가 원래 오래 걸림</td><td>커널을 여러 번으로 나눠 실행</td></tr>
+                    <tr><td>무한 루프, 동기화 교착</td><td>버그. synccheck, printf로 원인 확인</td></tr>
+                    <tr><td>계산 전용 GPU</td><td>화면 출력이 없는 데이터센터용 GPU는 TCC 모드로 전환하면 TDR 대상에서 빠짐 (지원 GPU만)</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>장비 PC라면 레지스트리 변경에 주의</strong>
+                        TDR 시간을 늘리면 GPU가 실제로 멈췄을 때 화면도 그만큼 오래 멈춘다. 생산 장비에서는 TDR을 늘리기보다 커널이 짧게 끝나도록 나누는 쪽이 맞다.
+                    </div>
+                </div>
+
+                <!-- 7. 기준 결과 비교 -->
+                <h2 id="reference"><i class="fa-solid fa-scale-balanced"></i> CPU 기준 구현과 비교하기</h2>
+                <p>도구로 잡히지 않는 버그도 있다. 메모리 접근은 모두 올바른데 계산 결과가 틀린 경우다. 이때 가장 확실한 방법은 같은 계산을 하는 <strong>단순한 CPU 구현</strong>을 하나 만들어 두고 결과를 비교하는 것이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// compare GPU output with a slow but obviously correct CPU version
+bool Compare(const std::vector&lt;float&gt;&amp; gpu, const std::vector&lt;float&gt;&amp; cpu,
+             float absTol, float relTol, int width)
+{
+    int bad = 0;
+    for (size_t i = 0; i &lt; gpu.size(); ++i)
+    {
+        float diff = std::fabs(gpu[i] - cpu[i]);
+        float tol  = absTol + relTol * std::fabs(cpu[i]);
+        if (diff &gt; tol &amp;&amp; bad++ &lt; 10)          // print only the first 10
+            printf("mismatch at (%zu,%zu): gpu=%g cpu=%g\n", i % width, i / width, gpu[i], cpu[i]);
+    }
+    printf("%d mismatches of %zu\n", bad, gpu.size());
+    return bad == 0;
+}</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>틀린 위치의 모양</th><th>의심할 원인</th></tr>
+                    <tr><td>영상 가장자리 몇 줄만 틀림</td><td>경계 처리 (패딩, clamp 누락)</td></tr>
+                    <tr><td>블록 크기 간격으로 격자 무늬</td><td>블록 경계의 halo 처리, shared memory 타일 인덱스</td></tr>
+                    <tr><td>오른쪽 끝 부분만 틀림</td><td>pitch(행 간격)를 width로 착각</td></tr>
+                    <tr><td>실행마다 틀린 위치가 바뀜</td><td>race condition, 초기화하지 않은 메모리, atomic 누락</td></tr>
+                    <tr><td>전체가 아주 조금씩 다름</td><td>부동소수점 계산 순서 차이 (버그가 아닐 수 있음. 허용 오차 확인)</td></tr>
+                </table>
+
+                <p>틀린 위치를 영상으로 저장해서 보면(차이 영상, 틀린 픽셀을 흰색으로) 위 패턴이 한눈에 보인다. 텍스트 로그보다 훨씬 빠르게 원인을 짐작할 수 있다.</p>
+
+                <!-- 8. 증상별 도구 -->
+                <h2 id="symptom"><i class="fa-solid fa-list-check"></i> 증상별 도구 선택</h2>
+                <table class="spec-table">
+                    <tr><th>증상</th><th>먼저 쓸 도구</th></tr>
+                    <tr><td>어떤 API든 계속 오류 (illegal address 등)</td><td><code>CUDA_LAUNCH_BLOCKING=1</code>로 문제 커널 찾기 → memcheck</td></tr>
+                    <tr><td>결과가 실행마다 가끔 다름</td><td>racecheck, initcheck</td></tr>
+                    <tr><td>커널이 끝나지 않음</td><td>synccheck, 디버거로 멈춘 위치 확인</td></tr>
+                    <tr><td>결과가 항상 같은 위치에서 틀림</td><td>CPU 기준 비교 + 차이 영상 → printf 또는 디버거</td></tr>
+                    <tr><td>오래 돌리면 메모리가 부족해짐</td><td>memcheck <code>--leak-check full</code>, Nsight Systems 메모리 사용량</td></tr>
+                    <tr><td>느림</td><td>버그가 아니라 성능 문제. Nsight Systems, Nsight Compute (8편)</td></tr>
+                    <tr><td>Windows에서 화면 깜빡임 후 오류</td><td>TDR. 커널 실행 시간 확인</td></tr>
+                </table>
+
+                <!-- 9. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>오류 보고 위치를 원인 위치로 착각</strong>
+                        비동기 실행 때문에 오류는 원인 커널보다 나중의 API(<code>cudaMemcpy</code> 등)에서 보고된다. 오류가 난 줄만 들여다보면 원인을 찾을 수 없다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>릴리스 빌드에서 오류 검사를 모두 끔</strong>
+                        <code>cudaDeviceSynchronize</code>를 곁들인 검사는 디버그용으로 끄더라도, API 반환값 검사와 <code>cudaGetLastError</code>는 릴리스에도 남겨 둔다. 비용이 거의 없고, 현장에서 난 오류의 첫 위치를 로그로 남길 수 있다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>sanitizer가 조용하면 버그가 없다는 뜻은 아님</strong>
+                        sanitizer는 실행된 경로만 검사한다. 테스트 입력이 문제 경로(가장자리, 크기가 블록 배수가 아닌 영상)를 지나가지 않으면 잡지 못한다. 영상 크기를 블록 크기의 배수가 아닌 값(예: 1023×767)으로도 꼭 돌려 본다.
+                    </div>
+                </div>
+
+                <!-- 10. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table class="spec-table">
+                    <tr><th>단계</th><th>도구</th><th>목적</th></tr>
+                    <tr><td>1</td><td><code>CUDA_CHECK</code>, <code>cudaGetLastError</code>, <code>CUDA_LAUNCH_BLOCKING</code></td><td>오류를 놓치지 않고 첫 오류 위치 찾기</td></tr>
+                    <tr><td>2</td><td>compute-sanitizer (memcheck, racecheck, initcheck, synccheck)</td><td>메모리, 동기화 버그 자동 검사</td></tr>
+                    <tr><td>3</td><td>장치 printf, assert</td><td>특정 스레드의 값 확인</td></tr>
+                    <tr><td>4</td><td>Nsight VSE, cuda-gdb</td><td>스레드 하나를 골라 한 줄씩 실행</td></tr>
+                    <tr><td>항상</td><td>CPU 기준 구현과 비교, 차이 영상</td><td>계산 오류 찾기</td></tr>
+                </table>
+                <p>다음 편에서는 영상 처리에 특화된 GPU 하드웨어 기능인 <strong>Texture 메모리와 하드웨어 보간</strong>을 다룬다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA Compute Sanitizer User Manual</li>
+                        <li>NVIDIA CUDA-GDB 문서</li>
+                        <li>NVIDIA Nsight Visual Studio Edition 문서 - CUDA Debugger</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
