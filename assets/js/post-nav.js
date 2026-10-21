@@ -10,7 +10,6 @@ const POST_NAV_DATA = {
         { file: 'windbg-04-heap-corruption.html', title: '힙·메모리 손상 디버깅 — PageHeap과 !heap' },
         { file: 'windbg-05-deadlock-hang.html', title: '데드락·행(Hang) 분석 — 멀티스레드 추적' },
         { file: 'windbg-06-support-workflow.html', title: '실무 기술지원 워크플로 — 고객사 덤프 대응' },
-        { file: 'windbg-07-hang-callstack.html', title: '멈춘 것처럼 보이는 프로그램의 원인 찾기 - cdb 콜스택' },
     ],
     'tech-sensor': [
         { file: 'ccd-vs-cmos.html', title: 'CCD vs CMOS 이미지 센서 비교' },
