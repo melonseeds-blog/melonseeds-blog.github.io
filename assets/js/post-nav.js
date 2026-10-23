@@ -139,6 +139,9 @@ const POST_NAV_DATA = {
         { file: 'wpf-11-block-editor.html', title: '데이터 플로우 블록 에디터' },
         { file: 'wpf-12-cli-integration.html', title: 'C++/CLI로 비전 코어 통합' },
     ],
+    'tech-fpga': [
+        { file: 'fpga-01-verilog-syntax.html', title: 'Verilog 주요 문법 — SW 개발자 관점' },
+    ],
     'tech-gpu': [
         { file: 'gpu-01-cuda-intro.html', title: 'CUDA란 / GPU vs CPU / 환경 셋업' },
         { file: 'gpu-02-memory-hierarchy.html', title: 'GPU 메모리 계층' },
@@ -403,6 +406,7 @@ const CAT_LABELS = {
     'tech-ai': 'AI / OpenAI',
     'tech-ai-llm': 'LLM 디코딩·프롬프트',
     'tech-ai-llm-context': 'LLM 컨텍스트 엔지니어링',
+    'tech-fpga': 'FPGA',
     'tech-gpu': 'GPU / CUDA',
     'dev-lang-python': 'Python 시리즈',
     'dev-wpf': 'WPF / C#',
