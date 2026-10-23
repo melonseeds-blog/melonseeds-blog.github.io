@@ -35,6 +35,7 @@ const POST_NAV_DATA = {
         { file: 'coaxpress-vs-clhs.html', title: 'CoaXPress vs Camera Link HS' },
         { file: 'poe-power-delivery.html', title: 'PoE / PoCL / PoCXP 전원 공급 방식' },
         { file: 'industrial-ethernet.html', title: 'EtherCAT, PROFINET, EtherNet/IP' },
+        { file: 'gige-multicast-igmp.html', title: 'GigE Vision 멀티캐스트와 IGMP 스위치 동작' },
     ],
     'tech-stereo': [
         { file: 'stereo-vision-basics.html', title: '스테레오 비전 기본 원리' },
