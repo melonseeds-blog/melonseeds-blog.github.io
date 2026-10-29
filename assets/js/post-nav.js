@@ -341,6 +341,9 @@ const POST_NAV_DATA = {
         { file: 'toeic-vocab-5.html', title: '토익 혼동 어휘 (헷갈리는 짝)' },
         { file: 'toeic-vocab-6.html', title: '토익 Part 7 지문 유형별 어휘' },
         { file: 'toeic-vocab-7.html', title: '토익 LC 빈출 표현' },
+        { file: 'toeic-vocab-8.html', title: '토익 전치사 짝 표현' },
+        { file: 'toeic-vocab-9.html', title: '토익 숫자와 증감 표현' },
+        { file: 'toeic-vocab-10.html', title: '토익 바꿔 말하기 짝' },
     ],
     'course-claude': [
         { file: 'course-claude-code-101.html', title: 'Claude Code 101 — 공식 입문 강의 정리' },
