@@ -1,0 +1,603 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수치 정밀도와 fast math - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#problem" data-section="problem">다른 이유</a>
+        <a href="#fma" data-section="fma">FMA</a>
+        <a href="#fast-math" data-section="fast-math">fast math</a>
+        <a href="#int-convert" data-section="int-convert">8비트 변환</a>
+        <a href="#overflow" data-section="overflow">정수 넘침</a>
+        <a href="#summation" data-section="summation">누적 오차</a>
+        <a href="#half" data-section="half">FP16</a>
+        <a href="#compare" data-section="compare">비교 기준</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / <a href="gpu-01-cuda-intro.html">CUDA</a></span>
+                </div>
+                <h1>수치 정밀도와 fast math - CPU와 결과가 다른 이유</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-29</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 16분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>CPU와 GPU 결과가 다른 원인: FMA, 더하는 순서, 수학 함수, fast math, 반올림</li>
+                        <li>--use_fast_math가 함께 켜는 설정과 빠른 함수(intrinsic)의 오차</li>
+                        <li>float를 8비트로 바꿀 때의 반올림 방식과 범위 자르기, OpenCV와 맞추는 법</li>
+                        <li>정수 넘침, float 누적 오차와 Kahan 합, 게이밍 GPU의 double 성능</li>
+                        <li>FP16의 범위와 정밀도, 데이터 종류별 결과 비교 기준</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#problem">CPU와 GPU 결과가 다른 이유</a></li>
+                        <li><a href="#fma">FMA - 더 정확하지만 다른 결과</a></li>
+                        <li><a href="#fast-math">--use_fast_math가 바꾸는 것</a></li>
+                        <li><a href="#int-convert">float에서 8비트로 바꾸기</a></li>
+                        <li><a href="#overflow">정수 넘침</a></li>
+                        <li><a href="#summation">float 누적 오차와 Kahan 합</a></li>
+                        <li><a href="#half">FP16(half) 사용 시 주의</a></li>
+                        <li><a href="#compare">결과 비교 기준 정하기</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 문제 -->
+                <h2 id="problem"><i class="fa-solid fa-not-equal"></i> CPU와 GPU 결과가 다른 이유</h2>
+                <p>CPU로 짠 영상 처리 코드를 CUDA로 옮기고 결과를 비교하면, 대부분 픽셀이 같은데 일부가 소수점 아래에서 다르거나 8비트 출력에서 1씩 차이 나는 일이 흔하다. 버그일 수도 있지만, 대부분은 <strong>부동소수점 계산 방식의 차이</strong>다. 원인을 알아야 "고쳐야 할 차이"와 "허용해야 할 차이"를 나눌 수 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>원인</th><th>설명</th></tr>
+                    <tr><td>FMA 합치기</td><td>GPU 컴파일러는 <code>a * b + c</code>를 한 번만 반올림하는 FMA 명령 하나로 합친다. CPU 코드는 곱셈 후 한 번, 덧셈 후 한 번 반올림하는 경우가 많다</td></tr>
+                    <tr><td>더하는 순서</td><td>리덕션(13편)처럼 병렬 계산은 더하는 순서가 다르다. 부동소수점 덧셈은 순서에 따라 마지막 자리가 달라진다</td></tr>
+                    <tr><td>수학 함수 구현</td><td><code>sinf</code>, <code>expf</code>, <code>powf</code>는 CPU 라이브러리와 CUDA 라이브러리의 구현이 달라 마지막 한두 자리가 다를 수 있다</td></tr>
+                    <tr><td>fast math 옵션</td><td><code>--use_fast_math</code>를 켜면 나눗셈, 제곱근, 수학 함수가 빠른 근사 버전으로 바뀐다</td></tr>
+                    <tr><td>8비트로 바꾸는 방식</td><td>float를 정수로 바꿀 때 버림, 반올림, 짝수 반올림 중 무엇을 쓰는지가 코드마다 다르다</td></tr>
+                </table>
+
+                <!-- 2. FMA -->
+                <h2 id="fma"><i class="fa-solid fa-calculator"></i> FMA - 더 정확하지만 다른 결과</h2>
+                <p>FMA(fused multiply-add)는 <code>a × b + c</code>를 중간 반올림 없이 계산하고 마지막에 한 번만 반올림한다. 정확도는 오히려 더 좋다. 문제는 CPU 결과와 "다르다"는 점이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// nvcc contracts this into a single FMA by default (--fmad=true)
+float y = gain * x + offset;
+
+// force separate multiply and add (two roundings, like most CPU builds)
+float y2 = __fadd_rn(__fmul_rn(gain, x), offset);
+
+// force an explicit FMA (one rounding)
+float y3 = __fmaf_rn(gain, x, offset);</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>방법</th><th>범위</th><th>쓰는 때</th></tr>
+                    <tr><td><code>--fmad=false</code> (nvcc 옵션)</td><td>파일 전체</td><td>CPU 결과와 비트 단위로 맞춰야 하는 검증 빌드</td></tr>
+                    <tr><td><code>__fmul_rn</code>, <code>__fadd_rn</code></td><td>그 식만</td><td>특정 계산만 CPU와 같은 순서로 맞출 때</td></tr>
+                    <tr><td>기본값 (FMA 허용)</td><td>-</td><td>일반 제품 코드. 더 빠르고 더 정확함</td></tr>
+                </table>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>CPU 쪽도 FMA를 쓸 수 있음</strong>
+                        최신 CPU 컴파일러도 최적화 옵션(예: AVX2 대상 빌드, <code>-ffp-contract=fast</code>)에 따라 FMA로 합친다. 같은 CPU 코드라도 빌드 옵션에 따라 결과가 달라질 수 있으므로, "CPU 결과가 정답"이라는 가정 자체를 조심한다.
+                    </div>
+                </div>
+
+                <!-- 3. fast math -->
+                <h2 id="fast-math"><i class="fa-solid fa-bolt"></i> --use_fast_math가 바꾸는 것</h2>
+                <p><code>--use_fast_math</code>는 nvcc 옵션 하나로 여러 설정을 한꺼번에 켠다. 속도는 빨라지지만 무엇이 바뀌는지 알고 써야 한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>함께 켜지는 설정</th><th>바뀌는 동작</th><th>영향</th></tr>
+                    <tr><td><code>-ftz=true</code></td><td>아주 작은 수(비정규 수, denormal)를 0으로 바꿈</td><td>1e-38보다 작은 값이 0이 됨. 영상 처리에서는 거의 문제없음</td></tr>
+                    <tr><td><code>-prec-div=false</code></td><td>나눗셈을 근사 계산</td><td>마지막 한두 자리 오차</td></tr>
+                    <tr><td><code>-prec-sqrt=false</code></td><td>제곱근을 근사 계산</td><td>마지막 한두 자리 오차</td></tr>
+                    <tr><td><code>-fmad=true</code></td><td>FMA 합치기 허용 (기본값과 같음)</td><td>-</td></tr>
+                    <tr><td>수학 함수 대체</td><td><code>sinf</code> → <code>__sinf</code>, <code>expf</code> → <code>__expf</code> 등 하드웨어 근사 함수로 바뀜</td><td>입력 범위에 따라 오차가 커질 수 있음 (특히 큰 각도의 <code>__sinf</code>)</td></tr>
+                </table>
+
+                <p>파일 전체에 켜는 대신, 속도가 필요한 곳에만 빠른 함수(intrinsic)를 직접 쓰는 방법도 있다.</p>
+
+                <table class="spec-table">
+                    <tr><th>정밀 함수</th><th>빠른 함수</th><th>주의</th></tr>
+                    <tr><td><code>x / y</code></td><td><code>__fdividef(x, y)</code></td><td>y가 매우 크면(2<sup>126</sup> 이상) 결과가 0이 됨</td></tr>
+                    <tr><td><code>expf(x)</code></td><td><code>__expf(x)</code></td><td>상대 오차가 커질 수 있음</td></tr>
+                    <tr><td><code>logf(x)</code></td><td><code>__logf(x)</code></td><td>1 근처 입력에서 오차</td></tr>
+                    <tr><td><code>powf(x, y)</code></td><td><code>__powf(x, y)</code></td><td>내부적으로 exp(y × log(x))라 두 오차가 합쳐짐</td></tr>
+                    <tr><td><code>sinf(x)</code>, <code>cosf(x)</code></td><td><code>__sinf(x)</code>, <code>__cosf(x)</code></td><td>|x|가 π 범위를 크게 벗어나면 오차 급증</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>감마 보정 LUT로 바꾸기</strong>
+                        8비트 입력의 감마 보정에 <code>powf</code>를 픽셀마다 부르는 대신, 256개 값의 표(LUT)를 미리 정밀하게 계산해 두고 읽으면 빠르고 정확하다(14편의 LUT 적용과 같은 구조). 입력 값의 종류가 적으면 계산보다 표가 낫다.
+                    </div>
+                </div>
+
+                <!-- 4. 정수 변환 -->
+                <h2 id="int-convert"><i class="fa-solid fa-arrow-right-arrow-left"></i> float에서 8비트로 바꾸기</h2>
+                <p>영상 처리 결과를 8비트 픽셀로 저장할 때 가장 자주 생기는 1 차이의 원인이다. 반올림 방식과 범위 자르기(saturate)를 정확히 정해야 한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">float v = 254.6f;
+
+unsigned char a = (unsigned char)v;                        // 254: truncation (C cast)
+unsigned char b = (unsigned char)__float2int_rn(v);        // 255: round to nearest even
+unsigned char c = (unsigned char)(v + 0.5f);               // 255: round half up (positive only)
+
+// out of range: 300.f -&gt; (unsigned char) gives an undefined/wrapped value
+float big = 300.f;
+unsigned char bad  = (unsigned char)big;                   // NOT 255
+unsigned char good = (unsigned char)__float2int_rn(fminf(fmaxf(big, 0.f), 255.f));   // 255
+
+// __saturatef clamps to [0, 1]: handy for normalized pipelines
+unsigned char d = (unsigned char)__float2int_rn(__saturatef(v / 255.f) * 255.f);</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>함수</th><th>반올림 방식</th><th>2.5의 결과</th></tr>
+                    <tr><td><code>(int)x</code></td><td>0 쪽으로 버림</td><td>2</td></tr>
+                    <tr><td><code>__float2int_rn</code>, <code>rintf</code></td><td>가장 가까운 값, 같으면 짝수 (banker's rounding)</td><td>2</td></tr>
+                    <tr><td><code>roundf</code></td><td>가장 가까운 값, 같으면 0에서 먼 쪽</td><td>3</td></tr>
+                    <tr><td><code>(int)(x + 0.5f)</code></td><td>절반 올림 (양수에서만 맞음)</td><td>3</td></tr>
+                </table>
+
+                <p>OpenCV의 <code>saturate_cast&lt;uchar&gt;</code>는 가장 가까운 값으로 반올림하고(같으면 짝수) 0~255로 자른다. OpenCV 결과와 맞춰야 한다면 <code>__float2int_rn</code> + 범위 자르기를 쓴다.</p>
+
+                <!-- 5. 정수 넘침 -->
+                <h2 id="overflow"><i class="fa-solid fa-triangle-exclamation"></i> 정수 넘침</h2>
+                <p>8비트, 16비트 픽셀을 정수로 더하거나 곱할 때는 넘침에 주의한다. GPU에서 넘침은 오류 없이 조용히 값이 돌아간다.</p>
+
+                <table class="spec-table">
+                    <tr><th>계산</th><th>위험</th><th>대책</th></tr>
+                    <tr><td>8비트 픽셀 두 개 더하기를 <code>uint8_t</code>로</td><td>200 + 100 = 44 (256으로 나눈 나머지)</td><td><code>int</code>로 더한 뒤 범위 자르기</td></tr>
+                    <tr><td>영상 전체 픽셀 합을 <code>unsigned int</code>로</td><td>4K 12비트 영상은 한 장의 합만으로 약 340억이라 32비트 최댓값(약 42.9억)을 넘음</td><td><code>unsigned long long</code></td></tr>
+                    <tr><td>16비트 픽셀 제곱합 (분산 계산)</td><td>65535² ≈ 42.9억으로 32비트 최댓값에 거의 닿아, 두 픽셀만 더해도 넘음</td><td><code>unsigned long long</code> 또는 <code>double</code></td></tr>
+                    <tr><td>좌표 곱 <code>y * pitch + x</code>를 <code>int</code>로</td><td>큰 영상이나 3D 볼륨에서 20억을 넘음</td><td><code>size_t</code>로 계산</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// 16-bit image variance: accumulate in 64-bit integers, no rounding error at all
+__global__ void SumAndSumSq(const uint16_t* img, size_t n,
+                            unsigned long long* sum, unsigned long long* sumSq)
+{
+    unsigned long long s = 0, q = 0;
+    for (size_t i = blockIdx.x * (size_t)blockDim.x + threadIdx.x; i &lt; n; i += (size_t)blockDim.x * gridDim.x)
+    {
+        unsigned long long v = img[i];
+        s += v;
+        q += v * v;
+    }
+    // block reduction as in part 13, then one atomicAdd per block
+    s = BlockReduceSumU64(s);
+    q = BlockReduceSumU64(q);
+    if (threadIdx.x == 0) { atomicAdd(sum, s); atomicAdd(sumSq, q); }
+}</code></pre>
+
+                <p>정수 합은 더하는 순서와 상관없이 항상 같은 결과가 나온다. atomicAdd를 써도 결과가 매번 같으므로(14편), 회귀 테스트에 유리하다.</p>
+
+                <!-- 6. float 누적 -->
+                <h2 id="summation"><i class="fa-solid fa-plus"></i> float 누적 오차와 Kahan 합</h2>
+                <p>float는 유효 숫자가 약 7자리다. 큰 합계에 작은 값을 계속 더하면 작은 값이 묻혀 사라진다. 예를 들어 합계가 1,000만(10<sup>7</sup>)일 때 0.5를 더하면, float로는 표현할 수 있는 간격이 1이라 0.5가 반올림되어 없어지거나 1이 된다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방법</th><th>정확도</th><th>비용</th></tr>
+                    <tr><td>트리 리덕션 (13편)</td><td>순차 합보다 오차가 작음 (비슷한 크기끼리 더하기 때문)</td><td>추가 비용 없음</td></tr>
+                    <tr><td><code>double</code> 누적</td><td>유효 숫자 약 16자리</td><td>게이밍 GPU는 double 연산이 float보다 수십 배 느림 (아래). 누적 변수 하나만 double이면 영향 작음</td></tr>
+                    <tr><td>Kahan 보정 합</td><td>float만으로 double에 가까운 정확도</td><td>덧셈 4번 정도로 늘어남</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// Kahan summation: carry the lost low-order bits in c
+__device__ void KahanAdd(float&amp; sum, float&amp; c, float x)
+{
+    float y = x - c;          // corrected input
+    float t = sum + y;        // big + small: low bits of y are lost here
+    c = (t - sum) - y;        // recover what was lost (algebraically zero)
+    sum = t;
+}
+// NOTE: --use_fast_math or aggressive reassociation may simplify c away.
+// Keep this file without fast math, or use __fadd_rn / __fsub_rn for each step.</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>게이밍 GPU의 double 성능</strong>
+                        GeForce 계열 GPU의 FP64(double) 처리량은 FP32의 1/32에서 1/64 정도다. 데이터센터용 일부 GPU만 1/2 수준이다. 커널 전체를 double로 바꾸면 크게 느려지므로, 오차가 쌓이는 누적 변수만 double로 두는 방식이 좋다.
+                    </div>
+                </div>
+
+                <!-- 7. half -->
+                <h2 id="half"><i class="fa-solid fa-divide"></i> FP16(half) 사용 시 주의</h2>
+                <p>FP16은 메모리 이동량이 float의 절반이라 memory-bound 커널(22편)에서 효과가 크고, <code>half2</code>로 두 값을 한 명령에 계산할 수도 있다. 대신 표현 범위와 정밀도가 매우 좁다.</p>
+
+                <table class="spec-table">
+                    <tr><th>항목</th><th>FP32</th><th>FP16</th></tr>
+                    <tr><td>최댓값</td><td>약 3.4 × 10<sup>38</sup></td><td>65504</td></tr>
+                    <tr><td>유효 숫자</td><td>약 7자리</td><td>약 3자리</td></tr>
+                    <tr><td>1 근처 간격</td><td>약 1.2 × 10<sup>-7</sup></td><td>약 0.001</td></tr>
+                    <tr><td>1024~2048 사이 간격</td><td>약 0.0001</td><td>1 (정수만 표현)</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">#include &lt;cuda_fp16.h&gt;
+
+// store as half, compute in float, store back as half
+__global__ void ScaleHalf(const __half* in, __half* out, int n, float gain)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i &lt; n)
+    {
+        float v = __half2float(in[i]);           // widen
+        out[i] = __float2half_rn(v * gain);      // compute in float, round once
+    }
+}
+
+// two values per instruction with half2 (n even, pointers 4-byte aligned)
+__global__ void ScaleHalf2(const __half2* in, __half2* out, int n2, __half2 gain2)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i &lt; n2) out[i] = __hmul2(in[i], gain2);
+}</code></pre>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>12비트 이상 원시 영상을 FP16으로 저장</strong>
+                        12비트 픽셀(0~4095)을 정규화 없이 FP16으로 저장하면 2048 이상에서는 2 단위로만 표현되어 값이 뭉개진다. 원시 영상은 정수 그대로 두거나, 0~1로 정규화한 뒤 FP16으로 바꾼다. 합계와 분산은 FP16으로 누적하지 않는다.
+                    </div>
+                </div>
+
+                <!-- 8. 결과 비교 -->
+                <h2 id="compare"><i class="fa-solid fa-scale-balanced"></i> 결과 비교 기준 정하기</h2>
+                <p>CPU 기준 구현과 비교할 때(19편) "완전히 같아야 한다"는 기준은 대부분 맞지 않는다. 데이터 형식과 계산 종류에 따라 허용 기준을 정해 둔다.</p>
+
+                <table class="spec-table">
+                    <tr><th>출력</th><th>권장 비교 기준</th></tr>
+                    <tr><td>정수 계산만 하는 커널 (히스토그램, 정수 합, LUT 적용)</td><td>완전히 같아야 함. 다르면 버그</td></tr>
+                    <tr><td>8비트 출력, 내부 float 계산</td><td>픽셀 차이 1 이하, 차이 나는 픽셀 비율 상한 (예: 0.1%)</td></tr>
+                    <tr><td>float 출력</td><td>상대 오차 1e-5 정도 + 0 근처 값을 위한 절대 오차</td></tr>
+                    <tr><td>float 합계, 평균 (리덕션)</td><td>상대 오차 1e-5~1e-4 (원소 수가 많을수록 넉넉히)</td></tr>
+                    <tr><td>fast math, FP16 사용</td><td>위 기준보다 넓게. 실제로 잰 최대 오차를 근거로 정함</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// tolerance check: |gpu - cpu| &lt;= abs + rel * |cpu|
+bool Close(float gpu, float cpu, float absTol = 1e-6f, float relTol = 1e-5f)
+{
+    return std::fabs(gpu - cpu) &lt;= absTol + relTol * std::fabs(cpu);
+}</code></pre>
+
+                <!-- 9. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>fast math를 프로젝트 전체에 켜기</strong>
+                        속도가 중요한 파일에만 켜거나, 빠른 함수를 직접 쓴다. 계측, 캘리브레이션처럼 값 자체가 결과인 코드가 같은 빌드 옵션을 공유하면 정확도가 조용히 떨어진다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>double 상수가 섞여 느려짐</strong>
+                        <code>v * 0.5</code>처럼 접미사 없는 실수 상수는 double이라, float 커널 안에서 double 연산이 생긴다. 게이밍 GPU에서는 이것만으로 커널이 크게 느려질 수 있다. float 커널에서는 <code>0.5f</code>처럼 항상 <code>f</code>를 붙인다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>NaN 전파</strong>
+                        0으로 나누기, 음수의 제곱근, log(0)은 NaN이나 inf를 만들고, 이후 모든 계산으로 퍼진다. NaN은 자기 자신과 비교해도 같지 않으므로(<code>v != v</code>) 결과 비교 코드에서 따로 확인한다. 필터의 정규화 분모, 표준편차 나눗셈에는 작은 값(epsilon)을 더해 둔다.
+                    </div>
+                </div>
+
+                <!-- 10. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table class="spec-table">
+                    <tr><th>상황</th><th>할 일</th></tr>
+                    <tr><td>CPU와 마지막 자리가 다름</td><td>FMA, 더하는 순서, 수학 함수 차이. 허용 오차로 비교</td></tr>
+                    <tr><td>8비트 출력이 1씩 다름</td><td>반올림 방식(<code>__float2int_rn</code>)과 범위 자르기 통일</td></tr>
+                    <tr><td>속도가 필요함</td><td>필요한 곳에만 빠른 함수, LUT 활용. 전체 fast math는 신중히</td></tr>
+                    <tr><td>큰 합계</td><td>정수면 64비트 정수, float면 트리 리덕션, double 누적, Kahan 합</td></tr>
+                    <tr><td>FP16</td><td>저장은 FP16, 계산은 float. 범위 65504와 3자리 정밀도 확인</td></tr>
+                </table>
+                <p>다음 편에서는 GPU 한 장으로 부족할 때 쓰는 <strong>멀티 GPU와 P2P 통신</strong>을 다룬다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA CUDA C++ Programming Guide - Mathematical Functions (Standard Functions, Intrinsic Functions)</li>
+                        <li>NVIDIA, "Floating Point and IEEE 754 Compliance for NVIDIA GPUs"</li>
+                        <li>David Goldberg, "What Every Computer Scientist Should Know About Floating-Point Arithmetic"</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

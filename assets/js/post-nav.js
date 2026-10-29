@@ -164,6 +164,10 @@ const POST_NAV_DATA = {
         { file: 'gpu-19-debugging-tools.html', title: 'CUDA 디버깅 도구' },
         { file: 'gpu-20-texture-memory.html', title: 'Texture 메모리와 하드웨어 보간' },
         { file: 'gpu-21-tensor-core-wmma.html', title: 'Tensor Core와 WMMA' },
+        { file: 'gpu-22-roofline-fusion.html', title: 'Roofline 모델과 커널 융합' },
+        { file: 'gpu-23-numerical-precision.html', title: '수치 정밀도와 fast math' },
+        { file: 'gpu-24-multi-gpu-p2p.html', title: '멀티 GPU와 P2P' },
+        { file: 'gpu-25-graphics-interop.html', title: '그래픽스 API 연동' },
     ],
     'tech-ai': [
         { file: 'ai-01-deep-learning-vision-intro.html', title: '딥러닝 비전 입문 — 전통적 비전 vs 딥러닝' },

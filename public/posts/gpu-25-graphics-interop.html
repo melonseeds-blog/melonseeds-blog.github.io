@@ -1,0 +1,549 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>그래픽스 API 연동 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#problem" data-section="problem">숨은 왕복</a>
+        <a href="#concept" data-section="concept">기본 흐름</a>
+        <a href="#opengl" data-section="opengl">OpenGL</a>
+        <a href="#d3d-vulkan" data-section="d3d-vulkan">D3D/Vulkan</a>
+        <a href="#frameworks" data-section="frameworks">프레임워크</a>
+        <a href="#same-gpu" data-section="same-gpu">같은 GPU</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / <a href="gpu-01-cuda-intro.html">CUDA</a></span>
+                </div>
+                <h1>그래픽스 API 연동 - 처리 결과를 바로 화면에</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-29</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 15분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>결과 표시 때 생기는 GPU → CPU → GPU 왕복과 그 비용</li>
+                        <li>등록, map, 주소 얻기, 쓰기, unmap으로 이어지는 연동 흐름</li>
+                        <li>OpenGL 픽셀 버퍼(PBO)와 텍스처 연동 코드</li>
+                        <li>Direct3D 11과 D3D12, Vulkan의 외부 메모리, 세마포어 연동</li>
+                        <li>Qt, WPF, OpenCV와 연결하는 지점과 같은 GPU 조건</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#problem">결과 표시의 숨은 왕복</a></li>
+                        <li><a href="#concept">연동의 기본 흐름</a></li>
+                        <li><a href="#opengl">OpenGL - 픽셀 버퍼로 연동</a></li>
+                        <li><a href="#d3d-vulkan">Direct3D와 Vulkan</a></li>
+                        <li><a href="#frameworks">화면 프레임워크와 연결</a></li>
+                        <li><a href="#same-gpu">같은 GPU 조건</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 문제 -->
+                <h2 id="problem"><i class="fa-solid fa-display"></i> 결과 표시의 숨은 왕복</h2>
+                <p>GPU로 영상을 처리한 뒤 화면에 보여 주는 가장 흔한 방법은, 결과를 CPU 메모리로 복사하고 그것을 화면 라이브러리(Qt, WPF, OpenCV <code>imshow</code>)에 넘기는 것이다. 그런데 화면 라이브러리는 그 영상을 그리기 위해 다시 GPU로 올린다. 결국 영상이 GPU → CPU → GPU로 PCIe를 두 번 오간다.</p>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif" font-size="12">
+                        <text x="20" y="22" font-weight="700" fill="#991b1b">일반 방식</text>
+                        <g fill="#a7f3d0" stroke="#059669"><rect x="20" y="35" width="120" height="34" rx="5"/><rect x="420" y="35" width="120" height="34" rx="5"/></g>
+                        <rect x="220" y="35" width="120" height="34" rx="5" fill="#eff6ff" stroke="#1e40af"/>
+                        <g text-anchor="middle"><text x="80" y="57">CUDA 결과 버퍼</text><text x="280" y="57">CPU 메모리</text><text x="480" y="57">화면용 텍스처</text></g>
+                        <g stroke="#dc2626" stroke-width="2"><line x1="140" y1="52" x2="218" y2="52"/><line x1="340" y1="52" x2="418" y2="52"/></g>
+                        <g fill="#dc2626" font-size="11" text-anchor="middle"><text x="179" y="85">PCIe 복사</text><text x="379" y="85">PCIe 복사</text></g>
+                        <text x="560" y="57" fill="#475569" font-size="11">→ 그리기</text>
+
+                        <text x="20" y="125" font-weight="700" fill="#065f46">연동 방식 (interop)</text>
+                        <rect x="20" y="138" width="320" height="34" rx="5" fill="#a7f3d0" stroke="#059669"/>
+                        <text x="180" y="160" text-anchor="middle">CUDA와 그래픽스 API가 같은 GPU 메모리를 함께 사용</text>
+                        <text x="360" y="160" fill="#475569" font-size="11">→ 그리기. PCIe 복사 없음</text>
+                    </svg>
+                    <div class="diagram-caption">그래픽스 연동을 쓰면 결과 버퍼를 화면용 텍스처로 바로 쓰거나 GPU 안에서만 복사한다</div>
+                </div>
+
+                <p>2,000만 화소 컬러 영상(약 80 MB, RGBA)을 초당 30장 보여 주면 왕복 이동량이 초당 약 4.8 GB다. PCIe 대역폭을 크게 차지해 카메라 영상을 GPU로 올리는 일(4편)과 부딪친다. CUDA는 OpenGL, Direct3D, Vulkan과 메모리를 공유하는 <strong>그래픽스 연동(graphics interop)</strong> 기능을 제공한다.</p>
+
+                <!-- 2. 개념 -->
+                <h2 id="concept"><i class="fa-solid fa-handshake"></i> 연동의 기본 흐름</h2>
+                <p>API는 그래픽스 종류마다 이름이 조금씩 다르지만 흐름은 같다. 그래픽스 쪽에서 만든 버퍼나 텍스처를 CUDA에 <strong>등록</strong>해 두고, 프레임마다 CUDA가 쓸 때만 <strong>잠깐 빌렸다가 돌려준다</strong>.</p>
+
+                <table class="spec-table">
+                    <tr><th>단계</th><th>함수</th><th>시점</th></tr>
+                    <tr><td>1. 등록</td><td><code>cudaGraphicsGLRegisterBuffer</code>, <code>cudaGraphicsGLRegisterImage</code>, <code>cudaGraphicsD3D11RegisterResource</code></td><td>시작할 때 한 번 (크기가 바뀌면 다시)</td></tr>
+                    <tr><td>2. 빌리기 (map)</td><td><code>cudaGraphicsMapResources</code></td><td>매 프레임, CUDA가 쓰기 전</td></tr>
+                    <tr><td>3. 주소 얻기</td><td>버퍼: <code>cudaGraphicsResourceGetMappedPointer</code><br>텍스처: <code>cudaGraphicsSubResourceGetMappedArray</code></td><td>매 프레임</td></tr>
+                    <tr><td>4. CUDA 커널로 쓰기</td><td>보통 커널, 또는 surface 쓰기(20편), <code>cudaMemcpy2DToArrayAsync</code></td><td>매 프레임</td></tr>
+                    <tr><td>5. 돌려주기 (unmap)</td><td><code>cudaGraphicsUnmapResources</code></td><td>매 프레임, 그래픽스가 그리기 전</td></tr>
+                    <tr><td>6. 해제</td><td><code>cudaGraphicsUnregisterResource</code></td><td>끝날 때</td></tr>
+                </table>
+
+                <p>map과 unmap 사이에는 CUDA만, 그 밖에서는 그래픽스 API만 그 메모리를 쓴다. map, unmap이 두 쪽의 순서를 맞춰 주는 동기화 역할을 한다.</p>
+
+                <!-- 3. OpenGL PBO -->
+                <h2 id="opengl"><i class="fa-solid fa-cube"></i> OpenGL - 픽셀 버퍼로 연동</h2>
+                <p>가장 많이 쓰는 방법은 OpenGL 픽셀 버퍼 객체(PBO)를 CUDA에 등록하는 것이다. CUDA 커널이 PBO에 RGBA 픽셀을 쓰고, OpenGL은 PBO에서 텍스처로 GPU 안에서만 복사해 화면에 그린다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// ---- once, with the GL context current on this thread ----
+GLuint pbo, tex;
+glGenBuffers(1, &amp;pbo);
+glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+glBufferData(GL_PIXEL_UNPACK_BUFFER, w * h * 4, nullptr, GL_STREAM_DRAW);
+glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+glGenTextures(1, &amp;tex);
+glBindTexture(GL_TEXTURE_2D, tex);
+glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+cudaGraphicsResource_t pboRes;
+cudaGraphicsGLRegisterBuffer(&amp;pboRes, pbo, cudaGraphicsRegisterFlagsWriteDiscard);  // CUDA only writes
+
+// ---- every frame ----
+cudaGraphicsMapResources(1, &amp;pboRes, stream);
+uchar4* d_rgba = nullptr; size_t size = 0;
+cudaGraphicsResourceGetMappedPointer((void**)&amp;d_rgba, &amp;size, pboRes);
+
+GrayToRgba&lt;&lt;&lt;grid, block, 0, stream&gt;&gt;&gt;(d_result, d_rgba, w, h);   // write display pixels
+DrawOverlay&lt;&lt;&lt;grid2, block2, 0, stream&gt;&gt;&gt;(d_rgba, d_defects, numDefects, w, h);
+
+cudaGraphicsUnmapResources(1, &amp;pboRes, stream);   // hand the buffer back to OpenGL
+
+// PBO -&gt; texture copy stays on the GPU, then draw a full-screen quad
+glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+glBindTexture(GL_TEXTURE_2D, tex);
+glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);  // offset 0 in PBO
+glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+DrawTexturedQuad(tex);</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>등록 플래그</th><th>뜻</th></tr>
+                    <tr><td><code>cudaGraphicsRegisterFlagsNone</code></td><td>CUDA가 읽고 쓰기</td></tr>
+                    <tr><td><code>cudaGraphicsRegisterFlagsReadOnly</code></td><td>CUDA는 읽기만 (그래픽스가 만든 영상을 CUDA로 분석)</td></tr>
+                    <tr><td><code>cudaGraphicsRegisterFlagsWriteDiscard</code></td><td>CUDA가 매번 전체를 새로 씀. 이전 내용을 보존할 필요가 없어 가장 빠름</td></tr>
+                </table>
+
+                <h3 id="opengl-texture"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 텍스처를 직접 등록하는 방법</h3>
+                <p>PBO 없이 텍스처를 바로 등록할 수도 있다. 이 경우 CUDA 쪽에서는 일반 포인터가 아니라 <code>cudaArray</code>로 보이므로, surface 쓰기(20편)나 배열 복사로 채운다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">cudaGraphicsResource_t texRes;
+cudaGraphicsGLRegisterImage(&amp;texRes, tex, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsSurfaceLoadStore);
+
+// every frame
+cudaGraphicsMapResources(1, &amp;texRes, stream);
+cudaArray_t arr;
+cudaGraphicsSubResourceGetMappedArray(&amp;arr, texRes, 0, 0);   // array index 0, mip level 0
+cudaMemcpy2DToArrayAsync(arr, 0, 0, d_rgba, pitch, w * 4, h, cudaMemcpyDeviceToDevice, stream);
+cudaGraphicsUnmapResources(1, &amp;texRes, stream);</code></pre>
+
+                <!-- 4. Direct3D, Vulkan -->
+                <h2 id="d3d-vulkan"><i class="fa-brands fa-windows"></i> Direct3D와 Vulkan</h2>
+                <table class="spec-table">
+                    <tr><th>그래픽스 API</th><th>CUDA 연동 방법</th><th>참고</th></tr>
+                    <tr><td>Direct3D 11</td><td><code>cudaGraphicsD3D11RegisterResource</code> + 위와 같은 map/unmap</td><td>Windows 화면 프로그램에서 흔히 사용</td></tr>
+                    <tr><td>Direct3D 12</td><td>외부 메모리 API: <code>cudaImportExternalMemory</code>, <code>cudaImportExternalSemaphore</code></td><td>공유 핸들(shared handle)로 메모리와 펜스를 넘김</td></tr>
+                    <tr><td>Vulkan</td><td>같은 외부 메모리 API</td><td>메모리는 Win32 핸들(Windows) 또는 파일 디스크립터(리눅스)로 넘김</td></tr>
+                </table>
+
+                <p>D3D12와 Vulkan은 map/unmap 대신 <strong>외부 메모리</strong>와 <strong>외부 세마포어</strong>로 연동한다. 그래픽스 쪽에서 메모리를 "공유 가능"으로 만들어 핸들을 얻고, CUDA가 그 핸들로 같은 메모리를 가져온다. 동기화도 map/unmap이 아니라 세마포어(펜스)를 CUDA 스트림에서 신호하고 기다리는 방식이다. 코드는 길지만, 한 번 설정하면 프레임마다 하는 일은 세마포어 대기, 커널 실행, 세마포어 신호뿐이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// outline: import a D3D12/Vulkan buffer and a fence into CUDA (handles come from the graphics side)
+cudaExternalMemoryHandleDesc memDesc = {};
+memDesc.type = cudaExternalMemoryHandleTypeD3D12Resource;   // or ...OpaqueWin32 for Vulkan
+memDesc.handle.win32.handle = sharedHandle;
+memDesc.size = bytes;
+memDesc.flags = cudaExternalMemoryDedicated;
+cudaExternalMemory_t extMem;
+cudaImportExternalMemory(&amp;extMem, &amp;memDesc);
+
+cudaExternalMemoryBufferDesc bufDesc = {};
+bufDesc.size = bytes;
+void* d_shared = nullptr;
+cudaExternalMemoryGetMappedBuffer(&amp;d_shared, extMem, &amp;bufDesc);   // a normal device pointer now
+
+// per frame: wait graphics fence -&gt; CUDA work -&gt; signal fence for graphics
+cudaWaitExternalSemaphoresAsync(&amp;extSem, &amp;waitParams, 1, stream);
+Render&lt;&lt;&lt;grid, block, 0, stream&gt;&gt;&gt;((uchar4*)d_shared, w, h);
+cudaSignalExternalSemaphoresAsync(&amp;extSem, &amp;signalParams, 1, stream);</code></pre>
+
+                <!-- 5. 화면 프레임워크 -->
+                <h2 id="frameworks"><i class="fa-solid fa-window-maximize"></i> 화면 프레임워크와 연결</h2>
+                <p>검사 장비 프로그램은 대부분 Qt나 WPF 같은 화면 프레임워크 위에서 돈다. 프레임워크가 내부에서 쓰는 그래픽스 API에 맞춰 연결한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>프레임워크</th><th>연결 지점</th><th>메모</th></tr>
+                    <tr><td>Qt</td><td><code>QOpenGLWidget</code>(또는 <code>QOpenGLWindow</code>)의 <code>initializeGL</code>에서 등록, <code>paintGL</code>에서 map → 커널 → unmap → 그리기</td><td>GL 컨텍스트가 현재인 스레드에서 호출해야 함. Qt 6의 기본 렌더링은 Direct3D일 수 있으니 OpenGL 위젯을 명시적으로 사용</td></tr>
+                    <tr><td>WPF</td><td><code>D3DImage</code>로 Direct3D 표면을 표시. 표면을 공유 텍스처로 만들어 CUDA(D3D11 연동)로 채움</td><td>설정이 복잡함. C++/CLI(이 시리즈의 C++ 편)로 CUDA 코드와 이어 붙이는 구조가 흔함</td></tr>
+                    <tr><td>OpenCV</td><td><code>cv::ogl::Texture2D</code>, <code>cv::cuda::GpuMat</code>과 OpenGL 연동 모듈</td><td>OpenCV를 OpenGL 지원으로 빌드해야 함</td></tr>
+                </table>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>화면 해상도만큼만 보내기</strong>
+                        5000만 화소 영상을 1920×1080 창에 보여 준다면, 연동을 쓰더라도 원본 크기를 화면으로 넘길 필요가 없다. CUDA에서 화면 크기로 줄인 표시용 영상(20편의 texture 리사이즈)을 만들어 그것만 연동 버퍼에 쓰면 메모리와 시간이 크게 준다. 연동을 쓸 수 없는 환경에서도 이 방법만으로 CPU 왕복량이 수십 분의 일로 준다.
+                    </div>
+                </div>
+
+                <!-- 6. 같은 GPU 조건 -->
+                <h2 id="same-gpu"><i class="fa-solid fa-microchip"></i> 같은 GPU 조건</h2>
+                <p>연동은 CUDA 커널을 돌리는 GPU와 화면을 그리는 GPU가 <strong>같을 때</strong> 의미가 있다. 다르면 드라이버가 내부에서 복사를 하게 되어, 연동을 써도 PCIe 왕복이 생긴다.</p>
+
+                <table class="spec-table">
+                    <tr><th>환경</th><th>주의</th></tr>
+                    <tr><td>노트북 (내장 그래픽 + 외장 GPU)</td><td>창이 내장 그래픽에서 그려질 수 있음. 그래픽 설정에서 프로그램을 고성능 GPU로 지정</td></tr>
+                    <tr><td>멀티 GPU (24편)</td><td>모니터가 연결된 GPU에서 표시용 처리를 함. 다른 GPU의 결과는 표시용으로 줄인 영상만 P2P나 CPU 경유로 넘김</td></tr>
+                    <tr><td>계산 전용 GPU (TCC 모드, 데이터센터 GPU)</td><td>화면 출력이 없어 그래픽스 연동 불가. 결과를 CPU로 가져와 표시</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// pick the CUDA device that drives the current OpenGL context
+unsigned int count = 0;
+int glDevices[4];
+cudaGLGetDevices(&amp;count, glDevices, 4, cudaGLDeviceListAll);
+if (count &gt; 0)
+    cudaSetDevice(glDevices[0]);       // do the display work on the same GPU</code></pre>
+
+                <!-- 7. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>매 프레임 등록, 해제</strong>
+                        <code>cudaGraphicsGLRegisterBuffer</code>는 무거운 호출이다. 매 프레임 등록하면 연동을 쓰지 않는 것보다 느려질 수 있다. 등록은 시작할 때와 창 크기가 바뀔 때만 하고, 프레임마다는 map/unmap만 한다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>GL 컨텍스트가 없는 스레드에서 호출</strong>
+                        OpenGL 연동 함수는 해당 GL 컨텍스트가 "현재"인 스레드에서 불러야 한다. CUDA 처리 스레드와 화면 스레드가 다르면, 처리 스레드는 결과를 일반 CUDA 버퍼에 쓰고, 화면 스레드가 map → GPU 안 복사(<code>cudaMemcpyAsync</code> device to device) → unmap을 하는 구조가 안전하다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>unmap 전에 그리기</strong>
+                        map된 상태의 버퍼를 OpenGL이 쓰면 결과가 정의되지 않는다. 그리기 전에 반드시 unmap한다. 반대로 unmap 뒤에 CUDA가 그 포인터를 쓰는 것도 금지다. map할 때마다 포인터를 새로 받는다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>RGBA 4바이트 정렬</strong>
+                        표시용 버퍼는 픽셀당 4바이트(RGBA)로 잡는 것이 좋다. RGB 3바이트는 행 정렬과 메모리 결합(7편)이 어긋나기 쉽고, OpenGL 기본 행 정렬(<code>GL_UNPACK_ALIGNMENT</code> = 4)과 맞지 않아 영상이 비스듬히 밀려 보이는 문제가 생긴다.
+                    </div>
+                </div>
+
+                <!-- 8. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table class="spec-table">
+                    <tr><th>요점</th><th>내용</th></tr>
+                    <tr><td>푸는 문제</td><td>결과 표시를 위한 GPU → CPU → GPU 왕복</td></tr>
+                    <tr><td>흐름</td><td>등록(한 번) → map → 주소 얻기 → 커널로 쓰기 → unmap → 그리기</td></tr>
+                    <tr><td>API</td><td>OpenGL, D3D11은 register + map/unmap. D3D12, Vulkan은 외부 메모리와 세마포어</td></tr>
+                    <tr><td>조건</td><td>CUDA GPU와 화면 GPU가 같아야 효과가 있음</td></tr>
+                    <tr><td>함께 쓸 것</td><td>표시용으로 줄인 영상만 연동 버퍼에 쓰기</td></tr>
+                </table>
+                <p>22~25편으로 성능 분석(Roofline과 커널 융합), 수치 정밀도, 멀티 GPU, 화면 연동까지 다뤘다. 영상 처리 프로그램을 GPU로 옮길 때 처리 속도뿐 아니라 결과의 정확도, 장비 구성, 화면 표시까지 함께 설계할 수 있게 된다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA CUDA C++ Programming Guide - Graphics Interoperability, External Resource Interoperability</li>
+                        <li>NVIDIA CUDA Runtime API 문서 - OpenGL Interoperability, Direct3D 11 Interoperability</li>
+                        <li>NVIDIA CUDA Samples - simpleGL, simpleVulkan</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

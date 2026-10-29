@@ -1,0 +1,593 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>멀티 GPU와 P2P - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* spec table */
+        .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        .spec-table th, .spec-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+        .spec-table th { background: var(--primary-50); font-weight: 700; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* 소제목 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        @media (max-width: 900px) {
+            .floating-toc-inner { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#when" data-section="when">필요한 경우</a>
+        <a href="#basic" data-section="basic">장치 선택</a>
+        <a href="#split" data-section="split">나누는 방식</a>
+        <a href="#threads" data-section="threads">전용 스레드</a>
+        <a href="#p2p" data-section="p2p">P2P</a>
+        <a href="#sync" data-section="sync">장치 간 순서</a>
+        <a href="#split-image" data-section="split-image">영상 나누기</a>
+        <a href="#library" data-section="library">라이브러리</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">기술 공부</span>
+                    <span class="post-tag cat">GPU / <a href="gpu-01-cuda-intro.html">CUDA</a></span>
+                </div>
+                <h1>멀티 GPU와 P2P - 여러 GPU에 일 나누기</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-29</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 15분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>멀티 GPU가 효과 있는 경우와 없는 경우</li>
+                        <li>현재 장치는 CPU 스레드마다 따로라는 규칙과 GPU별 전용 스레드 구조</li>
+                        <li>카메라별, 프레임별, 단계별, 영상 나누기 방식 비교</li>
+                        <li>P2P 지원 확인, 활성화, 복사와 nvidia-smi topo로 연결 구조 보기</li>
+                        <li>이벤트로 GPU 사이 순서 맞추기, halo를 포함한 영상 나누기</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#when">멀티 GPU가 필요한 경우</a></li>
+                        <li><a href="#basic">장치 선택의 기본 규칙</a></li>
+                        <li><a href="#split">일을 나누는 세 가지 방식</a></li>
+                        <li><a href="#threads">GPU마다 전용 스레드 두기</a></li>
+                        <li><a href="#p2p">GPU 사이 데이터 이동 - P2P</a></li>
+                        <li><a href="#sync">장치 사이 순서 맞추기</a></li>
+                        <li><a href="#split-image">영상 하나를 나눠 처리할 때</a></li>
+                        <li><a href="#library">멀티 GPU 라이브러리</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 언제 필요한가 -->
+                <h2 id="when"><i class="fa-solid fa-server"></i> 멀티 GPU가 필요한 경우</h2>
+                <p>GPU 한 장으로 처리가 끝나지 않을 때 GPU를 더 꽂는다. 다만 GPU를 두 장 꽂는다고 프로그램이 저절로 두 배 빨라지지는 않는다. CUDA는 GPU를 하나씩 따로 다루므로, 일을 어떻게 나눌지는 프로그래머가 정해야 한다.</p>
+
+                <table class="spec-table">
+                    <tr><th>상황</th><th>멀티 GPU 효과</th></tr>
+                    <tr><td>카메라 여러 대, 각자 독립된 검사</td><td><strong>큼</strong>. 카메라마다 GPU를 나눠 주면 거의 대수만큼 빨라짐</td></tr>
+                    <tr><td>영상 하나가 너무 커서 한 GPU 메모리에 안 들어감</td><td>필요. 영상을 나눠 처리 (경계 처리 필요)</td></tr>
+                    <tr><td>단계가 긴 파이프라인 (전처리, 추론, 후처리)</td><td>단계별로 GPU를 나누면 처리량 증가 (지연 시간은 그대로)</td></tr>
+                    <tr><td>작은 영상 하나를 빨리 처리해야 함</td><td>작음. 나누고 합치는 비용이 이득보다 큼</td></tr>
+                </table>
+
+                <!-- 2. 기본 API -->
+                <h2 id="basic"><i class="fa-solid fa-code"></i> 장치 선택의 기본 규칙</h2>
+                <p>CUDA에는 "현재 장치"라는 개념이 있다. <code>cudaSetDevice</code>로 고른 장치에 이후의 메모리 할당, 스트림 생성, 커널 실행이 모두 걸린다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">int count = 0;
+cudaGetDeviceCount(&amp;count);
+for (int d = 0; d &lt; count; ++d)
+{
+    cudaDeviceProp p;
+    cudaGetDeviceProperties(&amp;p, d);
+    printf("GPU %d: %s, %d SMs, %.1f GB, PCI bus %d\n",
+           d, p.name, p.multiProcessorCount, p.totalGlobalMem / 1e9, p.pciBusID);
+}
+
+cudaSetDevice(1);                    // everything below goes to GPU 1
+float* d_buf;
+cudaMalloc(&amp;d_buf, bytes);           // allocated on GPU 1
+cudaStream_t s;
+cudaStreamCreate(&amp;s);                // stream belongs to GPU 1
+MyKernel&lt;&lt;&lt;grid, block, 0, s&gt;&gt;&gt;(d_buf);   // runs on GPU 1</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>규칙</th><th>설명</th></tr>
+                    <tr><td>현재 장치는 <strong>CPU 스레드마다</strong> 따로임</td><td>스레드 A에서 <code>cudaSetDevice(1)</code>을 해도 스레드 B의 현재 장치는 바뀌지 않음. 새 스레드는 0번에서 시작</td></tr>
+                    <tr><td>메모리, 스트림, 이벤트는 만들 때의 장치에 속함</td><td>GPU 1의 스트림에 GPU 0 커널을 넣을 수 없음 (오류)</td></tr>
+                    <tr><td>장치 번호 순서는 바뀔 수 있음</td><td>기본은 성능 순. PCI 순서로 고정하려면 환경 변수 <code>CUDA_DEVICE_ORDER=PCI_BUS_ID</code></td></tr>
+                    <tr><td>보일 장치 제한</td><td><code>CUDA_VISIBLE_DEVICES=1</code>이면 프로그램에는 GPU 1만 0번으로 보임</td></tr>
+                </table>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>스레드 풀에서 현재 장치를 잊음</strong>
+                        작업 스레드 풀에서 GPU 작업을 실행할 때, 작업마다 어느 스레드에서 실행될지 모른다. 작업 시작마다 <code>cudaSetDevice</code>를 다시 부르지 않으면 엉뚱한 GPU에 할당하거나 "invalid resource handle" 오류가 난다. 가장 단순한 설계는 GPU마다 전용 스레드를 하나씩 두는 것이다.
+                    </div>
+                </div>
+
+                <!-- 3. 나누는 방식 -->
+                <h2 id="split"><i class="fa-solid fa-diagram-project"></i> 일을 나누는 세 가지 방식</h2>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif" font-size="12">
+                        <text x="20" y="25" font-weight="700" fill="#1e40af">① 카메라별 나누기</text>
+                        <g fill="#eff6ff" stroke="#1e40af"><rect x="20" y="35" width="70" height="26" rx="4"/><rect x="20" y="70" width="70" height="26" rx="4"/></g>
+                        <g fill="#a7f3d0" stroke="#059669"><rect x="120" y="35" width="70" height="26" rx="4"/><rect x="120" y="70" width="70" height="26" rx="4"/></g>
+                        <g text-anchor="middle"><text x="55" y="52">카메라 A</text><text x="55" y="87">카메라 B</text><text x="155" y="52">GPU 0</text><text x="155" y="87">GPU 1</text></g>
+                        <g stroke="#64748b" stroke-width="1.5"><line x1="90" y1="48" x2="118" y2="48"/><line x1="90" y1="83" x2="118" y2="83"/></g>
+
+                        <text x="230" y="25" font-weight="700" fill="#1e40af">② 영상 나누기</text>
+                        <rect x="230" y="35" width="120" height="61" fill="#eff6ff" stroke="#1e40af"/>
+                        <line x1="230" y1="65" x2="350" y2="65" stroke="#dc2626" stroke-dasharray="4 3"/>
+                        <rect x="230" y="58" width="120" height="14" fill="#fde68a" opacity="0.7"/>
+                        <g text-anchor="middle"><text x="290" y="52">위 절반 → GPU 0</text><text x="290" y="88">아래 절반 → GPU 1</text></g>
+                        <text x="290" y="112" text-anchor="middle" fill="#92400e" font-size="11">노란 띠: 양쪽이 같이 읽는 경계(halo)</text>
+
+                        <text x="400" y="25" font-weight="700" fill="#1e40af">③ 단계별 나누기</text>
+                        <g fill="#a7f3d0" stroke="#059669"><rect x="400" y="45" width="90" height="34" rx="4"/><rect x="530" y="45" width="90" height="34" rx="4"/></g>
+                        <g text-anchor="middle"><text x="445" y="60">GPU 0</text><text x="445" y="74" font-size="11">전처리</text><text x="575" y="60">GPU 1</text><text x="575" y="74" font-size="11">추론, 후처리</text></g>
+                        <line x1="490" y1="62" x2="528" y2="62" stroke="#64748b" stroke-width="1.5"/>
+                        <text x="509" y="98" text-anchor="middle" fill="#64748b" font-size="11">P2P 복사</text>
+
+                        <g font-size="11" fill="#334155">
+                            <text x="20" y="150">① 서로 데이터를 주고받지 않음. 가장 단순하고 효과가 확실함</text>
+                            <text x="20" y="172">② 경계 줄을 양쪽이 같이 읽어야 하고, 결과를 다시 합쳐야 함. 영상이 아주 클 때만</text>
+                            <text x="20" y="194">③ 프레임 N은 GPU 1에서 추론하는 동안 프레임 N+1은 GPU 0에서 전처리. 처리량이 늘어남</text>
+                            <text x="20" y="216">   단계 사이 데이터 이동이 필요하므로 P2P 지원 여부가 성능을 좌우함</text>
+                        </g>
+                    </svg>
+                    <div class="diagram-caption">멀티 GPU 작업 분할. 가능하면 ①처럼 GPU 사이 데이터 이동이 없는 방식부터 검토한다</div>
+                </div>
+
+                <!-- 4. GPU별 스레드 -->
+                <h2 id="threads"><i class="fa-solid fa-people-group"></i> GPU마다 전용 스레드 두기</h2>
+                <p>카메라별 나누기를 구현하는 가장 깔끔한 방법은 GPU 하나에 CPU 스레드 하나를 붙이는 것이다. 각 스레드는 시작할 때 한 번 <code>cudaSetDevice</code>를 하고, 자기 GPU의 메모리, 스트림, 그래프(17편)를 소유한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct GpuWorker
+{
+    int device;
+    CameraQueue* input;          // frames from one camera
+    ResultQueue* output;
+
+    void Run()
+    {
+        cudaSetDevice(device);                    // once per thread
+        Pipeline pipe;                            // allocates buffers, streams, graphs on THIS device
+        pipe.Init(1920, 1200);
+
+        Frame f;
+        while (input-&gt;Pop(f))
+        {
+            pipe.Process(f);                      // H2D, kernels, D2H on this GPU only
+            output-&gt;Push(pipe.Result());
+        }
+        pipe.Release();                           // free on the same device that allocated
+    }
+};
+
+std::vector&lt;std::thread&gt; threads;
+for (int d = 0; d &lt; numGpus; ++d)
+    threads.emplace_back(&amp;GpuWorker::Run, &amp;workers[d]);
+for (auto&amp; t : threads) t.join();</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>설계 원칙</th><th>이유</th></tr>
+                    <tr><td>자원은 한 GPU 안에서 만들고 그 GPU에서 해제</td><td>다른 장치의 포인터를 해제하거나 다른 장치 스트림을 쓰는 실수를 원천 차단</td></tr>
+                    <tr><td>핀드 메모리는 공유 가능</td><td><code>cudaHostAlloc(..., cudaHostAllocPortable)</code>로 잡으면 모든 GPU가 핀드 메모리로 인식</td></tr>
+                    <tr><td>오류 복구도 GPU별로</td><td>한 GPU에서 sticky 오류(19편)가 나도 다른 GPU 스레드는 계속 동작하게 분리</td></tr>
+                </table>
+
+                <!-- 5. P2P -->
+                <h2 id="p2p"><i class="fa-solid fa-right-left"></i> GPU 사이 데이터 이동 - P2P</h2>
+                <p>단계별 나누기나 영상 나누기에서는 GPU끼리 데이터를 주고받아야 한다. 방법은 두 가지다.</p>
+
+                <table class="spec-table">
+                    <tr><th>방식</th><th>경로</th><th>속도</th></tr>
+                    <tr><td>CPU 메모리를 거쳐 복사</td><td>GPU 0 → CPU 메모리 → GPU 1 (PCIe를 두 번 지남)</td><td>느림</td></tr>
+                    <tr><td><strong>P2P</strong> (peer-to-peer)</td><td>GPU 0 → GPU 1 직접 (PCIe 스위치 또는 NVLink)</td><td>빠름. NVLink면 PCIe보다 훨씬 빠름</td></tr>
+                </table>
+
+<pre class="language-cpp"><code class="language-cpp">// 1) can GPU 0 access GPU 1 directly?
+int can01 = 0, can10 = 0;
+cudaDeviceCanAccessPeer(&amp;can01, 0, 1);
+cudaDeviceCanAccessPeer(&amp;can10, 1, 0);
+
+if (can01 &amp;&amp; can10)
+{
+    // 2) enable once per direction (called with the ACCESSING device current)
+    cudaSetDevice(0); cudaDeviceEnablePeerAccess(1, 0);
+    cudaSetDevice(1); cudaDeviceEnablePeerAccess(0, 0);
+}
+
+// 3) copy GPU0 -&gt; GPU1 on a stream (falls back to staging through the host if P2P is off)
+cudaMemcpyPeerAsync(d_dst_on1, 1, d_src_on0, 0, bytes, streamOnGpu1);
+
+// 4) with P2P enabled, a kernel on GPU 1 may even read GPU 0 memory directly
+cudaSetDevice(1);
+ReadRemote&lt;&lt;&lt;grid, block, 0, streamOnGpu1&gt;&gt;&gt;(d_src_on0 /* lives on GPU 0 */, d_out_on1, n);</code></pre>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>P2P는 항상 되는 것이 아님</strong>
+                        P2P 지원 여부는 GPU 종류, 메인보드의 PCIe 구성, 운영체제, 드라이버 모드에 따라 다르다. 게이밍용 GPU는 P2P를 지원하지 않는 경우가 많고, Windows의 화면 출력용 드라이버 모드(WDDM)에서도 제한이 있다. 설계 전에 반드시 <code>cudaDeviceCanAccessPeer</code>로 확인하고, 안 되는 환경에서도 동작하도록(CPU 메모리 경유) 코드를 둔다. <code>cudaMemcpyPeerAsync</code>는 P2P가 꺼져 있어도 내부적으로 CPU 메모리를 거쳐 동작한다.
+                    </div>
+                </div>
+
+                <h3 id="topology"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 연결 구조 확인 - nvidia-smi topo</h3>
+
+<pre class="language-bash"><code class="language-bash">nvidia-smi topo -m</code></pre>
+
+                <table class="spec-table">
+                    <tr><th>표시</th><th>뜻</th><th>P2P 성능</th></tr>
+                    <tr><td><code>NV#</code></td><td>NVLink로 연결 (#는 링크 수)</td><td>가장 빠름</td></tr>
+                    <tr><td><code>PIX</code></td><td>같은 PCIe 스위치 아래</td><td>좋음</td></tr>
+                    <tr><td><code>PXB</code></td><td>PCIe 스위치 여러 개를 거침</td><td>보통</td></tr>
+                    <tr><td><code>PHB</code></td><td>CPU의 PCIe 루트(호스트 브리지)를 거침</td><td>느릴 수 있음</td></tr>
+                    <tr><td><code>SYS</code></td><td>CPU 소켓 사이 연결까지 거침 (듀얼 CPU 서버)</td><td>가장 느림. P2P가 안 되는 경우가 많음</td></tr>
+                </table>
+
+                <!-- 6. 장치 사이 동기화 -->
+                <h2 id="sync"><i class="fa-solid fa-link"></i> 장치 사이 순서 맞추기</h2>
+                <p>단계별 나누기에서 GPU 1의 추론은 GPU 0의 전처리가 끝난 뒤에 시작해야 한다. CPU에서 <code>cudaStreamSynchronize</code>로 기다리면 CPU가 멈춘다. 이벤트는 장치를 넘어서도 쓸 수 있으므로, GPU 1 스트림이 GPU 0의 이벤트를 기다리게 하면 CPU는 멈추지 않는다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// GPU 0: preprocess, then record an event
+cudaSetDevice(0);
+Preprocess&lt;&lt;&lt;g, b, 0, s0&gt;&gt;&gt;(d_raw0, d_pre0, w, h);
+cudaEventRecord(preDone, s0);                      // preDone was created on GPU 0
+
+// GPU 1: wait for GPU 0's event, copy, infer - the CPU does not block
+cudaSetDevice(1);
+cudaStreamWaitEvent(s1, preDone, 0);               // cross-device wait is allowed
+cudaMemcpyPeerAsync(d_pre1, 1, d_pre0, 0, bytes, s1);
+Infer&lt;&lt;&lt;g, b, 0, s1&gt;&gt;&gt;(d_pre1, d_out1);</code></pre>
+
+                <p>두 GPU가 각자 다른 프레임을 처리하도록 버퍼를 2~3개 두고 돌려 쓰면(12편의 링 버퍼), GPU 0이 프레임 N+1을 전처리하는 동안 GPU 1이 프레임 N을 추론해 두 GPU가 동시에 바쁘게 일한다.</p>
+
+                <!-- 7. 영상 나누기 -->
+                <h2 id="split-image"><i class="fa-solid fa-scissors"></i> 영상 하나를 나눠 처리할 때</h2>
+                <p>영상을 위아래로 나눠 GPU 두 장에 맡기면, 필터처럼 이웃 픽셀을 쓰는 처리는 경계 근처에서 상대 GPU 쪽 픽셀이 필요하다. 22편의 타일 halo와 같은 문제다.</p>
+
+                <table class="spec-table">
+                    <tr><th>단계</th><th>할 일</th></tr>
+                    <tr><td>1. 나누기</td><td>각 GPU에 자기 영역 + 필터 반경만큼의 경계 줄(halo)을 같이 복사</td></tr>
+                    <tr><td>2. 처리</td><td>각 GPU가 자기 영역만 계산 (halo는 읽기만)</td></tr>
+                    <tr><td>3. 여러 단계 필터</td><td>단계마다 halo를 상대 GPU와 다시 교환(P2P) 하거나, 처음부터 halo를 단계 수만큼 넓게 잡음</td></tr>
+                    <tr><td>4. 합치기</td><td>결과를 한 GPU나 CPU 메모리로 모음. 영상 전체 통계가 필요하면 부분 결과를 합침(13편)</td></tr>
+                </table>
+
+                <p>나누고 합치는 비용이 있으므로, 영상이 GPU 메모리에 들어가는 크기라면 영상 나누기보다 프레임을 GPU별로 번갈아 맡기는 편(짝수 프레임은 GPU 0, 홀수 프레임은 GPU 1)이 대부분 단순하고 빠르다. 다만 이 방식은 처리 순서가 섞이므로 결과를 프레임 번호로 다시 정렬해야 한다.</p>
+
+                <!-- 8. 라이브러리 -->
+                <h2 id="library"><i class="fa-solid fa-box-open"></i> 멀티 GPU 라이브러리</h2>
+                <table class="spec-table">
+                    <tr><th>라이브러리</th><th>용도</th><th>참고</th></tr>
+                    <tr><td>NCCL</td><td>GPU 사이 집합 통신 (all-reduce, broadcast). 딥러닝 분산 학습의 표준</td><td>주로 리눅스에서 사용</td></tr>
+                    <tr><td>TensorRT</td><td>엔진은 GPU 하나에 묶임. GPU마다 엔진을 따로 만들어(또는 같은 파일을 각 GPU에서 불러) 사용</td><td>11편</td></tr>
+                    <tr><td>cuBLASXt, cuFFT 다중 GPU</td><td>큰 행렬 곱, FFT를 여러 GPU에 자동 분배</td><td>영상 처리보다는 과학 계산용</td></tr>
+                </table>
+
+                <!-- 9. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>다른 장치의 포인터를 그냥 넘김</strong>
+                        P2P를 켜지 않은 상태에서 GPU 1 커널에 GPU 0 포인터를 넘기면 illegal address 오류가 난다. 장치 포인터를 담는 구조체에 장치 번호를 같이 들고 다니면 이런 실수를 찾기 쉽다. <code>cudaPointerGetAttributes</code>로 포인터가 어느 장치 것인지 확인할 수 있다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>GPU 성능이 서로 다름</strong>
+                        종류가 다른 GPU를 섞으면, 일을 반씩 나눴을 때 느린 GPU가 전체 속도를 정한다. 카메라별 나누기라면 무거운 검사를 빠른 GPU에 배정하고, 프레임 나누기라면 고정 배분 대신 먼저 끝난 GPU가 다음 프레임을 가져가는 작업 큐를 쓴다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>PCIe 대역폭 공유</strong>
+                        GPU를 여러 장 꽂으면 메인보드에 따라 슬롯당 PCIe 레인 수가 줄어든다(x16 → x8). 카메라 영상을 GPU로 올리는 속도가 GPU 한 장일 때보다 느려질 수 있으므로, 실제 장비에서 복사 시간을 측정한다(4편).
+                    </div>
+                </div>
+
+                <!-- 10. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table class="spec-table">
+                    <tr><th>요점</th><th>내용</th></tr>
+                    <tr><td>기본 규칙</td><td>현재 장치는 CPU 스레드마다 따로. 자원은 만든 장치에 속함</td></tr>
+                    <tr><td>추천 구조</td><td>GPU마다 전용 스레드 하나, 자원도 그 안에서 만들고 해제</td></tr>
+                    <tr><td>나누는 방식</td><td>카메라별 > 프레임별 > 단계별 > 영상 나누기 순으로 단순함</td></tr>
+                    <tr><td>P2P</td><td><code>cudaDeviceCanAccessPeer</code>로 확인 후 켜기. 안 되는 환경도 대비</td></tr>
+                    <tr><td>장치 사이 순서</td><td>이벤트 + <code>cudaStreamWaitEvent</code>로 CPU를 멈추지 않고 맞춤</td></tr>
+                </table>
+                <p>다음 편에서는 GPU에서 처리한 결과를 CPU를 거치지 않고 바로 화면에 표시하는 <strong>그래픽스 API 연동</strong>을 다룬다.</p>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>NVIDIA CUDA C++ Programming Guide - Multi-Device System, Peer-to-Peer Memory Access</li>
+                        <li>NVIDIA CUDA Samples - simpleP2P, simpleMultiGPU</li>
+                        <li>NVIDIA nvidia-smi 문서 - topo</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('tech-gpu');
+    renderPostNav('tech-gpu');
+
+    // 플로팅 TOC
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
