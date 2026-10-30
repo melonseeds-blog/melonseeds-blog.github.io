@@ -1,0 +1,701 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가상 함수 테이블(vtable) 구조 - Melon Seeds</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-one-dark.min.css">
+    <style>
+        /* Prism */
+        pre[class*="language-"] { border-radius: 10px; padding: 20px 24px; margin: 16px 0; border: 1px solid #333; font-size: 0.85rem; }
+        code[class*="language-"] { font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.85rem; }
+        :not(pre) > code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.88em; }
+        .token.comment { font-style: normal; color: #6a9955; }
+
+        /* 플로팅 TOC (2단 바) */
+        .floating-toc {
+            position: fixed; top: 58px; left: 0; right: 0;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 90; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .floating-toc.visible { display: block; }
+        .toc-row1 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toc-row1::-webkit-scrollbar { display: none; }
+        .toc-row1 a {
+            padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            color: var(--text-muted); text-decoration: none; white-space: nowrap;
+            border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .toc-row1 a:hover { color: var(--primary); }
+        .toc-row1 a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .toc-row2 {
+            max-width: 1280px; margin: 0 auto;
+            padding: 0 40px 0 calc(var(--sidebar-w) + 40px);
+            display: flex; gap: 0; overflow-x: auto;
+            scrollbar-width: none; border-top: 1px solid var(--border-light);
+        }
+        .toc-row2::-webkit-scrollbar { display: none; }
+        .toc-row2.hidden { display: none; }
+        .toc-row2 a {
+            padding: 7px 14px; font-size: 0.73rem; font-weight: 500;
+            color: var(--text-light); text-decoration: none; white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .toc-row2 a:hover { color: var(--primary); }
+        .toc-row2 a.active { color: var(--primary); font-weight: 600; }
+
+        /* 목차 */
+        .toc {
+            background: var(--primary-50); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 28px; margin-bottom: 32px;
+        }
+        .toc-title {
+            font-family: 'Pretendard', sans-serif; font-size: 1rem; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary);
+        }
+        .toc ol { margin: 0; padding-left: 20px; }
+        .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+        .toc li a { color: var(--text-sub); text-decoration: none; }
+        .toc li a:hover { color: var(--primary); }
+
+        /* 요약 박스 */
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-50), var(--seed-light));
+            border: 1px solid var(--melon-light); border-left: 4px solid var(--melon);
+            border-radius: 0 12px 12px 0; padding: 20px 24px; margin-bottom: 32px;
+        }
+        .summary-box .summary-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--primary-dark); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .summary-box ul { margin: 0; padding-left: 18px; }
+        .summary-box li { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 2px; }
+
+        /* Callout */
+        .callout {
+            border-radius: 10px; padding: 16px 20px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+            font-size: 0.9rem; line-height: 1.7;
+        }
+        .callout i { margin-top: 3px; flex-shrink: 0; font-size: 1rem; }
+        .callout-body { flex: 1; }
+        .callout-body strong { display: block; margin-bottom: 4px; }
+        .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .callout.tip i { color: #059669; }
+        .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+        .callout.warn i { color: #d97706; }
+        .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+        .callout.info i { color: #2563eb; }
+
+        /* 소제목 장식 */
+        .post-detail-body h2 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.4rem; font-weight: 800; margin: 48px 0 16px;
+            padding: 12px 0 12px 16px;
+            border-left: 4px solid var(--melon); border-bottom: none;
+            background: var(--primary-50); border-radius: 0 8px 8px 0;
+            display: flex; align-items: center; gap: 10px;
+            scroll-margin-top: 100px;
+        }
+        .post-detail-body h3 {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px;
+            padding-bottom: 6px; border-bottom: 2px solid var(--border);
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+            scroll-margin-top: 120px;
+        }
+        .post-detail-body h3 .h3-icon { color: var(--melon); font-size: 0.85rem; }
+
+        /* 클래스 계층 그림 */
+        .mfc-tree {
+            border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px 24px; margin: 16px 0; background: var(--bg);
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.86rem;
+        }
+        .mfc-tree ul { list-style: none; margin: 0; padding-left: 22px; border-left: 2px solid var(--border); }
+        .mfc-tree > ul { padding-left: 0; border-left: none; }
+        .mfc-tree li { margin: 6px 0; position: relative; }
+        .mfc-tree ul ul > li::before {
+            content: ''; position: absolute; left: -22px; top: 0.75em;
+            width: 16px; border-top: 2px solid var(--border);
+        }
+        .mfc-node {
+            display: inline-block; padding: 3px 10px; border-radius: 6px;
+            background: var(--primary-50); border: 1px solid var(--border); color: var(--primary-dark); font-weight: 600;
+        }
+        .mfc-node.user { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+        .mfc-note { color: var(--text-muted); font-family: 'Pretendard', sans-serif; font-size: 0.82rem; margin-left: 8px; }
+
+        /* 참고 자료 */
+        .references {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px 24px; margin-top: 40px;
+        }
+        .references .ref-title {
+            font-family: 'Pretendard', sans-serif; font-weight: 700; font-size: 0.95rem;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .references ul { margin: 0; padding-left: 18px; }
+        .references li { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* 다이어그램 */
+        .diagram { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; text-align: center; }
+        .diagram svg { max-width: 100%; height: auto; }
+        .diagram-caption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+        .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .callout.danger i { color: #dc2626; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="top-nav-inner">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <a href="../../index.html" class="nav-logo">
+                <span class="nav-logo-title">Melon Seeds</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="../../series.html" class="nav-link"><i class="fa-solid fa-layer-group"></i> 시리즈</a>
+            <a href="../../about.html" class="nav-link"><i class="fa-solid fa-hand"></i> Hello</a>
+            <div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="검색..."></div>
+            <button class="nav-auth" id="nav-lock" onclick="showAuthModal()"><i class="fa-solid fa-lock"></i> 비공개</button>
+        </div>
+    </div>
+</nav>
+
+<!-- 플로팅 TOC 2단 바 -->
+<div class="floating-toc" id="floating-toc">
+    <div class="toc-row1" id="toc-row1">
+        <a href="#why" data-section="why">푸는 문제</a>
+        <a href="#structure" data-section="structure">구조</a>
+        <a href="#call" data-section="call">호출 과정</a>
+        <a href="#inherit" data-section="inherit">상속</a>
+        <a href="#ctor" data-section="ctor">생성/소멸</a>
+        <a href="#virtual-dtor" data-section="virtual-dtor">가상 소멸자</a>
+        <a href="#multiple" data-section="multiple">다중 상속</a>
+        <a href="#rtti" data-section="rtti">RTTI</a>
+        <a href="#cost" data-section="cost">비용</a>
+        <a href="#inspect" data-section="inspect">확인 방법</a>
+        <a href="#pitfalls" data-section="pitfalls">함정</a>
+        <a href="#summary" data-section="summary">정리</a>
+    </div>
+    <div class="toc-row2 hidden" id="toc-row2"></div>
+</div>
+
+<div class="page-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+
+        <article id="unlocked-view" class="post-detail">
+            <div class="post-detail-header">
+                <div class="post-card-tags">
+                    <span class="post-tag public">PUBLIC</span>
+                    <span class="post-tag cat">개발 공부</span>
+                    <span class="post-tag cat">C++ 시리즈</span>
+                </div>
+                <h1>가상 함수 테이블(vtable) 구조 - 가상 호출이 실제로 하는 일</h1>
+                <div class="post-detail-meta">
+                    <span><i class="fa-regular fa-calendar"></i> 2026-10-30</span>
+                    <span><i class="fa-regular fa-clock"></i> 약 16분 분량</span>
+                </div>
+            </div>
+
+            <div class="post-detail-body" id="post-body">
+
+                <!-- 요약 -->
+                <div class="summary-box">
+                    <div class="summary-title"><i class="fa-solid fa-seedling"></i> 이 글에서 다루는 내용</div>
+                    <ul>
+                        <li>vtable(클래스마다)과 vptr(객체마다)의 구조와 객체 크기 변화</li>
+                        <li>가상 함수 호출이 실제로 하는 세 단계와 override가 vtable을 바꾸는 방식</li>
+                        <li>생성자, 소멸자 안의 가상 호출과 pure virtual function call 오류, 가상 소멸자</li>
+                        <li>다중 상속의 vptr 여러 개와 thunk, vtable 앞 칸의 RTTI</li>
+                        <li>가상 함수의 실제 비용과 영상 처리에서의 설계, devirtualization, 배치 확인 도구</li>
+                    </ul>
+                </div>
+
+                <!-- 목차 -->
+                <div class="toc" id="toc-block">
+                    <div class="toc-title"><i class="fa-solid fa-list"></i> 목차</div>
+                    <ol>
+                        <li><a href="#why">가상 함수가 푸는 문제</a></li>
+                        <li><a href="#structure">vtable과 vptr의 구조</a></li>
+                        <li><a href="#call">가상 함수 호출이 실제로 하는 일</a></li>
+                        <li><a href="#inherit">상속과 override가 vtable에 남기는 것</a></li>
+                        <li><a href="#ctor">생성자와 소멸자 안의 가상 호출</a></li>
+                        <li><a href="#virtual-dtor">가상 소멸자</a></li>
+                        <li><a href="#multiple">다중 상속과 vptr 여러 개</a></li>
+                        <li><a href="#rtti">RTTI와 dynamic_cast의 위치</a></li>
+                        <li><a href="#cost">가상 함수의 실제 비용</a></li>
+                        <li><a href="#inspect">직접 확인하는 방법</a></li>
+                        <li><a href="#pitfalls">흔한 함정</a></li>
+                        <li><a href="#summary">정리</a></li>
+                    </ol>
+                </div>
+
+                <!-- 1. 왜 필요한가 -->
+                <h2 id="why"><i class="fa-solid fa-shuffle"></i> 가상 함수가 푸는 문제</h2>
+                <p>부모 포인터로 함수를 불렀는데 실제 객체(자식)의 함수가 실행되게 하는 것이 가상 함수다. 컴파일러는 <code>s-&gt;Draw()</code>를 컴파일하는 시점에 s가 실제로 원인지 사각형인지 모른다. 그래서 "어느 함수를 부를지"를 실행 중에 정하는 장치가 필요하고, 대부분의 C++ 컴파일러는 이것을 <strong>가상 함수 테이블(vtable)</strong>로 구현한다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct Shape
+{
+    virtual ~Shape() = default;
+    virtual void Draw() const = 0;
+    virtual double Area() const { return 0.0; }
+    int id = 0;
+};
+
+struct Circle : Shape
+{
+    void Draw() const override { /* draw circle */ }
+    double Area() const override { return 3.14159 * r * r; }
+    double r = 1.0;
+};
+
+struct Rect : Shape
+{
+    void Draw() const override { /* draw rect */ }   // Area() not overridden
+    double w = 1.0, h = 1.0;
+};
+
+void Render(const std::vector&lt;Shape*&gt;&amp; shapes)
+{
+    for (const Shape* s : shapes)
+        s-&gt;Draw();          // which Draw? decided at run time
+}</code></pre>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>표준이 정한 것은 동작뿐</strong>
+                        C++ 표준은 "가상 함수는 실제 객체의 함수가 불린다"는 동작만 정하고, vtable이라는 구현 방법은 정하지 않는다. 다만 MSVC, GCC, Clang 모두 vtable 방식을 쓰고 세부 배치만 조금씩 다르다. 이 글의 배치 설명은 그 공통 구조를 기준으로 한다.
+                    </div>
+                </div>
+
+                <!-- 2. 구조 -->
+                <h2 id="structure"><i class="fa-solid fa-table-list"></i> vtable과 vptr의 구조</h2>
+                <p>두 가지가 짝을 이룬다.</p>
+
+                <table>
+                    <tr><th>이름</th><th>어디에, 몇 개</th><th>내용</th></tr>
+                    <tr><td><strong>vtable</strong></td><td>가상 함수가 있는 <strong>클래스마다 하나</strong>. 프로그램의 읽기 전용 데이터 영역</td><td>그 클래스가 실제로 부를 가상 함수들의 주소를 순서대로 담은 배열</td></tr>
+                    <tr><td><strong>vptr</strong></td><td><strong>객체마다 하나</strong>. 보통 객체의 맨 앞</td><td>자기 클래스의 vtable을 가리키는 숨은 포인터</td></tr>
+                </table>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif" font-size="12">
+                        <text x="30" y="22" font-weight="700" fill="#1e40af">객체 (메모리 여러 곳)</text>
+                        <text x="380" y="22" font-weight="700" fill="#065f46">vtable (클래스마다 하나)</text>
+
+                        <rect x="30" y="40" width="150" height="26" fill="#fde68a" stroke="#d97706"/><text x="105" y="58" text-anchor="middle">vptr</text>
+                        <rect x="30" y="66" width="150" height="26" fill="#eff6ff" stroke="#1e40af"/><text x="105" y="84" text-anchor="middle">id</text>
+                        <rect x="30" y="92" width="150" height="26" fill="#eff6ff" stroke="#1e40af"/><text x="105" y="110" text-anchor="middle">r</text>
+                        <text x="190" y="84" fill="#475569" font-size="11">Circle 객체 1</text>
+
+                        <rect x="30" y="140" width="150" height="26" fill="#fde68a" stroke="#d97706"/><text x="105" y="158" text-anchor="middle">vptr</text>
+                        <rect x="30" y="166" width="150" height="26" fill="#eff6ff" stroke="#1e40af"/><text x="105" y="184" text-anchor="middle">id</text>
+                        <rect x="30" y="192" width="150" height="26" fill="#eff6ff" stroke="#1e40af"/><text x="105" y="210" text-anchor="middle">r</text>
+                        <text x="190" y="184" fill="#475569" font-size="11">Circle 객체 2</text>
+
+                        <rect x="30" y="240" width="150" height="26" fill="#fde68a" stroke="#d97706"/><text x="105" y="258" text-anchor="middle">vptr</text>
+                        <text x="105" y="286" text-anchor="middle" fill="#475569" font-size="11">Rect 객체 (w, h 생략)</text>
+
+                        <rect x="380" y="40" width="230" height="26" fill="#ecfdf5" stroke="#059669"/><text x="495" y="58" text-anchor="middle">[0] Circle::~Circle</text>
+                        <rect x="380" y="66" width="230" height="26" fill="#ecfdf5" stroke="#059669"/><text x="495" y="84" text-anchor="middle">[1] Circle::Draw</text>
+                        <rect x="380" y="92" width="230" height="26" fill="#ecfdf5" stroke="#059669"/><text x="495" y="110" text-anchor="middle">[2] Circle::Area</text>
+
+                        <rect x="380" y="180" width="230" height="26" fill="#ecfdf5" stroke="#059669"/><text x="495" y="198" text-anchor="middle">[0] Rect::~Rect</text>
+                        <rect x="380" y="206" width="230" height="26" fill="#ecfdf5" stroke="#059669"/><text x="495" y="224" text-anchor="middle">[1] Rect::Draw</text>
+                        <rect x="380" y="232" width="230" height="26" fill="#f1f5f9" stroke="#94a3b8"/><text x="495" y="250" text-anchor="middle">[2] Shape::Area (물려받음)</text>
+
+                        <g stroke="#d97706" stroke-width="1.6" fill="none" marker-end="url(#vt-arr)">
+                            <path d="M180 53 L 376 53"/>
+                            <path d="M180 153 C 280 153, 300 60, 376 60"/>
+                            <path d="M180 253 C 280 253, 300 193, 376 193"/>
+                        </g>
+                        <defs><marker id="vt-arr" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#d97706"/></marker></defs>
+                    </svg>
+                    <div class="diagram-caption">같은 클래스의 객체는 모두 같은 vtable을 가리킨다. Rect는 Area를 고치지 않았으므로 그 칸에 Shape::Area가 그대로 들어 있다</div>
+                </div>
+
+                <p>vptr이 생기므로 가상 함수가 있는 클래스의 객체는 포인터 크기만큼(64비트에서 8바이트) 커진다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct Plain   { int x; };                       // sizeof == 4
+struct Virtual { virtual ~Virtual() {} int x; };  // sizeof == 16 on 64-bit (8 vptr + 4 x + 4 padding)</code></pre>
+
+                <!-- 3. 호출 과정 -->
+                <h2 id="call"><i class="fa-solid fa-route"></i> 가상 함수 호출이 실제로 하는 일</h2>
+                <p><code>s-&gt;Draw()</code>는 컴파일되면 대략 다음 세 단계가 된다. Draw가 vtable의 1번 칸이라고 하자.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// what s-&gt;Draw() compiles to (conceptually)
+void** vptr = *reinterpret_cast&lt;void***&gt;(s);       // 1) read the hidden pointer at the start of *s
+auto   fn   = reinterpret_cast&lt;void(*)(const Shape*)&gt;(vptr[1]);   // 2) read slot 1 of the table
+fn(s);                                              // 3) indirect call, passing s as 'this'</code></pre>
+
+                <table>
+                    <tr><th>단계</th><th>하는 일</th><th>비용</th></tr>
+                    <tr><td>1</td><td>객체에서 vptr 읽기</td><td>메모리 읽기 1번 (객체가 캐시에 있으면 빠름)</td></tr>
+                    <tr><td>2</td><td>vtable에서 함수 주소 읽기</td><td>메모리 읽기 1번 (vtable은 보통 캐시에 있음)</td></tr>
+                    <tr><td>3</td><td>그 주소로 간접 호출</td><td>CPU 분기 예측이 맞으면 빠름, 틀리면 수십 사이클 손해</td></tr>
+                </table>
+
+                <p>일반 함수 호출보다 메모리 읽기 두 번과 간접 호출이 더 붙는다. 한 번만 보면 매우 작은 비용이다. 진짜 비용은 다른 곳에 있다(아래 "비용" 절).</p>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>위 코드는 설명용</strong>
+                        vptr을 직접 읽는 코드는 구현에 의존하고, 표준으로는 정의되지 않은 동작이다. 구조를 이해하는 실험에만 쓰고 제품 코드에는 넣지 않는다.
+                    </div>
+                </div>
+
+                <!-- 4. 상속과 override -->
+                <h2 id="inherit"><i class="fa-solid fa-sitemap"></i> 상속과 override가 vtable에 남기는 것</h2>
+                <p>자식 클래스의 vtable은 부모 vtable을 복사한 뒤 고친 칸만 바꾸고, 새 가상 함수는 뒤에 붙인 것과 같다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct Base
+{
+    virtual ~Base();
+    virtual void A();
+    virtual void B();
+};
+struct Derived : Base
+{
+    void B() override;      // replaces slot of B
+    virtual void C();       // new slot appended
+};</code></pre>
+
+                <table>
+                    <tr><th>칸</th><th>Base vtable</th><th>Derived vtable</th></tr>
+                    <tr><td>0</td><td>Base::~Base</td><td>Derived::~Derived (소멸자는 항상 자기 것)</td></tr>
+                    <tr><td>1</td><td>Base::A</td><td>Base::A (물려받음)</td></tr>
+                    <tr><td>2</td><td>Base::B</td><td><strong>Derived::B</strong> (override로 교체)</td></tr>
+                    <tr><td>3</td><td>-</td><td><strong>Derived::C</strong> (새로 추가)</td></tr>
+                </table>
+
+                <p>칸 번호는 부모와 자식이 같으므로, 부모 포인터로 2번 칸을 부르면 실제 객체가 Base든 Derived든 맞는 B가 불린다. 이것이 가상 함수 동작의 전부다.</p>
+
+                <div class="callout tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <div class="callout-body">
+                        <strong>override를 꼭 붙이기</strong>
+                        자식에서 <code>void B() const</code>처럼 시그니처를 조금만 달리 써도 새 가상 함수가 생길 뿐, 부모의 B 칸은 바뀌지 않는다. 컴파일 오류도 없다. <code>override</code>를 붙이면 부모에 같은 함수가 없을 때 컴파일 오류가 나서 이 실수를 막는다.
+                    </div>
+                </div>
+
+                <!-- 5. 생성자 소멸자 -->
+                <h2 id="ctor"><i class="fa-solid fa-hammer"></i> 생성자와 소멸자 안의 가상 호출</h2>
+                <p>vptr은 생성자가 실행되는 동안 단계별로 바뀐다. 자식 객체를 만들면 부모 생성자가 먼저 돌고, 그동안 vptr은 <strong>부모의 vtable</strong>을 가리킨다. 그래서 부모 생성자 안에서 가상 함수를 부르면 자식 것이 아니라 부모 것이 불린다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct Camera
+{
+    Camera()          { Init(); }               // vptr -&gt; Camera's vtable here
+    virtual ~Camera() { Close(); }              // vptr -&gt; Camera's vtable again here
+    virtual void Init()  { puts("Camera::Init"); }
+    virtual void Close() { puts("Camera::Close"); }
+};
+
+struct GigECamera : Camera
+{
+    GigECamera()  { /* vptr -&gt; GigECamera's vtable from here */ }
+    void Init()  override { puts("GigECamera::Init"); }
+    void Close() override { puts("GigECamera::Close"); }
+};
+
+GigECamera cam;     // prints "Camera::Init", NOT "GigECamera::Init"
+// at destruction:  prints "Camera::Close"</code></pre>
+
+                <table>
+                    <tr><th>시점</th><th>vptr이 가리키는 것</th><th>가상 호출 결과</th></tr>
+                    <tr><td>Camera 생성자 실행 중</td><td>Camera vtable</td><td>Camera 함수</td></tr>
+                    <tr><td>GigECamera 생성자 실행 중, 이후</td><td>GigECamera vtable</td><td>GigECamera 함수</td></tr>
+                    <tr><td>GigECamera 소멸자 실행 중</td><td>GigECamera vtable</td><td>GigECamera 함수</td></tr>
+                    <tr><td>Camera 소멸자 실행 중</td><td>Camera vtable</td><td>Camera 함수</td></tr>
+                </table>
+
+                <p>이렇게 동작하는 이유는 안전 때문이다. 부모 생성자가 도는 동안 자식 멤버는 아직 초기화되지 않았으므로, 자식 함수가 불리면 초기화 안 된 값을 쓰게 된다.</p>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>"pure virtual function call" 오류</strong>
+                        부모의 Init이 순수 가상 함수(<code>= 0</code>)라면, 부모 생성자에서 부를 때 구현이 없는 칸을 부르게 되어 프로그램이 "pure virtual function call" 오류로 죽는다. 생성자, 소멸자에서는 가상 함수를 부르지 않는다. 초기화가 자식마다 다르면 생성 후 따로 <code>Open()</code> 같은 함수를 부르는 2단계 초기화를 쓴다.
+                    </div>
+                </div>
+
+                <!-- 6. 가상 소멸자 -->
+                <h2 id="virtual-dtor"><i class="fa-solid fa-trash-can"></i> 가상 소멸자</h2>
+                <p>부모 포인터로 자식 객체를 <code>delete</code>할 때, 부모 소멸자가 가상이 아니면 vtable을 거치지 않고 부모 소멸자만 불린다. 자식 소멸자가 실행되지 않아 자식이 가진 자원(버퍼, 파일, 장치 핸들)이 해제되지 않는다. 표준으로는 정의되지 않은 동작이다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct IFilter            { /* no virtual destructor */ virtual void Apply(Image&amp;) = 0; };
+struct GpuFilter : IFilter { ~GpuFilter() { cudaFree(buf); } void Apply(Image&amp;) override; float* buf; };
+
+IFilter* f = new GpuFilter();
+delete f;          // only IFilter's destructor runs -&gt; GPU buffer leaks (undefined behavior)
+
+// fix: polymorphic base classes get a virtual destructor
+struct IFilterOk { virtual ~IFilterOk() = default; virtual void Apply(Image&amp;) = 0; };</code></pre>
+
+                <table>
+                    <tr><th>규칙</th><th>설명</th></tr>
+                    <tr><td>가상 함수가 하나라도 있으면 소멸자도 가상</td><td>부모 포인터로 지울 가능성이 있기 때문</td></tr>
+                    <tr><td>부모 포인터로 지우지 않게 막고 싶으면</td><td>소멸자를 <code>protected</code>로, 가상 아니게</td></tr>
+                    <tr><td><code>std::unique_ptr&lt;Base&gt;</code>로 소유</td><td>내부에서 <code>delete</code>를 부르므로 같은 규칙 적용</td></tr>
+                </table>
+
+                <!-- 7. 다중 상속 -->
+                <h2 id="multiple"><i class="fa-solid fa-code-branch"></i> 다중 상속과 vptr 여러 개</h2>
+                <p>가상 함수가 있는 부모를 둘 이상 상속하면, 객체 안에 부모 부분마다 vptr이 하나씩 생긴다. 27편에서 본 것처럼 두 번째 부모 포인터는 객체 시작 위치가 아니라 두 번째 부모 부분을 가리킨다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">struct ICamera   { virtual ~ICamera() = default;   virtual Frame Grab() = 0; };
+struct IDevice   { virtual ~IDevice() = default;   virtual void Reset() = 0; };
+struct UsbCamera : ICamera, IDevice
+{
+    Frame Grab() override;
+    void  Reset() override;
+};
+// sizeof(UsbCamera) includes TWO vptrs on 64-bit: 16 bytes of hidden pointers</code></pre>
+
+                <table>
+                    <tr><th>객체 안의 위치</th><th>내용</th></tr>
+                    <tr><td>오프셋 0</td><td>ICamera 부분의 vptr → UsbCamera용 ICamera vtable</td></tr>
+                    <tr><td>오프셋 8</td><td>IDevice 부분의 vptr → UsbCamera용 IDevice vtable</td></tr>
+                    <tr><td>그 뒤</td><td>UsbCamera 자기 멤버</td></tr>
+                </table>
+
+                <p><code>IDevice* d</code>로 <code>d-&gt;Reset()</code>을 부르면, d는 객체의 오프셋 8을 가리킨다. 그런데 <code>UsbCamera::Reset</code>은 객체 시작 주소를 <code>this</code>로 받아야 한다. 그래서 IDevice vtable의 Reset 칸에는 실제 함수 대신 "this를 8만큼 빼고 UsbCamera::Reset으로 가는" 작은 코드(<strong>thunk</strong>)의 주소가 들어 있다. 디버거 콜스택에서 가끔 보이는 <code>[thunk]</code>, <code>adjustor{8}</code> 같은 이름이 이것이다.</p>
+
+                <!-- 8. RTTI -->
+                <h2 id="rtti"><i class="fa-solid fa-id-card"></i> RTTI와 dynamic_cast의 위치</h2>
+                <p>vtable에는 함수 주소만 있는 것이 아니다. 대부분의 구현은 vtable 바로 앞 칸에 그 클래스의 <strong>타입 정보</strong>(<code>type_info</code>, 상속 관계)를 가리키는 포인터를 둔다. GCC, Clang(Itanium 규약)은 <code>type_info</code>를 직접, MSVC는 "Complete Object Locator"라는 구조체를 거쳐 가리킨다.</p>
+
+                <table>
+                    <tr><th>기능</th><th>vtable을 쓰는 방식</th></tr>
+                    <tr><td><code>typeid(*p)</code></td><td>p의 vptr → vtable 앞 칸 → type_info</td></tr>
+                    <tr><td><code>dynamic_cast&lt;T*&gt;(p)</code></td><td>같은 경로로 실제 타입 정보를 얻고, 상속 관계를 따라가며 T가 있는지 찾음. 있으면 다중 상속 오프셋만큼 주소를 고쳐 돌려줌</td></tr>
+                    <tr><td>MFC <code>IsKindOf</code> (26편)</td><td>같은 일을 매크로로 만든 클래스별 정보 구조체와 가상 함수 <code>GetRuntimeClass()</code>로 함</td></tr>
+                </table>
+
+                <p>그래서 <code>dynamic_cast</code>와 <code>typeid</code>는 가상 함수가 있는 클래스에서만 동작한다. vptr이 없으면 실행 중에 실제 타입을 알아낼 방법이 없기 때문이다. MSVC에서 <code>/GR-</code>로 RTTI를 끄면 타입 정보가 빠지고 <code>dynamic_cast</code>를 쓸 수 없다.</p>
+
+                <!-- 9. 비용 -->
+                <h2 id="cost"><i class="fa-solid fa-gauge-high"></i> 가상 함수의 실제 비용</h2>
+                <table>
+                    <tr><th>비용</th><th>크기</th><th>신경 쓸 때</th></tr>
+                    <tr><td>객체마다 vptr</td><td>8바이트 (64비트)</td><td>작은 객체(예: 점, 픽셀)를 수백만 개 만들 때</td></tr>
+                    <tr><td>클래스마다 vtable</td><td>칸 수 × 8바이트</td><td>거의 없음</td></tr>
+                    <tr><td>간접 호출</td><td>메모리 읽기 2번 + 간접 분기</td><td>아주 작은 함수를 수백만 번 부를 때</td></tr>
+                    <tr><td><strong>인라인 불가</strong></td><td>컴파일러가 함수 본문을 호출 자리에 펼치지 못함</td><td>이것이 가장 큰 비용. 반복문 최적화, SIMD 자동 벡터화가 막힘</td></tr>
+                </table>
+
+                <p>영상 처리에서 흔한 실수는 <strong>픽셀 하나마다 가상 함수를 부르는</strong> 설계다.</p>
+
+<pre class="language-cpp"><code class="language-cpp">// slow: one virtual call per pixel, no inlining, no vectorization
+struct IPixelOp { virtual ~IPixelOp() = default; virtual uint8_t Apply(uint8_t v) const = 0; };
+for (size_t i = 0; i &lt; n; ++i) dst[i] = op-&gt;Apply(src[i]);
+
+// fast option 1: virtual call per IMAGE, tight loop inside
+struct IImageOp { virtual ~IImageOp() = default; virtual void Apply(const uint8_t* src, uint8_t* dst, size_t n) const = 0; };
+struct Invert : IImageOp
+{
+    void Apply(const uint8_t* src, uint8_t* dst, size_t n) const override
+    { for (size_t i = 0; i &lt; n; ++i) dst[i] = 255 - src[i]; }   // inlined, vectorized
+};
+
+// fast option 2: compile-time polymorphism with templates
+template &lt;typename Op&gt;
+void ApplyAll(const uint8_t* src, uint8_t* dst, size_t n, Op op)
+{ for (size_t i = 0; i &lt; n; ++i) dst[i] = op(src[i]); }</code></pre>
+
+                <p>가상 함수 호출 횟수를 "픽셀 수"에서 "영상 수"로 줄이면 비용은 사실상 사라지고, 반복문 안은 컴파일러가 마음껏 최적화할 수 있다. C++ 시리즈의 인터페이스 설계 패턴 글과 플러그인 아키텍처 글의 구조도 이 원칙을 따른다.</p>
+
+                <h3 id="devirtualize"><span class="h3-icon"><i class="fa-solid fa-chevron-right"></i></span> 컴파일러가 가상 호출을 없애는 경우</h3>
+                <p>컴파일러가 실제 타입을 확실히 알면 vtable을 거치지 않고 직접 호출하고, 인라인까지 한다(devirtualization).</p>
+
+                <table>
+                    <tr><th>상황</th><th>예</th></tr>
+                    <tr><td>객체를 값으로 직접 사용</td><td><code>Circle c; c.Draw();</code> (포인터, 참조가 아님)</td></tr>
+                    <tr><td>클래스나 함수에 <code>final</code></td><td><code>struct Circle final : Shape</code>이면 <code>Circle*</code>로 부른 Draw는 다른 것일 수 없음</td></tr>
+                    <tr><td>링크 시간 최적화(LTO)로 자식 클래스가 하나뿐임을 앎</td><td>MSVC <code>/GL</code>, GCC/Clang <code>-flto</code></td></tr>
+                </table>
+
+                <!-- 10. 확인 방법 -->
+                <h2 id="inspect"><i class="fa-solid fa-magnifying-glass-chart"></i> 직접 확인하는 방법</h2>
+                <table>
+                    <tr><th>도구</th><th>방법</th></tr>
+                    <tr><td>Visual Studio 디버거</td><td>조사식 창에서 객체를 펼치면 <code>__vfptr</code>이 보이고, 그 아래에 vtable 칸과 함수 이름이 나옴</td></tr>
+                    <tr><td>MSVC 컴파일러</td><td>비공식 옵션 <code>/d1reportSingleClassLayoutCircle</code>을 주면 Circle의 메모리 배치와 vtable을 빌드 출력에 찍음</td></tr>
+                    <tr><td>GCC</td><td><code>-fdump-lang-class</code>로 클래스 배치와 vtable 내용을 파일로 출력</td></tr>
+                    <tr><td>Clang</td><td><code>-Xclang -fdump-record-layouts</code>, <code>-Xclang -fdump-vtable-layouts</code></td></tr>
+                </table>
+
+<pre class="language-bash"><code class="language-bash"># MSVC: print the layout of class Circle while compiling
+cl /c /d1reportSingleClassLayoutCircle shapes.cpp
+
+# GCC: writes shapes.cpp.*.class with every class layout and vtable
+g++ -c -fdump-lang-class shapes.cpp</code></pre>
+
+                <!-- 11. 함정 -->
+                <h2 id="pitfalls"><i class="fa-solid fa-bug"></i> 흔한 함정</h2>
+
+                <div class="callout danger">
+                    <i class="fa-solid fa-skull"></i>
+                    <div class="callout-body">
+                        <strong>memset, memcpy로 다형적 객체 초기화</strong>
+                        <code>memset(this, 0, sizeof(*this))</code>는 vptr까지 0으로 지운다. 이후 가상 함수를 부르면 주소 0으로 점프해 죽는다. 옛 C 스타일 코드를 클래스로 옮길 때 자주 생긴다. 멤버별로 초기화하거나 멤버 초기화 목록을 쓴다.
+                    </div>
+                </div>
+
+                <div class="callout warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="callout-body">
+                        <strong>DLL 경계에서 클래스 정의 불일치</strong>
+                        DLL과 실행 파일이 같은 인터페이스 헤더의 다른 버전으로 빌드되면, 가상 함수 순서가 달라 vtable 칸 번호가 어긋난다. Grab을 불렀는데 Reset이 실행되는 식의 이상한 동작이 생긴다. 인터페이스에 가상 함수를 추가할 때는 맨 뒤에만 추가하고, 양쪽을 함께 다시 빌드한다.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div class="callout-body">
+                        <strong>해제된 객체의 가상 호출</strong>
+                        이미 <code>delete</code>된 객체로 가상 함수를 부르면, 소멸자가 vptr을 부모 vtable로 바꿔 둔 상태이거나 메모리가 다른 용도로 쓰인 상태라 엉뚱한 함수가 불리거나 "pure virtual function call"로 죽는다. 콜스택에 이 오류가 보이면 해제 후 사용(use-after-free)을 먼저 의심한다.
+                    </div>
+                </div>
+
+                <!-- 12. 정리 -->
+                <h2 id="summary"><i class="fa-solid fa-flag-checkered"></i> 정리</h2>
+                <table>
+                    <tr><th>요점</th><th>내용</th></tr>
+                    <tr><td>vtable</td><td>클래스마다 하나, 가상 함수 주소 배열. 자식은 부모 칸을 물려받고 고친 칸만 교체</td></tr>
+                    <tr><td>vptr</td><td>객체마다 하나, 맨 앞의 숨은 포인터. 객체 크기가 8바이트 늘어남</td></tr>
+                    <tr><td>호출</td><td>vptr 읽기 → 칸 읽기 → 간접 호출. 진짜 비용은 인라인이 막히는 것</td></tr>
+                    <tr><td>생성, 소멸 중</td><td>vptr이 단계별로 바뀌어 부모 생성자, 소멸자 안에서는 부모 함수가 불림</td></tr>
+                    <tr><td>가상 소멸자</td><td>가상 함수가 있는 부모는 소멸자도 가상</td></tr>
+                    <tr><td>RTTI</td><td>vtable 앞 칸의 타입 정보로 typeid, dynamic_cast가 동작</td></tr>
+                    <tr><td>성능</td><td>픽셀마다 말고 영상마다 가상 호출. 필요하면 템플릿, final</td></tr>
+                </table>
+
+                <!-- 참고 자료 -->
+                <div class="references">
+                    <div class="ref-title"><i class="fa-solid fa-book-bookmark"></i> 참고 자료</div>
+                    <ul>
+                        <li>cppreference - virtual function specifier, final, override</li>
+                        <li>Itanium C++ ABI - Virtual Table Layout</li>
+                        <li>Stanley Lippman, "Inside the C++ Object Model"</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="post-nav-bottom"></div>
+        </article>
+    </main>
+</div>
+
+<div class="site-footer"><span class="melon-icon sm"></span> Melon Seeds — Powered by GitHub Pages — Generated with Claude</div>
+
+<div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+        <div class="auth-icon"><span class="melon-icon lg"></span></div>
+        <h3>비공개 콘텐츠 인증</h3><p>비밀번호를 입력하면 비공개 글을 볼 수 있습니다.</p>
+        <input type="password" id="auth-password" placeholder="비밀번호">
+        <button class="auth-btn" onclick="handleLogin()">인증</button>
+        <div class="auth-error" id="auth-error">비밀번호가 올바르지 않습니다.</div>
+        <button class="auth-cancel" onclick="hideAuthModal()">취소</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
+<script src="../../assets/js/horizontal-scroll.js"></script>
+<script src="../../assets/js/post-nav.js"></script>
+<script>
+    renderSidebar('dev-lang-cpp');
+    renderPostNav('dev-lang-cpp');
+
+    // 플로팅 TOC 2단 바
+    const tocBlock = document.getElementById('toc-block');
+    const floatingToc = document.getElementById('floating-toc');
+    const row1Links = document.querySelectorAll('#toc-row1 a');
+    const row2 = document.getElementById('toc-row2');
+    const allH2 = document.querySelectorAll('h2[id]');
+    const allH3 = document.querySelectorAll('h3[id]');
+
+    // h2별 h3 매핑 (자동 생성)
+    const h2h3Map = {};
+    let currentH2Key = null;
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => {
+        if (el.tagName === 'H2') {
+            currentH2Key = el.id;
+            h2h3Map[currentH2Key] = [];
+        } else if (el.tagName === 'H3' && currentH2Key) {
+            h2h3Map[currentH2Key].push({ id: el.id, label: el.textContent.trim() });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (tocBlock) {
+            floatingToc.classList.toggle('visible', tocBlock.getBoundingClientRect().bottom < 58);
+        }
+        let curH2 = '';
+        allH2.forEach(h => { if (h.getBoundingClientRect().top < 150) curH2 = h.id; });
+        let curH3 = '';
+        allH3.forEach(h => { if (h.getBoundingClientRect().top < 150) curH3 = h.id; });
+
+        row1Links.forEach(a => a.classList.toggle('active', a.dataset.section === curH2));
+
+        const subs = h2h3Map[curH2];
+        if (subs && subs.length > 0) {
+            row2.classList.remove('hidden');
+            row2.innerHTML = subs.map(s =>
+                `<a href="#${s.id}" class="${s.id === curH3 ? 'active' : ''}">${s.label}</a>`
+            ).join('');
+            row2.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        } else {
+            row2.classList.add('hidden');
+        }
+    });
+
+    // TOC 클릭 시 부드러운 스크롤
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // 상단 검색창 — Enter로 검색 페이지로 이동
+    (function setupNavSearch() {
+        const input = document.querySelector('.nav-search input');
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim();
+                if (q) window.location.href = '../../search.html?q=' + encodeURIComponent(q);
+            }
+        });
+    })();
+</script>
+</body>
+</html>
